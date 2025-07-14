@@ -1,3 +1,5 @@
+import os
+
 def read_secret(secret: str):
     try:
         with open(f"/etc/secrets/{secret}", "r") as f:
@@ -43,7 +45,6 @@ def init():
     )
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
-    otel_tracer = trace.get_tracer("strands-agents.tracer")
 
     # Metrics
     reader = PeriodicExportingMetricReader(
