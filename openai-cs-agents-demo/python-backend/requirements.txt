@@ -1,0 +1,5 @@
+openai-agents==0.0.18
+pydantic
+fastapi
+uvicorn
+traceloop-sdk
