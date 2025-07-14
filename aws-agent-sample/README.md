@@ -13,7 +13,7 @@ Strands Agents come with [OpenTelemetry](https://opentelemetry.io/) support out-
 Hence, we just need to register an [OpenTelemetry SDK](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/overview.md#sdk) to send the data to Dynatrace.
 
 We simplified this process hiding all the complexity inside [dynatrace.py](./dynatrace.py).
-For sending data to your Dynatrace tenant, you can configure the `OTEL_ENDPOINT` env var with your Dynatrace URL for ingesting [OTLP](https://docs.dynatrace.com/docs/shortlink/otel-getstarted-otlpexport)), for example: `https://wkf10640.live.dynatrace.com/api/v2/otlp`.
+For sending data to your Dynatrace tenant, you can configure the `OTEL_ENDPOINT` env var with your Dynatrace URL for ingesting [OTLP](https://docs.dynatrace.com/docs/shortlink/otel-getstarted-otlpexport), for example: `https://wkf10640.live.dynatrace.com/api/v2/otlp`.
 
 The API access token will be read from your filesystem under `/etc/secrets/dynatrace_otel`. 
 
