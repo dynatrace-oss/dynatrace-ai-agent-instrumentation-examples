@@ -1,4 +1,4 @@
-from dynatrace import init, read_secret
+from dynatrace import init
 init()
 
 import os
@@ -40,8 +40,8 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 
 
-key = read_secret("aws-key")
-sec = read_secret("aws-secret")
+key = os.environ.get('AWS-KEY')
+sec = os.environ.get("AWS-SECRET")
 
 def main():
     model = BedrockModel(

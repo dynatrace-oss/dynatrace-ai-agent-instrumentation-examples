@@ -15,7 +15,7 @@ def init():
     token = read_secret("dynatrace_otel")
     headers = {"Authorization": f"Api-Token {token}"}
     OTEL_ENDPOINT = os.environ.get(
-        "OTEL_ENDPOINT", "https://wkf10640.live.dynatrace.com/api/v2/otlp"
+        "OTEL_ENDPOINT", "https://wkf10640.live.dynatrace.com/api/v2/otlp" #manually configure your DT tenant here
     )
     if OTEL_ENDPOINT.endswith("/v1/traces"):
         OTEL_ENDPOINT = OTEL_ENDPOINT[0 : OTEL_ENDPOINT.find("/v1/traces")]
