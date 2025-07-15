@@ -40,8 +40,8 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 
 
-key = read_secret("aws-key")
-sec = read_secret("aws-secret")
+key = os.environ.get('AWS_KEY')
+sec = os.environ.get("AWS_SECRET")
 
 def main():
     model = BedrockModel(
@@ -92,7 +92,8 @@ Always provide the appointment id so that I can update it if required"""
     print(results.metrics)
 
 
+from opentelemetry import trace
 
 if __name__ == "__main__":
-    with otel_tracer.start_as_current_span(name="/api"):
+    with trace.get_tracer("strands-agents.tracer").start_as_current_span(name="/api", kind=trace.SpanKind.SERVER):
         main()
