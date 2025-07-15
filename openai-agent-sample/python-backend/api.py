@@ -23,8 +23,6 @@ Traceloop.init(
     should_enrich_metrics=True,
 )
 
-from instrument import OpenAIAgentsInstrumentor
-OpenAIAgentsInstrumentor().instrument()
 
 from opentelemetry import trace
 tracer = trace.get_tracer("openai-agents")
