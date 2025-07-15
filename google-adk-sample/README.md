@@ -87,4 +87,4 @@ adk web
 The web-interface will be available at: [http://127.0.0.1:8000/dev-ui/?app=academic_research](http://127.0.0.1:8000/dev-ui/?app=academic_research)
 
 
-![Demo Screenshot](screenshot.jpg)
+![Demo Screenshot](screenshot.png)
