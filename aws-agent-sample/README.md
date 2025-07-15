@@ -22,15 +22,16 @@ The API access token will be read from your filesystem under `/etc/secrets/dynat
 
 ### Setting your AWS keys
 
-You can set your AWS keys in your environment variables by running the following command in your terminal:
+Follow the [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples-agent.html) to configure your AWS Role with the correct policies.
+Afterwards, you can set your AWS keys in your environment variables by running the following command in your terminal:
 
 
 ```bash
-export AWS-KEY=your_api_key
-export AWS-SECRET=your_secret_key
+export AWS_KEY=your_api_key
+export AWS_SECRET=your_secret_key
 ```
 
-Afterwards, make sure your account has access to the model `anthropic.claude-3-7-sonnet-20250219-v1:0` used in this example. Please, refer to the
+Ensure your account has access to the model `anthropic.claude-3-7-sonnet-20250219-v1:0` used in this example. Please, refer to the
 [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-permissions.html) to see how to enable access to the model.
 
 

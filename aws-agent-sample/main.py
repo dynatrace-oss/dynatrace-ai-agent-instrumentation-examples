@@ -40,8 +40,8 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 
 
-key = os.environ.get('AWS-KEY')
-sec = os.environ.get("AWS-SECRET")
+key = os.environ.get('AWS_KEY')
+sec = os.environ.get("AWS_SECRET")
 
 def main():
     model = BedrockModel(
