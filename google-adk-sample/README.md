@@ -72,13 +72,13 @@ poetry install
 
 ### Run the app
 
-ADK allows to run agent via CLI using the following command:
+ADK allows to run agents via a CLI using the following command:
 
 ```bash
 adk run academic_research
 ```
 
-Alternatively, ADK offers a native web-interface that can be used to chat with your agents. You can start it by running:
+Alternatively, ADK also offers a native web-interface that can be used to chat with your agents. You can start it by running:
 
 ```bash
 adk web
