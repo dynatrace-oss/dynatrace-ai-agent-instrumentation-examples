@@ -15,3 +15,27 @@
 """Academic_websearch_agent for finding research papers using search tools."""
 
 from .agent import academic_websearch_agent
+
+import os
+os.environ['TRACELOOP_TELEMETRY'] = "false"
+os.environ['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] = "delta"
+
+def read_secret(secret: str):
+    try:
+        with open(f"/etc/secrets/{secret}", "r") as f:
+            return f.read().rstrip()
+    except Exception as e:
+        print("No token was provided")
+        print(e)
+        return ""
+
+from traceloop.sdk import Traceloop
+token = read_secret("dynatrace_otel")
+headers = {"Authorization": f"Api-Token {token}"}
+Traceloop.init(
+    app_name="academic-websearch-agent",
+    api_endpoint="https://wkf10640.live.dynatrace.com/api/v2/otlp",
+    disable_batch=True,
+    headers=headers,
+    should_enrich_metrics=True,
+)

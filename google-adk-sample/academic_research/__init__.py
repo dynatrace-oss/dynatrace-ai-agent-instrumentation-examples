@@ -18,6 +18,7 @@ from . import agent
 
 import os
 os.environ['TRACELOOP_TELEMETRY'] = "false"
+os.environ['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] = "delta"
 
 def read_secret(secret: str):
     try:
@@ -32,7 +33,7 @@ from traceloop.sdk import Traceloop
 token = read_secret("dynatrace_otel")
 headers = {"Authorization": f"Api-Token {token}"}
 Traceloop.init(
-    app_name="adk-samples",
+    app_name="google-adk-samples",
     api_endpoint="https://wkf10640.live.dynatrace.com/api/v2/otlp",
     disable_batch=True,
     headers=headers,
