@@ -1,0 +1,17 @@
+[project]
+name = "agent-core"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "boto3",
+    "botocore",
+    "langchain[aws]",
+    "langgraph",
+    "langsmith[otel]",
+    "ddgs",
+    "langchain-community",
+    "python-dotenv",
+    "traceloop-sdk",
+]
