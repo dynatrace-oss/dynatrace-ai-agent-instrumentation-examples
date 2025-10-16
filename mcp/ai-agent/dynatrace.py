@@ -3,6 +3,8 @@ from traceloop.sdk import Traceloop
 from utils import read_secret
 
 def setup_tracing(service_name):
+    # this disable traceloop posthog integration and does NOT impact
+    # the data reported to Dynatrace
     os.environ['TRACELOOP_TELEMETRY'] = "false"
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
     token = read_secret("dynatrace_otel")
