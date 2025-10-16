@@ -1,0 +1,14 @@
+[project]
+name = "ai-example"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=0.3.27",
+    "langchain-mcp-adapters>=0.1.11",
+    "langchain-openai>=0.3.35",
+    "langgraph>=0.6.10",
+    "langsmith[otel]>=0.4.34",
+    "traceloop-sdk>=0.47.3",
+]
