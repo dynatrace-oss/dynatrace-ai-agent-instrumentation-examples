@@ -4,7 +4,7 @@ This guide will explain how to gain Observability and monitor CrewAI using Dynat
 
 CrewAI emits data which we will collect using the [Dynatrace OpenTelemetry collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and send into Dynatrace.
 
-Broadly speaking this readme will follow the standard CrewAI documentation ([here](https://docs.crewai.com/en/installation) and here), with some adjustments to add the Observability pieces.
+Broadly speaking this readme will follow the standard CrewAI documentation ([here](https://docs.crewai.com/en/installation) and [here](https://docs.crewai.com/en/quickstart)), with some adjustments to add the Observability pieces.
 
 ## Prerequisites
 
