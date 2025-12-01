@@ -76,7 +76,11 @@ export DT_API_TOKEN=dt0c01.****.*****
 
 ### Start the collector
 
+```
+"c:\path\to\dynatrace-otel-collector.exe" --config=collector.config.yaml
+```
 
+## Create a crew
 
 Create a new "crew" called "latest-ai-development".
 When prompted, choose OpenAI and enter `testkey123` when prompted for an API key (we will change this later):
