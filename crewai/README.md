@@ -48,7 +48,7 @@ Open [collector.config.yaml](collector.config.yaml) and notice that the collecto
 
 * `metrics` will also be received via OTLP and any metrics in the `cumulative` format will be transformed to `delta` (Dynatrace supports `delta`, not `cumulative`). The metrics will also be sent to both `debug` and Dynatrace.
 
-Notice the two environment variables that we need to set `DT_ENDPOINT` and `DT_API_TOKEN`. We will configure these now.
+Notice the two environment variables that need to be set: `DT_ENDPOINT` and `DT_API_TOKEN`. Let's configure these now.
 
 ### Create Dynatrace API token
 
@@ -77,6 +77,8 @@ export DT_API_TOKEN=dt0c01.****.*****
 ```
 
 ### Start the collector
+
+Start the collector and leave it running:
 
 ```
 "c:\path\to\dynatrace-otel-collector.exe" --config=collector.config.yaml
