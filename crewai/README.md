@@ -244,6 +244,6 @@ Leverage the dashboard filters to filter (some) tiles to show data for only sele
 
 Remember that you can drilldown into the end-to-end trace whenever a `trace.id` is shown. Just right click the trace ID and "open with" `Distributed Tracing".
 
-You can also open the Dynatrace `Distributed Tracing` view and filter for `service == crewAI-telemetry`
+You can also open the Dynatrace `Distributed Tracing` view and filter for `"Service name" = crewAI-telemetry`
 
 <img width="1156" height="464" alt="image" src="https://github.com/user-attachments/assets/0147d310-17e8-4b9c-aac7-3d1ebe61efe5" />
