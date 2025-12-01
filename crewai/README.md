@@ -1,109 +1,247 @@
-# CrewAI Observability with Dynatrace
+# Observe and monitor CrewAI with Dynatrace
 
-This guide will explain how to gain Observability and monitor CrewAI using Dynatrace and OpenTelemetry.
+<img width="3403" height="3155" alt="image" src="https://github.com/user-attachments/assets/a063d978-c920-46c5-8ce8-03d7506f98aa" />
 
-CrewAI emits data which we will collect using the [Dynatrace OpenTelemetry collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and send into Dynatrace.
+This guide closely follows the [existing quickstart for creating a crew](https://docs.crewai.com/en/quickstart) and [this guide for creating a flow](https://docs.crewai.com/en/guides/flows/first-flow) for easier user understanding (you **do not** need a SERPer API Key).
 
-Broadly speaking this readme will follow the standard CrewAI documentation ([here](https://docs.crewai.com/en/installation) and [here](https://docs.crewai.com/en/quickstart)), with some adjustments to add the Observability pieces.
+* OpenLLMetry from Traceloop will be used to automatically instrument the GenAI calls and create the OpenTelemetry data we need
+* This data will be sent to an OpenTelemetry collector (running locally) which gives us the opportunity to batch, filter, redact, enrich or otherwise process the telemetry before it hits Dynatrace
+* The collector will be configured to send data to Dynatrace
 
+### Hang on, what's a crew and what's a flow?
+
+There are two main concepts you need to understand to get value out of this tutorial: crews and flows. Both are explained [here](https://docs.crewai.com/en/introduction) (go read this first and come back here).
+
+With that in mind, we need to use Dynatrace to answer these questions:
+
+* How many crews / flows do I have running?
+* What are the names of the crews and flows?
+* Which agents are in which crews / flows?
+* Are my crews / flows failing?
+* How many tokens am I consuming per crew / agent / flow / model?
+* How much time is each agent taking to execute?
+  
 ## Prerequisites
+* You'll need a Dynatrace SaaS tenant
+* CrewAI needs Python >=3.10 and <3.14. Run `python --version` to check
 
-To follow this guide, you will need:
+## Install CrewAI and OpenLLMetry
 
-* [Python3 installed](https://www.python.org/downloads/)
-* A Dynatrace environment ([sign up for a free trial](https://dt-url.net/trial))
-* [Download the Dynatrace collector binary and add it to your PATH](https://github.com/Dynatrace/dynatrace-otel-collector/releases)
+`pip install crewai traceloop-sdk`
 
-## Clone repo & setup environment
+or `pip install -r requirements.txt`
 
-```
-git clone https://github.com/dynatrace-oss/dynatrace-ai-agent/instrumentation-examples
-cd crewai
-```
+If you use UV instead, follow [these instructions](https://docs.crewai.com/en/installation).
 
-(optional) Create a new virtual environment:
+## Upload Dynatrace Dashboard
 
-```
-python -m venv .
-Scripts/activate.bat
-```
+* Download the [prebuilt CrewAI Dynatrace dashboard](CrewAI%20Observability.json) to your machine
+* Open the Dynatrace dashboards app and go to upload. Upload the dashboard
 
-Install CrewAI:
+## Dynatrace API Token
 
-```
-pip install -r requirements.txt
-```
+<img width="593" height="122" alt="image" src="https://github.com/user-attachments/assets/d3ded14c-6097-44b9-bedb-78bae1c1d8b6" />
 
-## Explore collector configuration
+In Dynatrace:
 
-<img width="1125" height="211" alt="image" src="https://github.com/user-attachments/assets/bb8a7d52-ae3b-4d47-aa49-b12819307e76" />
+* Press `ctrl + k` and search for `access tokens`
+* Generate a new access token
 
-During this tutorial, we will configure CrewAI to send telemetry to the collector. The collector will be process this telemetry then send it onwards into Dynatrace.
-
-Let's quickly understand and start up the collector.
-
-Open [collector.config.yaml](collector.config.yaml) and notice that the collector (not yet running) is configured to capture two data types: `metrics` and `traces`. Both data types will be received into the collector using the `otlp` receiver (`otlp` means `OpenTelemetry Protocol`).
-
-* `traces` will not be processed in any way and will be sent out from the collector simultaneously to two places: `debug` (the collector's console output) and Dynatrace.
-
-* `metrics` will also be received via OTLP and any metrics in the `cumulative` format will be transformed to `delta` (Dynatrace supports `delta`, not `cumulative`). The metrics will also be sent to both `debug` and Dynatrace.
-
-Notice the two environment variables that need to be set: `DT_ENDPOINT` and `DT_API_TOKEN`. Let's configure these now.
-
-### Create Dynatrace API token
-
-In Dynatrace, press `ctrl + k` and search for `Access Tokens`. Create a new API token with these permissions:
+Create a new API token with these permissions:
 
 * `metrics.ingest`
-* `logs.ingest`
+* `openTelemetryTrace.ingest`
 
-### Format Dynatrace URL
+Now build your Dynatrace endpoint URL. It takes the form: `https://<EnvironmentID>.live.dynatrace.com`
 
-Look at your Dynatrace environment URL. It should start with `https://` then a random string like `abc12345`.
-
-Take that random value and build a URL with this syntax: `https://ID_HERE.live.dynatrace.com`
-
-For example: `https://abc12345.live.dynatrace.com`
-
-This is your `DT_ENDPOINT` value.
-
-### Set Dynatrace environment variables
-
-Set these details as environment variables:
+For example:
 
 ```
-export DT_ENDPOINT=https://abc12345.live.dynatrace.com
-export DT_API_TOKEN=dt0c01.****.*****
+https://abc12345.live.dynatrace.com
 ```
 
-### Start the collector
+## Download and run an OpenTelemetry Collector
 
-Start the collector and leave it running:
+<img width="1179" height="270" alt="image" src="https://github.com/user-attachments/assets/e445b97d-47e9-4829-abf8-c6c3e858fb37" />
+
+Any OTEL collector distribution will work. If you don't have one, I suggest the [Dynatrace collector](https://github.com/Dynatrace/dynatrace-otel-collector/releases).
+
+Now run it (leave it running):
+```
+export DT_ENDPOINT=https://ENVIRONMENT_ID.live.dynatrace.com
+export DT_API_TOKEN=dt0c01.*****.*****
+./dynatrace-otel-collector --config=collector.config.yaml
+```
+
+The collector listens for incoming OTLP-formatted telemetry on 4318, transforms any `cumulative` metrics to `delta` (Dynatrace does not support cumulative) then exports metrics and traces to both `debug` (the collector console output - useful for debugging) and Dynatrace.
+
+## Create a Crew and enable Telemetry
+
+Following the quickstart, create a crew:
 
 ```
-"c:\path\to\dynatrace-otel-collector.exe" --config=collector.config.yaml
-```
-
-## Create a crew
-
-Create a new "crew" called "latest-ai-development".
-When prompted, choose OpenAI and enter `testkey123` when prompted for an API key (we will change this later):
-
-```
-crewai create crew latest-ai-development
+crewai create crew latest_ai_development --skip_provider
 cd latest_ai_development
 ```
 
-## About Crews
+### Enable Telemetry
 
-Without wanting to anthropomorphise, it is conceptually helpful to imagine a "crew" as a "team" of people. Just like a well formed team of humans, each "person" (or agent) has its own role, knowledge and specialities. The crew also has a set of "tasks" that it must perform to achieve an outcome. The "crew" (or team) works together to achieve this goal. Crucially, the agents "hand-off" work between themselves when they need input from the others. This is a crucial difference from a static, predefined workflow where we (the actual humans) would predefine the "handoff points".
+Open `latest_ai_development/pyproject.toml` and add `"traceloop-sdk"` to the `dependencies` array. It should look like this:
 
-## Explore your Crew
+```
+dependencies = [
+    "crewai[tools]==1.5.0",
+    "traceloop-sdk"
+]
+```
 
-The commands above will have created a new folder called `latest-ai-development` with lots of file inside that folder.
+Create a `.env` file at the same level as `pyproject.toml` (`latest_ai_development/.env`) and populate with your LLM endpoint details like this:
 
-Take a look at `src/latest-ai-development/config/agents.yaml`. This file defines the agents (or "personas") you have available on your crew and what they can "do".
+```
+MODEL=gpt-4o-mini
+OPENAI_API_KEY=*********************
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
 
-The items in curly brackets are variables, passed in at runtime (meaning your `researcher` agent can be a "Senior Data Researcher" for any topic).
+Initialise Traceloop and point the telemetry to your collector. In `latest_ai_development/src/latest_ai_development/main.py` add two lines near the top of the file:
 
-Close that file an open `src/latest-ai-development/config/tasks.yaml`. This file defines the tasks that must be completed with a corresponding `agent` assigned to each task (much like a human team would have individuals assigned to each task). Again, the items in curly brackets are variables.
+```
+from traceloop.sdk import Traceloop
+Traceloop.init(api_endpoint="http://localhost:4318", app_name="crewAI")
+```
+
+The first few lines of `main.py` should look like this:
+
+```
+#!/usr/bin/env python
+import sys
+import warnings
+
+from datetime import datetime
+
+from latest_ai_development.crew import LatestAiDevelopment
+
+from traceloop.sdk import Traceloop
+Traceloop.init(api_endpoint="http://localhost:4318", app_name="crewAI")
+```
+
+Open `latest_ai_development/src/latest_ai_development/crew.py` and give your crew a name. It is this name that will populate the filters on the Dynatrace dashboard.
+
+Scroll to line 58 and add a `name=""` value to the `Crew()` constructor:
+
+```
+return Crew(
+            agents=self.agents, # Automatically created by the @agent decorator
+            tasks=self.tasks, # Automatically created by the @task decorator
+            process=Process.sequential,
+            verbose=True,
+            # process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
+            name="latest_ai_development"
+        )
+```
+
+## Recap
+
+At this point, you should have:
+* Created 1 new file: `.env` to hold your LLM model, API endpoints and key
+* Modified 2 files: `main.py` (to import and configure Traceloop) and `crew.py` (to give your crew a name)
+
+## Run the crew
+
+Finally, it's time to run the crew!
+
+Make sure you're in the topmost `latest_ai_development` directory then:
+
+```
+crewai run
+```
+
+You should see data being printed in the collector terminal.
+
+-----------------------------
+
+## Create and run a flow
+
+Let's repeat the process to run a flow. Change directory back to the root and create a new flow called `poem_creator_flow`.
+
+This is a predefined workflow to create a Poem.
+
+```
+cd ..
+crewai create flow poem_creator_flow
+```
+
+This flow already comes with a crew (see `src/poem_creator_flow/crews/poem_crew`).
+
+### Setting up the flow and env vars
+
+Repeat the same steps as before to set the env vars and give your flow a name:
+
+Add your details to `poem_creator_flow/.env`:
+
+```
+MODEL=gpt-4o
+OPENAI_API_KEY=****************
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+Add `traceloop-sdk` to the dependencies in `poem_creator_flow/pyproject.toml`:
+
+```
+dependencies = [
+    "crewai[tools]==1.5.0",
+    "traceloop-sdk"
+]
+```
+
+Add Traceloop to `poem_creator_flow/src/main.py`:
+```
+#!/usr/bin/env python
+from random import randint
+
+from pydantic import BaseModel
+
+from crewai.flow import Flow, listen, start
+
+from poem_creator_flow.crews.poem_crew.poem_crew import PoemCrew
+from traceloop.sdk import Traceloop
+Traceloop.init(api_endpoint="http://localhost:4318", app_name="crewAI")
+
+from poem_creator_flow.crews.poem_crew.poem_crew import PoemCrew
+```
+
+As before, give your crew a name by modifying the `Crew()` constructor in `poem_creator_flow/src/poem_creator_flow/crews/poem_crew/poem_crew.py`.
+
+Add the `name="poem_crew"` argument to the `Crew()` constructor.
+
+The return statement should look like this:
+
+```
+return Crew(
+            agents=self.agents,  # Automatically created by the @agent decorator
+            tasks=self.tasks,  # Automatically created by the @task decorator
+            process=Process.sequential,
+            verbose=True,
+            name="poem_crew"
+        )
+```
+
+## Run the flow
+
+Navigate back to the root directory then into the topmost `poem_creator_flow` directory then run the flow:
+
+```
+crewai flow kickoff
+```
+
+## Investigate your crew / usage using the Dashboard
+
+After a few minutes, refresh the Dynatrace dashboard and you should see it being populated.
+
+Explore the way your crews run, which models are used, how your token usage is attributed and which agents are spending the most time active.
+
+Leverage the dashboard filters to filter (some) tiles to show data for only selected crews or flows.
+
+Remember that you can drilldown into the end-to-end trace whenever a `trace.id` is shown. Just right click the trace ID and "open with" `Distributed Tracing".
+
+<img width="1156" height="464" alt="image" src="https://github.com/user-attachments/assets/0147d310-17e8-4b9c-aac7-3d1ebe61efe5" />
