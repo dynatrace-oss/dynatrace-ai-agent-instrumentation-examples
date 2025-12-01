@@ -44,9 +44,11 @@ Let's quickly understand and start up the collector.
 
 Open [collector.config.yaml](collector.config.yaml) and notice that the collector (not yet running) is configured to capture two data types: `metrics` and `traces`. Both data types will be received into the collector using the `otlp` receiver (`otlp` means `OpenTelemetry Protocol`).
 
-* `traces` will not be processed in any way and will be sent out from the collector simultaneously to two places: `debug` (the collector's console output) and Dynatrace. Notice the two environment variables that we need to set `DT_ENDPOINT` and `DT_API_TOKEN`.
+* `traces` will not be processed in any way and will be sent out from the collector simultaneously to two places: `debug` (the collector's console output) and Dynatrace.
 
 * `metrics` will also be received via OTLP and any metrics in the `cumulative` format will be transformed to `delta` (Dynatrace supports `delta`, not `cumulative`). The metrics will also be sent to both `debug` and Dynatrace.
+
+Notice the two environment variables that we need to set `DT_ENDPOINT` and `DT_API_TOKEN`. We will configure these now.
 
 ### Create Dynatrace API token
 
