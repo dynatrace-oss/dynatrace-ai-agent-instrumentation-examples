@@ -12,6 +12,7 @@ To follow this guide, you will need:
 
 * [Python3 installed](https://www.python.org/downloads/)
 * A Dynatrace environment ([sign up for a free trial](https://dt-url.net/trial))
+* [Download the Dynatrace collector binary and add it to your PATH](https://github.com/Dynatrace/dynatrace-otel-collector/releases)
 
 ## Clone repo & setup environment
 
@@ -32,6 +33,50 @@ Install CrewAI:
 ```
 pip install -r requirements.txt
 ```
+
+## Explore collector configuration
+
+<img width="1125" height="211" alt="image" src="https://github.com/user-attachments/assets/bb8a7d52-ae3b-4d47-aa49-b12819307e76" />
+
+During this tutorial, we will configure CrewAI to send telemetry to the collector. The collector will be process this telemetry then send it onwards into Dynatrace.
+
+Let's quickly understand and start up the collector.
+
+Open [collector.config.yaml](collector.config.yaml) and notice that the collector (not yet running) is configured to capture two data types: `metrics` and `traces`. Both data types will be received into the collector using the `otlp` receiver (`otlp` means `OpenTelemetry Protocol`).
+
+* `traces` will not be processed in any way and will be sent out from the collector simultaneously to two places: `debug` (the collector's console output) and Dynatrace. Notice the two environment variables that we need to set `DT_ENDPOINT` and `DT_API_TOKEN`.
+
+* `metrics` will also be received via OTLP and any metrics in the `cumulative` format will be transformed to `delta` (Dynatrace supports `delta`, not `cumulative`). The metrics will also be sent to both `debug` and Dynatrace.
+
+### Create Dynatrace API token
+
+In Dynatrace, press `ctrl + k` and search for `Access Tokens`. Create a new API token with these permissions:
+
+* `metrics.ingest`
+* `logs.ingest`
+
+### Format Dynatrace URL
+
+Look at your Dynatrace environment URL. It should start with `https://` then a random string like `abc12345`.
+
+Take that random value and build a URL with this syntax: `https://ID_HERE.live.dynatrace.com`
+
+For example: `https://abc12345.live.dynatrace.com`
+
+This is your `DT_ENDPOINT` value.
+
+### Set Dynatrace environment variables
+
+Set these details as environment variables:
+
+```
+export DT_ENDPOINT=https://abc12345.live.dynatrace.com
+export DT_API_TOKEN=dt0c01.****.*****
+```
+
+### Start the collector
+
+
 
 Create a new "crew" called "latest-ai-development".
 When prompted, choose OpenAI and enter `testkey123` when prompted for an API key (we will change this later):
@@ -54,4 +99,3 @@ Take a look at `src/latest-ai-development/config/agents.yaml`. This file defines
 The items in curly brackets are variables, passed in at runtime (meaning your `researcher` agent can be a "Senior Data Researcher" for any topic).
 
 Close that file an open `src/latest-ai-development/config/tasks.yaml`. This file defines the tasks that must be completed with a corresponding `agent` assigned to each task (much like a human team would have individuals assigned to each task). Again, the items in curly brackets are variables.
-
