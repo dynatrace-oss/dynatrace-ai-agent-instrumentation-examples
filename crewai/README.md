@@ -1,6 +1,6 @@
 # Observe and monitor CrewAI with Dynatrace
 
-<img width="3403" height="3155" alt="image" src="https://github.com/user-attachments/assets/a063d978-c920-46c5-8ce8-03d7506f98aa" />
+![CrewAI Dynatrace Dashboard](assets/crewai_dashboard.png)
 
 This guide closely follows the [existing quickstart for creating a crew](https://docs.crewai.com/en/quickstart) and [this guide for creating a flow](https://docs.crewai.com/en/guides/flows/first-flow) for easier user understanding (you **do not** need a SERPer API Key).
 
