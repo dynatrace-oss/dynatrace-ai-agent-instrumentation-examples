@@ -64,7 +64,7 @@ https://abc12345.live.dynatrace.com
 
 <img width="1179" height="270" alt="image" src="https://github.com/user-attachments/assets/e445b97d-47e9-4829-abf8-c6c3e858fb37" />
 
-Any OTEL collector distribution will work. If you don't have one, I suggest the [Dynatrace collector](https://github.com/Dynatrace/dynatrace-otel-collector/releases).
+Any OTEL collector distribution will work. If you don't have one, consider the [Dynatrace collector](https://github.com/Dynatrace/dynatrace-otel-collector/releases).
 
 Now run it (leave it running):
 ```
