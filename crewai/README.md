@@ -73,7 +73,7 @@ export DT_API_TOKEN=dt0c01.*****.*****
 ./dynatrace-otel-collector --config=collector.config.yaml
 ```
 
-The collector listens for incoming OTLP-formatted telemetry on 4318, transforms any `cumulative` metrics to `delta` (Dynatrace does not support cumulative) then exports metrics and traces to both `debug` (the collector console output - useful for debugging) and Dynatrace.
+The collector listens for incoming OTLP-formatted telemetry on 4318, transforms any `cumulative` metrics to `delta`, then exports metrics and traces to both `debug` (the collector console output - useful for debugging) and Dynatrace.
 
 ## Create a Crew and enable Telemetry
 
