@@ -107,8 +107,10 @@ Initialise Traceloop and point the telemetry to your collector. In `latest_ai_de
 
 ```
 from traceloop.sdk import Traceloop
-Traceloop.init(api_endpoint="http://localhost:4318", app_name="crewAI")
+Traceloop.init(api_endpoint="http://localhost:4318", disable_batch=True, app_name="crewAI")
 ```
+
+Note: batch exporting is disabled for this demo to force any data to be emitted immediately. In practice, you probably want to **enable** batching for efficiency.
 
 The first few lines of `main.py` should look like this:
 
@@ -122,7 +124,7 @@ from datetime import datetime
 from latest_ai_development.crew import LatestAiDevelopment
 
 from traceloop.sdk import Traceloop
-Traceloop.init(api_endpoint="http://localhost:4318", app_name="crewAI")
+Traceloop.init(api_endpoint="http://localhost:4318", disable_batch=True, app_name="crewAI")
 ```
 
 Open `latest_ai_development/src/latest_ai_development/crew.py` and give your crew a name. It is this name that will populate the filters on the Dynatrace dashboard.
