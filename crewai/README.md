@@ -40,7 +40,7 @@ If you use UV instead, follow [these instructions](https://docs.crewai.com/en/in
 
 ## Dynatrace API Token
 
-<img width="593" height="122" alt="image" src="https://github.com/user-attachments/assets/d3ded14c-6097-44b9-bedb-78bae1c1d8b6" />
+![Dynatrace API token permissions](assets/crewai_dt_token_permissions.png)
 
 In Dynatrace:
 
@@ -62,7 +62,7 @@ https://abc12345.live.dynatrace.com
 
 ## Download and run an OpenTelemetry Collector
 
-<img width="1179" height="270" alt="image" src="https://github.com/user-attachments/assets/e445b97d-47e9-4829-abf8-c6c3e858fb37" />
+![crewai telemetry architecture](assets/crewai_telemetry_architecture.png)
 
 Any OTEL collector distribution will work. If you don't have one, consider the [Dynatrace collector](https://github.com/Dynatrace/dynatrace-otel-collector/releases).
 
