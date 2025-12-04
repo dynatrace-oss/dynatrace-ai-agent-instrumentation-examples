@@ -248,4 +248,4 @@ Remember that you can drilldown into the end-to-end trace whenever a `trace.id` 
 
 You can also open the Dynatrace `Distributed Tracing` view and filter for `"Service name" = crewAI-telemetry`
 
-![distributed trace](assets/distributed-trace.png)
+![distributed trace](assets/crewai_distributed_trace.png)
