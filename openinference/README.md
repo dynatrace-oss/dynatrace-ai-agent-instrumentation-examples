@@ -122,7 +122,7 @@ What happens:
 ## Visualize the trace in Dynatrace
 
 1. In Dynatrace press `Ctrl + K` and search for **Distributed tracing**.
-2. Look for your trace (search by `service name == openinference`, trace ID, or timeframe).
+2. Look for your trace (search by `Service == openinference`, trace ID, or timeframe).
 3. Open the trace to inspect spans and attributes created by the application and the OTEL instrumentation.
 
 ![OpenInference](assets/openinference.png)
