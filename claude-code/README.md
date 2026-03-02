@@ -26,7 +26,6 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 
 # 4. Point to your Dynatrace OTLP ingest endpoint (base URL, no signal suffix)
 #    SaaS production:  https://<env-id>.live.dynatrace.com/api/v2/otlp
-#    Dev / Preview:    https://<env-id>.dev.dynatracelabs.com/api/v2/otlp
 export OTEL_EXPORTER_OTLP_ENDPOINT=https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp
 
 # 5. Authenticate with a Dynatrace API token (openTelemetryTrace.ingest scope)
