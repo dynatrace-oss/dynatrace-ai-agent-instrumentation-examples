@@ -4,6 +4,8 @@ This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.
 
 Unlike SDK-based frameworks, Claude Code ships with native OTEL support. No code changes are required: you only need to set a handful of environment variables before running `claude`.
 
+![Claude Code Dynatrace Dashboard](./dashboard-claude-code-monitoring.png)
+
 ## Dynatrace Instrumentation
 
 > [!TIP]
