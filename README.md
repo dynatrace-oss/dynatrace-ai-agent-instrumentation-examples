@@ -21,6 +21,7 @@ This repository includes examples and guidance for integrating Dynatrace with th
 - [AWS Strands Agents](./aws-agent-sample/)
 - [OpenAI Agents SDK](./openai-agent-sample/)
 - [MCP - Model Context Protocol](./mcp/)
+- [Anthropic - Claude Code](./claude-code/)
 
 ![MCP Agentic AI](/mcp/architecture.png)
 
