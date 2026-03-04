@@ -176,13 +176,24 @@ npm start
 npm start -- "What is the current date and time?"
 ```
 
+### Upload Dynatrace Dashboard
+
+A prebuilt dashboard is included:
+
+1. Download the [GitHub Copilot SDK - AI Observability.json](GitHub%20Copilot%20SDK%20-%20AI%20Observability.json) dashboard
+2. Open the Dynatrace **Dashboards** app and click **Upload**
+3. Upload the JSON file
+
+The dashboard includes: LLM request counts, token usage, cost analysis by model, tool execution monitoring, latency tracking, top expensive/slowest prompts, and session overview.
+
 ### Verify in Dynatrace
 
 After running the agent, open your Dynatrace tenant:
 
 1. **AI Observability app** — The agent should appear automatically, showing models, token usage, and call traces
-2. **Distributed Traces** — Search for `service.name = copilot-sdk-agent` to see the full span hierarchy
-3. **Metrics browser** — Search for `copilot_sdk` to see token and latency metrics
+2. **Dashboard** — Open the uploaded dashboard for cost analysis, tool execution, and session metrics
+3. **Distributed Traces** — Search for `service.name = copilot-sdk-agent` to see the full span hierarchy
+4. **Metrics browser** — Search for `copilot_sdk` to see token and latency metrics
 
 You can also verify with DQL in a notebook:
 
@@ -227,4 +238,5 @@ fetch spans
 | `src/telemetry.ts` | OTel SDK bootstrap with Dynatrace OTLP exporters |
 | `src/instrumentation.ts` | GenAI span creation from Copilot SDK session events |
 | `src/index.ts` | Minimal example agent showing the integration |
+| `GitHub Copilot SDK - AI Observability.json` | Prebuilt Dynatrace dashboard |
 | `.env.example` | Environment variable template |
