@@ -1,0 +1,24 @@
+{
+  "name": "github-copilot-sdk-dynatrace-example",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Example: Instrument a GitHub Copilot SDK agent with OpenTelemetry for Dynatrace AI Observability",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "^0.1.30",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "^0.57.2",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.57.2",
+    "@opentelemetry/resources": "^1.30.1",
+    "@opentelemetry/sdk-metrics": "^1.30.1",
+    "@opentelemetry/sdk-node": "^0.57.2",
+    "@opentelemetry/sdk-trace-base": "^1.30.1",
+    "@opentelemetry/semantic-conventions": "^1.28.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
