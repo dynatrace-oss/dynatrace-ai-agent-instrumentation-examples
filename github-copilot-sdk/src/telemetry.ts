@@ -22,7 +22,7 @@ let sdk: NodeSDK | null = null;
  * Initialize OpenTelemetry with Dynatrace OTLP exporters.
  *
  * Requires environment variables:
- * - DYNATRACE_OTLP_URL: Classic domain (e.g., https://abc123.live.dynatrace.com)
+ * - DYNATRACE_OTLP_URL: OTLP base path (e.g., https://abc123.live.dynatrace.com/api/v2/otlp)
  * - DYNATRACE_OTLP_TOKEN: Classic API token (dt0c01.*) with ingest scopes
  */
 export function initTelemetry(): void {
@@ -41,14 +41,18 @@ export function initTelemetry(): void {
     [ATTR_SERVICE_NAME]: serviceName,
   });
 
-  // Dynatrace OTLP endpoints
+  // DYNATRACE_OTLP_URL should be the OTLP base path, e.g.:
+  //   https://abc123.live.dynatrace.com/api/v2/otlp
+  // See: https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api
+  const baseUrl = otlpUrl.replace(/\/+$/, ""); // strip trailing slashes
+
   const traceExporter = new OTLPTraceExporter({
-    url: `${otlpUrl}/api/v2/otlp/v1/traces`,
+    url: `${baseUrl}/v1/traces`,
     headers: { Authorization: authHeader },
   });
 
   const metricExporter = new OTLPMetricExporter({
-    url: `${otlpUrl}/api/v2/otlp/v1/metrics`,
+    url: `${baseUrl}/v1/metrics`,
     headers: { Authorization: authHeader },
     // Dynatrace requires delta temporality
     temporalityPreference: AggregationTemporality.DELTA,

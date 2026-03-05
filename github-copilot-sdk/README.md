@@ -22,11 +22,12 @@ The `chat {model}` spans include `llm.request.type: "chat"` — this is the crit
 
 | Event | When | What We Create |
 |---|---|---|
-| `assistant_usage` | After each LLM inference | `chat {model}` span with token counts + `llmTokensTotal` / `llmLatency` metrics |
-| `assistant_message` | When assistant responds | Buffer content for opt-in capture on next LLM span |
-| `tool_start` / `tool_complete` | Tool execution lifecycle | `execute_tool {name}` child span |
-| `session_shutdown` | Session ends | End root span, clean up orphaned tool spans |
-| `session_error` | Error occurs | Set error status on root span |
+| `user.message` | When user sends a message | Buffer prompt for opt-in capture on next LLM span |
+| `assistant.message` | When assistant responds | Buffer content for opt-in capture on next LLM span |
+| `assistant.usage` | After each LLM inference | `chat {model}` span with token counts + `llmTokensTotal` / `llmLatency` metrics |
+| `tool.execution_start` / `tool.execution_complete` | Tool execution lifecycle | `execute_tool {name}` child span |
+| `session.shutdown` | Session ends | End root span, clean up orphaned tool spans |
+| `session.error` | Error occurs | Set error status on root span |
 
 ### Span Attributes for AI Observability
 
@@ -34,7 +35,7 @@ The Dynatrace AI Observability app filters spans using this DQL:
 
 ```dql
 fetch spans
-| filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
+| filter isNotNull(gen_ai.provider.name)
 | filter in(llm.request.type, {"chat", "completion"})
 ```
 
@@ -42,8 +43,7 @@ Every `chat {model}` span includes these attributes:
 
 | Attribute | Value | Purpose |
 |---|---|---|
-| `gen_ai.system` | `"github.copilot"` (or `PROVIDER_TYPE`) | Identifies the AI system |
-| `gen_ai.provider.name` | Same as above | Provider identification |
+| `gen_ai.provider.name` | `"github.copilot"` (or `PROVIDER_TYPE`) | Provider identification |
 | `llm.request.type` | `"chat"` | **Required** — AI Observability app filter |
 | `gen_ai.operation.name` | `"chat"` | Operation classification |
 | `gen_ai.request.model` | Model ID from event | Model identification |
@@ -52,6 +52,8 @@ Every `chat {model}` span includes these attributes:
 | `gen_ai.usage.output_tokens` | From `assistant_usage` event | Token tracking |
 | `gen_ai.usage.prompt_tokens` | Alias for input_tokens | Compatibility |
 | `gen_ai.usage.completion_tokens` | Alias for output_tokens | Compatibility |
+| `gen_ai.prompt.0.role` | `"user"` | Opt-in content capture |
+| `gen_ai.prompt.0.content` | User prompt (truncated) | Opt-in content capture |
 | `gen_ai.completion.0.role` | `"assistant"` | Opt-in content capture |
 | `gen_ai.completion.0.content` | Response text (truncated) | Opt-in content capture |
 | `gen_ai.response.finish_reasons` | `["stop"]` | Completion reason |
@@ -73,13 +75,14 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { AggregationTemporality } from "@opentelemetry/sdk-metrics";
 
+// DYNATRACE_OTLP_URL = https://abc123.live.dynatrace.com/api/v2/otlp
 const traceExporter = new OTLPTraceExporter({
-  url: `${otlpUrl}/api/v2/otlp/v1/traces`,
+  url: `${otlpUrl}/v1/traces`,
   headers: { Authorization: `Api-Token ${otlpToken}` },
 });
 
 const metricExporter = new OTLPMetricExporter({
-  url: `${otlpUrl}/api/v2/otlp/v1/metrics`,
+  url: `${otlpUrl}/v1/metrics`,
   headers: { Authorization: `Api-Token ${otlpToken}` },
   temporalityPreference: AggregationTemporality.DELTA, // Required for Dynatrace
 });
@@ -102,34 +105,28 @@ const cleanup = subscribeSessionTelemetry(session, session.sessionId, model);
 cleanup(); // End spans on session close
 ```
 
-The key instrumentation happens in the `assistant_usage` event handler:
+The key instrumentation happens in the `assistant.usage` event handler:
 
 ```typescript
-case "assistant_usage": {
+case "assistant.usage": {
   // Create a per-LLM-call span (required for AI Observability app)
   const rootCtx = trace.setSpan(context.active(), rootSpan);
-  const llmSpan = tracer.startSpan(`chat ${event.model}`, {
+  const llmSpan = tracer.startSpan(`chat ${event.data.model}`, {
     kind: SpanKind.CLIENT,
     attributes: {
-      "gen_ai.system": providerName,
       "gen_ai.provider.name": providerName,
       "gen_ai.operation.name": "chat",
-      "llm.request.type": "chat",           // Critical: AI Observability filter
-      "gen_ai.request.model": event.model,
-      "gen_ai.response.model": event.model,
-      "gen_ai.usage.input_tokens": event.inputTokens,
-      "gen_ai.usage.output_tokens": event.outputTokens,
-      "gen_ai.usage.prompt_tokens": event.inputTokens,    // Alias
-      "gen_ai.usage.completion_tokens": event.outputTokens, // Alias
+      "llm.request.type": "chat",              // Critical: AI Observability filter
+      "gen_ai.request.model": event.data.model,
+      "gen_ai.response.model": event.data.model,
+      "gen_ai.usage.input_tokens": event.data.inputTokens,
+      "gen_ai.usage.output_tokens": event.data.outputTokens,
+      "gen_ai.usage.prompt_tokens": event.data.inputTokens,    // Alias
+      "gen_ai.usage.completion_tokens": event.data.outputTokens, // Alias
       "gen_ai.response.finish_reasons": ["stop"],
     },
   }, rootCtx);
   llmSpan.end();
-
-  // Record metrics
-  llmTokensTotal.add(event.inputTokens, { model, direction: "input" });
-  llmTokensTotal.add(event.outputTokens, { model, direction: "output" });
-  llmLatency.record(event.duration, { model, provider: providerName });
   break;
 }
 ```
@@ -153,10 +150,10 @@ In Dynatrace:
 > [!IMPORTANT]
 > Use a **classic access token** (`dt0c01.*`), not a platform token (`dt0s16.*`). Platform tokens cannot be used for OTLP ingestion.
 
-Build your Dynatrace endpoint URL using your **classic domain** (no `.apps.`):
+Build your Dynatrace OTLP endpoint URL using your **classic domain** (no `.apps.`) with the `/api/v2/otlp` base path:
 
 ```
-https://<env-id>.live.dynatrace.com
+https://<env-id>.live.dynatrace.com/api/v2/otlp
 ```
 
 ### Configure credentials
@@ -199,7 +196,7 @@ You can also verify with DQL in a notebook:
 
 ```dql
 fetch spans
-| filter isNotNull(gen_ai.system)
+| filter isNotNull(gen_ai.provider.name)
 | filter in(llm.request.type, {"chat", "completion"})
 | fields span.name, gen_ai.request.model,
          gen_ai.usage.input_tokens, gen_ai.usage.output_tokens
@@ -211,25 +208,31 @@ fetch spans
 | Variable | Default | Description |
 |---|---|---|
 | `OTEL_SERVICE_NAME` | `copilot-sdk-agent` | Service name in traces/metrics |
-| `PROVIDER_TYPE` | `github.copilot` | Value for `gen_ai.system` attribute |
+| `PROVIDER_TYPE` | `github.copilot` | Value for `gen_ai.provider.name` attribute |
 | `PROVIDER_MODEL` | `claude-sonnet-4-5-20250929` | Default model to use |
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `false` | Set to `true` to capture prompt/completion text in spans |
 
 ## Key Lessons
 
-1. **`llm.request.type: "chat"` is mandatory** — Without this attribute, the AI Observability app won't detect your spans, even if `gen_ai.system` is set correctly.
+1. **`llm.request.type: "chat"` is mandatory** — Without this attribute, the AI Observability app won't detect your spans, even if `gen_ai.provider.name` is set correctly.
 
-2. **Set `gen_ai.system` on ALL span types** — Not just LLM spans. The app uses `gen_ai.system` OR `gen_ai.provider.name` as a first-pass filter. Tool spans and HTTP spans should also carry these attributes.
+2. **Use `gen_ai.provider.name` on ALL span types** — Not just LLM spans. The app uses `gen_ai.provider.name` as a first-pass filter. Tool spans and HTTP spans should also carry this attribute. (The old `gen_ai.system` attribute is deprecated — use `gen_ai.provider.name` exclusively.)
 
-3. **One span per LLM inference, not per session** — The app expects a span for each individual LLM API call (the `assistant_usage` event), not one span for the entire conversation session.
+3. **Use dot-notation event names** — The Copilot SDK uses `user.message`, `assistant.message`, `assistant.usage`, `tool.execution_start`, `tool.execution_complete`, `session.shutdown`, `session.error` — not underscore names.
 
-4. **Include token aliases** — Set both `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` AND `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` for maximum compatibility.
+4. **Capture user prompts via `user.message`** — Subscribe to the `user.message` event to capture `gen_ai.prompt.0.content` on per-LLM-call spans (opt-in only).
 
-5. **Dynatrace requires delta temporality** — Set `AggregationTemporality.DELTA` on the metric exporter. Cumulative temporality (the OTel default) is not supported.
+5. **One span per LLM inference, not per session** — The app expects a span for each individual LLM API call (the `assistant.usage` event), not one span for the entire conversation session.
 
-6. **Use classic tokens for OTLP** — Platform tokens (`dt0s16.*`) work for DQL queries and platform APIs, but OTLP ingestion requires classic access tokens (`dt0c01.*`) with `Api-Token` auth header format.
+6. **Include token aliases** — Set both `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` AND `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` for maximum compatibility.
 
-7. **Content capture is opt-in** — Prompt and completion text should only be included in spans when explicitly enabled via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`. This avoids accidentally sending sensitive data to your observability backend.
+7. **Dynatrace requires delta temporality** — Set `AggregationTemporality.DELTA` on the metric exporter. Cumulative temporality (the OTel default) is not supported.
+
+8. **Use the OTLP base path** — `DYNATRACE_OTLP_URL` should include `/api/v2/otlp` (e.g., `https://abc123.live.dynatrace.com/api/v2/otlp`). Append `/v1/traces` and `/v1/metrics` for individual signals.
+
+9. **Use classic tokens for OTLP** — Platform tokens (`dt0s16.*`) work for DQL queries and platform APIs, but OTLP ingestion requires classic access tokens (`dt0c01.*`) with `Api-Token` auth header format.
+
+10. **Content capture is opt-in** — Prompt and completion text should only be included in spans when explicitly enabled via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`. This avoids accidentally sending sensitive data to your observability backend.
 
 ## Files
 

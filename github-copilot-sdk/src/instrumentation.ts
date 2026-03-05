@@ -13,10 +13,10 @@
  *
  * The AI Observability app filters on:
  *   fetch spans
- *   | filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
+ *   | filter isNotNull(gen_ai.provider.name)
  *   | filter in(llm.request.type, {"chat", "completion"})
  *
- * The `chat {model}` spans satisfy both filters via `gen_ai.system` + `llm.request.type`.
+ * The `chat {model}` spans satisfy both filters via `gen_ai.provider.name` + `llm.request.type`.
  */
 
 import { SpanKind, SpanStatusCode, context, trace, type Span } from "@opentelemetry/api";
@@ -42,61 +42,22 @@ export const toolsExecuted = meter.createCounter("copilot_sdk.tools.executed", {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 /**
- * Subset of Copilot SDK session events relevant to telemetry.
- * Adapt these types to match your SDK version's event shapes.
+ * Copilot SDK session events use dot-notation names:
+ *   user.message, assistant.message, assistant.usage,
+ *   tool.execution_start, tool.execution_complete,
+ *   session.shutdown, session.error
+ *
+ * The event shape is: { id, timestamp, type, data }
  */
-interface UsageEvent {
-  type: "assistant_usage";
-  model: string;
-  inputTokens?: number;
-  outputTokens?: number;
-  cost?: number;
-  duration?: number;
+interface SdkEvent {
+  type: string;
+  data: Record<string, unknown>;
 }
-
-interface MessageEvent {
-  type: "assistant_message";
-  content: string;
-}
-
-interface ToolStartEvent {
-  type: "tool_start";
-  toolName: string;
-  toolCallId: string;
-  arguments?: Record<string, unknown>;
-}
-
-interface ToolCompleteEvent {
-  type: "tool_complete";
-  toolCallId: string;
-  success: boolean;
-  error?: { message: string; code?: string };
-}
-
-interface ShutdownEvent {
-  type: "session_shutdown";
-  shutdownType: string;
-}
-
-interface ErrorEvent {
-  type: "session_error";
-  errorType: string;
-  message: string;
-}
-
-type SessionEvent =
-  | UsageEvent
-  | MessageEvent
-  | ToolStartEvent
-  | ToolCompleteEvent
-  | ShutdownEvent
-  | ErrorEvent
-  | { type: string; [key: string]: unknown };
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 /**
- * Determine the GenAI system/provider name.
+ * Determine the GenAI provider name.
  * Returns the configured PROVIDER_TYPE or defaults to "github.copilot".
  */
 function getProviderName(): string {
@@ -126,7 +87,7 @@ function shouldCaptureContent(): boolean {
  * @returns An unsubscribe/cleanup function.
  */
 export function subscribeSessionTelemetry(
-  session: { on: (handler: (event: SessionEvent) => void) => (() => void) | void },
+  session: { on: (handler: (event: SdkEvent) => void) => (() => void) | void },
   sessionId: string,
   model: string,
 ): () => void {
@@ -137,14 +98,14 @@ export function subscribeSessionTelemetry(
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
-  // Buffer for optional content capture
+  // Buffers for optional content capture on per-LLM-call spans
+  let lastUserMessage = "";
   let lastAssistantMessage = "";
 
   // ── Root span: one per session ──
   const rootSpan = tracer.startSpan("invoke_agent", {
     kind: SpanKind.SERVER,
     attributes: {
-      "gen_ai.system": providerName,
       "gen_ai.provider.name": providerName,
       "gen_ai.operation.name": "invoke_agent",
       "gen_ai.request.model": model,
@@ -155,111 +116,133 @@ export function subscribeSessionTelemetry(
   // Track active tool spans for cleanup
   const activeToolSpans = new Map<string, Span>();
 
-  const maybeUnsub = session.on((event: SessionEvent) => {
+  const maybeUnsub = session.on((event: SdkEvent) => {
     switch (event.type) {
       // ────────────────────────────────────────────────────────────────────
-      // Per-LLM-call span — this is what makes the AI Observability app work
+      // Buffer user prompt for content capture
       // ────────────────────────────────────────────────────────────────────
-      case "assistant_usage": {
-        const e = event as UsageEvent;
-
-        // Update session-level totals on root span
-        if (e.inputTokens != null) totalInputTokens += e.inputTokens;
-        if (e.outputTokens != null) totalOutputTokens += e.outputTokens;
-        rootSpan.setAttribute("gen_ai.usage.input_tokens", totalInputTokens);
-        rootSpan.setAttribute("gen_ai.usage.output_tokens", totalOutputTokens);
-        rootSpan.setAttribute("gen_ai.response.model", e.model);
-
-        // Create a per-LLM-call child span
-        const rootCtx = trace.setSpan(context.active(), rootSpan);
-        const llmSpan = tracer.startSpan(`chat ${e.model}`, {
-          kind: SpanKind.CLIENT,
-          attributes: {
-            // Required: GenAI semantic conventions
-            "gen_ai.system": providerName,
-            "gen_ai.provider.name": providerName,
-            "gen_ai.operation.name": "chat",
-            "gen_ai.request.model": e.model,
-            "gen_ai.response.model": e.model,
-
-            // Required: this is the attribute the AI Observability app filters on
-            "llm.request.type": "chat",
-
-            // Token usage (with standard aliases)
-            ...(e.inputTokens != null && {
-              "gen_ai.usage.input_tokens": e.inputTokens,
-              "gen_ai.usage.prompt_tokens": e.inputTokens,
-            }),
-            ...(e.outputTokens != null && {
-              "gen_ai.usage.output_tokens": e.outputTokens,
-              "gen_ai.usage.completion_tokens": e.outputTokens,
-            }),
-            ...(e.cost != null && { "gen_ai.usage.cost": e.cost }),
-
-            "gen_ai.response.finish_reasons": ["stop"],
-          },
-        }, rootCtx);
-
-        // Opt-in: attach buffered assistant message content
-        if (shouldCaptureContent() && lastAssistantMessage) {
-          llmSpan.setAttribute("gen_ai.completion.0.role", "assistant");
-          llmSpan.setAttribute("gen_ai.completion.0.content", lastAssistantMessage.substring(0, 1024));
-        }
-        lastAssistantMessage = "";
-        llmSpan.end();
-
-        // Record metrics
-        if (e.inputTokens != null) {
-          llmTokensTotal.add(e.inputTokens, { model: e.model, direction: "input", token_type: "prompt" });
-        }
-        if (e.outputTokens != null) {
-          llmTokensTotal.add(e.outputTokens, { model: e.model, direction: "output", token_type: "completion" });
-        }
-        if (e.duration != null) {
-          llmLatency.record(e.duration, { model: e.model, provider: providerName });
-        }
+      case "user.message": {
+        const content = event.data.content as string | undefined;
+        if (content) lastUserMessage = content;
         break;
       }
 
       // ────────────────────────────────────────────────────────────────────
       // Buffer assistant message for content capture
       // ────────────────────────────────────────────────────────────────────
-      case "assistant_message": {
-        const e = event as MessageEvent;
-        if (e.content) lastAssistantMessage = e.content;
+      case "assistant.message": {
+        const content = event.data.content as string | undefined;
+        if (content) lastAssistantMessage = content;
+        break;
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Per-LLM-call span — this is what makes the AI Observability app work
+      // ────────────────────────────────────────────────────────────────────
+      case "assistant.usage": {
+        const d = event.data;
+        const eventModel = d.model as string;
+        const inputTokens = d.inputTokens as number | undefined;
+        const outputTokens = d.outputTokens as number | undefined;
+        const cost = d.cost as number | undefined;
+        const duration = d.duration as number | undefined;
+
+        // Update session-level totals on root span
+        if (inputTokens != null) totalInputTokens += inputTokens;
+        if (outputTokens != null) totalOutputTokens += outputTokens;
+        rootSpan.setAttribute("gen_ai.usage.input_tokens", totalInputTokens);
+        rootSpan.setAttribute("gen_ai.usage.output_tokens", totalOutputTokens);
+        rootSpan.setAttribute("gen_ai.response.model", eventModel);
+
+        // Create a per-LLM-call child span
+        const rootCtx = trace.setSpan(context.active(), rootSpan);
+        const llmSpan = tracer.startSpan(`chat ${eventModel}`, {
+          kind: SpanKind.CLIENT,
+          attributes: {
+            // GenAI semantic conventions (new — only gen_ai.provider.name)
+            "gen_ai.provider.name": providerName,
+            "gen_ai.operation.name": "chat",
+            "gen_ai.request.model": eventModel,
+            "gen_ai.response.model": eventModel,
+
+            // Required: this is the attribute the AI Observability app filters on
+            "llm.request.type": "chat",
+
+            // Token usage (with standard aliases)
+            ...(inputTokens != null && {
+              "gen_ai.usage.input_tokens": inputTokens,
+              "gen_ai.usage.prompt_tokens": inputTokens,
+            }),
+            ...(outputTokens != null && {
+              "gen_ai.usage.output_tokens": outputTokens,
+              "gen_ai.usage.completion_tokens": outputTokens,
+            }),
+            ...(cost != null && { "gen_ai.usage.cost": cost }),
+
+            "gen_ai.response.finish_reasons": ["stop"],
+          },
+        }, rootCtx);
+
+        // Opt-in: attach buffered user prompt and assistant message content
+        if (shouldCaptureContent()) {
+          if (lastUserMessage) {
+            llmSpan.setAttribute("gen_ai.prompt.0.role", "user");
+            llmSpan.setAttribute("gen_ai.prompt.0.content", lastUserMessage.substring(0, 1024));
+          }
+          if (lastAssistantMessage) {
+            llmSpan.setAttribute("gen_ai.completion.0.role", "assistant");
+            llmSpan.setAttribute("gen_ai.completion.0.content", lastAssistantMessage.substring(0, 1024));
+          }
+        }
+        lastUserMessage = "";
+        lastAssistantMessage = "";
+        llmSpan.end();
+
+        // Record metrics
+        if (inputTokens != null) {
+          llmTokensTotal.add(inputTokens, { model: eventModel, direction: "input", token_type: "prompt" });
+        }
+        if (outputTokens != null) {
+          llmTokensTotal.add(outputTokens, { model: eventModel, direction: "output", token_type: "completion" });
+        }
+        if (duration != null) {
+          llmLatency.record(duration, { model: eventModel, provider: providerName });
+        }
         break;
       }
 
       // ────────────────────────────────────────────────────────────────────
       // Tool execution spans
       // ────────────────────────────────────────────────────────────────────
-      case "tool_start": {
-        const e = event as ToolStartEvent;
+      case "tool.execution_start": {
+        const toolName = event.data.toolName as string;
+        const toolCallId = event.data.toolCallId as string;
         const rootCtx = trace.setSpan(context.active(), rootSpan);
-        const toolSpan = tracer.startSpan(`execute_tool ${e.toolName}`, {
+        const toolSpan = tracer.startSpan(`execute_tool ${toolName}`, {
           kind: SpanKind.CLIENT,
           attributes: {
-            "gen_ai.system": providerName,
             "gen_ai.provider.name": providerName,
-            "gen_ai.tool.name": e.toolName,
-            "gen_ai.tool.call.id": e.toolCallId,
+            "gen_ai.tool.name": toolName,
+            "gen_ai.tool.call.id": toolCallId,
             "gen_ai.operation.name": "execute_tool",
           },
         }, rootCtx);
-        activeToolSpans.set(e.toolCallId, toolSpan);
+        activeToolSpans.set(toolCallId, toolSpan);
         break;
       }
 
-      case "tool_complete": {
-        const e = event as ToolCompleteEvent;
-        const toolSpan = activeToolSpans.get(e.toolCallId);
+      case "tool.execution_complete": {
+        const toolCallId = event.data.toolCallId as string;
+        const success = event.data.success as boolean;
+        const error = event.data.error as { message?: string } | undefined;
+        const toolSpan = activeToolSpans.get(toolCallId);
         if (toolSpan) {
-          if (!e.success) {
-            toolSpan.setStatus({ code: SpanStatusCode.ERROR, message: e.error?.message });
+          if (!success) {
+            toolSpan.setStatus({ code: SpanStatusCode.ERROR, message: error?.message });
           }
-          toolsExecuted.add(1, { tool_name: "unknown", outcome: e.success ? "success" : "error" });
+          toolsExecuted.add(1, { tool_name: "unknown", outcome: success ? "success" : "error" });
           toolSpan.end();
-          activeToolSpans.delete(e.toolCallId);
+          activeToolSpans.delete(toolCallId);
         }
         break;
       }
@@ -267,16 +250,18 @@ export function subscribeSessionTelemetry(
       // ────────────────────────────────────────────────────────────────────
       // Session lifecycle
       // ────────────────────────────────────────────────────────────────────
-      case "session_error": {
-        const e = event as ErrorEvent;
-        rootSpan.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
-        rootSpan.setAttribute("error.type", e.errorType);
+      case "session.error": {
+        const message = event.data.message as string ?? "";
+        const errorType = event.data.errorType as string ?? "unknown";
+        rootSpan.setStatus({ code: SpanStatusCode.ERROR, message });
+        rootSpan.setAttribute("error.type", errorType);
         break;
       }
 
-      case "session_shutdown": {
+      case "session.shutdown": {
+        const shutdownType = event.data.shutdownType as string ?? "routine";
         rootSpan.setAttribute("gen_ai.response.finish_reasons",
-          [(event as ShutdownEvent).shutdownType === "error" ? "error" : "stop"]);
+          [shutdownType === "error" ? "error" : "stop"]);
         // Clean up any orphaned tool spans
         for (const [id, span] of activeToolSpans) {
           span.setStatus({ code: SpanStatusCode.ERROR, message: "session_shutdown" });
