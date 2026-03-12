@@ -16,13 +16,11 @@ initTelemetry();
 
 import { CopilotClient, defineTool } from "@github/copilot-sdk";
 import { subscribeSessionTelemetry } from "./instrumentation.js";
-import { z } from "zod";
 
 // ── Define tools ────────────────────────────────────────────────────────────
 
 const getCurrentTime = defineTool("get_current_time", {
   description: "Get the current date and time",
-  schema: z.object({}),
   handler: async () => {
     return new Date().toISOString();
   },
@@ -41,7 +39,7 @@ async function main() {
   const model = process.env.PROVIDER_MODEL || "claude-sonnet-4-5-20250929";
 
   const session = await client.createSession({
-    model,
+    model: model,
     tools: [getCurrentTime],
     availableTools: ["get_current_time"],
     systemMessage: {
@@ -49,6 +47,7 @@ async function main() {
       content: "You are a helpful assistant. Answer questions concisely.",
     },
     streaming: true,
+    onPermissionRequest: async () => ({ kind: "approved" }),
   });
 
   console.log(`Session created: ${session.sessionId}`);
@@ -64,8 +63,17 @@ async function main() {
   const prompt = process.argv[2] || "What time is it?";
   console.log(`\nSending: "${prompt}"\n`);
 
+  // Listen for response chunks
+  let content = "";
+  session.on("assistant.message_delta", (event) => {
+      content += event.data.deltaContent;
+  });
+  session.on("session.idle", () => {
+      console.log(); // New line when done
+  });
+
   const response = await session.sendAndWait({ prompt });
-  console.log(`Response: ${response?.content ?? "(no response)"}\n`);
+  console.log(`Response: ${content ?? "(no response)"}\n`);
 
   // ── Cleanup ──
   cleanupTelemetry();

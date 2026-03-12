@@ -136,7 +136,7 @@ case "assistant.usage": {
 ### Prerequisites
 
 - Node.js 20+
-- A GitHub token with Copilot access (`GH_TOKEN`)
+- A [GitHub Fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with `Copilot Requests` access (`GH_TOKEN`)
 - A Dynatrace environment with an API token that has **`openTelemetryTrace.ingest`** and **`metrics.ingest`** scopes
 
 ### Dynatrace API Token
@@ -182,6 +182,8 @@ A prebuilt dashboard is included:
 3. Upload the JSON file
 
 The dashboard includes: LLM request counts, token usage, cost analysis by model, tool execution monitoring, latency tracking, top expensive/slowest prompts, and session overview.
+
+![Dashboard preview showing LLM request counts, token usage, cost analysis, tool execution, latency, and top prompts](./dashboard.png)
 
 ### Verify in Dynatrace
 

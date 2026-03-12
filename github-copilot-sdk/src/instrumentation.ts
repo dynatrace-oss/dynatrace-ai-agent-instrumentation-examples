@@ -123,7 +123,7 @@ export function subscribeSessionTelemetry(
       // ────────────────────────────────────────────────────────────────────
       case "user.message": {
         const content = event.data.content as string | undefined;
-        if (content) lastUserMessage = content;
+        if (content) lastUserMessage += content;
         break;
       }
 
@@ -132,7 +132,13 @@ export function subscribeSessionTelemetry(
       // ────────────────────────────────────────────────────────────────────
       case "assistant.message": {
         const content = event.data.content as string | undefined;
-        if (content) lastAssistantMessage = content;
+        if (content) lastAssistantMessage += content;
+        break;
+      }
+
+      case "assistant.message_delta": {
+        const content = event.data.deltaContent as string | undefined;
+        if (content) lastAssistantMessage += content;
         break;
       }
 
@@ -171,11 +177,9 @@ export function subscribeSessionTelemetry(
             // Token usage (with standard aliases)
             ...(inputTokens != null && {
               "gen_ai.usage.input_tokens": inputTokens,
-              "gen_ai.usage.prompt_tokens": inputTokens,
             }),
             ...(outputTokens != null && {
               "gen_ai.usage.output_tokens": outputTokens,
-              "gen_ai.usage.completion_tokens": outputTokens,
             }),
             ...(cost != null && { "gen_ai.usage.cost": cost }),
 
