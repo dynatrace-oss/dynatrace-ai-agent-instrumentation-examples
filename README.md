@@ -36,6 +36,7 @@ This repository includes examples and guidance for integrating Dynatrace with th
 - [OpenAI Agents SDK](./openai-agent-sample/)
 - [MCP - Model Context Protocol](./mcp/)
 - [Anthropic - Claude Code](./claude-code/)
+- [GitHub Copilot SDK](./github-copilot-sdk/)
 
 ![MCP Agentic AI](/mcp/architecture.png)
 

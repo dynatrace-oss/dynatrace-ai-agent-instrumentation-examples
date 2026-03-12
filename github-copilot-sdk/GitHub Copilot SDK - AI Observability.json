@@ -1,0 +1,462 @@
+{
+    "version": 21,
+    "variables": [],
+    "tiles": {
+        "1": {
+            "type": "markdown",
+            "content": "![](https://github.githubassets.com/favicons/favicon.svg)\n"
+        },
+        "2": {
+            "type": "markdown",
+            "content": "### AI Observability\n\nEnd-to-end observability for GitHub Copilot SDK agents.\nMonitor LLM calls, token usage, tool execution, latency and cost."
+        },
+        "3": {
+            "type": "markdown",
+            "content": " ### Service Health & Performance"
+        },
+        "10": {
+            "title": "Open Problems",
+            "type": "data",
+            "query": "fetch dt.davis.problems\n| filter event.status == \"ACTIVE\" and dt.entity.service != \"\"\n| fieldsKeep dt.entity.service, event.id\n| expand dt.entity.service\n| lookup sourceField:dt.entity.service, lookupField:dt.entity.service, prefix:\"gen_ai.\", [\n  fetch spans | filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"}) | fields dt.entity.service, name = entity.name\n]\n| filter gen_ai.dt.entity.service != \"\"\n| summarize {problemCount = countDistinct(event.id)}",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "problemCount",
+                    "recordField": "problemCount",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                },
+                "thresholds": [
+                    {
+                        "id": 1,
+                        "field": "problemCount",
+                        "isEnabled": true,
+                        "rules": [
+                            { "id": 0, "color": { "Default": "var(--dt-colors-charts-status-ideal-default, #2f6863)" }, "comparator": "=", "value": 0 },
+                            { "id": 1, "color": { "Default": "var(--dt-colors-charts-status-warning-default, #eca440)" }, "comparator": ">", "value": 0 },
+                            { "id": 2, "color": { "Default": "var(--dt-colors-charts-status-critical-default, #c4233b)" }, "comparator": "≥", "value": 5 }
+                        ]
+                    }
+                ],
+                "unitsOverrides": [
+                    { "identifier": "problemCount", "unitCategory": "unspecified", "baseUnit": "none", "displayUnit": null, "decimals": 0, "suffix": "", "delimiter": false, "added": 1729071009406 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 100, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "11": {
+            "title": "# of Total LLM Requests",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| summarize requestCount = count()",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "requestCount",
+                    "recordField": "requestCount",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "12": {
+            "title": "Estimated Cost",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd inputTokens = toDouble(gen_ai.usage.input_tokens)\n| fieldsAdd outputTokens = toDouble(gen_ai.usage.output_tokens)\n| summarize {\n  totalInput = sum(inputTokens),\n  totalOutput = sum(outputTokens)\n}\n| fieldsAdd cost = (totalInput * 0.003 + totalOutput * 0.015) / 1000",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "cost",
+                    "recordField": "cost",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                },
+                "unitsOverrides": [
+                    { "identifier": "cost", "unitCategory": "currency", "baseUnit": "usd", "displayUnit": null, "decimals": 4, "suffix": "$", "delimiter": true, "added": 1727163553354 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "13": {
+            "title": "Service Health",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd hasError = if(status == \"ERROR\", then:1, else:0)\n| summarize {\n  success = countIf(hasError == 0),\n  error = countIf(hasError == 1)\n}",
+            "visualization": "pieChart",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "chartSettings": {
+                    "circleChartSettings": { "groupingThresholdType": "relative", "groupingThresholdValue": 0, "valueType": "relative" }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "14": {
+            "title": "P99 Request Duration",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd durationNs = end_time - start_time\n| summarize p99 = percentile(durationNs, 99)",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "p99",
+                    "recordField": "p99",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                },
+                "unitsOverrides": [
+                    { "identifier": "p99", "unitCategory": "time", "baseUnit": "nanosecond", "displayUnit": null, "decimals": 1, "suffix": "", "delimiter": false, "added": 1729071009406 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "15": {
+            "title": "AVG Request Duration",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd durationNs = end_time - start_time\n| summarize avgDuration = avg(durationNs)",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "avgDuration",
+                    "recordField": "avgDuration",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                },
+                "unitsOverrides": [
+                    { "identifier": "avgDuration", "unitCategory": "time", "baseUnit": "nanosecond", "displayUnit": null, "decimals": 1, "suffix": "", "delimiter": false, "added": 1729071009406 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "16": {
+            "title": "LLM Request Duration Over Time",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd durationNs = end_time - start_time\n| makeTimeseries avg_duration = avg(durationNs), p99_duration = percentile(durationNs, 99), interval:5m",
+            "visualization": "lineChart",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "chartSettings": {
+                    "xAxisScaling": "analyzedTimeframe",
+                    "gapPolicy": "gap",
+                    "curve": "linear"
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "20": {
+            "type": "markdown",
+            "content": "---\n### Tool Execution"
+        },
+        "21": {
+            "title": "Tool Executions by Name",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND gen_ai.operation.name == \"execute_tool\"\n| fieldsAdd toolName = gen_ai.tool.name\n| summarize count = count(), by:{toolName}\n| sort count desc",
+            "visualization": "categoricalBarChart",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "chartSettings": {
+                    "categoricalBarChartSettings": {
+                        "layout": "horizontal",
+                        "categoryAxisTickLayout": "horizontal",
+                        "scale": "absolute",
+                        "groupMode": "stacked",
+                        "colorPaletteMode": "multi-color",
+                        "categoryAxisLabel": "toolName",
+                        "valueAxisLabel": "count",
+                        "categoryAxis": ["toolName"],
+                        "valueAxis": ["count"]
+                    }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "22": {
+            "title": "Tool Error Rate",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND gen_ai.operation.name == \"execute_tool\"\n| summarize {\n  total = count(),\n  errors = countIf(status == \"ERROR\")\n}\n| fieldsAdd errorRate = 100.0 * errors / total",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "errorRate",
+                    "recordField": "errorRate",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                },
+                "thresholds": [
+                    {
+                        "id": 1,
+                        "field": "errorRate",
+                        "isEnabled": true,
+                        "rules": [
+                            { "id": 0, "color": { "Default": "var(--dt-colors-charts-status-ideal-default, #2f6863)" }, "comparator": "<=", "value": 5 },
+                            { "id": 1, "color": { "Default": "var(--dt-colors-charts-status-warning-default, #eca440)" }, "comparator": "<=", "value": 20 },
+                            { "id": 2, "color": { "Default": "var(--dt-colors-charts-status-critical-default, #c4233b)" }, "comparator": ">", "value": 20 }
+                        ]
+                    }
+                ],
+                "unitsOverrides": [
+                    { "identifier": "errorRate", "unitCategory": "percentage", "baseUnit": "percent", "displayUnit": null, "decimals": 1, "suffix": "", "delimiter": false, "added": 1736408978529 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "23": {
+            "title": "Total Tool Calls",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND gen_ai.operation.name == \"execute_tool\"\n| summarize toolCalls = count()",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "toolCalls",
+                    "recordField": "toolCalls",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "30": {
+            "type": "markdown",
+            "content": "---\n### Cost Analysis"
+        },
+        "31": {
+            "title": "Prompt Tokens",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| summarize promptTokens = sum(toDouble(gen_ai.usage.input_tokens))",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "promptTokens",
+                    "recordField": "promptTokens",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "32": {
+            "title": "Completion Tokens",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| summarize completionTokens = sum(toDouble(gen_ai.usage.output_tokens))",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "completionTokens",
+                    "recordField": "completionTokens",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "33": {
+            "title": "Total Token Consumption",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd inputTokens = toDouble(gen_ai.usage.input_tokens)\n| fieldsAdd outputTokens = toDouble(gen_ai.usage.output_tokens)\n| summarize totalTokens = sum(inputTokens) + sum(outputTokens)",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "totalTokens",
+                    "recordField": "totalTokens",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "34": {
+            "title": "Token Usage by Model",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd model = gen_ai.request.model\n| fieldsAdd inputTokens = toDouble(gen_ai.usage.input_tokens)\n| fieldsAdd outputTokens = toDouble(gen_ai.usage.output_tokens)\n| summarize {\n  prompt = sum(inputTokens),\n  completion = sum(outputTokens),\n  requests = count()\n}, by:{model}\n| fieldsAdd total = prompt + completion\n| sort total desc",
+            "visualization": "categoricalBarChart",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "chartSettings": {
+                    "categoricalBarChartSettings": {
+                        "layout": "horizontal",
+                        "categoryAxisTickLayout": "horizontal",
+                        "scale": "absolute",
+                        "groupMode": "stacked",
+                        "colorPaletteMode": "multi-color",
+                        "categoryAxisLabel": "model",
+                        "valueAxisLabel": "tokens",
+                        "categoryAxis": ["model"],
+                        "valueAxis": ["prompt", "completion"]
+                    }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "35": {
+            "title": "Cost by Model",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd model = gen_ai.request.model\n| fieldsAdd inputTokens = toDouble(gen_ai.usage.input_tokens)\n| fieldsAdd outputTokens = toDouble(gen_ai.usage.output_tokens)\n| summarize {\n  prompt = sum(inputTokens),\n  completion = sum(outputTokens),\n  requests = count()\n}, by:{model}\n| fieldsAdd cost = (prompt * 0.003 + completion * 0.015) / 1000\n| sort cost desc",
+            "visualization": "donutChart",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "chartSettings": {
+                    "circleChartSettings": { "groupingThresholdType": "relative", "groupingThresholdValue": 0, "valueType": "relative" }
+                },
+                "unitsOverrides": [
+                    { "identifier": "cost", "unitCategory": "currency", "baseUnit": "usd", "displayUnit": null, "decimals": 4, "suffix": "$", "delimiter": true, "added": 1727163553354 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "36": {
+            "type": "markdown",
+            "content": "### Adjust the cost per token based on your provider's pricing"
+        },
+        "40": {
+            "type": "markdown",
+            "content": "---\n### End-To-End Tracing & Debugging"
+        },
+        "41": {
+            "title": "Top 10 Expensive Prompts",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd inputTokens = toDouble(coalesce(gen_ai.usage.input_tokens, \"0\"))\n| fieldsAdd outputTokens = toDouble(coalesce(gen_ai.usage.output_tokens, \"0\"))\n| fieldsAdd tokens = inputTokens + outputTokens\n| fieldsAdd cost = (inputTokens * 0.003 + outputTokens * 0.015) / 1000\n| fieldsAdd model = gen_ai.request.model\n| fieldsAdd prompt = gen_ai.prompt.0.content\n| fieldsAdd response = gen_ai.completion.0.content\n| sort tokens desc\n| fields trace.id, model, tokens, cost, prompt, response\n| limit 10",
+            "visualization": "table",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "table": {
+                    "columnTypeOverrides": [
+                        { "id": 1, "fields": ["prompt", "response"], "value": "text" }
+                    ],
+                    "lineWrapIds": [["prompt"], ["response"]],
+                    "columnWidths": { "[\"response\"]": 500 }
+                },
+                "unitsOverrides": [
+                    { "identifier": "cost", "unitCategory": "currency", "baseUnit": "usd", "displayUnit": null, "decimals": 4, "suffix": "", "delimiter": false, "added": 1736932856141 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "42": {
+            "title": "Top 10 Slowest Prompts",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| fieldsAdd durationNs = end_time - start_time\n| fieldsAdd model = gen_ai.request.model\n| fieldsAdd tokens = toDouble(coalesce(gen_ai.usage.input_tokens, \"0\")) + toDouble(coalesce(gen_ai.usage.output_tokens, \"0\"))\n| fieldsAdd prompt = gen_ai.prompt.0.content\n| fieldsAdd response = gen_ai.completion.0.content\n| sort durationNs desc\n| fields trace.id, model, durationNs, tokens, prompt, response\n| limit 10",
+            "visualization": "table",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "table": {
+                    "columnTypeOverrides": [
+                        { "id": 1, "fields": ["prompt", "response"], "value": "text" }
+                    ],
+                    "lineWrapIds": [["prompt"], ["response"]],
+                    "columnWidths": { "[\"response\"]": 500 }
+                },
+                "unitsOverrides": [
+                    { "identifier": "durationNs", "unitCategory": "time", "baseUnit": "nanosecond", "displayUnit": null, "decimals": 1, "suffix": "", "delimiter": false, "added": 1729071009406 }
+                ]
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "50": {
+            "type": "markdown",
+            "content": "---\n### Session Overview"
+        },
+        "51": {
+            "title": "Sessions Over Time",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND gen_ai.operation.name == \"invoke_agent\"\n| makeTimeseries sessions = count(), interval:5m",
+            "visualization": "areaChart",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "chartSettings": {
+                    "xAxisScaling": "analyzedTimeframe",
+                    "gapPolicy": "gap",
+                    "curve": "linear"
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "52": {
+            "title": "LLM Calls per Session",
+            "type": "data",
+            "query": "fetch spans\n| filter isNotNull(gen_ai.provider.name) AND in(llm.request.type, {\"chat\", \"completion\"})\n| summarize llmCalls = count(), by:{trace.id}\n| summarize avgCallsPerSession = avg(llmCalls), maxCallsPerSession = max(llmCalls)",
+            "visualization": "singleValue",
+            "visualizationSettings": {
+                "autoSelectVisualization": false,
+                "singleValue": {
+                    "labelMode": "none",
+                    "label": "avgCallsPerSession",
+                    "recordField": "avgCallsPerSession",
+                    "sparklineSettings": { "isVisible": false },
+                    "trend": { "isVisible": false }
+                }
+            },
+            "querySettings": { "maxResultRecords": 1000, "defaultScanLimitGbytes": 500, "maxResultMegaBytes": 1, "defaultSamplingRatio": 10, "enableSampling": false },
+            "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+        },
+        "99": {
+            "type": "markdown",
+            "content": "### AI Observability is now Generally Available.\n#### [Try the native AI Observability App](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started)\n\nThe AI Observability App automatically detects spans with `gen_ai.provider.name` and `llm.request.type` attributes.\n\nThis dashboard provides a complementary view with custom cost analysis, tool execution monitoring, and session-level insights."
+        }
+    },
+    "layouts": {
+        "1": { "x": 0, "y": 0, "w": 2, "h": 3 },
+        "2": { "x": 2, "y": 0, "w": 22, "h": 3 },
+        "3": { "x": 0, "y": 3, "w": 24, "h": 1 },
+        "10": { "x": 0, "y": 4, "w": 6, "h": 3 },
+        "11": { "x": 6, "y": 4, "w": 10, "h": 3 },
+        "12": { "x": 16, "y": 4, "w": 8, "h": 3 },
+        "13": { "x": 0, "y": 7, "w": 6, "h": 4 },
+        "14": { "x": 11, "y": 7, "w": 5, "h": 4 },
+        "15": { "x": 6, "y": 7, "w": 5, "h": 4 },
+        "16": { "x": 16, "y": 7, "w": 8, "h": 4 },
+        "20": { "x": 0, "y": 11, "w": 24, "h": 2 },
+        "21": { "x": 0, "y": 13, "w": 12, "h": 5 },
+        "22": { "x": 18, "y": 13, "w": 6, "h": 5 },
+        "23": { "x": 12, "y": 13, "w": 6, "h": 5 },
+        "30": { "x": 0, "y": 18, "w": 24, "h": 2 },
+        "31": { "x": 0, "y": 20, "w": 4, "h": 5 },
+        "32": { "x": 4, "y": 20, "w": 4, "h": 5 },
+        "33": { "x": 8, "y": 20, "w": 4, "h": 5 },
+        "34": { "x": 12, "y": 20, "w": 12, "h": 5 },
+        "35": { "x": 4, "y": 25, "w": 8, "h": 7 },
+        "36": { "x": 0, "y": 25, "w": 4, "h": 7 },
+        "40": { "x": 0, "y": 32, "w": 24, "h": 2 },
+        "41": { "x": 0, "y": 34, "w": 24, "h": 6 },
+        "42": { "x": 0, "y": 40, "w": 24, "h": 6 },
+        "50": { "x": 0, "y": 46, "w": 24, "h": 2 },
+        "51": { "x": 0, "y": 48, "w": 16, "h": 5 },
+        "52": { "x": 16, "y": 48, "w": 8, "h": 5 },
+        "99": { "x": 0, "y": 53, "w": 24, "h": 5 }
+    }
+}
