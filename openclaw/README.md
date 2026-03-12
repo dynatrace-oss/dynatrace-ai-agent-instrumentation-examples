@@ -4,6 +4,8 @@ This example shows how to enable the built-in [OpenTelemetry](https://openteleme
 
 OpenClaw ships with a `diagnostics-otel` plugin that exports traces, metrics, and logs over OTLP/HTTP. No additional code is required: you only need to configure `openclaw.json` and set a few environment variables before starting the gateway.
 
+![Openclaw Dynatrace Dashboard](./dashboard-openclaw-monitoring.png)
+
 ## Dynatrace Instrumentation
 
 > [!TIP]
