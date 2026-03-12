@@ -23,7 +23,7 @@ openclaw config set diagnostics.otel.headers '{"Authorization":"Api-Token dt0c01
 openclaw config set diagnostics.otel.serviceName "openclaw-gateway"
 ```
 
-Replace `<TENANT>` with your Dynatrace environment ID and the `Api-Token` value with your actual Dynatrace API token (requires the **`openTelemetryTrace.ingest`** scope).
+Replace `<TENANT>` with your Dynatrace environment ID and the `Api-Token` value with your actual Dynatrace API token (requires the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, **`logs.ingest`** scopes).
 
 Once configured, start OpenClaw normally:
 
@@ -35,35 +35,35 @@ Every session will now export the following data to Dynatrace:
 
 ### Metrics
 
-| Metric | Description |
-|---|---|
-| `openclaw.tokens` | Token usage by type (`input`, `output`, `cache`) per model |
-| `openclaw.cost.usd` | Estimated USD cost per model |
-| `openclaw.run.duration_ms` | Agent run duration in milliseconds |
-| `openclaw.context.tokens` | Context window usage |
-| `openclaw.webhook.received` | Webhooks received |
-| `openclaw.webhook.duration_ms` | Webhook processing duration |
-| `openclaw.message.queued` | Messages queued for processing |
-| `openclaw.message.processed` | Messages processed |
-| `openclaw.message.duration_ms` | Message processing duration |
-| `openclaw.queue.depth` | Current queue depth |
-| `openclaw.session.state` | Session state transitions |
-| `openclaw.run.attempt` | Run attempts |
+| Metric                         | Description                                                |
+| ------------------------------ | ---------------------------------------------------------- |
+| `openclaw.tokens`              | Token usage by type (`input`, `output`, `cache`) per model |
+| `openclaw.cost.usd`            | Estimated USD cost per model                               |
+| `openclaw.run.duration_ms`     | Agent run duration in milliseconds                         |
+| `openclaw.context.tokens`      | Context window usage                                       |
+| `openclaw.webhook.received`    | Webhooks received                                          |
+| `openclaw.webhook.duration_ms` | Webhook processing duration                                |
+| `openclaw.message.queued`      | Messages queued for processing                             |
+| `openclaw.message.processed`   | Messages processed                                         |
+| `openclaw.message.duration_ms` | Message processing duration                                |
+| `openclaw.queue.depth`         | Current queue depth                                        |
+| `openclaw.session.state`       | Session state transitions                                  |
+| `openclaw.run.attempt`         | Run attempts                                               |
 
 ### Trace spans
 
-| Span | Description |
-|---|---|
-| `openclaw.model.usage` | Model invocation with token counts and cost |
-| `openclaw.webhook.processed` | Webhook processing lifecycle |
-| `openclaw.webhook.error` | Webhook errors |
-| `openclaw.message.processed` | Message processing lifecycle |
-| `openclaw.session.stuck` | Stuck session detection |
+| Span                         | Description                                 |
+| ---------------------------- | ------------------------------------------- |
+| `openclaw.model.usage`       | Model invocation with token counts and cost |
+| `openclaw.webhook.processed` | Webhook processing lifecycle                |
+| `openclaw.webhook.error`     | Webhook errors                              |
+| `openclaw.message.processed` | Message processing lifecycle                |
+| `openclaw.session.stuck`     | Stuck session detection                     |
 
 ### Log events
 
-| Event | Description |
-|---|---|
+| Event                  | Description                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------- |
 | Structured log records | Same records written to the gateway log file, exported over OTLP when enabled |
 
 ## How to use
@@ -71,7 +71,7 @@ Every session will now export the following data to Dynatrace:
 ### Prerequisites
 
 - [OpenClaw](https://openclaw.ai/) installed and configured
-- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** scope
+- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, **`logs.ingest`** scopes
 
 ### Configure the `.env` file
 
@@ -83,8 +83,8 @@ cp .env.example .env
 
 The `.env` file contains:
 
-| Variable | Description |
-|---|---|
+| Variable                                            | Description                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | **Must** be set to `delta` — Dynatrace requires delta temporality for metrics |
 
 ### Enable telemetry and run OpenClaw
@@ -159,8 +159,8 @@ fetch logs, from:now()-1h
 
 ### Optional configuration
 
-| Setting (openclaw.json) | Default | Description |
-|---|---|---|
-| `diagnostics.otel.sampleRate` | `1.0` | Trace sampling rate (0.0–1.0, root spans only) |
-| `diagnostics.otel.flushIntervalMs` | `60000` | Metric/trace flush interval in ms. Use `10000` during debugging. |
-| `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | `cumulative` | Set to `delta` for Dynatrace compatibility |
+| Setting (openclaw.json)                             | Default      | Description                                                      |
+| --------------------------------------------------- | ------------ | ---------------------------------------------------------------- |
+| `diagnostics.otel.sampleRate`                       | `1.0`        | Trace sampling rate (0.0–1.0, root spans only)                   |
+| `diagnostics.otel.flushIntervalMs`                  | `60000`      | Metric/trace flush interval in ms. Use `10000` during debugging. |
+| `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | `cumulative` | Set to `delta` for Dynatrace compatibility                       |
