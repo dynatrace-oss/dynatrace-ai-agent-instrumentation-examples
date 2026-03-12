@@ -44,6 +44,7 @@ This repository includes examples and guidance for integrating Dynatrace with th
 - [MCP - Model Context Protocol](./mcp/)
 - [Anthropic - Claude Code](./claude-code/)
 - [Openclaw](./openclaw/)
+- [GitHub Copilot SDK](./github-copilot-sdk/)
 
 ![MCP Agentic AI](/mcp/architecture.png)
 
