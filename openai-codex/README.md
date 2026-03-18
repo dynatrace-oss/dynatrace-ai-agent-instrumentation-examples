@@ -2,7 +2,7 @@
 
 This example shows how to enable OpenTelemetry telemetry in OpenAI Codex CLI and send it to Dynatrace for observability of Codex sessions, tool usage, and request performance.
 
-![Codex Monitoring Dashboard](./codex-monitoring-dashboard.json)
+![Codex Monitoring Dashboard](./codex-monitoring-dashboard.png)
 
 ## Quick start
 
