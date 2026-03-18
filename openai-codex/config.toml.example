@@ -1,0 +1,26 @@
+# OpenAI Codex CLI → Dynatrace OTel configuration
+#
+# Copy the [otel] block below into ~/.codex/config.toml,
+# or run setup.sh to apply it automatically.
+#
+# Replace the placeholder values with your Dynatrace credentials:
+#   DT_OTEL_ENDPOINT : https://<env-id>.live.dynatrace.com/api/v2/otlp
+#   DT_API_TOKEN     : Dynatrace API token with openTelemetryTrace.ingest scope
+
+[otel]
+environment = "prod"
+log_user_prompt = false
+
+[otel.exporter.otlp-http]
+endpoint = "<DT_OTEL_ENDPOINT>/v1/logs"
+protocol = "binary"
+
+[otel.exporter.otlp-http.headers]
+Authorization = "Api-Token <DT_API_TOKEN>"
+
+[otel.trace_exporter.otlp-http]
+endpoint = "<DT_OTEL_ENDPOINT>/v1/traces"
+protocol = "binary"
+
+[otel.trace_exporter.otlp-http.headers]
+Authorization = "Api-Token <DT_API_TOKEN>"
