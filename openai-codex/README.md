@@ -4,6 +4,34 @@ This example shows how to enable OpenTelemetry telemetry in OpenAI Codex CLI and
 
 ![Codex Monitoring Dashboard](./codex-monitoring-dashboard.json)
 
+## Quick start
+
+Add the following block to `~/.codex/config.toml` (or run `source setup.sh` — see [How to use](#how-to-use)):
+
+```toml
+[otel]
+environment = "prod"
+log_user_prompt = false
+
+[otel.exporter.otlp-http]
+endpoint = "https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp/v1/logs"
+protocol = "binary"
+
+[otel.exporter.otlp-http.headers]
+Authorization = "Api-Token <YOUR_DT_TOKEN>"
+
+[otel.trace_exporter.otlp-http]
+endpoint = "https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp/v1/traces"
+protocol = "binary"
+
+[otel.trace_exporter.otlp-http.headers]
+Authorization = "Api-Token <YOUR_DT_TOKEN>"
+```
+
+Replace `<YOUR_ENV_ID>` and `<YOUR_DT_TOKEN>` with your Dynatrace environment ID and API token (`openTelemetryTrace.ingest` scope). Then run `codex` as normal — telemetry flows automatically.
+
+A copy-pastable version is also available in [`config.toml.example`](./config.toml.example).
+
 ## Dynatrace Instrumentation
 
 Codex reads telemetry settings from `~/.codex/config.toml`. The included [`setup.sh`](./setup.sh) script updates that file with an `[otel]` configuration that exports to your Dynatrace OTLP endpoint.
