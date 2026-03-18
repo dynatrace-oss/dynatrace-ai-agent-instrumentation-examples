@@ -57,24 +57,17 @@ environment = "prod"
 log_user_prompt = false
 
 [otel.exporter.otlp-http]
-endpoint = "{endpoint}"
+endpoint = "{endpoint}/v1/logs"
 protocol = "binary"
 
 [otel.exporter.otlp-http.headers]
 Authorization = "Api-Token {token}"
 
 [otel.trace_exporter.otlp-http]
-endpoint = "{endpoint}"
+endpoint = "{endpoint}/v1/traces"
 protocol = "binary"
 
 [otel.trace_exporter.otlp-http.headers]
-Authorization = "Api-Token {token}"
-
-[otel.metrics_exporter.otlp-http]
-endpoint = "{endpoint}"
-protocol = "binary"
-
-[otel.metrics_exporter.otlp-http.headers]
 Authorization = "Api-Token {token}"
 """
 
@@ -84,8 +77,9 @@ if os.path.exists(config_file):
     with open(config_file) as f:
         existing = f.read()
 
-# Remove existing [otel] sections (everything from [otel...] to next top-level section)
-cleaned = re.sub(r'\n*\[otel[^\]]*\][^\[]*', '', existing, flags=re.DOTALL).rstrip()
+# Remove existing [otel] sections by splitting on top-level headers and filtering
+parts = re.split(r'(?=^\[)', existing, flags=re.MULTILINE)
+cleaned = ''.join(p for p in parts if not re.match(r'\[otel', p.lstrip())).rstrip()
 
 with open(config_file, "w") as f:
     if cleaned:
