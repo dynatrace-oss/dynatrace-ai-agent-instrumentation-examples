@@ -1,4 +1,4 @@
-# OpenAI Codex CLI
+<img width="778" height="352" alt="image" src="https://github.com/user-attachments/assets/c4cdb90d-d4da-4bde-8324-e01700a862cb" /># OpenAI Codex CLI
 
 This example shows how to enable OpenTelemetry telemetry in OpenAI Codex CLI and send it to Dynatrace for observability of Codex sessions, tool usage, and request performance.
 
@@ -49,7 +49,7 @@ The script configures:
 
 - OpenAI Codex CLI installed (`codex` command available)
 - `python3` installed
-- Dynatrace API token with `openTelemetryTrace.ingest`, `openTelemetryLog.ingest`, and `openTelemetryMetric.ingest` scopes
+- Dynatrace API token with `openTelemetryTrace.ingest`, `logs.ingest`, and `metrics.ingest` scopes
 
 ### Configure Dynatrace credentials
 
@@ -61,7 +61,7 @@ cp .env.example .env
 
 Variables:
 
-- `DT_API_TOKEN`: Dynatrace API token with `openTelemetryTrace.ingest`, `openTelemetryLog.ingest`, and `openTelemetryMetric.ingest`
+- `DT_API_TOKEN`: Dynatrace API token with `openTelemetryTrace.ingest`, `logs.ingest`, and `metrics.ingest`
 - `DT_OTEL_ENDPOINT`: Dynatrace OTLP base URL (do not include `/v1/traces`, `/v1/metrics`, or `/v1/logs`)
 
 SaaS production format:
