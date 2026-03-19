@@ -1,4 +1,4 @@
-<img width="778" height="352" alt="image" src="https://github.com/user-attachments/assets/c4cdb90d-d4da-4bde-8324-e01700a862cb" /># OpenAI Codex CLI
+# OpenAI Codex CLI
 
 This example shows how to enable OpenTelemetry telemetry in OpenAI Codex CLI and send it to Dynatrace for observability of Codex sessions, tool usage, and request performance.
 
