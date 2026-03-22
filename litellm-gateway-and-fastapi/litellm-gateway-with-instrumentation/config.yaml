@@ -1,0 +1,40 @@
+model_list:
+  # -------------------
+  # LLM 1: Ollama (local)
+  # -------------------
+  - model_name: ollama-llama3.2
+    litellm_params:
+      model: ollama/llama3.2
+      api_base: http://localhost:11434
+
+  # -------------------
+  # LLM 2: Anthropic
+  # -------------------
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # -------------------
+  # RAG: Embedding model
+  # -------------------
+  - model_name: rag-embeddings
+    litellm_params:
+      model: ollama/all-minilm
+      api_base: http://localhost:11434
+
+general_settings:
+  # Master key — required to call the proxy and access Admin UI
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+  # Simulated SSO: username/password login for the Admin UI
+  ui_username: os.environ/LITELLM_UI_USERNAME
+  ui_password: os.environ/LITELLM_UI_PASSWORD
+
+  # Store keys/spend in DB (set to true to persist virtual keys)
+  store_model_in_db: false
+
+litellm_settings:
+  drop_params: true
+  success_callback: [ "otel" ]
+  failure_callback: [ "otel" ]
