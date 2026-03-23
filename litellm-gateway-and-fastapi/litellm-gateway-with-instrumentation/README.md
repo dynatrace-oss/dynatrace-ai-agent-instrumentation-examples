@@ -1,6 +1,6 @@
-# LiteLLM  Gateway 
+# LiteLLM Proxy Gateway 
 
-This is the basic implementation of LiteLLM Gateway instrumented with Traceloop.
+This is the basic implementation of [LiteLLM Gateway Proxy](https://docs.litellm.ai/docs/simple_proxy) instrumented with Traceloop.
 with a configuration file that includes two LLMs and the Admin UI enabled.
 ```
 import uvicorn
@@ -24,6 +24,9 @@ source venv/bin/activate
 
 pip install --upgrade pip
 source .env
+
+/Users/user/litellm-gateway-with-instrumentation/.venv/bin/python -m uvicorn basic:app --reload 
+
 
 ```
 
