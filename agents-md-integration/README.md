@@ -1,6 +1,6 @@
 # Integrate your AGENTS.md, SKILL.md and other Instructions with Dynatrace
 
-![notebook](assets/notebook.png)
+![notebook](images/notebook.png)
 
 `AGENTS.md`, `SKILL.md` and other similar Markdown files are crucial ways to guide your agents, so understanding what files you have and how they can influence your agent's behaviour is crucial.
 
