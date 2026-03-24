@@ -17,6 +17,8 @@ The workflow can be expanded to retrieve as many files as you wish.
 
 The dashboard shows not only the contents of each file, it also provides a link to the precise Git commit at the time it was retrieved - in case of changes or issues, you can see exactly what changed and when.
 
+---
+
 ## Create and save GitHub PAT token
 
 This workflow uses the GitHub API to retrieve file contents and the latest Git commit SHA for each file. For this, a GitHub PAT token is required.
@@ -24,6 +26,8 @@ This workflow uses the GitHub API to retrieve file contents and the latest Git c
 Go to `https://github.com/settings/personal-access-tokens` and create a Fine-grained personal access token with `Contents (read-only)` permission to whichever repos you're going to use (this workflow works with both public and private repos)
 
 ![github pat](images/github-pat-permissions.png)
+
+---
 
 ## Save in credential vault
 
@@ -42,6 +46,7 @@ Save the credential the expand the entry and make a note of the `CREDENTIALS_VAU
 
 ![credential vault](images/credential-vault-2.png)
 
+---
 
 ## Download Workflow template and upload to Dynatrace
 
@@ -57,6 +62,8 @@ Save the credential the expand the entry and make a note of the `CREDENTIALS_VAU
 
 Save the workflow and click `Run`. It should run successfully.
 
+---
+
 ## View Dashboard
 
 In Dynatrace, press `ctrl + k` and search for `notebooks`
@@ -64,6 +71,7 @@ In Dynatrace, press `ctrl + k` and search for `notebooks`
 * Open the notebooks app and click the "all notebooks" menu item
 * Search for `agents.md` and you should see a notebook called `[AGENTS.md] Agent Details`
 
-Note: The name of this notebook is defined in the `run_javascript_1` task on line `228` if you wish to change it.
+> [!TIP]
+> The name of this notebook is defined in the `run_javascript_1` task on line `228` if you wish to change it.
 
 ![notebook](images/notebook.png)
