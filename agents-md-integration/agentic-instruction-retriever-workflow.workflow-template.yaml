@@ -3,9 +3,9 @@ metadata:
   dependencies:
     apps:
     - id: dynatrace.automations
-      version: ^1.2688.2
+      version: ^1.2834.0
     - id: dynatrace.github.connector
-      version: ^2.7.1
+      version: ^2.8.0
   inputs:
   - type: connection
     schema: app:dynatrace.github.connector:connection
@@ -16,8 +16,17 @@ metadata:
 workflow:
   title: Agentic Instruction Retriever
   description: ''
-  schemaVersion: 3
-  trigger: {}
+  schemaVersion: 4
+  trigger:
+    schedule:
+      isActive: true
+      trigger:
+        time: 02:00
+        type: time
+      filterParameters:
+        earliestStart: '2026-03-24'
+      timezone: Australia/Brisbane
+      inputs: {}
   result: null
   type: STANDARD
   input: {}
@@ -47,6 +56,7 @@ workflow:
         repository: agentcontrol
         connectionId: ''
       action: dynatrace.github.connector:get-content
+      active: true
       position:
         x: 1
         y: 1
@@ -61,6 +71,7 @@ workflow:
         repository: agentcontrol2
         connectionId: ''
       action: dynatrace.github.connector:get-content
+      active: true
       position:
         x: 2
         y: 1
@@ -72,23 +83,25 @@ workflow:
         script: "import { execution } from '@dynatrace-sdk/automation-utils';\nimport\
           \ { workflowsClient } from '@dynatrace-sdk/client-automation';\nimport {\
           \ documentsClient } from '@dynatrace-sdk/client-document';\nimport { executionsClient\
-          \ } from '@dynatrace-sdk/client-automation';\n\n/* TODO: Integration with\
-          \ credential vault for private repos\n * For now, this workflow ONLY works\
-          \ with public repos\n * For testing, use:\n * https://github.com/agardnerit/agentcontrol\n\
+          \ } from '@dynatrace-sdk/client-automation';\nimport {credentialVaultClient}\
+          \ from \"@dynatrace-sdk/client-classic-environment-v2\";\n\n/* TODO: Integration\
+          \ with credential vault for private repos\n * For now, this workflow ONLY\
+          \ works with public repos\n * For testing, use:\n * https://github.com/agardnerit/agentcontrol\n\
           \ * https://github.com/agardnerit/agentcontrol2\n */\nconst githubToken\
-          \ = \"\";\n\n// simple GUID helper\nfunction generateGUID() {\n  return\
-          \ 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {\n    const\
-          \ r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 |\
-          \ 0x8);\n    return v.toString(16);\n  });\n}\n\n// Heuristic: treat task\
-          \ as enabled unless an explicit \"disabled\" indicator is present.\n// Check\
-          \ a variety of common property names that may indicate a disabled task.\n\
-          function isTaskEnabled(taskDef) {\n  if (!taskDef || typeof taskDef !==\
-          \ 'object') return false;\n  // check common boolean flags or state strings\n\
-          \  if ('enabled' in taskDef && taskDef.enabled === false) return false;\n\
-          \  if ('isEnabled' in taskDef && taskDef.isEnabled === false) return false;\n\
-          \  if ('disabled' in taskDef && taskDef.disabled === true) return false;\n\
-          \  if ('state' in taskDef && String(taskDef.state).toUpperCase() === 'DISABLED')\
-          \ return false;\n  if ('status' in taskDef && String(taskDef.status).toUpperCase()\
+          \ = await credentialVaultClient.getCredentialsDetails({\n    id: \"CREDENTIALS_VAULT-7E102ED0F4684CA8\"\
+          ,\n  }).then((credentials) => credentials.token);\n\n// simple GUID helper\n\
+          function generateGUID() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,\
+          \ c => {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x'\
+          \ ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\n// Heuristic:\
+          \ treat task as enabled unless an explicit \"disabled\" indicator is present.\n\
+          // Check a variety of common property names that may indicate a disabled\
+          \ task.\nfunction isTaskEnabled(taskDef) {\n  if (!taskDef || typeof taskDef\
+          \ !== 'object') return false;\n  // check common boolean flags or state\
+          \ strings\n  if ('enabled' in taskDef && taskDef.enabled === false) return\
+          \ false;\n  if ('isEnabled' in taskDef && taskDef.isEnabled === false) return\
+          \ false;\n  if ('disabled' in taskDef && taskDef.disabled === true) return\
+          \ false;\n  if ('state' in taskDef && String(taskDef.state).toUpperCase()\
+          \ === 'DISABLED') return false;\n  if ('status' in taskDef && String(taskDef.status).toUpperCase()\
           \ === 'DISABLED') return false;\n  if ('active' in taskDef && taskDef.active\
           \ === false) return false;\n  // No negative indicator found -> assume enabled\n\
           \  return true;\n}\n\n// Call GitHub commits API to get most recent commit\
@@ -165,15 +178,12 @@ workflow:
           \    }\n  ];\n\n  // 6) Add a section for each runtime-included task (with\
           \ its result)\n  for (const taskName of firstLayerTaskNames) {\n\n    const\
           \ taskInput = await executionsClient.getTaskExecutionInput({\n      executionId,\n\
-          \      id: taskName,\n    });\n    /*\n    console.log(\"!!!!!!!!!!!!!!!!!!!!!!!!\"\
-          );\n    console.log(taskInput);\n    console.log(\"````````````````````````\"\
-          );\n    */\n    \n    try {\n      const taskResult = await ex.result(taskName);\
-          \ // we already called this once above; may cache if you prefer\n      \n\
-          \      console.log(\">>>>>>>>>>>>>>>>>>>>\")\n      console.log(taskResult);\n\
-          \      console.log(\"<<<<<<<<<<<<<<<<<<<<<<<\")\n    \n\n      let commitSha\
-          \ = null;\n      let commitLink = \"\";\n      try {\n        commitSha\
-          \ = await getLatestCommitShaForFile(taskInput.owner, taskInput.repository,\
-          \ taskInput.filePath, taskInput.reference, githubToken); // uses /repos/{owner}/{repo}/commits?path=...【call_xvln9738UFViVEWd0WdzF5MI-1】\n\
+          \      id: taskName,\n    });\n    \n    try {\n      const taskResult =\
+          \ await ex.result(taskName); // we already called this once above; may cache\
+          \ if you prefer\n      \n      let commitSha = null;\n      let commitLink\
+          \ = \"\";\n      try {\n        commitSha = await getLatestCommitShaForFile(taskInput.owner,\
+          \ taskInput.repository, taskInput.filePath, taskInput.reference, githubToken);\
+          \ // uses /repos/{owner}/{repo}/commits?path=...【call_xvln9738UFViVEWd0WdzF5MI-1】\n\
           \        // https://github.com/agardnerIT/agentcontrol/commit/c5fa4e7b12db2cb248c3c7b1cc4093cdf9d225e7\n\
           \        commitLink = `https://github.com/${taskInput.owner}/${taskInput.repository}/commit/${commitSha}`;\n\
           \        console.log(commitLink);\n        \n      } catch (e) {\n     \
@@ -191,9 +201,9 @@ workflow:
           \ Link |\n|-------|------------|-----------------------------------|-----------|--------------\
           \ |\n| ${taskInput.owner} | ${taskInput.repository} | ${taskInput.reference}\
           \ | ${taskInput.filePath} | [${commitSha}](${commitLink}) |\n\n## AGENTS.md\
-          \ Content\n\\`\\`\\`blah\n${safeContent}\n\\`\\`\\`\n`\n      });\n    }\
-          \ catch (err) {\n      console.warn(`Unexpected failure reading result for\
-          \ ${taskName}:`, err && (err.message || err));\n    }\n  }\n\n  // 7) create-or-update\
+          \ Content\n\\`\\`\\`\n${safeContent}\n\\`\\`\\`\n`\n      });\n    } catch\
+          \ (err) {\n      console.warn(`Unexpected failure reading result for ${taskName}:`,\
+          \ err && (err.message || err));\n    }\n  }\n\n  // 7) create-or-update\
           \ notebook (same optimistic locking pattern you used)\n  const notebookContent\
           \ = { defaultTimeframe: { from: 'now()-2h', to: 'now()' }, defaultSegments:\
           \ [], sections };\n  const contentBlob = new Blob([JSON.stringify(notebookContent)],\
