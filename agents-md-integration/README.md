@@ -1,5 +1,7 @@
 # Integrate your AGENTS.md, SKILL.md and other Instructions with Dynatrace
 
+![notebook](assets/notebook.png)
+
 `AGENTS.md`, `SKILL.md` and other similar Markdown files are crucial ways to guide your agents, so understanding what files you have and how they can influence your agent's behaviour is crucial.
 
 The Dynatrace workflow in this directory runs periodically, grabs the contents of any file (the workflow uses `AGENTS.md` as an example but you can use it to retrieve any file) then appends the content of that file to a Dynatrace notebook.
