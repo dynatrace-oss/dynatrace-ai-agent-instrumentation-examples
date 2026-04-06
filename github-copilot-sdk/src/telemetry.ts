@@ -12,7 +12,7 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { PeriodicExportingMetricReader, AggregationTemporality } from "@opentelemetry/sdk-metrics";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { Resource } from "@opentelemetry/resources";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import { trace, metrics, type Tracer, type Meter } from "@opentelemetry/api";
 
@@ -37,7 +37,7 @@ export function initTelemetry(): void {
   const serviceName = process.env.OTEL_SERVICE_NAME || "copilot-sdk-agent";
   const authHeader = `Api-Token ${otlpToken}`;
 
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: serviceName,
   });
 
