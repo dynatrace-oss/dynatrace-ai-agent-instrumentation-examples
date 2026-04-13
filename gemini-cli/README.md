@@ -4,6 +4,13 @@ This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.
 
 Unlike SDK-based frameworks, Gemini CLI ships with native OTEL support. No code changes are required: you only need to set a few environment variables before running `gemini`.
 
+> [!IMPORTANT]
+> **Known issue: Gemini CLI ≥ 0.34.0-preview.0 sends JSON-encoded OTLP, which Dynatrace does not accept.**
+>
+> Starting with `0.34.0-preview.0`, the Gemini CLI OTLP/HTTP exporter regressed from binary Protobuf (`application/x-protobuf`) to JSON encoding (`application/json`). Dynatrace [explicitly requires binary Protobuf](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#api-limitations) and silently drops JSON-encoded payloads — telemetry appears to export successfully but never appears in Dynatrace.
+>
+> This is tracked in [google-gemini/gemini-cli#23093](https://github.com/google-gemini/gemini-cli/issues/23093). Until it is fixed upstream, **use the [OpenTelemetry Collector workaround](#via-opentelemetry-collector-workaround)** below, which accepts any encoding from Gemini CLI and re-exports to Dynatrace as binary Protobuf over HTTP.
+
 ## Dynatrace Instrumentation
 
 > [!TIP]
@@ -77,6 +84,69 @@ Gemini CLI follows the [OpenTelemetry GenAI Semantic Conventions](https://opente
 ### Log Events
 
 Tool executions, session lifecycle, and API requests are emitted as OTEL log records, queryable in Dynatrace Log & Event Viewer by `service.name = gemini-cli`.
+
+## Via OpenTelemetry Collector (Workaround)
+
+Dynatrace [does not accept gRPC or JSON-encoded OTLP](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#api-limitations) — it requires HTTP with binary Protobuf. An OpenTelemetry Collector running locally acts as a protocol bridge: it accepts whatever Gemini CLI sends (gRPC on port `4317`, or HTTP/JSON on port `4318`) and re-exports to Dynatrace as `otlp_http` with binary Protobuf.
+
+```
+Gemini CLI  ──gRPC:4317 or HTTP:4318──▶  OTel Collector  ──HTTP/protobuf──▶  Dynatrace
+```
+
+This approach works regardless of which Gemini CLI version you are running and bypasses the JSON encoding regression entirely.
+
+### 1. Run the Collector
+
+Use the included [`collector.yaml`](./collector.yaml) with any of the following Collector distributions:
+
+- [Dynatrace Collector](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/collector) (recommended)
+- [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib)
+- Standard OpenTelemetry Collector Core
+
+```bash
+# with the otelcol binary
+DT_OTEL_ENDPOINT=https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp \
+DT_API_TOKEN=<YOUR_DT_TOKEN> \
+otelcol --config collector.yaml
+
+# or with Docker
+docker run --rm -p 4317:4317 -p 4318:4318 \
+  -e DT_OTEL_ENDPOINT="https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp" \
+  -e DT_API_TOKEN="<YOUR_DT_TOKEN>" \
+  -v $(pwd)/collector.yaml:/etc/otelcol/config.yaml \
+  otel/opentelemetry-collector-contrib
+```
+
+> [!NOTE]
+> Vanilla OTLP exports to an ActiveGate require manual enrichment of Dynatrace host information. See [enrichment files](https://docs.dynatrace.com/docs/ingest-from/extend-dynatrace/extend-data) for details.
+
+### 2. Point Gemini CLI at the Collector
+
+Send Gemini CLI telemetry to the local Collector using gRPC (most reliable — not affected by the JSON encoding regression):
+
+```bash
+export GEMINI_TELEMETRY_ENABLED=true
+export GEMINI_TELEMETRY_TARGET=local
+export GEMINI_TELEMETRY_OTLP_PROTOCOL=grpc
+export GEMINI_TELEMETRY_OTLP_ENDPOINT=http://localhost:4317
+export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta
+```
+
+Or add it to `~/.gemini/settings.json`:
+
+```json
+{
+  "telemetry": {
+    "enabled": true,
+    "target": "otlp",
+    "otlpEndpoint": "http://localhost:4317",
+    "otlpProtocol": "grpc"
+  }
+}
+```
+
+> [!NOTE]
+> When routing through a Collector you do **not** need `OTEL_EXPORTER_OTLP_HEADERS` in your shell — authentication is handled by the Collector's outbound exporter to Dynatrace. The `DT_API_TOKEN` is only needed by the Collector process itself.
 
 ## How to use
 
