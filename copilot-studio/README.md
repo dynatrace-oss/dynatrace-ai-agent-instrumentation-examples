@@ -1,4 +1,4 @@
 # Copilot Studio Monitoring
 
-[Copilot Studio User Interface](./)
-[Copilot Studio Performance Metrics](./)
+- [Copilot Studio User Interface](./copilot-studio-ui.md)
+- [Copilot Studio Performance Metrics](./copilot-studio_performance.md)
