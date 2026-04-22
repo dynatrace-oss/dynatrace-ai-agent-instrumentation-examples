@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music History Explorer — RUM</title>
+
+  <!-- Dynatrace Real User Monitoring — pydantic-music-app (APPLICATION-B52D32BDE3935DE1) -->
+  <script type="text/javascript" src="https://js-cdn.dynatracelabs.com/jstag/1468ae7109d/bf48777rib/b52d32bde3935de1_complete.js" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --card: #16213e;
+      --border: #2a2a4a;
+      --jazz: #f4a261;
+      --rock: #e63946;
+      --classical: #4cc9f0;
+      --text: #e8e8f0;
+      --muted: #8888aa;
+      --azure: #0078d4;
+      --bedrock: #ff9900;
+      --rum: #00b4d8;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo { font-size: 2rem; }
+    .header-text h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--jazz), var(--classical));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-text p { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+    /* ── Conversation ID bar ── */
+    .conv-bar {
+      background: rgba(0, 180, 216, 0.08);
+      border-bottom: 1px solid rgba(0, 180, 216, 0.2);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+    }
+    .conv-label {
+      color: var(--rum);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+    .conv-id {
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      letter-spacing: 0.04em;
+      font-size: 0.78rem;
+    }
+    .copy-btn {
+      background: rgba(0, 180, 216, 0.15);
+      border: 1px solid rgba(0, 180, 216, 0.3);
+      color: var(--rum);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: rgba(0, 180, 216, 0.3); }
+    .conv-hint {
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .rum-status {
+      margin-left: 4px;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .rum-status.active { background: rgba(0, 200, 100, 0.15); color: #00c864; border: 1px solid rgba(0, 200, 100, 0.3); }
+    .rum-status.inactive { background: rgba(255, 100, 80, 0.12); color: #ff8070; border: 1px solid rgba(255, 100, 80, 0.2); }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      max-height: calc(100vh - 113px);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 300px;
+      min-width: 260px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-inner {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 12px;
+    }
+    .sidebar-inner::-webkit-scrollbar { width: 4px; }
+    .sidebar-inner::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .categories {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 3px;
+    }
+    .cat-btn {
+      flex: 1;
+      padding: 7px 4px;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--muted);
+    }
+    .cat-btn.active { color: #fff; }
+    .cat-btn[data-cat="jazz"].active { background: var(--jazz); color: #1a1a2e; }
+    .cat-btn[data-cat="rock"].active { background: var(--rock); }
+    .cat-btn[data-cat="classical"].active { background: var(--classical); color: #1a1a2e; }
+    .cat-btn[data-cat="all"].active { background: #444; }
+
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 12px 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .section-label[data-cat="jazz"] { color: var(--jazz); }
+    .section-label[data-cat="rock"] { color: var(--rock); }
+    .section-label[data-cat="classical"] { color: var(--classical); }
+
+    .chips { display: flex; flex-direction: column; gap: 5px; margin-bottom: 6px; }
+    .chip {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 9px 11px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.8rem;
+      cursor: pointer;
+      line-height: 1.35;
+      transition: all 0.15s;
+    }
+    .chip:hover { transform: translateX(3px); }
+    .chip[data-cat="jazz"]:hover { color: var(--jazz); border-color: var(--jazz); }
+    .chip[data-cat="rock"]:hover { color: var(--rock); border-color: var(--rock); }
+    .chip[data-cat="classical"]:hover { color: var(--classical); border-color: var(--classical); }
+    .chip.hidden { display: none; }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 10px;
+      color: var(--muted);
+      text-align: center;
+      padding: 40px;
+    }
+    .empty-state .icon { font-size: 3.5rem; opacity: 0.3; }
+    .empty-state h2 { font-size: 1rem; opacity: 0.6; }
+    .empty-state p { font-size: 0.82rem; max-width: 300px; line-height: 1.5; opacity: 0.45; }
+
+    .message { display: flex; flex-direction: column; gap: 7px; }
+
+    .question-bubble {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #2d2d5e, #1e3a5f);
+      border: 1px solid #3a3a7a;
+      border-radius: 14px 14px 4px 14px;
+      padding: 11px 15px;
+      max-width: 75%;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .answer-block { display: flex; flex-direction: column; gap: 7px; max-width: 90%; }
+
+    .meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .provider-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .provider-badge.azure { background: rgba(0, 120, 212, 0.2); border: 1px solid rgba(0, 120, 212, 0.4); color: #5ab3f0; }
+    .provider-badge.bedrock { background: rgba(255, 153, 0, 0.15); border: 1px solid rgba(255, 153, 0, 0.35); color: #ffc44d; }
+    .provider-badge .dot { width: 5px; height: 5px; border-radius: 50%; }
+    .provider-badge.azure .dot { background: #0078d4; }
+    .provider-badge.bedrock .dot { background: #ff9900; }
+
+    .conv-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.67rem;
+      font-weight: 600;
+      font-family: monospace;
+      background: rgba(0, 180, 216, 0.1);
+      border: 1px solid rgba(0, 180, 216, 0.25);
+      color: var(--rum);
+      letter-spacing: 0.03em;
+    }
+
+    .answer-bubble {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px 14px 14px 14px;
+      padding: 14px 16px;
+      font-size: 0.86rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .loading-block { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.82rem; }
+    .dots { display: flex; gap: 4px; }
+    .dots span {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted);
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-7px); opacity: 1; }
+    }
+
+    .error-bubble {
+      background: rgba(230, 57, 70, 0.1);
+      border: 1px solid rgba(230, 57, 70, 0.3);
+      border-radius: 4px 14px 14px 14px;
+      padding: 10px 14px;
+      color: #ff8087;
+      font-size: 0.82rem;
+    }
+
+    /* ── Feedback ── */
+    .feedback-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .feedback-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 9px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .feedback-btn:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    .feedback-btn.active-up   { border-color: #4caf50; color: #4caf50; background: rgba(76,175,80,0.12); }
+    .feedback-btn.active-down { border-color: #ef5350; color: #ef5350; background: rgba(239,83,80,0.12); }
+
+    /* ── Input ── */
+    .input-area {
+      padding: 12px 24px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .input-row { display: flex; gap: 8px; align-items: flex-end; }
+    .input-row textarea {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 0.88rem;
+      font-family: inherit;
+      resize: none;
+      min-height: 46px;
+      max-height: 110px;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row textarea:focus { border-color: #4444aa; }
+    .input-row textarea::placeholder { color: var(--muted); }
+    .send-btn {
+      padding: 11px 18px;
+      background: linear-gradient(135deg, #4444cc, #6644cc);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      height: 46px;
+      min-width: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .send-btn:hover:not(:disabled) { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.4; cursor: default; }
+    .hint { font-size: 0.7rem; color: var(--muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎵</div>
+  <div class="header-text">
+    <h1>Music History Explorer</h1>
+    <p>pydantic-ai · AWS Bedrock · Azure OpenAI · Dynatrace RUM + OTel tracing</p>
+  </div>
+</header>
+
+<!-- Conversation ID bar — visible to user for DQL filtering -->
+<div class="conv-bar">
+  <span class="conv-label">🔗 Conversation ID</span>
+  <span class="conv-id" id="convIdDisplay">—</span>
+  <button class="copy-btn" id="copyBtn">Copy for DQL</button>
+  <span class="rum-status inactive" id="rumStatus">RUM not detected</span>
+  <span class="conv-hint">DQL: <code>fetch spans | filter conversation.id == "&lt;id&gt;"</code></span>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+      <div class="categories">
+        <button class="cat-btn active" data-cat="all">All</button>
+        <button class="cat-btn" data-cat="jazz">🎷 Jazz</button>
+        <button class="cat-btn" data-cat="rock">🎸 Rock</button>
+        <button class="cat-btn" data-cat="classical">🎻 Classical</button>
+      </div>
+
+      <div class="section-label" data-cat="jazz">🎷 Jazz</div>
+      <div class="chips">
+        <button class="chip" data-cat="jazz">Who invented jazz and where did it originate?</button>
+        <button class="chip" data-cat="jazz">What is bebop and who were its pioneers?</button>
+        <button class="chip" data-cat="jazz">Tell me about Miles Davis and Kind of Blue</button>
+        <button class="chip" data-cat="jazz">How did John Coltrane transform the saxophone?</button>
+        <button class="chip" data-cat="jazz">What is the difference between Dixieland and swing?</button>
+        <button class="chip" data-cat="jazz">Who was Louis Armstrong and why does he matter?</button>
+      </div>
+
+      <div class="section-label" data-cat="rock">🎸 Classic Rock</div>
+      <div class="chips">
+        <button class="chip" data-cat="rock">What made Led Zeppelin so revolutionary?</button>
+        <button class="chip" data-cat="rock">Tell me about the British Invasion of the 1960s</button>
+        <button class="chip" data-cat="rock">How did Jimi Hendrix change the electric guitar?</button>
+        <button class="chip" data-cat="rock">What is the story behind Dark Side of the Moon?</button>
+        <button class="chip" data-cat="rock">Who were the Rolling Stones and what is their legacy?</button>
+        <button class="chip" data-cat="rock">How did the Beatles change rock music forever?</button>
+      </div>
+
+      <div class="section-label" data-cat="classical">🎻 Classical</div>
+      <div class="chips">
+        <button class="chip" data-cat="classical">Who was Beethoven and what is his greatest legacy?</button>
+        <button class="chip" data-cat="classical">Tell me about Bach's influence on Western music</button>
+        <button class="chip" data-cat="classical">What makes Mozart's compositions so remarkable?</button>
+        <button class="chip" data-cat="classical">What is the difference between Baroque and Romantic?</button>
+        <button class="chip" data-cat="classical">Tell me about Tchaikovsky's famous ballets</button>
+        <button class="chip" data-cat="classical">Who was Vivaldi and what is The Four Seasons?</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="chat-area" id="chatArea">
+      <div class="empty-state" id="emptyState">
+        <div class="icon">🎼</div>
+        <h2>Pick a question to get started</h2>
+        <p>Every exchange in this session shares the same Conversation ID, so you can filter the complete multi-turn trace in Dynatrace DQL.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="questionInput" placeholder="Ask anything about music history…" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">&#9658;</button>
+      </div>
+      <div class="hint">Click a suggestion or press Enter · Shift+Enter for new line</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // ── Conversation ID ──────────────────────────────────────────────────────────
+  // One UUID per browser session — persists across page refreshes within the tab,
+  // new tab = new conversation. This ID flows through every API call as a custom
+  // OTel attribute (conversation.id) so the full multi-turn trace is filterable
+  // in Dynatrace DQL.
+  function uuidv4() {
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
+
+  const CONV_ID = sessionStorage.getItem('conversationId') || (() => {
+    const id = uuidv4();
+    sessionStorage.setItem('conversationId', id);
+    return id;
+  })();
+
+  document.getElementById('convIdDisplay').textContent = CONV_ID;
+
+  // Copy full DQL query to clipboard — paste directly into a Dynatrace Notebook
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const dql = `fetch spans\n| filter conversation.id == "${CONV_ID}"`;
+    navigator.clipboard.writeText(dql).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy for DQL', 1500);
+    });
+  });
+
+  // ── Dynatrace RUM integration ────────────────────────────────────────────────
+  // If the DT RUM JS tag is loaded (see <head>), register the conversation ID as
+  // a session-level custom property. This links the RUM session to the backend
+  // OTel spans in Dynatrace — you can drill from a RUM user session directly into
+  // the distributed trace for any conversation.
+  function initRum() {
+    if (typeof dtrum !== 'undefined') {
+      // Set conversation ID as a session property visible in DT User Sessions
+      dtrum.sendSessionProperties(
+        undefined,           // custom number properties
+        undefined,           // custom date properties
+        { conversationId: CONV_ID }   // custom string properties
+      );
+      document.getElementById('rumStatus').textContent = 'RUM active';
+      document.getElementById('rumStatus').className = 'rum-status active';
+    }
+  }
+
+  // dtrum may load asynchronously — try immediately and again after load
+  initRum();
+  window.addEventListener('load', initRum);
+
+  // ── Category filter ──────────────────────────────────────────────────────────
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const cat = btn.dataset.cat;
+      document.querySelectorAll('.chip').forEach(c =>
+        c.classList.toggle('hidden', cat !== 'all' && c.dataset.cat !== cat)
+      );
+      document.querySelectorAll('.section-label').forEach(l =>
+        l.style.display = (cat === 'all' || l.dataset.cat === cat) ? '' : 'none'
+      );
+    });
+  });
+
+  // ── Chip / send wiring ───────────────────────────────────────────────────────
+  const chatArea = document.getElementById('chatArea');
+  const emptyState = document.getElementById('emptyState');
+  const input = document.getElementById('questionInput');
+  const sendBtn = document.getElementById('sendBtn');
+  let busy = false;
+
+  document.querySelectorAll('.chip').forEach(c =>
+    c.addEventListener('click', () => { if (!busy) ask(c.textContent.trim()); })
+  );
+
+  sendBtn.addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 110) + 'px';
+  });
+
+  function submit() {
+    const q = input.value.trim();
+    if (!q || busy) return;
+    input.value = '';
+    input.style.height = 'auto';
+    ask(q);
+  }
+
+  // ── Core ask ─────────────────────────────────────────────────────────────────
+  async function ask(question) {
+    if (busy) return;
+    busy = true;
+    sendBtn.disabled = true;
+    emptyState.style.display = 'none';
+
+    // Notify DT RUM about this user action so it appears in the session waterfall
+    if (typeof dtrum !== 'undefined') {
+      dtrum.addActionProperties(
+        undefined,
+        undefined,
+        { conversationId: CONV_ID, question: question.substring(0, 100) }
+      );
+    }
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'message';
+
+    const qBubble = document.createElement('div');
+    qBubble.className = 'question-bubble';
+    qBubble.textContent = question;
+    msgEl.appendChild(qBubble);
+
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'loading-block';
+    loadingEl.innerHTML = `<div class="dots"><span></span><span></span><span></span></div><span>Thinking…</span>`;
+    msgEl.appendChild(loadingEl);
+
+    chatArea.appendChild(msgEl);
+    scrollBottom();
+
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // conversation_id is sent in the request body so the backend can stamp
+        // it onto every OTel span, making the full multi-turn trace filterable.
+        // The DT RUM JS (if loaded) also injects traceparent/tracestate headers
+        // automatically, linking this fetch to the backend span as a child.
+        body: JSON.stringify({ question, conversation_id: CONV_ID }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || 'Request failed');
+      }
+
+      const data = await res.json();
+      loadingEl.remove();
+
+      const answerBlock = document.createElement('div');
+      answerBlock.className = 'answer-block';
+
+      const metaRow = document.createElement('div');
+      metaRow.className = 'meta-row';
+
+      const isAzure = data.provider.toLowerCase().includes('azure');
+      const badge = document.createElement('div');
+      badge.className = `provider-badge ${isAzure ? 'azure' : 'bedrock'}`;
+      badge.innerHTML = `<span class="dot"></span>${data.provider} · ${data.model.split('/').pop()}`;
+      metaRow.appendChild(badge);
+
+      const convBadge = document.createElement('div');
+      convBadge.className = 'conv-badge';
+      convBadge.textContent = `conv: ${data.conversation_id.substring(0, 8)}…`;
+      convBadge.title = `Full ID: ${data.conversation_id}`;
+      metaRow.appendChild(convBadge);
+
+      answerBlock.appendChild(metaRow);
+
+      const aBubble = document.createElement('div');
+      aBubble.className = 'answer-bubble';
+      aBubble.textContent = data.answer;
+      answerBlock.appendChild(aBubble);
+
+      const feedbackRow = document.createElement('div');
+      feedbackRow.className = 'feedback-row';
+
+      const thumbUp = document.createElement('button');
+      thumbUp.className = 'feedback-btn';
+      thumbUp.textContent = '👍';
+      thumbUp.title = 'Good answer';
+
+      const thumbDown = document.createElement('button');
+      thumbDown.className = 'feedback-btn';
+      thumbDown.textContent = '👎';
+      thumbDown.title = 'Bad answer';
+
+      [thumbUp, thumbDown].forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rating = btn === thumbUp ? 'thumbs_up' : 'thumbs_down';
+          thumbUp.classList.toggle('active-up', btn === thumbUp);
+          thumbDown.classList.toggle('active-down', btn === thumbDown);
+          thumbUp.disabled = true;
+          thumbDown.disabled = true;
+          sendFeedback(rating, question, data.conversation_id, data.provider, data.model);
+        });
+      });
+
+      const copyFeedbackBtn = document.createElement('button');
+      copyFeedbackBtn.className = 'feedback-btn';
+      copyFeedbackBtn.textContent = 'Copy DQL';
+      copyFeedbackBtn.title = 'Copy feedback DQL query';
+      copyFeedbackBtn.addEventListener('click', () => {
+        const dql = `fetch spans\n| filter span.name == "music_agent.feedback"\n| filter conversation.id == "${data.conversation_id}"\n| fields timestamp, feedback.rating, feedback.question, gen_ai.provider.name, gen_ai.request.model`;
+        navigator.clipboard.writeText(dql).then(() => {
+          copyFeedbackBtn.textContent = 'Copied!';
+          setTimeout(() => { copyFeedbackBtn.textContent = 'Copy DQL'; }, 1500);
+        });
+      });
+
+      feedbackRow.appendChild(thumbUp);
+      feedbackRow.appendChild(thumbDown);
+      feedbackRow.appendChild(copyFeedbackBtn);
+      answerBlock.appendChild(feedbackRow);
+
+      msgEl.appendChild(answerBlock);
+
+    } catch (err) {
+      loadingEl.remove();
+      const errEl = document.createElement('div');
+      errEl.className = 'error-bubble';
+      errEl.textContent = `Error: ${err.message}`;
+      msgEl.appendChild(errEl);
+    }
+
+    scrollBottom();
+    busy = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  async function sendFeedback(rating, question, conversationId, provider, model) {
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, question, conversation_id: conversationId, provider, model }),
+      });
+    } catch (_) {}
+  }
+
+  function scrollBottom() {
+    chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

@@ -129,9 +129,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#node modules
+# Node / Next.js
 node_modules/
-
-# ui stuff
-
-ui/.next/
+.next/
+tsconfig.tsbuildinfo
+next-env.d.ts
