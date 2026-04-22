@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music History Explorer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --card: #16213e;
+      --border: #2a2a4a;
+      --jazz: #f4a261;
+      --rock: #e63946;
+      --classical: #4cc9f0;
+      --text: #e8e8f0;
+      --muted: #8888aa;
+      --azure: #0078d4;
+      --bedrock: #ff9900;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo { font-size: 2.4rem; }
+    .header-text h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--jazz), var(--classical));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-text p { color: var(--muted); font-size: 0.875rem; margin-top: 2px; }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      max-height: calc(100vh - 81px);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 320px;
+      min-width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-inner {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+    }
+    .sidebar-inner::-webkit-scrollbar { width: 4px; }
+    .sidebar-inner::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-inner::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Category tabs ── */
+    .categories {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 4px;
+    }
+    .cat-btn {
+      flex: 1;
+      padding: 8px 4px;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--muted);
+    }
+    .cat-btn:hover { color: var(--text); }
+    .cat-btn.active { color: #fff; }
+    .cat-btn[data-cat="jazz"].active { background: var(--jazz); color: #1a1a2e; }
+    .cat-btn[data-cat="rock"].active { background: var(--rock); }
+    .cat-btn[data-cat="classical"].active { background: var(--classical); color: #1a1a2e; }
+    .cat-btn[data-cat="all"].active { background: #444; color: var(--text); }
+
+    /* ── Question chips ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-label[data-cat="jazz"] { color: var(--jazz); }
+    .section-label[data-cat="rock"] { color: var(--rock); }
+    .section-label[data-cat="classical"] { color: var(--classical); }
+
+    .chips { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+
+    .chip {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.82rem;
+      cursor: pointer;
+      line-height: 1.35;
+      transition: all 0.15s;
+    }
+    .chip:hover { transform: translateX(3px); border-color: currentColor; }
+    .chip[data-cat="jazz"]:hover { color: var(--jazz); border-color: var(--jazz); }
+    .chip[data-cat="rock"]:hover { color: var(--rock); border-color: var(--rock); }
+    .chip[data-cat="classical"]:hover { color: var(--classical); border-color: var(--classical); }
+    .chip.hidden { display: none; }
+
+    /* ── Main chat area ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 40px;
+    }
+    .empty-state .icon { font-size: 4rem; opacity: 0.4; }
+    .empty-state h2 { font-size: 1.1rem; font-weight: 600; opacity: 0.7; }
+    .empty-state p { font-size: 0.85rem; max-width: 320px; line-height: 1.5; opacity: 0.5; }
+
+    /* ── Message bubbles ── */
+    .message { display: flex; flex-direction: column; gap: 8px; }
+
+    .question-bubble {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #2d2d5e, #1e3a5f);
+      border: 1px solid #3a3a7a;
+      border-radius: 16px 16px 4px 16px;
+      padding: 12px 16px;
+      max-width: 75%;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .answer-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 90%;
+    }
+
+    .provider-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      align-self: flex-start;
+    }
+    .provider-badge.azure { background: rgba(0, 120, 212, 0.2); border: 1px solid rgba(0, 120, 212, 0.4); color: #5ab3f0; }
+    .provider-badge.bedrock { background: rgba(255, 153, 0, 0.15); border: 1px solid rgba(255, 153, 0, 0.35); color: #ffc44d; }
+    .provider-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .provider-badge.azure .dot { background: #0078d4; }
+    .provider-badge.bedrock .dot { background: #ff9900; }
+
+    .answer-bubble {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px 16px 16px 16px;
+      padding: 16px 18px;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    /* ── Loading ── */
+    .loading-block { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.85rem; }
+    .dots { display: flex; gap: 4px; }
+    .dots span {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted);
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-8px); opacity: 1; }
+    }
+
+    /* ── Error ── */
+    .error-bubble {
+      background: rgba(230, 57, 70, 0.1);
+      border: 1px solid rgba(230, 57, 70, 0.3);
+      border-radius: 4px 16px 16px 16px;
+      padding: 12px 16px;
+      color: #ff8087;
+      font-size: 0.85rem;
+    }
+
+    /* ── Input area ── */
+    .input-area {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .input-row textarea {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: none;
+      min-height: 48px;
+      max-height: 120px;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row textarea:focus { border-color: #4444aa; }
+    .input-row textarea::placeholder { color: var(--muted); }
+    .send-btn {
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #4444cc, #6644cc);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      height: 48px;
+      min-width: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .send-btn:hover:not(:disabled) { opacity: 0.85; transform: scale(1.03); }
+    .send-btn:disabled { opacity: 0.4; cursor: default; }
+    .hint { font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎵</div>
+  <div class="header-text">
+    <h1>Music History Explorer</h1>
+    <p>Powered by pydantic-ai · Routed randomly to Azure OpenAI &amp; AWS Bedrock</p>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="categories">
+        <button class="cat-btn active" data-cat="all">All</button>
+        <button class="cat-btn" data-cat="jazz">🎷 Jazz</button>
+        <button class="cat-btn" data-cat="rock">🎸 Rock</button>
+        <button class="cat-btn" data-cat="classical">🎻 Classical</button>
+      </div>
+
+      <!-- Jazz questions -->
+      <div class="section-label" data-cat="jazz">🎷 Jazz</div>
+      <div class="chips">
+        <button class="chip" data-cat="jazz">Who invented jazz and where did it originate?</button>
+        <button class="chip" data-cat="jazz">What is bebop and who were its pioneers?</button>
+        <button class="chip" data-cat="jazz">Tell me about Miles Davis and Kind of Blue</button>
+        <button class="chip" data-cat="jazz">How did John Coltrane transform the saxophone?</button>
+        <button class="chip" data-cat="jazz">What is the difference between Dixieland and swing?</button>
+        <button class="chip" data-cat="jazz">Who was Louis Armstrong and why does he matter?</button>
+      </div>
+
+      <!-- Rock questions -->
+      <div class="section-label" data-cat="rock">🎸 Classic Rock</div>
+      <div class="chips">
+        <button class="chip" data-cat="rock">What made Led Zeppelin so revolutionary?</button>
+        <button class="chip" data-cat="rock">Tell me about the British Invasion of the 1960s</button>
+        <button class="chip" data-cat="rock">How did Jimi Hendrix change the electric guitar?</button>
+        <button class="chip" data-cat="rock">What is the story behind Dark Side of the Moon?</button>
+        <button class="chip" data-cat="rock">Who were the Rolling Stones and what is their legacy?</button>
+        <button class="chip" data-cat="rock">How did the Beatles change rock music forever?</button>
+      </div>
+
+      <!-- Classical questions -->
+      <div class="section-label" data-cat="classical">🎻 Classical</div>
+      <div class="chips">
+        <button class="chip" data-cat="classical">Who was Beethoven and what is his greatest legacy?</button>
+        <button class="chip" data-cat="classical">Tell me about Bach's influence on Western music</button>
+        <button class="chip" data-cat="classical">What makes Mozart's compositions so remarkable?</button>
+        <button class="chip" data-cat="classical">What is the difference between Baroque and Romantic?</button>
+        <button class="chip" data-cat="classical">Tell me about Tchaikovsky's famous ballets</button>
+        <button class="chip" data-cat="classical">Who was Vivaldi and what is The Four Seasons?</button>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+    <div class="chat-area" id="chatArea">
+      <div class="empty-state" id="emptyState">
+        <div class="icon">🎼</div>
+        <h2>Pick a question to get started</h2>
+        <p>Select a suggestion from the left, or type your own question about jazz, classic rock, or classical music history.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <textarea
+          id="questionInput"
+          placeholder="Ask anything about music history…"
+          rows="1"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" title="Send">&#9658;</button>
+      </div>
+      <div class="hint">Click a suggestion on the left, or press Enter to send · Shift+Enter for new line</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  const chatArea = document.getElementById('chatArea');
+  const emptyState = document.getElementById('emptyState');
+  const input = document.getElementById('questionInput');
+  const sendBtn = document.getElementById('sendBtn');
+  let busy = false;
+
+  // ── Category filter ──
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const cat = btn.dataset.cat;
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.classList.toggle('hidden', cat !== 'all' && chip.dataset.cat !== cat);
+      });
+      document.querySelectorAll('.section-label').forEach(label => {
+        label.style.display = (cat === 'all' || label.dataset.cat === cat) ? '' : 'none';
+      });
+    });
+  });
+
+  // ── Chip click ──
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (busy) return;
+      ask(chip.textContent.trim());
+    });
+  });
+
+  // ── Send button / Enter ──
+  sendBtn.addEventListener('click', submit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+
+  function submit() {
+    const q = input.value.trim();
+    if (!q || busy) return;
+    input.value = '';
+    input.style.height = 'auto';
+    ask(q);
+  }
+
+  // ── Core ask function ──
+  async function ask(question) {
+    if (busy) return;
+    busy = true;
+    sendBtn.disabled = true;
+
+    emptyState.style.display = 'none';
+
+    // User bubble
+    const msgEl = document.createElement('div');
+    msgEl.className = 'message';
+
+    const qBubble = document.createElement('div');
+    qBubble.className = 'question-bubble';
+    qBubble.textContent = question;
+    msgEl.appendChild(qBubble);
+
+    // Loading
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'loading-block';
+    loadingEl.innerHTML = `<div class="dots"><span></span><span></span><span></span></div><span>Thinking…</span>`;
+    msgEl.appendChild(loadingEl);
+
+    chatArea.appendChild(msgEl);
+    scrollToBottom();
+
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || 'Request failed');
+      }
+
+      const data = await res.json();
+      loadingEl.remove();
+
+      const answerBlock = document.createElement('div');
+      answerBlock.className = 'answer-block';
+
+      const isAzure = data.provider.toLowerCase().includes('azure');
+      const badge = document.createElement('div');
+      badge.className = `provider-badge ${isAzure ? 'azure' : 'bedrock'}`;
+      badge.innerHTML = `<span class="dot"></span>${data.provider} · ${data.model}`;
+      answerBlock.appendChild(badge);
+
+      const aBubble = document.createElement('div');
+      aBubble.className = 'answer-bubble';
+      aBubble.textContent = data.answer;
+      answerBlock.appendChild(aBubble);
+
+      msgEl.appendChild(answerBlock);
+
+    } catch (err) {
+      loadingEl.remove();
+      const errEl = document.createElement('div');
+      errEl.className = 'error-bubble';
+      errEl.textContent = `Error: ${err.message}`;
+      msgEl.appendChild(errEl);
+    }
+
+    scrollToBottom();
+    busy = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  function scrollToBottom() {
+    chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
