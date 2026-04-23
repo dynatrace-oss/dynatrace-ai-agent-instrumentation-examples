@@ -1,0 +1,82 @@
+
+
+
+###
+# curl -X 'GET'
+GET http://127.0.0.1:4000/v1/models?return_wildcard_routes=true&include_model_access_groups=false&only_model_access_groups=false&include_metadata=false
+Authorization: Bearer sk-admin-local
+Content-Type: application/json
+Accept: application/json
+
+
+### curl -X 'GET'
+#  'http://localhost:4000/v1/models?return_wildcard_routes=false&include_model_access_groups=false&only_model_access_groups=false&include_metadata=false'
+#  -H 'accept: application/json'
+#  -H 'x-litellm-api-key: Bearer sk-admin-local'
+GET http://localhost:4000/v1/models?return_wildcard_routes=false&include_model_access_groups=false&only_model_access_groups=false&include_metadata=false
+Authorization: Bearer sk-admin-local
+Content-Type: application/json
+Accept: application/json
+
+###
+
+POST http://localhost:4000/chat/completions
+accept: application/json
+Authorization: Bearer sk-admin-local
+Content-Type: application/json
+
+{
+  "model": "claude-sonnet-4-6",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, how are you?"
+    }
+  ]
+}
+
+###
+
+POST http://localhost:4000/chat/completions
+accept: application/json
+Authorization: Bearer sk-admin-local
+Content-Type: application/json
+
+{
+  "model": "ollama-llama3.2",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, how are you?"
+    }
+  ]
+}
+
+###
+POST http://localhost:4000/chat/completions
+accept: application/json
+Authorization: Bearer sk-admin-local
+Content-Type: application/json
+
+{
+  "model": "claude-sonnet-4-6",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can I send you more parameters "
+    }
+  ]
+}
+
+
+###
+POST http://localhost:4000/utils/token_counter
+accept: application/json
+Authorization: Bearer sk-admin-local
+Content-Type: application/json
+
+{
+  "model": "ollama-llama3.2",
+  "prompt": "Can I send you more parameters "
+}
+
