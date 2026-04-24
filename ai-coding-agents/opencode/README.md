@@ -4,6 +4,8 @@ This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.
 
 Unlike SDK-based frameworks, OpenCode ships with native OTEL support. No code changes are required: you only need to set two environment variables before running `opencode`.
 
+![OpenCode Dynatrace Dashboard](./open-code-monitoring-dashboard.png)
+
 ## Dynatrace Instrumentation
 
 > [!TIP]
