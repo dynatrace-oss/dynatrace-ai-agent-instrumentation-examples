@@ -1,0 +1,56 @@
+# OpenTelemetry Collector config — Gemini CLI → Dynatrace bridge
+#
+# This Collector accepts OTLP over gRPC (port 4317) and HTTP (port 4318) from
+# Gemini CLI and re-exports to Dynatrace as OTLP/HTTP with binary Protobuf.
+#
+# Required environment variables (set before starting the Collector):
+#   DT_OTEL_ENDPOINT  — Dynatrace OTLP base URL, e.g.
+#                       https://<env-id>.live.dynatrace.com/api/v2/otlp
+#   DT_API_TOKEN      — Dynatrace API token with logs.ingest, metrics.ingest,
+#                       and openTelemetryTrace.ingest scopes
+#
+# Usage:
+#   DT_OTEL_ENDPOINT=https://<env-id>.live.dynatrace.com/api/v2/otlp \
+#   DT_API_TOKEN=dt0c01.<token> \
+#   otelcol --config collector.yaml
+#
+# Or with Docker:
+#   docker run --rm -p 4317:4317 -p 4318:4318 \
+#     -e DT_OTEL_ENDPOINT="https://<env-id>.live.dynatrace.com/api/v2/otlp" \
+#     -e DT_API_TOKEN="dt0c01.<token>" \
+#     -v $(pwd)/collector.yaml:/etc/otelcol/config.yaml \
+#     otel/opentelemetry-collector-contrib
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317   # Gemini CLI gRPC (GEMINI_TELEMETRY_OTLP_PROTOCOL=grpc)
+      http:
+        endpoint: 0.0.0.0:4318   # Gemini CLI HTTP fallback (JSON or protobuf)
+
+processors:
+  batch:
+    timeout: 5s
+
+exporters:
+  otlphttp:
+    endpoint: ${env:DT_OTEL_ENDPOINT}
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+    # otlphttp exporter sends binary Protobuf by default — required by Dynatrace
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
