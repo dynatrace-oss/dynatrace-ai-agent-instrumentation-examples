@@ -61,28 +61,6 @@ All spans carry resource attributes: `service.name=opencode`, `service.version`,
 - [OpenCode](https://github.com/anomalyco/opencode) installed (`npm install -g opencode-ai` or the binary from the [releases page](https://github.com/anomalyco/opencode/releases))
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** scope
 
-### Configure Dynatrace credentials
-
-Copy the example env file and fill in your values:
-
-```bash
-cp .env.example .env
-# edit .env with your DT_API_TOKEN and DT_OTEL_ENDPOINT
-```
-
-The `.env` file uses two variables:
-
-| Variable | Description |
-|---|---|
-| `DT_API_TOKEN` | Dynatrace API token with `openTelemetryTrace.ingest` scope |
-| `DT_OTEL_ENDPOINT` | Base OTLP endpoint — **do not** include `/v1/traces` or other signal suffixes |
-
-Endpoint format by environment type:
-
-| Environment | Endpoint format |
-|---|---|
-| SaaS production | `https://<env-id>.live.dynatrace.com/api/v2/otlp` |
-
 ### Enable telemetry and run OpenCode
 
 Source the setup script to export environment variables into your current shell:
