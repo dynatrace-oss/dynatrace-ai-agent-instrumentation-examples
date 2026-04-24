@@ -1,6 +1,6 @@
 ## OpenCode
 
-This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.io/) telemetry in [OpenCode](https://github.com/anomalyco/opencode) and route the data to Dynatrace for full AI Observability — including LLM call volume, session activity, tool usage, and request latency.
+This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.io/) support in [OpenCode](https://github.com/anomalyco/opencode) and route the data to Dynatrace for full AI Observability — including LLM call volume, session activity, tool usage, and request latency.
 
 Unlike SDK-based frameworks, OpenCode ships with native OTEL support. No code changes are required: you only need to set two environment variables before running `opencode`.
 
