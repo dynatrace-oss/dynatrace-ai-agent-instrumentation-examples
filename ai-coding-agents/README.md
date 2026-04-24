@@ -7,8 +7,9 @@ Unlike traditional application instrumentation, coding agents run interactively 
 ## Supported Coding Agents
 
 - [Anthropic Claude Code](./claude-code/) — native OTEL support via environment variables, no code changes required
-- [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
+- [Google Gemini CLI](./gemini-cli/) — native OTEL support via `~/.gemini/settings.json`, no code changes required (collector-assisted for recent versions)
 - [OpenAI Codex CLI](./openai-codex/) — OTLP export via `~/.codex/config.toml`
+- [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
 - [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
 
@@ -38,8 +39,9 @@ Pick the coding agent you use and follow its setup guide:
 | Agent | Integration method | Effort |
 |---|---|---|
 | [Claude Code](./claude-code/) | Environment variables or `settings.json` | ~5 min |
-| [OpenCode](./opencode/) | Environment variables | ~5 min |
+| [Gemini CLI](./gemini-cli/) | `~/.gemini/settings.json` or env vars (+ Collector) | ~5 min |
 | [OpenAI Codex CLI](./openai-codex/) | `~/.codex/config.toml` | ~5 min |
+| [OpenCode](./opencode/) | Environment variables | ~5 min |
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |
 | [GitHub Copilot SDK](./github-copilot-sdk/) | Manual OTel spans in Node.js | ~15 min |
 
