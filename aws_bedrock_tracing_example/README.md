@@ -1,96 +1,98 @@
-# Instrumenting AWS Bedrock 
+## AWS Bedrock Tracing
 
-After iterating through several implmentations for AWS Bedrock.  This should be the correct implementation.  The key is in the __Instrumentor__
+This example shows how to instrument [AWS Bedrock](https://aws.amazon.com/bedrock/) LLM calls with OpenTelemetry and route traces and logs to Dynatrace.
 
-**All of these examples are using the Boto Client**.  No other SDK as of this post.
+Both the `Converse` and `Invoke` Bedrock APIs are covered, using the Boto3 client auto-instrumented via the [Traceloop SDK](https://www.traceloop.com/docs) and OpenTelemetry `BotocoreInstrumentor`. Traceloop enriches spans with `gen_ai.*` semantic conventions (model, token counts, finish reason) and the `@workflow`, `@task`, `@agent` decorators provide logical grouping in traces.
 
+![AWS Bedrock Dynatrace Dashboard](./image1.png)
 
+> [!TIP]
+> For Dynatrace setup instructions, API token scopes, and advanced configuration, see the [AI Observability Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
 
-## APIS 
-There are two primary APIs: 
-Invoke and Converse 
+## Architecture
 
-
-# Imports 
-
-```
-from traceloop.sdk import Traceloop
-from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler as OTLPLoggingHandler
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
-from opentelemetry._logs import set_logger_provider
-
-from traceloop.sdk.decorators import workflow, task, agent
-```
-
-## Sample Code 
+The example routes via a local [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/), which forwards to Dynatrace. This is required because the Traceloop SDK exports over gRPC, while Dynatrace ingests OTLP over HTTP/protobuf.
 
 ```
-logging.info("Starting Bedrock Example Instrumetors...")
-
-BedrockInstrumentor().instrument()
-RequestsInstrumentor().instrument()
-AsyncioInstrumentor().instrument()
-BotocoreInstrumentor().instrument()
-
-logging.info("Initializing traceloop...")
-traceloop = Traceloop()
-Traceloop.init(
-    app_name="bedrock_example_app",
-    disable_batch=True,
-    should_enrich_metrics=True,
-    api_endpoint=TRACELOOP_BASE_URL,
-)
-
-Traceloop.set_association_properties({
-    "appid": "1234567890",
-    "appname": "main",
-    "assignmentgroup": "Dynatrace Sales Engineering",
-    "ecosystem": "Observability Engineering",
-})
+Python app → OTel Collector (localhost:4318) → Dynatrace OTLP endpoint
 ```
 
-## Use Decorators Where Appropriate
+## Signals
 
-from traceloop.sdk.decorators import workflow, task, agent
+| Signal | How | Details |
+|---|---|---|
+| **Traces** | `BotocoreInstrumentor` + Traceloop | One span per Bedrock API call — includes model ID, token usage, finish reason via `gen_ai.*` attributes |
+| **Logs** | `OTLPLogExporter` (HTTP) | Python `logging` bridged to OTel; correlated to the active trace span |
 
-- Workflow
-- Task 
-- Agent
+All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Traceloop decorators.
 
+## How to use
 
-## Logging Setup
-If you want to add Logs to your Traces : 
+### Prerequisites
 
+- Python 3.9+
+- AWS credentials configured (`aws configure` or environment variables) with Bedrock access in `us-east-1`
+- A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
+- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** and **`logs.ingest`** scopes
+
+### Install dependencies
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    stream=sys.stdout,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-logging.getLogger("botocore").setLevel(logging.INFO)
-logging.getLogger("urllib3").setLevel(logging.INFO)
+### Configure the OTel Collector
 
-# Ship Python logs to the local OTel collector via OTLP/HTTP
-_log_provider = LoggerProvider()
-set_logger_provider(_log_provider)
-_log_provider.add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{TRACELOOP_BASE_URL}/v1/logs"))
-)
-logging.getLogger().addHandler(OTLPLoggingHandler(logger_provider=_log_provider))
+Add the following to your collector config to receive from the app and forward to Dynatrace:
 
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  otlphttp:
+    endpoint: https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp
+    headers:
+      Authorization: "Api-Token <YOUR_DT_TOKEN>"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      exporters: [otlphttp]
 ```
 
-## Examples 
+### Run
 
-![Image2](/image2.png "Dashboard") 
+```bash
+source .venv/bin/activate
+python3 main.py
+```
 
-![Image1](/image1.png "Dashboard") 
+The script runs continuously, calling both the Converse and Invoke APIs every 5 seconds. Stop it with `Ctrl+C`.
 
+### Verify in Dynatrace
 
+```dql
+fetch spans, from:now()-1h
+| filter service.name == "bedrock_example_app"
+| sort timestamp desc
+| limit 50
+```
+
+## Files
+
+| File | Description |
+|---|---|
+| `main.py` | Fully instrumented entrypoint — auto-instruments Boto3, sets up Traceloop, runs a continuous loop calling both APIs |
+| `converse.py` | Minimal standalone example using the Converse API (no instrumentation) |
+| `invoke.py` | Minimal standalone example using the Invoke API (no instrumentation) |
+| `guard_rail_metrics.py` | Fetches Bedrock Guardrail metrics from CloudWatch (intervention count, latency, text units) |
