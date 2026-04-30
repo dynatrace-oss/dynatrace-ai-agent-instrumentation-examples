@@ -56,7 +56,7 @@ Traceloop.init(
     app_name="bedrock_example_app",
     disable_batch=True,
     should_enrich_metrics=True,
-    api_endpoint=TRACELOOP_BASE_URL,
+    api_endpoint=COLLECTOR_BASE_URL,
 )
 
 Traceloop.set_association_properties({
