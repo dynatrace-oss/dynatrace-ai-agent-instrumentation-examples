@@ -24,7 +24,7 @@ import uvicorn
 from litellm.proxy.proxy_server import app
 
 # Must run BEFORE litellm imports the proxy app
-TRACELOOP_BASE_URL = os.environ["TRACELOOP_BASE_URL"]
+COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
 
 # Optional LLM provider keys — set in environment to enable each provider
 # Grok (xAI): use model prefix "xai/", e.g. "xai/grok-2-latest"
