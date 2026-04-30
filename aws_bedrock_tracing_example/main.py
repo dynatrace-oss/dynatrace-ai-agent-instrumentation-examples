@@ -38,7 +38,7 @@ logging.getLogger("urllib3").setLevel(logging.INFO)
 _log_provider = LoggerProvider()
 set_logger_provider(_log_provider)
 _log_provider.add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{TRACELOOP_BASE_URL}/v1/logs"))
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{COLLECTOR_BASE_URL}/v1/logs"))
 )
 logging.getLogger().addHandler(OTLPLoggingHandler(logger_provider=_log_provider))
 
