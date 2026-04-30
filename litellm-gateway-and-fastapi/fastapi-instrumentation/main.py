@@ -39,7 +39,7 @@ litellm.callbacks = [LiteLLMOTel()]
 # Route Python logs to the local OTLP collector (same endpoint as metrics/spans)
 _log_provider = LoggerProvider()
 _log_provider.add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4317"))
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="COLLECTOR_BASE_URL"))
 )
 set_logger_provider(_log_provider)
 logging.basicConfig(level=logging.INFO)
