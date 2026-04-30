@@ -53,7 +53,7 @@ Traceloop.init(
     api_key="KEY",
     disable_batch=True,
     should_enrich_metrics=True,
-    metrics_exporter=OTLPMetricExporter(endpoint="http://localhost:4317"),
+    metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL),
 )
 
 # Register LiteLLM's built-in OTEL callback — automatically captures gen_ai.*
