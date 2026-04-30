@@ -24,7 +24,7 @@ from opentelemetry._logs import set_logger_provider
 from traceloop.sdk.decorators import workflow, task, agent
 import requests
 
-TRACELOOP_BASE_URL = "http://localhost:4318"
+COLLECTOR_BASE_URL = "http://localhost:4318"
 
 logging.basicConfig(
     level=logging.DEBUG,
