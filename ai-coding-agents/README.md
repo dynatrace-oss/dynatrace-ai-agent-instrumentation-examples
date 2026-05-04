@@ -11,6 +11,7 @@ Unlike traditional application instrumentation, coding agents run interactively 
 - [OpenAI Codex CLI](./openai-codex/) — OTLP export via `~/.codex/config.toml`
 - [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
+- [OpenClaw + observability plugin](./openclaw-observability-plugin/) — community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
 - [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
 
 ---

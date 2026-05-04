@@ -1,0 +1,16 @@
+{
+  "name": "openclaw_llm_availability",
+  "description": "Success rate of openclaw LLM calls. Ensures the LLM gateway is operational.",
+  "criteria": [
+    {
+      "timeframeFrom": "now()-1d",
+      "timeframeTo": "now()",
+      "target": 99,
+      "warning": 99.5
+    }
+  ],
+  "customSli": {
+    "filterSegments": [],
+    "indicator": "fetch spans\n| filter span.name == \"openclaw.llm.call\"\n| filter service.name == \"openclaw-gateway\"\n| summarize total = count(), good = countIf(span.status_code != \"ERROR\")\n| fieldsAdd sli = (toDouble(good) / toDouble(total)) * 100\n"
+  }
+}
