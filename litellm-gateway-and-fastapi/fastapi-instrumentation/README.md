@@ -28,7 +28,7 @@ All signals are forwarded via gRPC to a local OTel Collector at `localhost:4317`
 
 ```bash
 # Required — points to your local OTel Collector
-export TRACELOOP_BASE_URL=http://localhost:4318
+export COLLECTOR_BASE_URL=http://localhost:4318
 
 # At least one of these must be set
 export XAI_API_KEY=<your-xai-key>              # for xai/grok-* models
