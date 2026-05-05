@@ -70,6 +70,17 @@ service:
       exporters: [otlphttp]
 ```
 
+After you saved your `config.yaml`, you can start the collector with
+```bash
+docker run \
+  -p 127.0.0.1:4317:4317 \
+  -p 127.0.0.1:4318:4318 \
+  -p 127.0.0.1:55679:55679 \
+  --mount type=bind,source="$(pwd)"/config.yaml,target=/config.yaml,readonly \
+  -it \
+  otel/opentelemetry-collector:0.151.0  \
+  --config=/config.yaml
+\```
 ### Run
 
 ```bash
