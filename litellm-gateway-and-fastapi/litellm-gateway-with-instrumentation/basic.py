@@ -11,7 +11,7 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OTEL_URL = os.getenv("OTEL_URL")
 OTEL_TOKEN = os.getenv("OTEL_TOKEN", "XYZ")
 SERVICE_NAME = os.getenv("SERVICE_NAME", "fastapi-gateway")
-TRACELOOP_BASE_URL = os.environ["TRACELOOP_BASE_URL"]
+COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
 from traceloop.sdk import Traceloop
 
 # Must run BEFORE litellm imports the proxy app
