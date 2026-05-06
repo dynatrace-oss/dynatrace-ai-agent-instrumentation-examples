@@ -34,7 +34,7 @@ All signals are forwarded via gRPC to a local OTel Collector at `localhost:4317`
 ### Configure environment
 
 ```bash
-export TRACELOOP_BASE_URL=http://localhost:4318
+export COLLECTOR_BASE_URL=http://localhost:4318
 export ANTHROPIC_API_KEY=<your-anthropic-key>
 export LITELLM_MASTER_KEY=<choose-a-master-key>    # required to call the proxy
 export LITELLM_UI_USERNAME=admin
