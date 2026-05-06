@@ -81,6 +81,6 @@ Next steps:
   - Tail the gateway log for [otel] hook-registration lines:
       journalctl --user -u openclaw-gateway -f | grep -E '\\[otel\\]'
   - Send a real message through OpenClaw and verify a connected
-    'openclaw.request' -> 'openclaw.agent.turn' -> 'tool.*' trace
+    'openclaw.request' -> 'openclaw.agent.turn' -> 'execute_tool *' trace
     appears in Dynatrace under service.name = openclaw-gateway.
 EOF

@@ -4,8 +4,8 @@ This example shows how to add **deep request- and tool-level tracing** to [OpenC
 
 If you only need cost, token, and gateway-health metrics, the simpler built-in path in [`../openclaw/`](../openclaw/) is enough. Use this example when you also need:
 
-- connected traces — `openclaw.request` → `openclaw.agent.turn` → `tool.*`
-- per-tool execution spans (`tool.Read`, `tool.Write`, `tool.exec`, `tool.web_search`, …)
+- connected traces — `openclaw.request` → `openclaw.agent.turn` → `execute_tool *`
+- per-tool execution spans (`execute_tool Read`, `execute_tool Write`, `execute_tool exec`, `execute_tool web_search`, …)
 - LLM-call spans (`openclaw.llm.call`) suitable for an availability SLO
 - kernel-level security signal — sensitive-file access, dangerous commands, supply-chain installs, network exfiltration
 
@@ -37,7 +37,7 @@ This example targets **`0.2.x`** unless you are pinned to an older OpenClaw buil
 | `openclaw.request` | Root span per inbound message; parents the agent turn, LLM call, and tool spans |
 | `openclaw.agent.turn` | Agent turn lifecycle, enriched with token counts and cost |
 | `openclaw.llm.call` | One span per outbound LLM call — used as the basis for the availability SLO below |
-| `tool.*` | One span per tool call (e.g. `tool.Read`, `tool.Write`, `tool.exec`, `tool.web_search`) |
+| `execute_tool *` | One span per tool call (e.g. `execute_tool Read`, `execute_tool Write`, `execute_tool exec`, `execute_tool web_search`) |
 | `openclaw.command.new`, `openclaw.command.reset`, `openclaw.command.stop` | Session command events |
 | `openclaw.gateway.startup` | Gateway startup |
 
@@ -254,11 +254,11 @@ Or run this DQL in a notebook to fetch a recent agent turn with its tool childre
 ```dql
 fetch spans, from:now()-1h
 | filter service.name == "openclaw-gateway"
-| filter span.name == "openclaw.request" or starts_with(span.name, "tool.")
+| filter span.name == "openclaw.request" or starts_with(span.name, "execute_tool ")
 | limit 50
 ```
 
-A healthy trace looks like `openclaw.request` → `openclaw.agent.turn` → one or more `tool.*` and/or `openclaw.llm.call` children, all sharing the same `openclaw.session.key`.
+A healthy trace looks like `openclaw.request` → `openclaw.agent.turn` → one or more `execute_tool *` and/or `openclaw.llm.call` children, all sharing the same `openclaw.session.key`.
 
 - **Distributed traces** — filter by `service.name = openclaw-gateway`
 - **Metrics browser** — search for `openclaw` to see all emitted metrics

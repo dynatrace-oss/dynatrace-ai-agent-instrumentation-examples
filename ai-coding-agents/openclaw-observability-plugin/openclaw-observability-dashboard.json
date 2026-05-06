@@ -8,7 +8,7 @@
     "tiles": {
       "1": {
         "type": "markdown",
-        "content": "# OpenClaw Gateway Observability\n\nComprehensive monitoring of the OpenClaw Gateway \u2014 token usage, security events, performance metrics, and host utilization.\n\n**Note:** Adjust the `host.name` filter to match the host running your OpenClaw gateway."
+        "content": "# OpenClaw Gateway Observability\n\nComprehensive monitoring of the OpenClaw Gateway \u2014 token usage, security events, performance metrics, and host utilization.\n\n**Note:** Replace `YOUR_HOST_NAME` in the Host Metrics section with the hostname of the machine running your OpenClaw gateway (find it with `hostname` on Linux). The `host.name` value is the system hostname reported by the OTel `hostmetrics` receiver — it is not set by the plugin."
       },
       "2": {
         "title": "Total Token Usage (Input)",
@@ -276,7 +276,7 @@
       "15": {
         "title": "Tool Execution Statistics",
         "type": "data",
-        "query": "fetch spans | filter service.name == \"openclaw-gateway\" and span.name == \"execute_tool exec\" | fieldsAdd duration_ms = toDouble(duration) / 1000000 | summarize avg_ms = avg(duration_ms), max_ms = max(duration_ms), count = count()\n",
+        "query": "fetch spans | filter service.name == \"openclaw-gateway\" and starts_with(span.name, \"execute_tool \") | fieldsAdd duration_ms = toDouble(duration) / 1000000 | summarize avg_ms = avg(duration_ms), max_ms = max(duration_ms), count = count(), by:{span.name}\n",
         "visualization": "table",
         "visualizationSettings": {
           "autoSelectVisualization": false
@@ -387,12 +387,12 @@
       },
       "20": {
         "type": "markdown",
-        "content": "# OpenClaw Gateway Observability\n\nComprehensive monitoring of the OpenClaw Gateway \u2014 token usage, security events, performance metrics, and host utilization.\n\n**Note:** Adjust the `host.name` filter to match the host running your OpenClaw gateway."
+        "content": "# OpenClaw Gateway Observability\n\nComprehensive monitoring of the OpenClaw Gateway \u2014 token usage, security events, performance metrics, and host utilization.\n\n**Note:** Replace `YOUR_HOST_NAME` in the Host Metrics section with the hostname of the machine running your OpenClaw gateway (find it with `hostname` on Linux). The `host.name` value is the system hostname reported by the OTel `hostmetrics` receiver — it is not set by the plugin."
       },
       "21": {
         "title": "CPU Utilization (%)",
         "type": "data",
-        "query": "timeseries idle=avg(system.cpu.time, filter:{state==\"idle\"}), total=avg(system.cpu.time), filter:{host.name==\"openclaw\"}, interval:5m",
+        "query": "timeseries idle=avg(system.cpu.time, filter:{state==\"idle\"}), total=avg(system.cpu.time), filter:{host.name==\"YOUR_HOST_NAME\"}, interval:5m",
         "visualization": "lineChart",
         "visualizationSettings": {
           "autoSelectVisualization": false
@@ -413,7 +413,7 @@
       "22": {
         "title": "Disk I/O",
         "type": "data",
-        "query": "timeseries avg(system.disk.io), interval:5m, by:{mode}, filter:{ host.name == \"openclaw\"}\n",
+        "query": "timeseries avg(system.disk.io), interval:5m, by:{mode}, filter:{ host.name == \"YOUR_HOST_NAME\"}\n",
         "visualization": "areaChart",
         "visualizationSettings": {
           "autoSelectVisualization": false
@@ -434,7 +434,7 @@
       "23": {
         "title": "Memory usage",
         "type": "data",
-        "query": "timeseries avg(system.memory.usage), filter:{ host.name == \"openclaw\"}, by:{state}\n",
+        "query": "timeseries avg(system.memory.usage), filter:{ host.name == \"YOUR_HOST_NAME\"}, by:{state}\n",
         "visualization": "lineChart",
         "visualizationSettings": {
           "autoSelectVisualization": false
@@ -459,7 +459,7 @@
       "25": {
         "title": "Network activity",
         "type": "data",
-        "query": "timeseries avg(system.network.io), by:{direction}, filter:host.name==\"openclaw\"",
+        "query": "timeseries avg(system.network.io), by:{direction}, filter:host.name==\"YOUR_HOST_NAME\"",
         "visualization": "lineChart",
         "visualizationSettings": {
           "autoSelectVisualization": true
@@ -481,7 +481,7 @@
       "26": {
         "title": "",
         "type": "data",
-        "query": "timeseries la1=avg(system.cpu.load_average.1m), la5=avg(system.cpu.load_average.5m), la15=avg(system.cpu.load_average.15m), filter: host.name==\"openclaw\"",
+        "query": "timeseries la1=avg(system.cpu.load_average.1m), la5=avg(system.cpu.load_average.5m), la15=avg(system.cpu.load_average.15m), filter: host.name==\"YOUR_HOST_NAME\"",
         "visualization": "lineChart",
         "visualizationSettings": {
           "autoSelectVisualization": true
