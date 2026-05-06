@@ -17,7 +17,7 @@ from traceloop.sdk import Traceloop
 # Must run BEFORE litellm imports the proxy app
 Traceloop.init(
     app_name="litellm-gateway",
-    api_endpoint= TRACELOOP_BASE_URL,
+    api_endpoint= COLLECTOR_BASE_URL,
     api_key="KEY",
     disable_batch=True,
     should_enrich_metrics=True,
