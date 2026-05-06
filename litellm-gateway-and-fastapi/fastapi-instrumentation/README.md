@@ -36,6 +36,45 @@ export GROQ_API_KEY=<your-groq-key>            # for groq/* models
 export ANTHROPIC_API_KEY=<your-anthropic-key>  # for anthropic/* models
 ```
 
+### Configure the OTel Collector
+
+Add the following to your collector config.yaml to receive from the app and forward to Dynatrace:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  otlphttp:
+    endpoint: https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp
+    headers:
+      Authorization: "Api-Token <YOUR_DT_TOKEN>"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      exporters: [otlphttp]
+```
+
+After you saved your `config.yaml`, you can start the collector with
+```bash
+docker run \
+  -p 127.0.0.1:4317:4317 \
+  -p 127.0.0.1:4318:4318 \
+  -p 127.0.0.1:55679:55679 \
+  --mount type=bind,source="$(pwd)"/config.yaml,target=/config.yaml,readonly \
+  -it \
+  otel/opentelemetry-collector:0.151.0  \
+  --config=/config.yaml
+```
+
 ### Run
 
 ```bash
