@@ -1,0 +1,101 @@
+    ### 1a - Ollama: Explain quantum entanglement
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "ollama/llama3.2:latest", "messages": [{"role": "user", "content": "Explain quantum entanglement in simple terms."}], "max_tokens": 256}
+
+
+### 1a1 Ollama Hello World
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "ollama/llama3.2", "messages": [{"role": "user", "content": "HEllo world "}], "max_tokens": 64}
+
+### 1b - Groq: Hello World
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "groq/llama-3.1-8b-instant", "messages": [{"role": "user", "content": "Hello World."}], "max_tokens": 256}
+
+### 1c - Anthropic: Explain quantum entanglement
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "anthropic/claude-sonnet-4-6", "messages": [{"role": "user", "content": "What is LiteLLM"}], "max_tokens": 256}
+
+
+
+### 2b - Groq: Write a haiku about coffee
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "groq/llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "Write a haiku about coffee."}], "max_tokens": 64}
+
+
+### 2c - Anthropic: Write a haiku about coffee
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "anthropic/claude-sonnet-4-6", "messages": [{"role": "user", "content": "Write a haiku about coffee."}], "max_tokens": 64}
+
+
+### 3a - Ollama: Fibonacci in Python
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "ollama/llama3", "messages": [{"role": "user", "content": "Write a Python function to return the nth Fibonacci number."}], "max_tokens": 256}
+
+### 3b - Groq: Fibonacci in Python
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "groq/llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "Write a Python function to return the nth Fibonacci number."}], "max_tokens": 256}
+
+
+### 4a - Ollama: Explain REST vs GraphQL
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{
+  "model": "ollama/llama3.2",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What are the key differences between REST and GraphQL?"
+    }
+  ],
+  "max_tokens": 256
+}
+
+### 4b - Groq: Explain REST vs GraphQL
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "groq/llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "What are the key differences between REST and GraphQL?"}], "max_tokens": 256}
+
+
+### 5a - Ollama: Make the case for pineapple on pizza
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "ollama/llama3.2", "messages": [{"role": "user", "content": "Make the case for pineapple on pizza."}], "max_tokens": 256}
+
+### 5b - Groq: Make the case for pineapple on pizza
+POST http://127.0.0.1:8000/chat/completions
+Content-Type: application/json
+x-litellm-api-key: sk-admin-local
+
+{"model": "groq/llama-3.3-70b-versatile", "messages": [{"role": "user", "content": "Make the case for pineapple on pizza."}], "max_tokens": 256}
+
+
