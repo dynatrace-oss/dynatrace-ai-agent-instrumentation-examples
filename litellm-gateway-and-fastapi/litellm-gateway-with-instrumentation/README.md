@@ -41,6 +41,46 @@ export LITELLM_UI_USERNAME=admin
 export LITELLM_UI_PASSWORD=<choose-a-password>
 ```
 
+### Configure the OTel Collector
+
+Add the following to your collector config to receive from the app and forward to Dynatrace:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  otlphttp:
+    endpoint: https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp
+    headers:
+      Authorization: "Api-Token <YOUR_DT_TOKEN>"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      exporters: [otlphttp]
+```
+
+After you saved your `config.yaml`, you can start the collector with
+```bash
+docker run \
+  -p 127.0.0.1:4317:4317 \
+  -p 127.0.0.1:4318:4318 \
+  -p 127.0.0.1:55679:55679 \
+  --mount type=bind,source="$(pwd)"/config.yaml,target=/config.yaml,readonly \
+  -it \
+  otel/opentelemetry-collector:0.151.0  \
+  --config=/config.yaml
+```
+
+
 ### Run
 
 ```bash
