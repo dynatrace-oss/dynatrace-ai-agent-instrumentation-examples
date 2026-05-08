@@ -80,6 +80,7 @@ docker run \
   -it \
   otel/opentelemetry-collector:0.151.0  \
   --config=/config.yaml
+```
 
 ### Run
 
