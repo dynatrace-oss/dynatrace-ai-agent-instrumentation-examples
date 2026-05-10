@@ -159,6 +159,10 @@ fetch logs, from:now()-1h
 - **Distributed traces** – filter by `service.name = openclaw-gateway` to see trace spans
 - **Log & Event Viewer** – filter by `service.name = openclaw-gateway` to see structured log events
 
+## Going deeper
+
+For connected request → agent turn → tool execution traces, per-tool execution timing, LLM-call availability SLOs, and optional Tetragon kernel-level security telemetry, see the companion example in [`../openclaw-observability-plugin/`](../openclaw-observability-plugin/). It layers the community [openclaw-observability-plugin](https://github.com/henrikrexed/openclaw-observability-plugin) on top of the built-in `diagnostics-otel` path shown here.
+
 ### Optional configuration
 
 | Setting (openclaw.json)                             | Default      | Description                                                      |
