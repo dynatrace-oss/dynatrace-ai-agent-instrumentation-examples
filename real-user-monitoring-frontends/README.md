@@ -25,9 +25,10 @@ sequenceDiagram
     DT_RUM->>Backend: HTTP POST /api/ask<br/>+ traceparent header (auto-injected)<br/>+ body: { question, conversation_id }
 
     Backend->>Backend: extract(headers) → parent context<br/>start_as_current_span("music_agent.ask",<br/>  context=rum_ctx)   ← child of RUM span
-    Backend->>Backend: stamp conversation.id,<br/>gen_ai.provider.name, gen_ai.request.model
+    Backend->>Backend: stamp gen_ai.conversation.id,<br/>gen_ai.provider.name, gen_ai.request.model
 
     Backend->>LLM: pydantic-ai Agent.run(question)
+    Backend->>Backend: request-scoped span processor stamps<br/>gen_ai.conversation.id on child LLM spans
     LLM-->>Backend: streaming response + token counts
 
     Backend-->>Browser: { answer, provider, model, conversation_id }
@@ -38,7 +39,7 @@ sequenceDiagram
 
     Browser->>DT_RUM: User clicks 👍 or 👎
     DT_RUM->>Backend: HTTP POST /api/feedback<br/>+ traceparent (new RUM action span)<br/>+ body: { rating, conversation_id, … }
-    Backend->>Backend: start_as_current_span("music_agent.feedback")<br/>stamp feedback.rating, conversation.id
+    Backend->>Backend: start_as_current_span("music_agent.feedback")<br/>stamp feedback.rating, gen_ai.conversation.id
     Backend->>DT: feedback span exported
 ```
 
@@ -71,23 +72,23 @@ This makes the backend span a **child** of the browser user-action span. Both sh
 
 ## Conversation ID — a separate concept
 
-The `conversation.id` is **not** a trace ID. It is a UUID generated once per browser session by the frontend:
+The `gen_ai.conversation.id` is **not** a trace ID. It is a UUID generated once per browser session by the frontend:
 
 ```js
 const CONV_ID = sessionStorage.getItem('conversationId') || crypto.randomUUID();
 ```
 
-It is sent in every request body and stamped as a span attribute on every backend span:
+It is sent in every request body and stamped as a span attribute on the backend request span and any child spans created while the request is running:
 
 ```python
-span.set_attribute("conversation.id", body.conversation_id)
+span.set_attribute("gen_ai.conversation.id", body.conversation_id)
 ```
 
 This lets you filter **all exchanges in a session** with a single DQL query — even across multiple traces:
 
 ```
 fetch spans
-| filter conversation.id == "8f3a…"
+| filter gen_ai.conversation.id == "8f3a…"
 | fields timestamp, span.name, feedback.rating, gen_ai.usage.input_tokens
 ```
 
@@ -101,7 +102,7 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 |---|---|---|
 | Browser user actions | DT RUM JS | `useraction.name`, `useraction.duration` |
 | End-to-end trace link | W3C traceparent (RUM → backend) | shared `traceId` |
-| Session grouping | `conversation.id` in request body | `conversation.id` |
+| Session grouping | `conversation_id` in request body | `gen_ai.conversation.id` |
 | LLM provider + model | pydantic-ai span attributes | `gen_ai.provider.name`, `gen_ai.request.model` |
 | Token usage | pydantic-ai + backend span | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
 | User feedback | `/api/feedback` OTel span | `feedback.rating`, `feedback.question` |

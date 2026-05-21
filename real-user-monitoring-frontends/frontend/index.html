@@ -390,7 +390,7 @@
   <span class="conv-id" id="convIdDisplay">—</span>
   <button class="copy-btn" id="copyBtn">Copy for DQL</button>
   <span class="rum-status inactive" id="rumStatus">RUM not detected</span>
-  <span class="conv-hint">DQL: <code>fetch spans | filter conversation.id == "&lt;id&gt;"</code></span>
+  <span class="conv-hint">DQL: <code>fetch spans | filter gen_ai.conversation.id == "&lt;id&gt;"</code></span>
 </div>
 
 <div class="layout">
@@ -458,7 +458,7 @@
   // ── Conversation ID ──────────────────────────────────────────────────────────
   // One UUID per browser session — persists across page refreshes within the tab,
   // new tab = new conversation. This ID flows through every API call as a custom
-  // OTel attribute (conversation.id) so the full multi-turn trace is filterable
+  // OTel attribute (gen_ai.conversation.id) so the full multi-turn trace is filterable
   // in Dynatrace DQL.
   function uuidv4() {
     return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
@@ -476,7 +476,7 @@
 
   // Copy full DQL query to clipboard — paste directly into a Dynatrace Notebook
   document.getElementById('copyBtn').addEventListener('click', () => {
-    const dql = `fetch spans\n| filter conversation.id == "${CONV_ID}"`;
+    const dql = `fetch spans\n| filter gen_ai.conversation.id == "${CONV_ID}"`;
     navigator.clipboard.writeText(dql).then(() => {
       const btn = document.getElementById('copyBtn');
       btn.textContent = 'Copied!';
@@ -584,7 +584,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // conversation_id is sent in the request body so the backend can stamp
-        // it onto every OTel span, making the full multi-turn trace filterable.
+        // it onto backend and child GenAI spans, making the full multi-turn trace filterable.
         // The DT RUM JS (if loaded) also injects traceparent/tracestate headers
         // automatically, linking this fetch to the backend span as a child.
         body: JSON.stringify({ question, conversation_id: CONV_ID }),
@@ -652,7 +652,7 @@
       copyFeedbackBtn.textContent = 'Copy DQL';
       copyFeedbackBtn.title = 'Copy feedback DQL query';
       copyFeedbackBtn.addEventListener('click', () => {
-        const dql = `fetch spans\n| filter span.name == "music_agent.feedback"\n| filter conversation.id == "${data.conversation_id}"\n| fields timestamp, feedback.rating, feedback.question, gen_ai.provider.name, gen_ai.request.model`;
+        const dql = `fetch spans\n| filter span.name == "music_agent.feedback"\n| filter gen_ai.conversation.id == "${data.conversation_id}"\n| fields timestamp, feedback.rating, feedback.question, gen_ai.provider.name, gen_ai.request.model`;
         navigator.clipboard.writeText(dql).then(() => {
           copyFeedbackBtn.textContent = 'Copied!';
           setTimeout(() => { copyFeedbackBtn.textContent = 'Copy DQL'; }, 1500);

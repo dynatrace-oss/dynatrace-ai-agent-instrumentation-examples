@@ -192,7 +192,7 @@ export default function Page() {
   }
 
   function copyConvDql() {
-    const dql = `fetch spans\n| filter conversation.id == "${conversationId}"`;
+    const dql = `fetch spans\n| filter gen_ai.conversation.id == "${conversationId}"`;
     copyToClipboard(dql, () => {
       setConvCopied(true);
       setTimeout(() => setConvCopied(false), 1500);
@@ -310,7 +310,7 @@ function AnswerBlock({
   const isAzure = msg.provider?.toLowerCase().includes("azure");
 
   function copyFeedbackDql() {
-    const dql = `fetch spans\n| filter span.name == "music_agent.feedback"\n| filter conversation.id == "${msg.conversationId}"\n| fields timestamp, feedback.rating, feedback.question, gen_ai.provider.name, gen_ai.request.model`;
+    const dql = `fetch spans\n| filter span.name == "music_agent.feedback"\n| filter gen_ai.conversation.id == "${msg.conversationId}"\n| fields timestamp, feedback.rating, feedback.question, gen_ai.provider.name, gen_ai.request.model`;
     copyToClipboard(dql, () => {
       setFeedbackCopied(true);
       setTimeout(() => setFeedbackCopied(false), 1500);
