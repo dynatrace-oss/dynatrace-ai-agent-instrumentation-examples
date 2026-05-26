@@ -3,3 +3,5 @@ pydantic
 fastapi
 uvicorn
 traceloop-sdk
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http

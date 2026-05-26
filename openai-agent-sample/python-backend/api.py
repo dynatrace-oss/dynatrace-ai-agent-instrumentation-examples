@@ -14,14 +14,41 @@ def read_secret(secret: str):
 
 token = read_secret("dynatrace_otel")
 headers = {"Authorization": f"Api-Token {token}"}
+DT_OTLP_ENDPOINT = "https://wkf10640.live.dynatrace.com/api/v2/otlp"
+
 from traceloop.sdk import Traceloop
 Traceloop.init(
     app_name="openai-cs-agents",
-    api_endpoint="https://wkf10640.live.dynatrace.com/api/v2/otlp",
+    api_endpoint=DT_OTLP_ENDPOINT,
     disable_batch=True,
     headers=headers,
     should_enrich_metrics=True,
 )
+
+# =========================
+# OpenTelemetry Logs exporter
+# =========================
+import logging as _logging
+
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+
+_logger_provider = LoggerProvider(
+    resource=Resource.create({"service.name": "openai-cs-agents"})
+)
+set_logger_provider(_logger_provider)
+
+_log_exporter = OTLPLogExporter(
+    endpoint=f"{DT_OTLP_ENDPOINT}/v1/logs",
+    headers=headers,
+)
+_logger_provider.add_log_record_processor(BatchLogRecordProcessor(_log_exporter))
+
+_otel_log_handler = LoggingHandler(level=_logging.INFO, logger_provider=_logger_provider)
+_logging.getLogger().addHandler(_otel_log_handler)
 
 
 from opentelemetry import trace
@@ -210,6 +237,11 @@ async def chat_endpoint(req: ChatRequest):
                 "context": ctx,
                 "current_agent": current_agent_name,
             }
+            logger.info(
+                "New conversation started: conversation_id=%s account_number=%s",
+                conversation_id,
+                ctx.account_number,
+            )
             if req.message.strip() == "":
                 conversation_store.save(conversation_id, state)
                 return ChatResponse(
@@ -226,6 +258,12 @@ async def chat_endpoint(req: ChatRequest):
             state = conversation_store.get(conversation_id)
 
         current_agent = _get_agent_by_name(state["current_agent"])
+        logger.info(
+            "Handling chat message: conversation_id=%s current_agent=%s message_len=%d",
+            conversation_id,
+            current_agent.name,
+            len(req.message),
+        )
         state["input_items"].append({"content": req.message, "role": "user"})
         old_context = state["context"].model_dump().copy()
         guardrail_checks: List[GuardrailCheck] = []
@@ -234,6 +272,12 @@ async def chat_endpoint(req: ChatRequest):
             result = await Runner.run(current_agent, state["input_items"], context=state["context"])
         except InputGuardrailTripwireTriggered as e:
             failed = e.guardrail_result.guardrail
+            logger.warning(
+                "Guardrail tripwire triggered: conversation_id=%s agent=%s guardrail=%s",
+                conversation_id,
+                current_agent.name,
+                _get_guardrail_name(failed),
+            )
             gr_output = e.guardrail_result.output.output_info
             gr_reasoning = getattr(gr_output, "reasoning", "")
             gr_input = req.message
@@ -269,6 +313,12 @@ async def chat_endpoint(req: ChatRequest):
                 events.append(AgentEvent(id=uuid4().hex, type="message", agent=item.agent.name, content=text))
             # Handle handoff output and agent switching
             elif isinstance(item, HandoffOutputItem):
+                logger.info(
+                    "Agent handoff: conversation_id=%s %s -> %s",
+                    conversation_id,
+                    item.source_agent.name,
+                    item.target_agent.name,
+                )
                 # Record the handoff event
                 events.append(
                     AgentEvent(
@@ -308,6 +358,12 @@ async def chat_endpoint(req: ChatRequest):
                 current_agent = item.target_agent
             elif isinstance(item, ToolCallItem):
                 tool_name = getattr(item.raw_item, "name", None)
+                logger.info(
+                    "Tool call: conversation_id=%s agent=%s tool=%s",
+                    conversation_id,
+                    item.agent.name,
+                    tool_name,
+                )
                 raw_args = getattr(item.raw_item, "arguments", None)
                 tool_args: Any = raw_args
                 if isinstance(raw_args, str):
@@ -360,6 +416,13 @@ async def chat_endpoint(req: ChatRequest):
         state["input_items"] = result.to_input_list()
         state["current_agent"] = current_agent.name
         conversation_store.save(conversation_id, state)
+        logger.info(
+            "Chat turn complete: conversation_id=%s current_agent=%s messages=%d events=%d",
+            conversation_id,
+            current_agent.name,
+            len(messages),
+            len(events),
+        )
 
         # Build guardrail results: mark failures (if any), and any others as passed
         final_guardrails: List[GuardrailCheck] = []
