@@ -1,0 +1,182 @@
+- schemaId: builtin:openpipeline.spans.pipelines
+  scope: environment
+  value:
+    customId: openinference-ai-spans
+    displayName: OpenInference (Arize Phoenix) AI Observability - Spans
+    metadataList: []
+    routing: routable
+    processing:
+      processors:
+      - id: openinference-operation-kind
+        type: dql
+        matcher: 'true'
+        description: Map OpenInference span kinds to official gen_ai.operation.kind
+        enabled: true
+        sampleData: null
+        dql:
+          script: "// openinference.span.kind is only set on chain/agent spans (not\
+            \ on LLM spans from LangChain).\n// Fall back to attribute-based detection\
+            \ for LLM spans.\nfieldsAdd gen_ai.operation.kind = if(openinference.span.kind\
+            \ == \"CHAIN\", \"workflow\",\n                                else: if(openinference.span.kind\
+            \ == \"TOOL\", \"tool\",\n                                else: if(openinference.span.kind\
+            \ == \"AGENT\", \"agent\",\n                                else: if(openinference.span.kind\
+            \ == \"RETRIEVER\", \"retrieval\",\n                                else:\
+            \ \"task\"))))"
+      - id: openinference-llm-op-name
+        type: fieldsAdd
+        matcher: isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)
+        description: Set operation name to chat for LLM spans
+        enabled: true
+        sampleData: null
+        fieldsAdd:
+          fields:
+          - name: gen_ai.operation.name
+            value: chat
+      - id: openinference-llm-attributes
+        type: fieldsRename
+        matcher: isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)
+        description: Map OpenInference LLM attributes to official gen_ai.*
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: llm.model_name
+            toName: gen_ai.request.model
+          - fromName: llm.provider
+            toName: gen_ai.provider.name
+      - id: openinference-llm-system-fallback
+        type: fieldsRename
+        matcher: isNotNull(llm.system) AND isNull(gen_ai.provider.name)
+        description: 'Fallback: map llm.system to gen_ai.provider.name when llm.provider
+          is absent'
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: llm.system
+            toName: gen_ai.provider.name
+      - id: openinference-llm-usage
+        type: fieldsRename
+        matcher: isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)
+        description: Map OpenInference token usage to official gen_ai.usage.*
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: llm.token_count.prompt
+            toName: gen_ai.usage.input_tokens
+          - fromName: llm.token_count.completion
+            toName: gen_ai.usage.output_tokens
+      - id: openinference-cache-tokens
+        type: fieldsRename
+        matcher: isNotNull(llm.token_count.prompt_details.cache_read) OR isNotNull(llm.token_count.prompt_details.cache_write)
+        description: Map OpenInference cache token usage to official gen_ai.usage.prompt_caching.*
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: llm.token_count.prompt_details.cache_read
+            toName: gen_ai.usage.prompt_caching.read_tokens
+          - fromName: llm.token_count.prompt_details.cache_write
+            toName: gen_ai.usage.prompt_caching.write_tokens
+      - id: openinference-request-params
+        type: fieldsRename
+        matcher: 'true'
+        description: Copy OpenInference request parameters to official gen_ai.request.*
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: llm.temperature
+            toName: gen_ai.request.temperature
+          - fromName: llm.max_tokens
+            toName: gen_ai.request.max_tokens
+          - fromName: llm.top_p
+            toName: gen_ai.request.top_p
+      - id: openinference-response-mapping
+        type: dql
+        matcher: isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)
+        description: Map LLM response metadata to official attributes
+        enabled: true
+        sampleData: null
+        dql:
+          script: '// Official: gen_ai.response.finish_reasons (array)
+
+            fieldsAdd gen_ai.response.finish_reasons = if(isNull(llm.finish_reason),
+            array(), else: array(llm.finish_reason))'
+      - id: openinference-embedding-op-name
+        type: fieldsAdd
+        matcher: isNotNull(embedding.model_name)
+        description: Set operation name to embeddings for Embedding spans
+        enabled: true
+        sampleData: null
+        fieldsAdd:
+          fields:
+          - name: gen_ai.operation.name
+            value: embeddings
+      - id: openinference-embedding-attributes
+        type: fieldsRename
+        matcher: isNotNull(embedding.model_name)
+        description: Map OpenInference embedding attributes to official gen_ai.*
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: embedding.model_name
+            toName: gen_ai.request.model
+          - fromName: embedding.vector_length
+            toName: gen_ai.embeddings.dimension.count
+      - id: openinference-reranker-model
+        type: fieldsRename
+        matcher: isNotNull(reranker.model_name)
+        description: Map OpenInference reranker attributes
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: reranker.model_name
+            toName: gen_ai.request.model
+      - id: openinference-agent-mapping
+        type: fieldsRename
+        matcher: 'true'
+        description: Map OpenInference agent name to official attribute
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: agent.name
+            toName: gen_ai.agent.name
+      - id: openinference-tool-mapping
+        type: fieldsRename
+        matcher: isNotNull(tool.name)
+        description: Map OpenInference tool attributes
+        enabled: true
+        sampleData: null
+        fieldsRename:
+          fields:
+          - fromName: tool.name
+            toName: gen_ai.tool.name
+          - fromName: tool.description
+            toName: gen_ai.tool.description
+      - id: openinference-source-metadata
+        type: fieldsAdd
+        matcher: 'true'
+        description: Add source SDK metadata for tracking
+        enabled: true
+        sampleData: null
+        fieldsAdd:
+          fields:
+          - name: ai.observability.source
+            value: openinference
+      - id: openinference-input-output-fallback
+        type: dql
+        matcher: isNotNull(input.value) AND isNull(gen_ai.input.messages) AND (isNotNull(llm.token_count.total)
+          OR isNotNull(llm.model_name))
+        description: 'Interim: copy input.value/output.value to gen_ai.* so spans
+          appear in Prompts list'
+        enabled: true
+        sampleData: null
+        dql:
+          script: 'fieldsAdd `gen_ai.input.messages` = `input.value`
+
+            fieldsAdd `gen_ai.output.messages` = `output.value`'

@@ -7,7 +7,7 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProces
 from opentelemetry.sdk.resources import Resource, OTELResourceDetector, ProcessResourceDetector, OsResourceDetector, get_aggregated_resources
 from opentelemetry.semconv.attributes import service_attributes
 
-MODEL = os.environ.get("MODEL", "gpt-5-nano-2025-08-07")
+MODEL             = os.environ.get("MODEL", "gpt-4o")
 
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
 # For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
@@ -23,10 +23,12 @@ tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 
 if __name__ == "__main__":
+    api_version = os.getenv("AZURE_OPENAI_API_VERSION")
     client = openai.OpenAI(
         base_url=os.getenv("OPENAI_API_BASE"),
-        api_key=os.getenv("OPENAI_API_KEY")
-        )
+        api_key=os.getenv("OPENAI_API_KEY"),
+        **({"default_query": {"api-version": api_version}} if api_version else {}),
+    )
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": "Write a haiku."}],

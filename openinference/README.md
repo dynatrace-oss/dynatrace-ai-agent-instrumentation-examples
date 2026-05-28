@@ -51,7 +51,7 @@ OpenInference uses its own semantic conventions that the Dynatrace AI Observabil
 | **Requires Docker** | Yes | No |
 | **Requires Dynatrace config** | No | Yes -- one-time deploy |
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
-| **Make target** | `make run` | `make deploy-openpipeline` then `make run-openpipeline` |
+| **Make target** | `make run` | `make run-openpipeline` (deploy once with dtctl first) |
 
 Both paths produce identical results in the AI Observability app.
 
@@ -78,7 +78,8 @@ DT_API_TOKEN=dt0c01.****.*****
 
 OPENAI_API_KEY=**********************
 OPENAI_API_BASE=https://your-endpoint.openai.azure.com/   # optional, for Azure or custom providers
-MODEL=gpt-4o-mini                                         # optional, defaults to gpt-5-nano-2025-08-07
+MODEL=gpt-4o-mini                                         # optional, defaults to gpt-4o
+AZURE_OPENAI_API_VERSION=2024-07-01-preview               # optional, required for Azure OpenAI endpoints
 ```
 
 > **Note:** `DT_ENDPOINT` is your base tenant URL -- not the `/api/v2/otlp` path. Example: `https://abc12345.live.dynatrace.com`.
@@ -122,15 +123,28 @@ make run
 
 Or manually with Docker:
 
+**Linux/macOS:**
 ```bash
 docker run -d \
   --name otel-collector \
   -p 4318:4318 \
-  -v $(pwd)/otel-collector-config.yaml:/collector-config.yaml:ro \
+  -v $(pwd)/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro \
   -e DT_ENDPOINT=https://abc12345.live.dynatrace.com \
   -e DT_API_TOKEN=dt0c01.****.***** \
-  otel/opentelemetry-collector-contrib:0.153.0 \
-  --config=/collector-config.yaml
+  ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0 \
+  --config=/etc/otelcol/otel-collector-config.yaml
+```
+
+**Windows CMD:**
+```cmd
+docker run -d ^
+  --name otel-collector ^
+  -p 4318:4318 ^
+  -v %cd%/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro ^
+  -e DT_ENDPOINT=https://abc12345.live.dynatrace.com ^
+  -e DT_API_TOKEN=dt0c01.****.***** ^
+  ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0 ^
+  --config=/etc/otelcol/otel-collector-config.yaml
 ```
 
 What happens:
@@ -173,29 +187,49 @@ App  ->  Dynatrace OpenPipeline (transform)  ->  Dynatrace Grail
 
 ### Step 1 -- Deploy the OpenPipeline configuration
 
-This is a one-time setup per tenant. It deploys `openpipeline-openinference.yaml` and configures routing so OpenInference spans are automatically directed to the pipeline.
+This is a one-time setup per tenant.
+
+---
+
+#### Option B.1 -- Using dtctl
+
+[dtctl](https://github.com/dynatrace/dtctl) is the Dynatrace CLI — `kubectl`-style commands for Dynatrace resources.
+
+**Configure a context (one-time):**
 
 ```bash
-# with make (reads .env automatically)
-make deploy-openpipeline
-
-# or manually
-DT_ENDPOINT=https://abc12345.live.dynatrace.com \
-DT_API_TOKEN=dt0c01.****.***** \
-bash deploy-openpipeline.sh
+dtctl config set-credentials my-token --token dt0c01.*****
+dtctl ctx set my-tenant --environment https://abc12345.apps.dynatrace.com --token-ref my-token
 ```
 
-The script will:
-1. Convert `openpipeline-openinference.yaml` to the Dynatrace Settings API format.
-2. Validate the pipeline config against the tenant schema.
-3. Create or update the `openinference-ai-spans` pipeline.
-4. Add a routing entry so all spans with `otel.scope.name` matching `openinference` are routed to the pipeline.
-
-To validate without making any changes:
+**Deploy the pipeline:**
 
 ```bash
-bash deploy-openpipeline.sh --dry-run
+dtctl apply -f openpipeline-openinference-dtctl.yaml
 ```
+
+`openpipeline-openinference-dtctl.yaml` is the dtctl-ready version of `openpipeline-openinference.yaml`, pre-converted to the Dynatrace Settings API format.
+
+**Set up routing** (so OpenInference spans are directed to this pipeline):
+
+```bash
+bash setup-routing.sh
+```
+
+`setup-routing.sh` uses dtctl to read the current routing config, add the OpenInference entry, and apply it back. It requires PyYAML (`pip install pyyaml`) and dtctl to be configured.
+
+---
+
+#### Option B.2 -- Using the Dynatrace UI
+
+1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
+2. Select **Spans** and click **Add pipeline**.
+3. Name it `openinference-ai-spans` and add processors matching the definitions in `openpipeline-openinference.yaml`.
+4. Go to the **Routing** tab and add an entry:
+   - Matcher: `matchesPhrase(otel.scope.name, "openinference")`
+   - Pipeline: `openinference-ai-spans`
+
+---
 
 ### Step 2 -- Run the app
 
@@ -237,9 +271,9 @@ python3 app.py
 - Run `docker ps -a` and `docker logs otel-collector` to see the error.
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
 
-**OpenPipeline deploy fails (Option B):**
+**OpenPipeline not transforming spans (Option B):**
 - Confirm the token has `settings.read` and `settings.write` permissions.
-- Run `bash deploy-openpipeline.sh --dry-run` to validate without writing.
+- Re-run `dtctl apply -f openpipeline-openinference-dtctl.yaml` and `bash setup-routing.sh` to ensure the pipeline and routing are applied.
 
 **Spans visible in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.system` or `gen_ai.provider.name` to be set on the span -- these are added by the transform processor / OpenPipeline.
