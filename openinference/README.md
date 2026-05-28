@@ -263,34 +263,23 @@ print(json.dumps(routing))
 
 ---
 
-#### Option B.2 -- Using the Dynatrace AI Assistant
+#### Option B.2 -- Using an AI assistant
 
-You can ask the Dynatrace AI assistant to create the pipeline for you.
-
-1. In Dynatrace press `Ctrl+K` and open **Davis AI** or the AI chat.
-2. Paste the following prompt:
+Paste the prompt below into any AI assistant (ChatGPT, Copilot, Claude, etc.) along with the contents of `openpipeline-openinference.yaml`, and ask it to generate the `dtctl apply` YAML or the step-by-step UI instructions for your Dynatrace tenant.
 
 ```
-Create an OpenPipeline pipeline for Spans named "openinference-ai-spans" that normalizes OpenInference (Arize Phoenix) semantic conventions to Dynatrace gen_ai.* format.
+I need to create a Dynatrace OpenPipeline configuration for Spans that normalizes
+OpenInference (Arize Phoenix) semantic conventions to the Dynatrace gen_ai.* format.
 
-Add these processors:
-1. DQL processor (matcher: true) — set gen_ai.operation.kind from openinference.span.kind: CHAIN→workflow, TOOL→tool, AGENT→agent, RETRIEVER→retrieval, default→task
-2. fieldsAdd (matcher: isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)) — set gen_ai.operation.name = "chat"
-3. fieldsRename (same matcher) — llm.model_name→gen_ai.request.model, llm.provider→gen_ai.provider.name
-4. fieldsRename (matcher: isNotNull(llm.system) AND isNull(gen_ai.provider.name)) — llm.system→gen_ai.provider.name
-5. fieldsRename (same as 3) — llm.token_count.prompt→gen_ai.usage.input_tokens, llm.token_count.completion→gen_ai.usage.output_tokens
-6. fieldsRename (matcher: cache tokens present) — llm.token_count.prompt_details.cache_read→gen_ai.usage.prompt_caching.read_tokens
-7. fieldsRename (matcher: true) — llm.temperature→gen_ai.request.temperature, llm.max_tokens→gen_ai.request.max_tokens, llm.top_p→gen_ai.request.top_p
-8. DQL (same as 3) — gen_ai.response.finish_reasons=array(llm.finish_reason), gen_ai.response.model=gen_ai.request.model, gen_ai.system="azure.ai.openai" when provider is azure
-9. fieldsAdd (matcher: isNotNull(embedding.model_name)) — gen_ai.operation.name="embeddings"
-10. fieldsRename (same) — embedding.model_name→gen_ai.request.model, embedding.vector_length→gen_ai.embeddings.dimension.count
-11. fieldsRename (matcher: isNotNull(reranker.model_name)) — reranker.model_name→gen_ai.request.model
-12. fieldsRename (true) — agent.name→gen_ai.agent.name
-13. fieldsRename (isNotNull(tool.name)) — tool.name→gen_ai.tool.name, tool.description→gen_ai.tool.description
-14. fieldsAdd (true) — ai.observability.source="openinference"
-15. DQL (matcher: isNotNull(input.value) AND isNull(gen_ai.input.messages)) — gen_ai.input.messages=input.value, gen_ai.output.messages=output.value
+The pipeline name should be "openinference-ai-spans". The full list of processors
+and their matchers, types, and field mappings is defined in the attached file
+openpipeline-openinference.yaml.
 
-Then add a routing entry: matcher matchesPhrase(otel.scope.name, "openinference") → this pipeline.
+Please generate either:
+- A dtctl-ready YAML I can apply with `dtctl apply -f`
+- Or step-by-step instructions to create this pipeline in the Dynatrace OpenPipeline UI
+
+Also include a routing entry: matchesPhrase(otel.scope.name, "openinference") → openinference-ai-spans
 ```
 
 ---
