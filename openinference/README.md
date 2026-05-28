@@ -238,27 +238,10 @@ dtctl ctx set my-tenant --environment $DTCTL_ENV --token-ref my-token
 dtctl apply -f openpipeline-openinference-dtctl.yaml
 ```
 
-Then add the routing entry safely (GET → merge → PUT, all via dtctl):
+Then add the routing entry safely (GET current table → merge → PUT):
 
 ```bash
-dtctl get settings --schema builtin:openpipeline.spans.routing --scope environment -o json \
-  | python3 -c "
-import json, sys
-routing = json.load(sys.stdin)
-entry = {
-  'enabled': True,
-  'pipelineType': 'custom',
-  'customPipelineId': 'openinference-ai-spans',
-  'matcher': 'matchesPhrase(otel.scope.name, \"openinference\")',
-  'description': 'Route OpenInference spans to openinference-ai-spans pipeline'
-}
-for obj in routing:
-    entries = obj.get('value', {}).get('routingEntries', [])
-    entries = [e for e in entries if e.get('description') != entry['description']]
-    entries.append(entry)
-    obj['value']['routingEntries'] = entries
-print(json.dumps(routing))
-" | dtctl apply -f -
+bash setup-routing.sh
 ```
 
 ---
