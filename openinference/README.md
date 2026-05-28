@@ -38,6 +38,7 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - Docker installed and running (Option A only)
 - Python 3.8+
 - An OpenAI-compatible API key and endpoint
+- [dtctl](https://github.com/dynatrace/dtctl)  (Optional for B only)
 
 ---
 
@@ -77,19 +78,17 @@ DT_ENDPOINT=https://abc12345.live.dynatrace.com
 DT_API_TOKEN=dt0c01.****.*****
 
 OPENAI_API_KEY=**********************
-OPENAI_API_BASE=https://your-endpoint.openai.azure.com/   # optional, for Azure or custom providers
+OPENAI_API_BASE=https://your-endpoint.openai.azure.com/   
 MODEL=gpt-4o-mini                                         # optional, defaults to gpt-4o
-AZURE_OPENAI_API_VERSION=2024-07-01-preview               # optional, required for Azure OpenAI endpoints
+OPENAI_API_VERSION=2024-07-01-preview               # optional, required for Azure OpenAI endpoints
 ```
 
 > **Note:** `DT_ENDPOINT` is your base tenant URL -- not the `/api/v2/otlp` path. Example: `https://abc12345.live.dynatrace.com`.
 
-If you are not using the Makefile, export them directly in your shell:
+If you are not using the Makefile, source the file directly in your shell:
 
 ```bash
-export DT_ENDPOINT=https://abc12345.live.dynatrace.com
-export DT_API_TOKEN=dt0c01.****.*****
-export OPENAI_API_KEY=**********************
+source .env
 ```
 
 ### 3. Install dependencies
@@ -125,24 +124,27 @@ Or manually with Docker:
 
 **Linux/macOS:**
 ```bash
+source .env
 docker run -d \
   --name otel-collector \
   -p 4318:4318 \
   -v $(pwd)/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro \
-  -e DT_ENDPOINT=https://abc12345.live.dynatrace.com \
-  -e DT_API_TOKEN=dt0c01.****.***** \
+  -e DT_ENDPOINT=$DT_ENDPOINT \
+  -e DT_API_TOKEN=$DT_API_TOKEN \
   ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0 \
   --config=/etc/otelcol/otel-collector-config.yaml
 ```
 
 **Windows CMD:**
 ```cmd
+set DT_ENDPOINT=https://abc12345.live.dynatrace.com
+set DT_API_TOKEN=dt0c01.*****
 docker run -d ^
   --name otel-collector ^
   -p 4318:4318 ^
   -v %cd%/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro ^
-  -e DT_ENDPOINT=https://abc12345.live.dynatrace.com ^
-  -e DT_API_TOKEN=dt0c01.****.***** ^
+  -e DT_ENDPOINT=%DT_ENDPOINT% ^
+  -e DT_API_TOKEN=%DT_API_TOKEN% ^
   ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0 ^
   --config=/etc/otelcol/otel-collector-config.yaml
 ```
@@ -159,9 +161,7 @@ What happens:
 make run
 
 # or manually, once the collector is already running
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
-OTEL_EXPORTER_OTLP_HEADERS="" \
-python3 app.py
+source .env && OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_EXPORTER_OTLP_HEADERS="" python3 app.py
 ```
 
 **Useful commands:**
@@ -198,8 +198,9 @@ This is a one-time setup per tenant.
 **Configure a context (one-time):**
 
 ```bash
-dtctl config set-credentials my-token --token dt0c01.*****
-dtctl ctx set my-tenant --environment https://abc12345.apps.dynatrace.com --token-ref my-token
+source .env
+dtctl config set-credentials my-token --token $DT_API_TOKEN
+dtctl ctx set my-tenant --environment ${DT_ENDPOINT/live./apps.} --token-ref my-token
 ```
 
 **Deploy the pipeline:**
@@ -240,9 +241,7 @@ The app sends spans directly to `$DT_ENDPOINT/api/v2/otlp`, authenticated with t
 make run-openpipeline
 
 # or manually
-OTEL_EXPORTER_OTLP_ENDPOINT=https://abc12345.live.dynatrace.com/api/v2/otlp \
-OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token dt0c01.****.*****" \
-python3 app.py
+source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $DT_API_TOKEN" python3 app.py
 ```
 
 ---
@@ -250,12 +249,13 @@ python3 app.py
 ## Visualize in Dynatrace AI Observability
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
-2. Your haiku request appears as a span with model name, token usage, and message content.
+2. Your haiku request appears in the Explorer tab as a span with model name, token usage, and message content.
+  ![AI Observability — span explorer](assets/explorer.png)
 3. Open a span to inspect the full conversation and `gen_ai.*` attributes.
+  ![AI Observability — haiku span detail](assets/haikuview.png)
+4. You can also visualize span from the **Distributed Tracing** App
+  ![AI Observability — OpenInference spans overview](assets/openinference.png)
 
-<!-- Screenshot: AI Observability overview showing OpenInference haiku spans -->
-
-<!-- Screenshot: Span detail view showing gen_ai.request.model, gen_ai.usage.input_tokens, gen_ai.input.messages -->
 
 ---
 
