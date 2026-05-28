@@ -248,21 +248,27 @@ bash setup-routing.sh
 
 #### Option B.2 -- Using an AI assistant
 
-Paste the prompt below into any AI assistant (ChatGPT, Copilot, Claude, etc.) along with the contents of `openpipeline-openinference.yaml`, and ask it to generate the `dtctl apply` YAML or the step-by-step UI instructions for your Dynatrace tenant.
+Paste the prompt below into any AI assistant (ChatGPT, Copilot, Claude, etc.) along with the contents of `openpipeline-openinference.yaml`, and ask it to generate a complete setup script.
 
 ```
-I need to create a Dynatrace OpenPipeline configuration for Spans that normalizes
-OpenInference (Arize Phoenix) semantic conventions to the Dynatrace gen_ai.* format.
+I need to automate the full setup of a Dynatrace OpenPipeline configuration for Spans
+using the Dynatrace Settings API v2 and a classic API token (dt0c01.*).
 
-The pipeline name should be "openinference-ai-spans". The full list of processors
-and their matchers, types, and field mappings is defined in the attached file
-openpipeline-openinference.yaml.
+The pipeline name is "openinference-ai-spans". The full processor definitions are in
+the attached file openpipeline-openinference.yaml.
 
-Please generate either:
-- A dtctl-ready YAML I can apply with `dtctl apply -f`
-- Or step-by-step instructions to create this pipeline in the Dynatrace OpenPipeline UI
+Please write a single bash script that:
+1. POSTs the pipeline to the Dynatrace Settings API v2
+   (POST {DT_ENDPOINT}/api/v2/settings/objects, schemaId: builtin:openpipeline.spans.pipelines)
+2. GETs the current routing table
+   (GET {DT_ENDPOINT}/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.routing)
+3. Merges a new routing entry without replacing existing ones:
+   matcher: matchesPhrase(otel.scope.name, "openinference") → openinference-ai-spans
+4. PUTs the updated routing table back
 
-Also include a routing entry: matchesPhrase(otel.scope.name, "openinference") → openinference-ai-spans
+The script should read DT_ENDPOINT and DT_API_TOKEN from environment variables,
+use only Python stdlib (urllib, json, ssl) — no extra dependencies,
+and handle errors clearly.
 ```
 
 ---
