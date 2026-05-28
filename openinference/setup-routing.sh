@@ -1,53 +1,87 @@
 #!/usr/bin/env bash
 # Sets up OpenPipeline routing so OpenInference spans are directed to the
-# openinference-ai-spans pipeline.  Requires dtctl to be configured with a
-# valid context (run `dtctl ctx set ...` first).
+# openinference-ai-spans pipeline.  Uses the Dynatrace Settings API v2
+# directly — only requires DT_ENDPOINT and a classic dt0c01.* API token.
 set -euo pipefail
+
+DT_ENDPOINT="${DT_ENDPOINT:?DT_ENDPOINT is required (source .env first)}"
+DT_API_TOKEN="${DT_API_TOKEN:?DT_API_TOKEN is required (source .env first)}"
 
 PIPELINE_CUSTOM_ID="openinference-ai-spans"
 ROUTING_MATCHER='matchesPhrase(otel.scope.name, "openinference")'
 ROUTING_DESC="Route OpenInference (Arize Phoenix) spans to openinference-ai-spans pipeline"
 
-echo "→ Fetching pipeline objectId for '$PIPELINE_CUSTOM_ID'..."
-PIPELINE_ID=$(dtctl get settings --schema builtin:openpipeline.spans.pipelines -o json \
-  | python3 -c "
-import json, sys
-items = json.load(sys.stdin)
-match = next((i['objectId'] for i in items if i.get('value', {}).get('customId') == '$PIPELINE_CUSTOM_ID'), None)
-if not match:
-    print('ERROR: pipeline not found', file=sys.stderr); sys.exit(1)
-print(match)
-")
-echo "  objectId: $PIPELINE_ID"
+echo "→ Setting up routing for '$PIPELINE_CUSTOM_ID'..."
 
-TMP=$(mktemp /tmp/routing.XXXXXX.yaml)
-trap "rm -f $TMP" EXIT
+export PIPELINE_CUSTOM_ID ROUTING_MATCHER ROUTING_DESC
 
-echo "→ Fetching current routing config..."
-dtctl get settings --schema builtin:openpipeline.spans.routing --scope environment -o yaml > "$TMP"
+python3 << 'PYEOF'
+import json, urllib.request, sys, os
 
-echo "→ Adding routing entry..."
-python3 - "$TMP" "$PIPELINE_ID" "$ROUTING_MATCHER" "$ROUTING_DESC" << 'PYEOF'
-import yaml, sys
-with open(sys.argv[1]) as f:
-    routing = yaml.safe_load(f)
-new_entry = {
+endpoint = os.environ["DT_ENDPOINT"].rstrip("/")
+token = os.environ["DT_API_TOKEN"]
+pipeline_id = os.environ["PIPELINE_CUSTOM_ID"]
+matcher = os.environ["ROUTING_MATCHER"]
+desc = os.environ["ROUTING_DESC"]
+
+headers = {"Authorization": f"Api-Token {token}", "Content-Type": "application/json"}
+
+def api_get(path):
+    req = urllib.request.Request(f"{endpoint}{path}", headers=headers)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)
+        sys.exit(1)
+
+def api_put(path, data):
+    req = urllib.request.Request(
+        f"{endpoint}{path}", data=json.dumps(data).encode(), headers=headers, method="PUT"
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)
+        sys.exit(1)
+
+# Resolve pipeline objectId from its customId
+print("→ Fetching pipeline objectId...")
+pipelines = api_get("/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.pipelines&scopes=environment")
+pipeline_obj_id = next(
+    (i["objectId"] for i in pipelines.get("items", []) if i.get("value", {}).get("customId") == pipeline_id),
+    None,
+)
+if not pipeline_obj_id:
+    print(f"ERROR: pipeline '{pipeline_id}' not found — run deploy-openpipeline.sh first.", file=sys.stderr)
+    sys.exit(1)
+print(f"  objectId: {pipeline_obj_id}")
+
+# Fetch routing settings object
+print("→ Fetching routing settings...")
+routing = api_get("/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.routing&scopes=environment")
+if not routing.get("items"):
+    print("ERROR: No routing settings found.", file=sys.stderr)
+    sys.exit(1)
+
+item = routing["items"][0]
+object_id = item["objectId"]
+value = item["value"]
+
+# Add routing entry (replace existing one with same description to avoid duplicates)
+entries = value.get("routingEntries", [])
+entries = [e for e in entries if e.get("description") != desc]
+entries.append({
     "enabled": True,
     "pipelineType": "custom",
-    "pipelineId": sys.argv[2],
-    "matcher": sys.argv[3],
-    "description": sys.argv[4],
-}
-for obj in routing:
-    entries = obj.get("value", {}).get("routingEntries", [])
-    obj["value"]["routingEntries"] = (
-        [e for e in entries if e.get("description") != new_entry["description"]]
-        + [new_entry]
-    )
-with open(sys.argv[1], "w") as f:
-    yaml.dump(routing, f, default_flow_style=False, allow_unicode=True)
-PYEOF
+    "pipelineId": pipeline_obj_id,
+    "matcher": matcher,
+    "description": desc,
+})
+value["routingEntries"] = entries
 
-echo "→ Applying routing config..."
-dtctl apply -f "$TMP"
-echo "✓ Routing entry set."
+print(f"→ Updating routing (objectId: {object_id})...")
+api_put(f"/api/v2/settings/objects/{object_id}", {"value": value})
+print("✓ Routing entry added.")
+PYEOF

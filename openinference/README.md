@@ -38,7 +38,6 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - Docker installed and running (Option A only)
 - Python 3.8+
 - An OpenAI-compatible API key and endpoint
-- [dtctl](https://github.com/dynatrace/dtctl)  (Optional for B only)
 
 ---
 
@@ -52,7 +51,7 @@ OpenInference uses its own semantic conventions that the Dynatrace AI Observabil
 | **Requires Docker** | Yes | No |
 | **Requires Dynatrace config** | No | Yes -- one-time deploy |
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
-| **Make target** | `make run` | `make run-openpipeline` (deploy once with dtctl first) |
+| **Make target** | `make run` | `make run-openpipeline` (deploy once with script first) |
 
 Both paths produce identical results in the AI Observability app.
 
@@ -191,33 +190,23 @@ This is a one-time setup per tenant.
 
 ---
 
-#### Option B.1 -- Using dtctl
+#### Option B.1 -- Using deploy-openpipeline.sh (recommended)
 
-[dtctl](https://github.com/dynatrace/dtctl) is the Dynatrace CLI — `kubectl`-style commands for Dynatrace resources.
-
-**Configure a context (one-time):**
+Uses your `DT_API_TOKEN` (`dt0c01.*`) directly against the Settings API v2 — no extra tools needed.
 
 ```bash
 source .env
-dtctl config set-credentials my-token --token $DT_API_TOKEN
-dtctl ctx set my-tenant --environment ${DT_ENDPOINT/live./apps.} --token-ref my-token
+bash deploy-openpipeline.sh
+
+# validate without writing
+bash deploy-openpipeline.sh --dry-run
 ```
 
-**Deploy the pipeline:**
-
-```bash
-dtctl apply -f openpipeline-openinference-dtctl.yaml
-```
-
-`openpipeline-openinference-dtctl.yaml` is the dtctl-ready version of `openpipeline-openinference.yaml`, pre-converted to the Dynatrace Settings API format.
-
-**Set up routing** (so OpenInference spans are directed to this pipeline):
+Then add the routing rule so incoming OpenInference spans are directed to the new pipeline:
 
 ```bash
 bash setup-routing.sh
 ```
-
-`setup-routing.sh` uses dtctl to read the current routing config, add the OpenInference entry, and apply it back. It requires PyYAML (`pip install pyyaml`) and dtctl to be configured.
 
 ---
 
@@ -273,7 +262,7 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 
 **OpenPipeline not transforming spans (Option B):**
 - Confirm the token has `settings.read` and `settings.write` permissions.
-- Re-run `dtctl apply -f openpipeline-openinference-dtctl.yaml` and `bash setup-routing.sh` to ensure the pipeline and routing are applied.
+- Re-run `bash deploy-openpipeline.sh` and `bash setup-routing.sh` to ensure the pipeline and routing are applied.
 
 **Spans visible in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.system` or `gen_ai.provider.name` to be set on the span -- these are added by the transform processor / OpenPipeline.
