@@ -38,6 +38,7 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - Docker installed and running (Option A only)
 - Python 3.8+
 - An OpenAI-compatible API key and endpoint
+- [dtctl](https://github.com/dynatrace/dtctl) (Option B.1 only)
 
 ---
 
@@ -51,7 +52,7 @@ OpenInference uses its own semantic conventions that the Dynatrace AI Observabil
 | **Requires Docker** | Yes | No |
 | **Requires Dynatrace config** | No | Yes -- one-time deploy |
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
-| **Make target** | `make run` | `make run-openpipeline` (deploy once with script first) |
+| **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
 Both paths produce identical results in the AI Observability app.
 
@@ -84,7 +85,6 @@ The table below shows which `gen_ai.*` attributes are produced after normalizati
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
 2. Create a token with these permissions:
    - `openTelemetryTrace.ingest`
-   - `settings.read` and `settings.write` *(Option B only -- needed to deploy OpenPipeline)*
 3. Copy the token value.
 
 ### 2. Set environment variables
@@ -210,28 +210,92 @@ This is a one-time setup per tenant.
 
 ---
 
-#### Option B.1 -- Using deploy-openpipeline.sh (recommended)
+#### Option B.1 -- Using dtctl
 
-Uses your `DT_API_TOKEN` (`dt0c01.*`) directly against the Settings API v2 — no extra tools needed.
+[dtctl](https://github.com/dynatrace/dtctl) uses the Dynatrace Platform API and requires a **platform OAuth token** (not a classic API token).
+
+**Create a platform OAuth token (one-time):**
+
+1. Go to [accounts.dynatrace.com](https://accounts.dynatrace.com) → **Identity & access management → OAuth clients**
+2. Click **Create client**, give it a name, and add scopes: `settings:read`, `settings:write`
+3. Save — copy the **Client ID** and **Client Secret**
+4. Generate an access token:
 
 ```bash
-bash deploy-openpipeline.sh
+curl -X POST https://sso.dynatrace.com/sso/oauth2/token \
+  -d "grant_type=client_credentials&client_id=<CLIENT_ID>&client_secret=<CLIENT_SECRET>&scope=settings:read settings:write"
 ```
 
+5. Copy the `access_token` from the response (valid for ~1 hour)
+
+**Configure dtctl and deploy:**
+
 ```bash
-# you can first validate without writing
-bash deploy-openpipeline.sh --dry-run
+source .env
+DTCTL_ENV=$(echo $DT_ENDPOINT | sed 's|https://\([^.]*\)\.\(.*\)|https://\1.apps.\2|')
+dtctl config set-credentials my-token --token <access_token>
+dtctl ctx set my-tenant --environment $DTCTL_ENV --token-ref my-token
+dtctl apply -f openpipeline-openinference-dtctl.yaml
 ```
 
-Then add the routing rule so incoming OpenInference spans are directed to the new pipeline:
+Then add the routing entry safely (GET → merge → PUT, all via dtctl):
 
 ```bash
-bash setup-routing.sh
+dtctl get settings --schema builtin:openpipeline.spans.routing --scope environment -o json \
+  | python3 -c "
+import json, sys
+routing = json.load(sys.stdin)
+entry = {
+  'enabled': True,
+  'pipelineType': 'custom',
+  'customPipelineId': 'openinference-ai-spans',
+  'matcher': 'matchesPhrase(otel.scope.name, \"openinference\")',
+  'description': 'Route OpenInference spans to openinference-ai-spans pipeline'
+}
+for obj in routing:
+    entries = obj.get('value', {}).get('routingEntries', [])
+    entries = [e for e in entries if e.get('description') != entry['description']]
+    entries.append(entry)
+    obj['value']['routingEntries'] = entries
+print(json.dumps(routing))
+" | dtctl apply -f -
 ```
 
 ---
 
-#### Option B.2 -- Using the Dynatrace UI
+#### Option B.2 -- Using the Dynatrace AI Assistant
+
+You can ask the Dynatrace AI assistant to create the pipeline for you.
+
+1. In Dynatrace press `Ctrl+K` and open **Davis AI** or the AI chat.
+2. Paste the following prompt:
+
+```
+Create an OpenPipeline pipeline for Spans named "openinference-ai-spans" that normalizes OpenInference (Arize Phoenix) semantic conventions to Dynatrace gen_ai.* format.
+
+Add these processors:
+1. DQL processor (matcher: true) — set gen_ai.operation.kind from openinference.span.kind: CHAIN→workflow, TOOL→tool, AGENT→agent, RETRIEVER→retrieval, default→task
+2. fieldsAdd (matcher: isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)) — set gen_ai.operation.name = "chat"
+3. fieldsRename (same matcher) — llm.model_name→gen_ai.request.model, llm.provider→gen_ai.provider.name
+4. fieldsRename (matcher: isNotNull(llm.system) AND isNull(gen_ai.provider.name)) — llm.system→gen_ai.provider.name
+5. fieldsRename (same as 3) — llm.token_count.prompt→gen_ai.usage.input_tokens, llm.token_count.completion→gen_ai.usage.output_tokens
+6. fieldsRename (matcher: cache tokens present) — llm.token_count.prompt_details.cache_read→gen_ai.usage.prompt_caching.read_tokens
+7. fieldsRename (matcher: true) — llm.temperature→gen_ai.request.temperature, llm.max_tokens→gen_ai.request.max_tokens, llm.top_p→gen_ai.request.top_p
+8. DQL (same as 3) — gen_ai.response.finish_reasons=array(llm.finish_reason), gen_ai.response.model=gen_ai.request.model, gen_ai.system="azure.ai.openai" when provider is azure
+9. fieldsAdd (matcher: isNotNull(embedding.model_name)) — gen_ai.operation.name="embeddings"
+10. fieldsRename (same) — embedding.model_name→gen_ai.request.model, embedding.vector_length→gen_ai.embeddings.dimension.count
+11. fieldsRename (matcher: isNotNull(reranker.model_name)) — reranker.model_name→gen_ai.request.model
+12. fieldsRename (true) — agent.name→gen_ai.agent.name
+13. fieldsRename (isNotNull(tool.name)) — tool.name→gen_ai.tool.name, tool.description→gen_ai.tool.description
+14. fieldsAdd (true) — ai.observability.source="openinference"
+15. DQL (matcher: isNotNull(input.value) AND isNull(gen_ai.input.messages)) — gen_ai.input.messages=input.value, gen_ai.output.messages=output.value
+
+Then add a routing entry: matcher matchesPhrase(otel.scope.name, "openinference") → this pipeline.
+```
+
+---
+
+#### Option B.3 -- Using the Dynatrace UI
 
 1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
 2. Select **Spans** and click **Add pipeline**.
