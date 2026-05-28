@@ -55,6 +55,26 @@ OpenInference uses its own semantic conventions that the Dynatrace AI Observabil
 
 Both paths produce identical results in the AI Observability app.
 
+### Attribute mapping reference
+
+The table below shows which `gen_ai.*` attributes are produced after normalization:
+
+| Attribute | Collector | OpenPipeline | Source |
+|---|---|---|---|
+| `gen_ai.operation.name` | ✅ | ✅ | hardcoded `chat` for LLM spans |
+| `gen_ai.operation.kind` | ✅ | ✅ | mapped from `openinference.span.kind` |
+| `gen_ai.request.model` | ✅ | ✅ | renamed from `llm.model_name` |
+| `gen_ai.response.model` | ✅ | ✅ | mirrored from `gen_ai.request.model` |
+| `gen_ai.provider.name` | ✅ | ✅ | renamed from `llm.provider` (fallback: `llm.system`) |
+| `gen_ai.system` | ✅ | ✅ | set to `azure.ai.openai` when provider is `azure` |
+| `gen_ai.usage.input_tokens` | ✅ | ✅ | renamed from `llm.token_count.prompt` |
+| `gen_ai.usage.output_tokens` | ✅ | ✅ | renamed from `llm.token_count.completion` |
+| `gen_ai.usage.prompt_caching.read_tokens` | ✅ | ✅ | renamed from `llm.token_count.prompt_details.cache_read` |
+| `gen_ai.response.finish_reasons` | ✅ | ✅ | converted from `llm.finish_reason` string → array |
+| `gen_ai.input.messages` | ✅ | ✅ | copied from `input.value` (interim fallback) |
+| `gen_ai.output.messages` | ✅ | ✅ | copied from `output.value` (interim fallback) |
+| `ai.observability.source` | ✅ | ✅ | hardcoded `openinference` |
+
 ---
 
 ## Setup
