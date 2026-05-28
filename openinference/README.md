@@ -277,8 +277,11 @@ and handle errors clearly.
 #### Option B.3 -- Using the Dynatrace UI
 
 1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
-2. Select **Spans** and click **Add pipeline**.
-3. Name it `openinference-ai-spans` and add processors matching the definitions in `openpipeline-openinference.yaml`.
+   ![Search for OpenPipeline](assets/searchOP.png)
+2. Select **Spans**.
+   ![Select Spans](assets/spans.png)
+3. Click **Add pipeline**, name it `openinference-ai-spans`, and add processors matching the definitions in `openpipeline-openinference.yaml`.
+   ![Add pipeline](assets/addpipeline.png)
 4. Go to the **Routing** tab and add an entry:
    - Matcher: `matchesPhrase(otel.scope.name, "openinference")`
    - Pipeline: `openinference-ai-spans`
