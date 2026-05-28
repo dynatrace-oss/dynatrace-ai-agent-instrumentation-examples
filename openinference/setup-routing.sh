@@ -4,8 +4,15 @@
 # directly — only requires DT_ENDPOINT and a classic dt0c01.* API token.
 set -euo pipefail
 
-DT_ENDPOINT="${DT_ENDPOINT:?DT_ENDPOINT is required (source .env first)}"
-DT_API_TOKEN="${DT_API_TOKEN:?DT_API_TOKEN is required (source .env first)}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Auto-source .env if present (plain KEY=value format)
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  set -a; source "$SCRIPT_DIR/.env"; set +a
+fi
+
+DT_ENDPOINT="${DT_ENDPOINT:?DT_ENDPOINT is required}"
+DT_API_TOKEN="${DT_API_TOKEN:?DT_API_TOKEN is required}"
 
 PIPELINE_CUSTOM_ID="openinference-ai-spans"
 ROUTING_MATCHER='matchesPhrase(otel.scope.name, "openinference")'
@@ -16,7 +23,7 @@ echo "→ Setting up routing for '$PIPELINE_CUSTOM_ID'..."
 export PIPELINE_CUSTOM_ID ROUTING_MATCHER ROUTING_DESC
 
 python3 << 'PYEOF'
-import json, urllib.request, sys, os
+import json, urllib.request, ssl, sys, os
 
 endpoint = os.environ["DT_ENDPOINT"].rstrip("/")
 token = os.environ["DT_API_TOKEN"]
@@ -24,12 +31,16 @@ pipeline_id = os.environ["PIPELINE_CUSTOM_ID"]
 matcher = os.environ["ROUTING_MATCHER"]
 desc = os.environ["ROUTING_DESC"]
 
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
 headers = {"Authorization": f"Api-Token {token}", "Content-Type": "application/json"}
 
 def api_get(path):
     req = urllib.request.Request(f"{endpoint}{path}", headers=headers)
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, context=ctx) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
         print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)
@@ -40,7 +51,7 @@ def api_put(path, data):
         f"{endpoint}{path}", data=json.dumps(data).encode(), headers=headers, method="PUT"
     )
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, context=ctx) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
         print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)

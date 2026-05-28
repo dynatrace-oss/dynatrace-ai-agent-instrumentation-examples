@@ -4,12 +4,17 @@
 # Usage: bash deploy-openpipeline.sh [--dry-run]
 set -euo pipefail
 
-DT_ENDPOINT="${DT_ENDPOINT:?DT_ENDPOINT is required (source .env first)}"
-DT_API_TOKEN="${DT_API_TOKEN:?DT_API_TOKEN is required (source .env first)}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Auto-source .env if present (plain KEY=value format)
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  set -a; source "$SCRIPT_DIR/.env"; set +a
+fi
+
+DT_ENDPOINT="${DT_ENDPOINT:?DT_ENDPOINT is required}"
+DT_API_TOKEN="${DT_API_TOKEN:?DT_API_TOKEN is required}"
 DRY_RUN=false
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DTCTL_YAML="$SCRIPT_DIR/openpipeline-openinference-dtctl.yaml"
 
 python3 -c "import yaml" 2>/dev/null || { echo "Installing pyyaml..."; pip3 install pyyaml -q; }
@@ -19,7 +24,7 @@ if $DRY_RUN; then
   python3 - "$DTCTL_YAML" << 'PYEOF'
 import yaml, json, sys
 with open(sys.argv[1]) as f:
-    docs = list(yaml.safe_load_all(f))
+    docs = yaml.safe_load(f)
 payload = [{"schemaId": d["schemaId"], "scope": d.get("scope", "environment"), "value": d["value"]} for d in docs]
 print(json.dumps(payload, indent=2))
 PYEOF
@@ -28,16 +33,20 @@ fi
 
 echo "→ Deploying OpenPipeline configuration..."
 python3 - "$DTCTL_YAML" << PYEOF
-import yaml, json, urllib.request, sys, os
+import yaml, json, urllib.request, ssl, sys, os
 
 endpoint = os.environ["DT_ENDPOINT"].rstrip("/")
 token = os.environ["DT_API_TOKEN"]
 
 with open(sys.argv[1]) as f:
-    docs = list(yaml.safe_load_all(f))
+    docs = yaml.safe_load(f)
 
 payload = [{"schemaId": d["schemaId"], "scope": d.get("scope", "environment"), "value": d["value"]} for d in docs]
 data = json.dumps(payload).encode()
+
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
 
 req = urllib.request.Request(
     f"{endpoint}/api/v2/settings/objects",
@@ -46,7 +55,7 @@ req = urllib.request.Request(
     method="POST",
 )
 try:
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, context=ctx) as resp:
         body = json.loads(resp.read())
         print(json.dumps(body, indent=2))
         print("✓ Pipeline deployed successfully.")

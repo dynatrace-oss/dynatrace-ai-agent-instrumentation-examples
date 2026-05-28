@@ -195,10 +195,11 @@ This is a one-time setup per tenant.
 Uses your `DT_API_TOKEN` (`dt0c01.*`) directly against the Settings API v2 — no extra tools needed.
 
 ```bash
-source .env
 bash deploy-openpipeline.sh
+```
 
-# validate without writing
+```bash
+# you can first validate without writing
 bash deploy-openpipeline.sh --dry-run
 ```
 
