@@ -85,6 +85,7 @@ The table below shows which `gen_ai.*` attributes are produced after normalizati
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
 2. Create a token with these permissions:
    - `openTelemetryTrace.ingest`
+   - `settings.read` and `settings.write` *(Option B only)*
 3. Copy the token value.
 
 ### 2. Set environment variables
