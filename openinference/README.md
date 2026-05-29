@@ -213,28 +213,22 @@ This is a one-time setup per tenant.
 
 #### Option B.1 -- Using dtctl
 
-[dtctl](https://github.com/dynatrace/dtctl) uses the Dynatrace Platform API and requires a **platform OAuth token** (not a classic API token).
+[dtctl](https://github.com/dynatrace/dtctl) uses the Dynatrace Platform API and requires a **platform token** (not a classic API token).
 
-**Create a platform OAuth token (one-time):**
+**Create a platform token (one-time):**
 
-1. Go to [accounts.dynatrace.com](https://accounts.dynatrace.com) → **Identity & access management → OAuth clients**
-2. Click **Create client**, give it a name, and add scopes: `settings:read`, `settings:write`
-3. Save — copy the **Client ID** and **Client Secret**
-4. Generate an access token:
-
-```bash
-curl -X POST https://sso.dynatrace.com/sso/oauth2/token \
-  -d "grant_type=client_credentials&client_id=<CLIENT_ID>&client_secret=<CLIENT_SECRET>&scope=settings:read settings:write"
-```
-
-5. Copy the `access_token` from the response (valid for ~1 hour)
+1. Go to [myaccount.dynatrace.com/platformTokens](https://myaccount.dynatrace.com/platformTokens)
+2. Click **Generate new token**, give it a name, and add scopes:
+   - `app-settings:objects:read` — read app settings objects (required by dtctl Platform API)
+   - `app-settings:objects:write` — write app settings objects (required by dtctl Platform API)
+3. Copy the generated token value
 
 **Configure dtctl and deploy:**
 
 ```bash
 source .env
-DTCTL_ENV=$(echo $DT_ENDPOINT | sed 's|https://\([^.]*\)\.\(.*\)|https://\1.apps.\2|')
-dtctl config set-credentials my-token --token <access_token>
+DTCTL_ENV=$(echo $DT_ENDPOINT | sed 's|\.dynatracelabs\.com|.apps.dynatracelabs.com|')
+dtctl config set-credentials my-token --token <PLATFORM_TOKEN>
 dtctl ctx set my-tenant --environment $DTCTL_ENV --token-ref my-token
 dtctl apply -f openpipeline-openinference-dtctl.yaml
 ```
