@@ -113,6 +113,8 @@ Then point the OTel Collector's `filelog` receiver at `/var/log/tetragon/tetrago
 ## How to use
 
 ### Prerequisites
+> [!NOTE]
+> Both `setup.sh` and the Tetragon integration example targets **Linux only**. 
 
 - [OpenClaw](https://openclaw.ai/) `>= 2026.4.21` (for plugin track `0.2.x`) — or `2026.2`–`2026.4.20` if you must pin to `0.1.x`
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, **`logs.ingest`** scopes (all three — a token with only one scope will succeed for the matching signal type and silently drop the others)
