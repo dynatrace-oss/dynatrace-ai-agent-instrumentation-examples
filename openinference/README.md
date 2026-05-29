@@ -38,7 +38,6 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - Docker installed and running (Option A only)
 - Python 3.8+
 - An OpenAI-compatible API key and endpoint
-- [dtctl](https://github.com/dynatrace/dtctl) (Option B.1 only)
 
 ---
 
@@ -204,44 +203,8 @@ OpenPipeline is a server-side processing pipeline in Dynatrace that applies the 
 App  ->  Dynatrace OpenPipeline (transform)  ->  Dynatrace Grail
 ```
 
-### Step 1 -- Deploy the OpenPipeline configuration
-
+### Step 1 -- Deploy the OpenPipeline configuration using the Dynatrace UI
 This is a one-time setup per tenant.
-
----
-
-#### Option B.1 -- Using dtctl
-
-[dtctl](https://github.com/dynatrace/dtctl) uses the Dynatrace Platform API and requires a **platform token** (not a classic API token).
-
-**Create a platform token (one-time):**
-
-1. Go to [myaccount.dynatrace.com/platformTokens](https://myaccount.dynatrace.com/platformTokens)
-2. Click **Generate new token**, give it a name, and add scopes:
-   - `app-settings:objects:read` — read app settings objects (required by dtctl Platform API)
-   - `app-settings:objects:write` — write app settings objects (required by dtctl Platform API)
-3. Copy the generated token value and add it to your .env as `DT_PLATFORM_TOKEN`
-
-**Configure dtctl and deploy:**
-
-```bash
-source .env
-DTCTL_ENV=$(echo $DT_ENDPOINT | sed 's|\.dynatracelabs\.com|.apps.dynatracelabs.com|')
-dtctl config set-credentials my-token --token $(echo $DT_PLATFORM_TOKEN)
-dtctl ctx set my-tenant --environment $DTCTL_ENV --token-ref my-token
-dtctl apply -f openpipeline-openinference-dtctl.yaml
-```
-
-Then add the routing entry:
-
-```bash
-DT_PLATFORM_TOKEN=<PLATFORM_TOKEN> DT_API_TOKEN=<API_TOKEN> bash setup-routing.sh
-```
-
-> The script uses the platform token to find the dtctl-deployed pipeline, and the classic API token to write to the system-level routing table.
----
-
-#### Option B.2 -- Using the Dynatrace UI
 
 1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
    ![Search for OpenPipeline](assets/searchOP.png)
@@ -253,32 +216,6 @@ DT_PLATFORM_TOKEN=<PLATFORM_TOKEN> DT_API_TOKEN=<API_TOKEN> bash setup-routing.s
     - Matcher: `matchesPhrase(otel.scope.name, "openinference")`
     - Pipeline: `openinference-ai-spans`
 
----
-
-#### Option B.3 -- Using an AI assistant
-
-Paste the prompt below into any AI assistant (ChatGPT, Copilot, Claude, etc.) along with the contents of `openpipeline-openinference.yaml`, and ask it to generate a complete setup script.
-
-```
-I need to automate the full setup of a Dynatrace OpenPipeline configuration for Spans
-using the Dynatrace Settings API v2 and a classic API token (dt0c01.*).
-
-The pipeline name is "openinference-ai-spans". The full processor definitions are in
-the attached file openpipeline-openinference.yaml.
-
-Please write a single bash script that:
-1. POSTs the pipeline to the Dynatrace Settings API v2
-   (POST {DT_ENDPOINT}/api/v2/settings/objects, schemaId: builtin:openpipeline.spans.pipelines)
-2. GETs the current routing table
-   (GET {DT_ENDPOINT}/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.routing)
-3. Merges a new routing entry without replacing existing ones:
-   matcher: matchesPhrase(otel.scope.name, "openinference") → openinference-ai-spans
-4. PUTs the updated routing table back
-
-The script should read DT_ENDPOINT and DT_API_TOKEN from environment variables,
-use only Python stdlib (urllib, json, ssl) — no extra dependencies,
-and handle errors clearly.
-```
 ---
 
 ### Step 2 -- Run the app
@@ -319,11 +256,6 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 **Collector crashes on startup (Option A):**
 - Run `docker ps -a` and `docker logs otel-collector` to see the error.
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
-
-**OpenPipeline not transforming spans (Option B):**
-- Confirm DT_PLATFORM_TOKEN is correctly set.
-- Confirm the token has `settings.read` and `settings.write` permissions.
-- Re-run `bash deploy-openpipeline.sh` and `bash setup-routing.sh` to ensure the pipeline and routing are applied.
 
 **Spans visible in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.system` or `gen_ai.provider.name` to be set on the span -- these are added by the transform processor / OpenPipeline.
