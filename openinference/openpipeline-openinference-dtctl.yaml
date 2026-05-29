@@ -100,18 +100,10 @@
         enabled: true
         sampleData: null
         dql:
-          script: '// Official: gen_ai.response.finish_reasons (array)
-
-            fieldsAdd gen_ai.response.finish_reasons = if(isNull(llm.finish_reason),
-            array(), else: array(llm.finish_reason))
-
-            // Mirror request model to response model (OpenInference has no separate response model field)
-
-            fieldsAdd gen_ai.response.model = gen_ai.request.model
-
-            // Set gen_ai.system for Azure-hosted OpenAI
-
-            fieldsAdd gen_ai.system = if(gen_ai.provider.name == "azure", "azure.ai.openai", else: null)'
+          script: 'fieldsAdd gen_ai.response.finish_reasons = if(isNull(llm.finish_reason),
+            array(), else: array(llm.finish_reason)),
+            gen_ai.response.model = gen_ai.request.model,
+            gen_ai.system = if(gen_ai.provider.name == "azure", "azure.ai.openai", else: null)'
       - id: openinference-embedding-op-name
         type: fieldsAdd
         matcher: isNotNull(embedding.model_name)
@@ -185,6 +177,5 @@
         enabled: true
         sampleData: null
         dql:
-          script: 'fieldsAdd `gen_ai.input.messages` = `input.value`
-
-            fieldsAdd `gen_ai.output.messages` = `output.value`'
+          script: 'fieldsAdd `gen_ai.input.messages` = `input.value`,
+            `gen_ai.output.messages` = `output.value`'

@@ -85,7 +85,6 @@ The table below shows which `gen_ai.*` attributes are produced after normalizati
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
 2. Create a token with these permissions:
    - `openTelemetryTrace.ingest`
-   - `settings.read` and `settings.write` *(Option B only)*
 3. Copy the token value.
 
 ### 2. Set environment variables
@@ -221,27 +220,40 @@ This is a one-time setup per tenant.
 2. Click **Generate new token**, give it a name, and add scopes:
    - `app-settings:objects:read` — read app settings objects (required by dtctl Platform API)
    - `app-settings:objects:write` — write app settings objects (required by dtctl Platform API)
-3. Copy the generated token value
+3. Copy the generated token value and add it to your .env as `DT_PLATFORM_TOKEN`
 
 **Configure dtctl and deploy:**
 
 ```bash
 source .env
 DTCTL_ENV=$(echo $DT_ENDPOINT | sed 's|\.dynatracelabs\.com|.apps.dynatracelabs.com|')
-dtctl config set-credentials my-token --token <PLATFORM_TOKEN>
+dtctl config set-credentials my-token --token $(echo $DT_PLATFORM_TOKEN)
 dtctl ctx set my-tenant --environment $DTCTL_ENV --token-ref my-token
 dtctl apply -f openpipeline-openinference-dtctl.yaml
 ```
 
-Then add the routing entry safely (GET current table → merge → PUT):
+Then add the routing entry:
 
 ```bash
-bash setup-routing.sh
+DT_PLATFORM_TOKEN=<PLATFORM_TOKEN> bash setup-routing.sh
 ```
+---
+
+#### Option B.2 -- Using the Dynatrace UI
+
+1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
+   ![Search for OpenPipeline](assets/searchOP.png)
+2. Select **Spans**.
+   ![Select Spans](assets/spans.png)
+3. Click **Add pipeline**, name it `openinference-ai-spans`, and add processors matching the definitions in `openpipeline-openinference.yaml`.
+   ![Add pipeline](assets/addpipeline.png)
+4. Go to the **Routing** tab and add an entry:
+    - Matcher: `matchesPhrase(otel.scope.name, "openinference")`
+    - Pipeline: `openinference-ai-spans`
 
 ---
 
-#### Option B.2 -- Using an AI assistant
+#### Option B.3 -- Using an AI assistant
 
 Paste the prompt below into any AI assistant (ChatGPT, Copilot, Claude, etc.) along with the contents of `openpipeline-openinference.yaml`, and ask it to generate a complete setup script.
 
@@ -265,21 +277,6 @@ The script should read DT_ENDPOINT and DT_API_TOKEN from environment variables,
 use only Python stdlib (urllib, json, ssl) — no extra dependencies,
 and handle errors clearly.
 ```
-
----
-
-#### Option B.3 -- Using the Dynatrace UI
-
-1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
-   ![Search for OpenPipeline](assets/searchOP.png)
-2. Select **Spans**.
-   ![Select Spans](assets/spans.png)
-3. Click **Add pipeline**, name it `openinference-ai-spans`, and add processors matching the definitions in `openpipeline-openinference.yaml`.
-   ![Add pipeline](assets/addpipeline.png)
-4. Go to the **Routing** tab and add an entry:
-   - Matcher: `matchesPhrase(otel.scope.name, "openinference")`
-   - Pipeline: `openinference-ai-spans`
-
 ---
 
 ### Step 2 -- Run the app
@@ -322,6 +319,7 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
 
 **OpenPipeline not transforming spans (Option B):**
+- Confirm DT_PLATFORM_TOKEN is correctly set.
 - Confirm the token has `settings.read` and `settings.write` permissions.
 - Re-run `bash deploy-openpipeline.sh` and `bash setup-routing.sh` to ensure the pipeline and routing are applied.
 
