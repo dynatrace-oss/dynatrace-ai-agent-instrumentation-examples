@@ -139,15 +139,20 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 
 ### Configure RUM in your Dynatrace environment
 
-TBD
+
+Go to Experience Vitals > Overview.
+Click `+ Frontend`, select Web and provide a frontend name.
+In the Select instrumentation method step, select Agentless and press `Create`
+In the Setup step, check under Select capability and settings if RUM is enabled. If it isn’t enabled, select  Override and turn it on. Press `Next` to copy the JavaScript tag and replace the `<Script src="...">` in `nextjs-frontend/app/layout.tsx` or the `<script>` tag in `frontend/index.html`.
+
 
 ### Environment variables
 
 Create a `.env` file at the repo root:
 
 ```bash
-DT-ENDPOINT=https://<your-env-id>.live.dynatrace.com
-DT-TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
+DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com
+DT_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
 
 BEDROCK_USERNAME=<aws-access-key-id>
 BEDROCK_KEY=<aws-secret-access-key>
@@ -193,9 +198,3 @@ To build for production:
 npm run build
 npm start               # serves the optimised build on :3000
 ```
-
-### Add your RUM JavaScript tag
-
-Replace the `<Script src="...">` in `nextjs-frontend/app/layout.tsx` (or the `<script>` tag in `frontend/index.html`) with the tag from:
-
-**Dynatrace → Applications & Microservices → Frontend → \<your app\> → Setup → JavaScript tag**

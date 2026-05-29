@@ -6,14 +6,14 @@ import os
 def setup_otel(service_name: str = "rum-music-agent"):
     """
     Initialise OpenTelemetry traces + metrics and export to Dynatrace.
-    Uses DT-ENDPOINT and DT-TOKEN from the environment (set via .env).
+    Uses DT_ENDPOINT and DT_TOKEN from the environment (set via .env).
     Returns (tracer_provider, meter_provider).
     """
-    dt_endpoint = os.environ.get("DT-ENDPOINT", "").rstrip("/")
-    dt_api_token = os.environ.get("DT-TOKEN", "")
+    dt_endpoint = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+    dt_api_token = os.environ.get("DT_TOKEN", "")
 
     if not dt_endpoint or not dt_api_token:
-        print("[otel] DT-ENDPOINT or DT-TOKEN not set — OTel export disabled")
+        print("[otel] DT_ENDPOINT or DT_TOKEN not set — OTel export disabled")
         return None, None
 
     otlp_base = f"{dt_endpoint}/api/v2/otlp"
