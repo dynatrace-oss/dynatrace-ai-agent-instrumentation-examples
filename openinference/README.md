@@ -45,13 +45,13 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 
 OpenInference uses its own semantic conventions that the Dynatrace AI Observability app does not natively understand. Two equivalent approaches normalize the attributes:
 
-|  | Option A -- OTel Collector | Option B -- OpenPipeline |
-|---|---|---|
-| **Where transforms run** | In the collector process | Server-side, in your Dynatrace tenant |
-| **Requires Docker** | Yes | No |
-| **Requires Dynatrace config** | No | Yes -- one-time deploy |
-| **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
-| **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
+|  | Option A -- OTel Collector                                                                                                             | Option B -- OpenPipeline                                                                                    |
+|---|----------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| **Where transforms run** | In the collector process                                                                                                               | Server-side, in your Dynatrace tenant                                                                       |
+| **Requires Docker** | Yes                                                                                                                                    | No                                                                                                          |
+| **Requires Dynatrace config** | No                                                                                                                                     | Yes -- one-time deploy                                                                                      |
+| **Good for** | Full control over the pipeline, works anywhere you can run a collector, no need to manually add pipeline configurations on your tenant | Simpler ops -- no collector to manage|
+| **Make target** | `make run`                                                                                                                             | `make run-openpipeline` (deploy once first)                                                                 |
 
 Both paths produce identical results in the AI Observability app.
 
