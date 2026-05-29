@@ -1,0 +1,701 @@
+{
+  "name": "OpenClaw Observability",
+  "type": "dashboard",
+  "isPrivate": true,
+  "content": {
+    "version": 21,
+    "variables": [],
+    "tiles": {
+      "1": {
+        "type": "markdown",
+        "content": "# OpenClaw Gateway Observability\n\nComprehensive monitoring of the OpenClaw Gateway \u2014 token usage, security events, performance metrics, and host utilization.\n\n**Note:** Replace `YOUR_HOST_NAME` in the Host Metrics section with the hostname of the machine running your OpenClaw gateway (find it with `hostname` on Linux). The `host.name` value is the system hostname reported by the OTel `hostmetrics` receiver — it is not set by the plugin."
+      },
+      "2": {
+        "title": "Total Token Usage (Input)",
+        "type": "data",
+        "query": "timeseries sum(openclaw.tokens), filter:{openclaw.token == \"input\"}, interval:10m\n",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "3": {
+        "title": "Token Distribution",
+        "type": "data",
+        "query": "timeseries input = sum(openclaw.tokens, filter:{openclaw.token == \"input\"}), output = sum(openclaw.tokens, filter:{openclaw.token == \"output\"}), cache_read = sum(openclaw.tokens, filter:{openclaw.token == \"cache_read\"}), interval:10m\n",
+        "visualization": "areaChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "4": {
+        "title": "Token Usage by Model",
+        "type": "data",
+        "query": "timeseries sum(openclaw.tokens), filter:{openclaw.token == \"input\"}, interval:1h, by:{openclaw.model}\n",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "5": {
+        "title": "Total Tokens",
+        "type": "data",
+        "query": "timeseries sum(openclaw.tokens, scalar:true), interval:1h\n",
+        "visualization": "singleValue",
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "singleValue": {
+            "label": "Tokens"
+          }
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "6": {
+        "type": "markdown",
+        "content": "## Security Events (Tetragon)"
+      },
+      "7": {
+        "title": "Security Events Rate",
+        "type": "data",
+        "query": "fetch logs | filter service.name == \"openclaw-security\" | makeTimeseries count = count(), interval:10m\n",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "8": {
+        "title": "Events by Policy",
+        "type": "data",
+        "query": "fetch logs\n| filter service.name == \"openclaw-security\"\n| parse content, \"JSON:json\"\n| fieldsAdd policy = if(isNotNull(json[process_kprobe][policy_name] ), json[process_kprobe][policy_name], else: \"unknown\"),\n  binary = if(isNotNull(json[process_kprobe][process][binary] ), json[process_kprobe][process][binary], else: \"unknown\"),\n  pid = if(isNotNull(json[process_kprobe][process][pid] ), toString(json[process_kprobe][process][pid]), else: \"unknown\")\n| summarize count = count(), by:{policy}\n| sort count desc",
+        "visualization": "pieChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "9": {
+        "title": "High-Risk Events (Sensitive Files/Privilege Escalation)",
+        "type": "data",
+        "query": "fetch logs\n| filter service.name == \"openclaw-security\"\n| parse content, \"JSON:json\"\n| fieldsAdd policy = json[process_kprobe][policy_name],\n  binary = json[process_kprobe][process][binary],\n  args = json[process_kprobe][process][arguments],\n  pid = toString(json[process_kprobe][process][pid]),\n  uid = toString(json[process_kprobe][process][uid]),\n  cwd = json[process_kprobe][process][cwd]\n| filter policy != \"openclaw-process-exec\"\n| fieldsKeep timestamp, policy, binary, args, pid, uid, cwd\n| sort timestamp desc\n| limit 50\n",
+        "visualization": "table",
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "table": {
+            "columnWidths": {
+              "[\"timestamp\"]": 59.29
+            },
+            "columnTypeOverrides": [
+              {
+                "disableRemoval": true,
+                "fields": [
+                  "content"
+                ],
+                "id": 1776412974300,
+                "value": "log-content"
+              }
+            ]
+          }
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "10": {
+        "title": "Total Security Events",
+        "type": "data",
+        "query": "fetch logs | filter service.name == \"openclaw-security\" | summarize count = count()\n",
+        "visualization": "singleValue",
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "singleValue": {
+            "label": "Events"
+          }
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "11": {
+        "type": "markdown",
+        "content": "## Performance & Spans"
+      },
+      "12": {
+        "title": "Avg Agent Turn Duration (ms)",
+        "type": "data",
+        "query": "fetch spans | filter service.name == \"openclaw-gateway\" and span.name == \"openclaw.agent.turn\" | fieldsAdd duration_ms = toDouble(duration) / 1000000 | summarize avg_duration_ms = avg(duration_ms), count = count()\n",
+        "visualization": "singleValue",
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "singleValue": {
+            "label": "Avg Duration (ms)"
+          }
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "13": {
+        "title": "Request Duration Over Time",
+        "type": "data",
+        "query": "fetch spans | filter service.name == \"openclaw-gateway\" | fieldsAdd duration_ms = toDouble(duration) / 1000000 | makeTimeseries avg_duration_ms = avg(duration_ms), interval:5m\n",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "14": {
+        "title": "Span Count by Name",
+        "type": "data",
+        "query": "fetch spans | filter service.name == \"openclaw-gateway\" | summarize count = count(), by:{span.name} | sort count desc\n",
+        "visualization": "categoricalBarChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "15": {
+        "title": "Tool Execution Statistics",
+        "type": "data",
+        "query": "fetch spans | filter service.name == \"openclaw-gateway\" and starts_with(span.name, \"execute_tool \") | fieldsAdd duration_ms = toDouble(duration) / 1000000 | summarize avg_ms = avg(duration_ms), max_ms = max(duration_ms), count = count(), by:{span.name}\n",
+        "visualization": "table",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "16": {
+        "type": "markdown",
+        "content": "## Gateway Issues"
+      },
+      "17": {
+        "title": "Gateway Errors",
+        "type": "data",
+        "query": "fetch logs | filter service.name == \"openclaw-gateway\" and loglevel == \"ERROR\" | summarize count = count()\n",
+        "visualization": "singleValue",
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "singleValue": {
+            "label": "Errors"
+          }
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "18": {
+        "title": "Latest Gateway Errors",
+        "type": "data",
+        "query": "fetch logs \n| filter service.name == \"openclaw-gateway\" and loglevel == \"ERROR\" \n| fieldsKeep timestamp, content, loglevel \n| parse content , \"JSON:json\"\n\n| fieldsAdd  context= concat(json[`0`], json[`1`]), meta = json[_meta]\n| fieldsAdd  path=meta[path]\n| fields timestamp, loglevel, context, filename= path[fileNameWithLine], method=path[method], filepath=path[filePath]\n ",
+        "visualization": "table",
+        "visualizationSettings": {
+          "autoSelectVisualization": false,
+          "table": {
+            "columnTypeOverrides": [
+              {
+                "disableRemoval": true,
+                "fields": [
+                  "content"
+                ],
+                "id": 1776412999050,
+                "value": "log-content"
+              }
+            ],
+            "columnWidths": {
+              "[\"json\",\"_meta\"]": 600
+            },
+            "sortBy": [
+              {
+                "columnId": "[\"json\",\"_meta\"]",
+                "direction": "ascending"
+              }
+            ]
+          }
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "19": {
+        "title": "Error Rate Over Time",
+        "type": "data",
+        "query": "fetch logs | filter service.name == \"openclaw-gateway\" and loglevel == \"ERROR\" | makeTimeseries count = count(), interval:10m\n",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "20": {
+        "type": "markdown",
+        "content": "# OpenClaw Gateway Observability\n\nComprehensive monitoring of the OpenClaw Gateway \u2014 token usage, security events, performance metrics, and host utilization.\n\n**Note:** Replace `YOUR_HOST_NAME` in the Host Metrics section with the hostname of the machine running your OpenClaw gateway (find it with `hostname` on Linux). The `host.name` value is the system hostname reported by the OTel `hostmetrics` receiver — it is not set by the plugin."
+      },
+      "21": {
+        "title": "CPU Utilization (%)",
+        "type": "data",
+        "query": "timeseries idle=avg(system.cpu.time, filter:{state==\"idle\"}), total=avg(system.cpu.time), filter:{host.name==\"YOUR_HOST_NAME\"}, interval:5m",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "22": {
+        "title": "Disk I/O",
+        "type": "data",
+        "query": "timeseries avg(system.disk.io), interval:5m, by:{mode}, filter:{ host.name == \"YOUR_HOST_NAME\"}\n",
+        "visualization": "areaChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "23": {
+        "title": "Memory usage",
+        "type": "data",
+        "query": "timeseries avg(system.memory.usage), filter:{ host.name == \"YOUR_HOST_NAME\"}, by:{state}\n",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "24": {
+        "type": "markdown",
+        "content": "## Host Metrics\n\nHost-level CPU / disk / memory / network for the node running OpenClaw."
+      },
+      "25": {
+        "title": "Network activity",
+        "type": "data",
+        "query": "timeseries avg(system.network.io), by:{direction}, filter:host.name==\"YOUR_HOST_NAME\"",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": true
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "enabled": false,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "26": {
+        "title": "",
+        "type": "data",
+        "query": "timeseries la1=avg(system.cpu.load_average.1m), la5=avg(system.cpu.load_average.5m), la15=avg(system.cpu.load_average.15m), filter: host.name==\"YOUR_HOST_NAME\"",
+        "visualization": "lineChart",
+        "visualizationSettings": {
+          "autoSelectVisualization": true
+        },
+        "querySettings": {
+          "defaultSamplingRatio": 10,
+          "defaultScanLimitGbytes": 500,
+          "enableSampling": false,
+          "maxResultMegaBytes": 1,
+          "maxResultRecords": 1000
+        },
+        "davis": {
+          "enabled": false,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      },
+      "27": {
+        "title": "Token Usage by Model (Stacked)",
+        "type": "data",
+        "query": "timeseries sum(openclaw.tokens), by:{openclaw.model, openclaw.token}, interval:1h",
+        "visualization": "table",
+        "visualizationSettings": {
+          "autoSelectVisualization": false
+        },
+        "querySettings": {
+          "maxResultRecords": 1000,
+          "defaultScanLimitGbytes": 500,
+          "maxResultMegaBytes": 1,
+          "defaultSamplingRatio": 10,
+          "enableSampling": false
+        },
+        "davis": {
+          "enabled": false,
+          "davisVisualization": {
+            "isAvailable": true
+          }
+        }
+      }
+    },
+    "layouts": {
+      "1": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "2": {
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 4
+      },
+      "3": {
+        "x": 12,
+        "y": 6,
+        "w": 12,
+        "h": 4
+      },
+      "4": {
+        "x": 12,
+        "y": 2,
+        "w": 12,
+        "h": 4
+      },
+      "5": {
+        "x": 3,
+        "y": 2,
+        "w": 9,
+        "h": 4
+      },
+      "6": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 2
+      },
+      "7": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 4
+      },
+      "8": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 4
+      },
+      "9": {
+        "x": 8,
+        "y": 16,
+        "w": 16,
+        "h": 6
+      },
+      "10": {
+        "x": 0,
+        "y": 16,
+        "w": 8,
+        "h": 6
+      },
+      "11": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 2
+      },
+      "12": {
+        "x": 0,
+        "y": 24,
+        "w": 8,
+        "h": 4
+      },
+      "13": {
+        "x": 8,
+        "y": 24,
+        "w": 16,
+        "h": 4
+      },
+      "14": {
+        "x": 0,
+        "y": 28,
+        "w": 8,
+        "h": 6
+      },
+      "15": {
+        "x": 8,
+        "y": 28,
+        "w": 4,
+        "h": 6
+      },
+      "16": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 2
+      },
+      "17": {
+        "x": 0,
+        "y": 36,
+        "w": 8,
+        "h": 3
+      },
+      "18": {
+        "x": 8,
+        "y": 36,
+        "w": 16,
+        "h": 7
+      },
+      "19": {
+        "x": 0,
+        "y": 39,
+        "w": 8,
+        "h": 4
+      },
+      "20": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 2
+      },
+      "21": {
+        "x": 0,
+        "y": 45,
+        "w": 7,
+        "h": 6
+      },
+      "22": {
+        "x": 7,
+        "y": 45,
+        "w": 8,
+        "h": 6
+      },
+      "23": {
+        "x": 15,
+        "y": 45,
+        "w": 8,
+        "h": 6
+      },
+      "24": {
+        "x": 0,
+        "y": 2,
+        "w": 3,
+        "h": 4
+      },
+      "25": {
+        "x": 0,
+        "y": 51,
+        "w": 10,
+        "h": 6
+      },
+      "26": {
+        "x": 10,
+        "y": 51,
+        "w": 13,
+        "h": 6
+      },
+      "27": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 6
+      }
+    },
+    "settings": {
+      "defaultTimeframe": {
+        "value": {
+          "from": "now()-24h",
+          "to": "now()"
+        },
+        "enabled": true
+      }
+    },
+    "annotations": []
+  }
+}
