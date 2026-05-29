@@ -72,19 +72,19 @@ if _tracer_provider:
 
 def _bedrock_provider() -> BedrockProvider:
     return BedrockProvider(
-        aws_access_key_id=os.environ["Bedrock_username"],
-        aws_secret_access_key=os.environ["bedrock_key"],
+        aws_access_key_id=os.environ["BEDROCK_USERNAME"],
+        aws_secret_access_key=os.environ["BEDROCK_KEY"],
         region_name="us-east-1",
     )
 
 
 def build_azure_model() -> tuple[OpenAIModel, str, str]:
     provider = AzureProvider(
-        azure_endpoint=os.environ["Azure_openai_endpoint"],
-        api_key=os.environ["Azure_openai_key"],
+        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+        api_key=os.environ["AZURE_OPENAI_KEY"],
         api_version="2024-02-01",
     )
-    deployment = os.environ["Azure_openai_deployment"]
+    deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
     return OpenAIModel(deployment, provider=provider), "Azure OpenAI", deployment
 
 

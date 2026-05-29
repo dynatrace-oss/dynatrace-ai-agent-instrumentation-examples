@@ -4,6 +4,24 @@ This example shows how to connect **Dynatrace Real User Monitoring (RUM)** with 
 
 The app is a music history chatbot that randomly routes requests across AWS Bedrock (Claude Sonnet / Haiku) and Azure OpenAI, instrumented with pydantic-ai's native OpenTelemetry support.
 
+<!-- Re-generate TOC with `markdown-toc --no-first-h1 -i` -->
+
+<!-- toc -->
+
+- [How the data flows](#how-the-data-flows)
+- [Why does the frontend already know the trace ID?](#why-does-the-frontend-already-know-the-trace-id)
+- [Conversation ID — a separate concept](#conversation-id--a-separate-concept)
+- [What gets captured](#what-gets-captured)
+- [Setup](#setup)
+  * [Prerequisites](#prerequisites)
+  * [Configure RUM in your Dynatrace environment](#configure-rum-in-your-dynatrace-environment)
+  * [Environment variables](#environment-variables)
+  * [Option A — Vanilla HTML frontend (simplest)](#option-a--vanilla-html-frontend-simplest)
+  * [Option B — Next.js frontend](#option-b--nextjs-frontend)
+  * [Add your RUM JavaScript tag](#add-your-rum-javascript-tag)
+
+<!-- tocstop -->
+
 ---
 
 ## How the data flows
@@ -114,8 +132,14 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 ### Prerequisites
 
 - Python 3.11+
+- Node.js 18+
 - A Dynatrace environment with RUM enabled
 - AWS Bedrock access (or Azure OpenAI)
+
+
+### Configure RUM in your Dynatrace environment
+
+TBD
 
 ### Environment variables
 
@@ -125,12 +149,12 @@ Create a `.env` file at the repo root:
 DT-ENDPOINT=https://<your-env-id>.live.dynatrace.com
 DT-TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
 
-Bedrock_username=<aws-access-key-id>
-bedrock_key=<aws-secret-access-key>
+BEDROCK_USERNAME=<aws-access-key-id>
+BEDROCK_KEY=<aws-secret-access-key>
 
-Azure_openai_endpoint=https://<your-resource>.openai.azure.com/
-Azure_openai_key=<your-key>
-Azure_openai_deployment=<deployment-name>
+AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
+AZURE_OPENAI_KEY=<your-key>
+AZURE_OPENAI_DEPLOYMENT=<deployment-name>
 ```
 
 ### Option A — Vanilla HTML frontend (simplest)
