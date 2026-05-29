@@ -235,8 +235,10 @@ dtctl apply -f openpipeline-openinference-dtctl.yaml
 Then add the routing entry:
 
 ```bash
-DT_PLATFORM_TOKEN=<PLATFORM_TOKEN> bash setup-routing.sh
+DT_PLATFORM_TOKEN=<PLATFORM_TOKEN> DT_API_TOKEN=<API_TOKEN> bash setup-routing.sh
 ```
+
+> The script uses the platform token to find the dtctl-deployed pipeline, and the classic API token to write to the system-level routing table.
 ---
 
 #### Option B.2 -- Using the Dynatrace UI

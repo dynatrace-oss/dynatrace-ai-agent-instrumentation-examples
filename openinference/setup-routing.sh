@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Sets up OpenPipeline routing so OpenInference spans are directed to the
-# openinference-ai-spans pipeline.  Uses the Dynatrace Settings API v2
-# with a platform token (dt0s16.*) — required when pipeline is deployed via dtctl.
+# openinference-ai-spans pipeline.  Uses the Dynatrace Settings API v2.
+#
+# Requires both tokens in .env:
+#   DT_PLATFORM_TOKEN=dt0s16.*  — Bearer auth, used to look up the dtctl-deployed pipeline objectId
+#   DT_API_TOKEN=dt0c01.*       — Api-Token auth, used to read/write the system routing table
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,7 +15,8 @@ if [[ -f "$SCRIPT_DIR/.env" ]]; then
 fi
 
 DT_ENDPOINT="${DT_ENDPOINT:?DT_ENDPOINT is required}"
-DT_PLATFORM_TOKEN="${DT_PLATFORM_TOKEN:?DT_PLATFORM_TOKEN is required (platform token dt0s16.*)}"
+DT_PLATFORM_TOKEN="${DT_PLATFORM_TOKEN:?DT_PLATFORM_TOKEN is required (dt0s16.* platform token)}"
+DT_API_TOKEN="${DT_API_TOKEN:?DT_API_TOKEN is required (dt0c01.* classic token for routing table)}"
 
 PIPELINE_CUSTOM_ID="openinference-ai-spans"
 ROUTING_MATCHER='matchesPhrase(otel.scope.name, "openinference")'
@@ -26,7 +30,8 @@ python3 << 'PYEOF'
 import json, urllib.request, ssl, sys, os
 
 endpoint = os.environ["DT_ENDPOINT"].rstrip("/")
-token = os.environ["DT_PLATFORM_TOKEN"]
+platform_token = os.environ["DT_PLATFORM_TOKEN"]
+api_token = os.environ["DT_API_TOKEN"]
 pipeline_id = os.environ["PIPELINE_CUSTOM_ID"]
 matcher = os.environ["ROUTING_MATCHER"]
 desc = os.environ["ROUTING_DESC"]
@@ -35,10 +40,9 @@ ctx = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
 
-headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
-def api_get(path):
-    req = urllib.request.Request(f"{endpoint}{path}", headers=headers)
+def api_get(path, token, bearer=False):
+    auth = f"Bearer {token}" if bearer else f"Api-Token {token}"
+    req = urllib.request.Request(f"{endpoint}{path}", headers={"Authorization": auth, "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, context=ctx) as resp:
             return json.loads(resp.read())
@@ -46,9 +50,11 @@ def api_get(path):
         print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)
         sys.exit(1)
 
-def api_put(path, data):
+def api_put(path, data, token, bearer=False):
+    auth = f"Bearer {token}" if bearer else f"Api-Token {token}"
     req = urllib.request.Request(
-        f"{endpoint}{path}", data=json.dumps(data).encode(), headers=headers, method="PUT"
+        f"{endpoint}{path}", data=json.dumps(data).encode(),
+        headers={"Authorization": auth, "Content-Type": "application/json"}, method="PUT"
     )
     try:
         with urllib.request.urlopen(req, context=ctx) as resp:
@@ -57,9 +63,9 @@ def api_put(path, data):
         print(f"Error {e.code}: {e.read().decode()}", file=sys.stderr)
         sys.exit(1)
 
-# Resolve pipeline objectId from its customId
-print("→ Fetching pipeline objectId...")
-pipelines = api_get("/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.pipelines")
+# Look up pipeline objectId via platform token (dtctl-deployed pipelines are only visible with Bearer auth)
+print("→ Fetching pipeline objectId (platform token)...")
+pipelines = api_get("/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.pipelines", platform_token, bearer=True)
 pipeline_obj_id = next(
     (i["objectId"] for i in pipelines.get("items", []) if i.get("value", {}).get("customId") == pipeline_id),
     None,
@@ -69,9 +75,9 @@ if not pipeline_obj_id:
     sys.exit(1)
 print(f"  objectId: {pipeline_obj_id}")
 
-# Fetch routing settings object
-print("→ Fetching routing settings...")
-routing = api_get("/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.routing")
+# Read/write system routing table via classic token (system-level routing, used by ingest)
+print("→ Fetching routing settings (classic token)...")
+routing = api_get("/api/v2/settings/objects?schemaIds=builtin:openpipeline.spans.routing", api_token)
 if not routing.get("items"):
     print("ERROR: No routing settings found.", file=sys.stderr)
     sys.exit(1)
@@ -93,6 +99,6 @@ entries.append({
 value["routingEntries"] = entries
 
 print(f"→ Updating routing (objectId: {object_id})...")
-api_put(f"/api/v2/settings/objects/{object_id}", {"value": value})
+api_put(f"/api/v2/settings/objects/{object_id}", {"value": value}, api_token)
 print("✓ Routing entry added.")
 PYEOF
