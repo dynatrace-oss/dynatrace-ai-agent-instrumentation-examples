@@ -18,12 +18,10 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
   * [Environment variables](#environment-variables)
   * [Option A — Vanilla HTML frontend (simplest)](#option-a--vanilla-html-frontend-simplest)
   * [Option B — Next.js frontend](#option-b--nextjs-frontend)
-  * [Add your RUM JavaScript tag](#add-your-rum-javascript-tag)
 
 <!-- tocstop -->
 
-
-TODO: Add screenshots of Dynatrace AI Observability Prompt Page
+![Dynatrace AI Observability Prompt Page](./images/prompt_detail.png)
 
 ---
 
@@ -158,7 +156,7 @@ Press `Next` to copy the JavaScript tag and replace the `<Script src="...">` in 
 Create a `.env` file at the repo root:
 
 ```bash
-DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com # OTLP Base Endpoint for your environment, e.g. https://abc12345.live.dynatrace.com/api/v2/otlp/
+DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com # Link to your environment, e.g. https://abc12345.live.dynatrace.com/
 DT_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
 
 BEDROCK_USERNAME=<aws-access-key-id>
@@ -170,6 +168,8 @@ AZURE_OPENAI_DEPLOYMENT=<deployment-name>
 ```
 
 You can find your Dynatrace OTLP endpoint following [this guide](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#base-url) and generate a token with the required scopes in the Dynatrace UI under Access Tokens > Generate new token.
+
+All paths below are relative to the repo root.
 
 ### Option A — Vanilla HTML frontend (simplest)
 

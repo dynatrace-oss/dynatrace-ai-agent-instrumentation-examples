@@ -16,6 +16,8 @@ def setup_otel(service_name: str = "rum-music-agent"):
         print("[otel] DT_ENDPOINT or DT_TOKEN not set — OTel export disabled")
         return None, None
 
+    if ".apps.dynatrace.com" in dt_endpoint:
+        dt_endpoint = dt_endpoint.replace(".apps.dynatrace.com", ".live.dynatrace.com")
     otlp_base = f"{dt_endpoint}/api/v2/otlp"
     headers = {"Authorization": f"Api-Token {dt_api_token}"}
 
