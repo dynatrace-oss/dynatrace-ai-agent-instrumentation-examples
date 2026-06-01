@@ -39,6 +39,9 @@ __model = OpenAIChatCompletionsModel(
 from opentelemetry import trace
 tracer = trace.get_tracer("openai-agents")
 
+import logging
+logger = logging.getLogger(__name__)
+
 # =========================
 # CONTEXT
 # =========================
@@ -71,6 +74,7 @@ def create_initial_context() -> AirlineAgentContext:
 async def faq_lookup_tool(question: str) -> str:
     """Lookup answers to frequently asked questions."""
     with tracer.start_as_current_span(name="faq_lookup_tool", kind=trace.SpanKind.INTERNAL) as span:
+        logger.info("faq_lookup_tool invoked: question=%r", question)
         q = question.lower()
         if "bag" in q or "baggage" in q:
             return (
@@ -94,6 +98,11 @@ async def update_seat(
 ) -> str:
     """Update the seat for a given confirmation number."""
     with tracer.start_as_current_span(name="update_seat", kind=trace.SpanKind.INTERNAL) as span:
+        logger.info(
+            "update_seat invoked: confirmation_number=%s new_seat=%s",
+            confirmation_number,
+            new_seat,
+        )
         context.context.confirmation_number = confirmation_number
         context.context.seat_number = new_seat
         assert context.context.flight_number is not None, "Flight number is required"
@@ -106,6 +115,7 @@ async def update_seat(
 async def flight_status_tool(flight_number: str) -> str:
     """Lookup the status for a flight."""
     with tracer.start_as_current_span(name="flight_status_tool", kind=trace.SpanKind.INTERNAL) as span:
+        logger.info("flight_status_tool invoked: flight_number=%s", flight_number)
         return f"Flight {flight_number} is on time and scheduled to depart at gate A10."
 
 @function_tool(
@@ -115,6 +125,7 @@ async def flight_status_tool(flight_number: str) -> str:
 async def baggage_tool(query: str) -> str:
     """Lookup baggage allowance and fees."""
     with tracer.start_as_current_span(name="baggage_tool", kind=trace.SpanKind.INTERNAL) as span:
+        logger.info("baggage_tool invoked: query=%r", query)
         q = query.lower()
         if "fee" in q:
             return "Overweight bag fee is $75."
@@ -143,6 +154,11 @@ async def on_seat_booking_handoff(context: RunContextWrapper[AirlineAgentContext
     with tracer.start_as_current_span(name="on_seat_booking_handoff", kind=trace.SpanKind.INTERNAL) as span:
         context.context.flight_number = f"FLT-{random.randint(100, 999)}"
         context.context.confirmation_number = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        logger.info(
+            "Seat booking handoff: assigned flight_number=%s confirmation_number=%s",
+            context.context.flight_number,
+            context.context.confirmation_number,
+        )
 
 # =========================
 # GUARDRAILS
