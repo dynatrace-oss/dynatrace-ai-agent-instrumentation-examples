@@ -16,12 +16,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
-        {/* Dynatrace Real User Monitoring — pydantic-music-app (APPLICATION-B52D32BDE3935DE1)
-            afterInteractive is the correct App Router strategy for third-party analytics.
-            It loads immediately after hydration, before any user action can fire a fetch,
-            so every request still gets the W3C traceparent header injected automatically. */}
+        {/* Dynatrace Real User Monitoring — Change this Script following the instructions in the README */}
         <Script
-          src="https://js-cdn.dynatracelabs.com/jstag/1468ae7109d/bf48777rib/b52d32bde3935de1_complete.js"
+          src="https://js-cdn.dynatrace.com/jstag/<follow-the-instructions-in-the-README>.js"
           strategy="afterInteractive"
           crossOrigin="anonymous"
         />

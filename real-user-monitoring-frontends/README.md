@@ -22,6 +22,9 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
 
 <!-- tocstop -->
 
+
+TODO: Add screenshots of Dynatrace AI Observability Prompt Page
+
 ---
 
 ## How the data flows
@@ -140,10 +143,14 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 ### Configure RUM in your Dynatrace environment
 
 
-Go to Experience Vitals > Overview.
-Click `+ Frontend`, select Web and provide a frontend name.
+Go to Experience Vitals and click `+ Frontend`, select Web and provide a frontend name.
+
+![](./images/experience-vital-setup.png)
+
 In the Select instrumentation method step, select Agentless and press `Create`
-In the Setup step, check under Select capability and settings if RUM is enabled. If it isn’t enabled, select  Override and turn it on. Press `Next` to copy the JavaScript tag and replace the `<Script src="...">` in `nextjs-frontend/app/layout.tsx` or the `<script>` tag in `frontend/index.html`.
+In the Setup step, check under Select capability and settings if RUM is enabled. 
+If it isn’t enabled, select `Override` and turn it on. 
+Press `Next` to copy the JavaScript tag and replace the `<Script src="...">` in [nextjs-frontend/app/layout.tsx](./nextjs-frontend/app/layout.tsx) or the `<script>` tag in [frontend/index.html](./frontend/index.html).
 
 
 ### Environment variables
@@ -151,7 +158,7 @@ In the Setup step, check under Select capability and settings if RUM is enabled.
 Create a `.env` file at the repo root:
 
 ```bash
-DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com
+DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com # OTLP Base Endpoint for your environment, e.g. https://abc12345.live.dynatrace.com/api/v2/otlp/
 DT_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
 
 BEDROCK_USERNAME=<aws-access-key-id>
@@ -161,6 +168,8 @@ AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
 AZURE_OPENAI_KEY=<your-key>
 AZURE_OPENAI_DEPLOYMENT=<deployment-name>
 ```
+
+You can find your Dynatrace OTLP endpoint following [this guide](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#base-url) and generate a token with the required scopes in the Dynatrace UI under Access Tokens > Generate new token.
 
 ### Option A — Vanilla HTML frontend (simplest)
 
