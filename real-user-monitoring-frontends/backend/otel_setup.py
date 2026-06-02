@@ -18,7 +18,9 @@ def setup_otel(service_name: str = "rum-music-agent"):
         return None, None
 
     parsed = urlparse(dt_endpoint)
-    if ".apps.dynatrace.com" in (parsed.hostname or ""):
+    host = parsed.hostname or ""
+    host_l = host.lower()
+    if host_l == "apps.dynatrace.com" or host_l.endswith(".apps.dynatrace.com"):
         dt_endpoint = dt_endpoint.replace(".apps.dynatrace.com", ".live.dynatrace.com")
     otlp_base = f"{dt_endpoint}/api/v2/otlp"
     headers = {"Authorization": f"Api-Token {dt_api_token}"}
