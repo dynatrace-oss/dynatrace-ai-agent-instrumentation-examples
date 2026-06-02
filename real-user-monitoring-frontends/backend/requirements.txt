@@ -1,0 +1,8 @@
+pydantic-ai
+fastapi
+uvicorn[standard]
+python-dotenv
+boto3
+openai>=1.58.0
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
