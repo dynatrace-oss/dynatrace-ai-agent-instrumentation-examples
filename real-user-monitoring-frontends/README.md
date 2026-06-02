@@ -21,6 +21,7 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
 
 <!-- tocstop -->
 
+![Dynatrace AI Observability Prompt Page Filter](./images/filter-conversation-id.png)
 ![Dynatrace AI Observability Prompt Page](./images/prompt_detail.png)
 
 ---
