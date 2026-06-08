@@ -13,12 +13,10 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - [Prerequisites](#prerequisites)
 - [Configuration options](#configuration-options)
 - [Setup](#setup)
-  - [1. Create a Dynatrace access token](#1-create-a-dynatrace-access-token)
-  - [2. Set environment variables](#2-set-environment-variables)
-  - [3. Install dependencies](#3-install-dependencies)
 - [Option A -- OTel Collector with transform processor](#option-a----otel-collector-with-transform-processor)
 - [Option B -- Dynatrace OpenPipeline](#option-b----dynatrace-openpipeline)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
+- [Attribute mapping reference](#attribute-mapping-reference)
 - [Known gaps & limitations](#known-gaps--limitations)
 - [Troubleshooting](#troubleshooting)
 
@@ -56,71 +54,9 @@ OpenInference uses its own semantic conventions that the Dynatrace AI Observabil
 
 Both paths produce identical results in the AI Observability app.
 
-### Attribute mapping reference
-
-The table below shows all OpenInference → Dynatrace translations applied by both options:
-
-| OpenInference source | Dynatrace target | Notes |
-|---|---|---|
-| `openinference.span.kind` | `gen_ai.operation.kind` | `CHAIN`→`workflow`, `TOOL`→`tool`, `AGENT`→`agent`, `RETRIEVER`→`retrieval`, `GUARDRAIL`→`guardrail`, anything else→`task` |
-| _(LLM span detected)_ | `gen_ai.operation.name = "chat"` | hardcoded when `llm.token_count.total` or `llm.model_name` present |
-| _(embedding span detected)_ | `gen_ai.operation.name = "embeddings"` | hardcoded when `embedding.model_name` present |
-| `llm.model_name` | `gen_ai.request.model` | LLM spans |
-| `embedding.model_name` | `gen_ai.request.model` | embedding spans |
-| `reranker.model_name` | `gen_ai.request.model` | reranker spans |
-| _(derived)_ | `gen_ai.response.model` | mirrored from `gen_ai.request.model` (OpenInference has no separate response model field) |
-| `llm.provider` | `gen_ai.provider.name` | primary mapping |
-| `llm.system` | `gen_ai.provider.name` | fallback when `llm.provider` absent; `llm.system` is always removed afterwards |
-| _(derived)_ | `gen_ai.system = "azure.ai.openai"` | set when `gen_ai.provider.name == "azure"` |
-| `llm.token_count.prompt` | `gen_ai.usage.input_tokens` | |
-| `llm.token_count.completion` | `gen_ai.usage.output_tokens` | |
-| `llm.token_count.prompt_details.cache_read` | `gen_ai.prompt_caching = "read"` | only when value **> 0** — Azure/OpenAI emit `cache_read = 0` on every span; source attribute removed |
-| `llm.token_count.prompt_details.cache_write` | `gen_ai.prompt_caching = "write"` | only when value **> 0** and `cache_read` is zero; source attribute removed |
-| `llm.temperature` | `gen_ai.request.temperature` | |
-| `llm.max_tokens` | `gen_ai.request.max_tokens` | |
-| `llm.top_p` | `gen_ai.request.top_p` | |
-| `llm.finish_reason` | `gen_ai.response.finish_reasons` | source attribute removed after copy |
-| `embedding.vector_length` | `gen_ai.embeddings.dimension.count` | |
-| `agent.name` | `gen_ai.agent.name` | |
-| `tool.name` | `gen_ai.tool.name` | |
-| `tool.description` | `gen_ai.tool.description` | |
-| `validator_name` | `gen_ai.guardrail.name` | `validator_name` has no OTel namespace; renamed for queryability |
-| `llm.input_messages.0.message.content` | `gen_ai.system_instructions` | only when `llm.input_messages.0.message.role == "system"` |
-| `input.value` | `gen_ai.input.messages` | interim fallback so spans appear in the Prompts list view; source removed |
-| `output.value` | `gen_ai.output.messages` | interim fallback; source removed |
-| _(hardcoded)_ | `ai.observability.source = "openinference"` | always set on all OpenInference spans |
-
-### Attributes not translated
-
-Some OpenInference attributes are intentionally left as-is:
-
-| Attribute(s) | Why not translated |
-|---|---|
-| `llm.input_messages.N.message.role/content` (N ≥ 1) | Indexed per-message attributes — OTTL and DQL cannot iterate over dynamic indices. Only index `0` is read for system instructions. The full conversation is surfaced via `input.value` → `gen_ai.input.messages`. |
-| `llm.output_messages.N.message.role/content` | Same reason as above. |
-| `session.id`, `user.id` | Names already match the OTel standard; pass through to Dynatrace unchanged. |
-
 ---
 
-## Known gaps & limitations
-
-These are OpenInference signals that are not yet fully captured after normalization:
-
-### Full conversation message history
-
-OpenInference emits each message as a separate indexed attribute (`llm.input_messages.0.message.role`, `llm.input_messages.1.message.role`, …). Neither OTTL (OTel Collector transform processor) nor Dynatrace OpenPipeline DQL can iterate over dynamic numeric indices at transform time.
-
-**What we do instead:** the system prompt (`llm.input_messages.0.message.role == "system"`) is extracted to `gen_ai.system_instructions`, and the full serialised conversation is copied from `input.value` → `gen_ai.input.messages` as a fallback so spans appear in the Prompts view.
-
-### Guardrail details beyond the validator name
-
-`openinference.span.kind == "GUARDRAIL"` spans are now mapped to `gen_ai.operation.kind = "guardrail"` and `validator_name` is renamed to `gen_ai.guardrail.name`. However, richer guardrail attributes (blocked status, policy details, scores) have no standardised OTel target yet and are not translated.
-
-The Dynatrace AI Observability app's guardrail dashboards currently read provider-specific attributes (`gen_ai.prompt.prompt_filter_results` for Azure, `gen_ai.bedrock.guardrail.*` for AWS Bedrock) rather than OpenInference guardrail spans. OpenInference guardrail spans will appear in Distributed Tracing but may not populate the guardrail overview tiles until a cross-provider mapping is standardised.
-
-### EVALUATOR spans
-
-`openinference.span.kind == "EVALUATOR"` spans fall through to the default `gen_ai.operation.kind = "task"`. No dedicated operation kind or attribute mapping exists yet.
+## Setup
 
 ### 1. Create a Dynatrace access token
 
@@ -256,8 +192,10 @@ This is a one-time setup per tenant.
 3. Click **Add pipeline**, name it `openinference-ai-spans`, and add processors matching the definitions in `openpipeline-openinference.yaml`.
    ![Add pipeline](assets/addpipeline.png)
 4. Go to the **Routing** tab and add an entry:
-    - Matcher: `matchesPhrase(otel.scope.name, "openinference")`
+    - Matcher: `isNotNull(openinference.span.kind)`
     - Pipeline: `openinference-ai-spans`
+
+> **Note:** The routing matcher uses `isNotNull(openinference.span.kind)` (a span attribute set by every OpenInference instrumentor). Using `otel.scope.name` does not work — OpenPipeline routing evaluates span attributes only, not OTLP scope-level fields.
 
 ---
 
@@ -285,6 +223,73 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 4. You can also visualize span from the **Distributed Tracing** App
   ![AI Observability — OpenInference spans overview](assets/openinference.png)
 
+---
+
+## Attribute mapping reference
+
+The table below shows all OpenInference → Dynatrace translations applied by both options:
+
+| OpenInference source | Dynatrace target | Notes |
+|---|---|---|
+| `openinference.span.kind` | `gen_ai.operation.kind` | `CHAIN`→`workflow`, `TOOL`→`tool`, `AGENT`→`agent`, `RETRIEVER`→`retrieval`, `GUARDRAIL`→`guardrail`, anything else→`task` |
+| _(LLM span detected)_ | `gen_ai.operation.name = "chat"` | hardcoded when `llm.token_count.total` or `llm.model_name` present |
+| _(embedding span detected)_ | `gen_ai.operation.name = "embeddings"` | hardcoded when `embedding.model_name` present |
+| `llm.model_name` | `gen_ai.request.model` | LLM spans |
+| `embedding.model_name` | `gen_ai.request.model` | embedding spans |
+| `reranker.model_name` | `gen_ai.request.model` | reranker spans |
+| _(derived)_ | `gen_ai.response.model` | mirrored from `gen_ai.request.model` (OpenInference has no separate response model field) |
+| `llm.provider` | `gen_ai.provider.name` | primary mapping |
+| `llm.system` | `gen_ai.provider.name` | fallback when `llm.provider` absent; `llm.system` is always removed afterwards |
+| _(derived)_ | `gen_ai.system = "azure.ai.openai"` | set when `gen_ai.provider.name == "azure"` |
+| `llm.token_count.prompt` | `gen_ai.usage.input_tokens` | |
+| `llm.token_count.completion` | `gen_ai.usage.output_tokens` | |
+| `llm.token_count.prompt_details.cache_read` | `gen_ai.prompt_caching = "read"` | only when value **> 0** — Azure/OpenAI emit `cache_read = 0` on every span; source attribute removed |
+| `llm.token_count.prompt_details.cache_write` | `gen_ai.prompt_caching = "write"` | only when value **> 0** and `cache_read` is zero; source attribute removed |
+| `llm.temperature` | `gen_ai.request.temperature` | |
+| `llm.max_tokens` | `gen_ai.request.max_tokens` | |
+| `llm.top_p` | `gen_ai.request.top_p` | |
+| `llm.finish_reason` | `gen_ai.response.finish_reasons` | renamed directly (source attribute removed) |
+| `embedding.vector_length` | `gen_ai.embeddings.dimension.count` | |
+| `agent.name` | `gen_ai.agent.name` | |
+| `tool.name` | `gen_ai.tool.name` | |
+| `tool.description` | `gen_ai.tool.description` | |
+| `validator_name` | `gen_ai.guardrail.name` | `validator_name` has no OTel namespace; renamed for queryability |
+| `llm.input_messages.0.message.content` | `gen_ai.system_instructions` | only when `llm.input_messages.0.message.role == "system"` |
+| `input.value` | `gen_ai.input.messages` | interim fallback so spans appear in the Prompts list view; source removed |
+| `output.value` | `gen_ai.output.messages` | interim fallback; source removed |
+| _(hardcoded)_ | `ai.observability.source = "openinference"` | always set on all OpenInference spans |
+
+### Attributes not translated
+
+Some OpenInference attributes are intentionally left as-is:
+
+| Attribute(s) | Why not translated |
+|---|---|
+| `llm.input_messages.N.message.role/content` (N ≥ 1) | Indexed per-message attributes — OTTL and DQL cannot iterate over dynamic indices. Only index `0` is read for system instructions. The full conversation is surfaced via `input.value` → `gen_ai.input.messages`. |
+| `llm.output_messages.N.message.role/content` | Same reason as above. |
+| `session.id`, `user.id` | Names already match the OTel standard; pass through to Dynatrace unchanged. |
+
+---
+
+## Known gaps & limitations
+
+These are OpenInference signals that are not yet fully captured after normalization:
+
+### Full conversation message history
+
+OpenInference emits each message as a separate indexed attribute (`llm.input_messages.0.message.role`, `llm.input_messages.1.message.role`, …). Neither OTTL (OTel Collector transform processor) nor Dynatrace OpenPipeline DQL can iterate over dynamic numeric indices at transform time.
+
+**What we do instead:** the system prompt (`llm.input_messages.0.message.role == "system"`) is extracted to `gen_ai.system_instructions`, and the full serialised conversation is copied from `input.value` → `gen_ai.input.messages` as a fallback so spans appear in the Prompts view.
+
+### Guardrail details beyond the validator name
+
+`openinference.span.kind == "GUARDRAIL"` spans are now mapped to `gen_ai.operation.kind = "guardrail"` and `validator_name` is renamed to `gen_ai.guardrail.name`. However, richer guardrail attributes (blocked status, policy details, scores) have no standardised OTel target yet and are not translated.
+
+The Dynatrace AI Observability app's guardrail dashboards currently read provider-specific attributes (`gen_ai.prompt.prompt_filter_results` for Azure, `gen_ai.bedrock.guardrail.*` for AWS Bedrock) rather than OpenInference guardrail spans. OpenInference guardrail spans will appear in Distributed Tracing but may not populate the guardrail overview tiles until a cross-provider mapping is standardised.
+
+### EVALUATOR spans
+
+`openinference.span.kind == "EVALUATOR"` spans fall through to the default `gen_ai.operation.kind = "task"`. No dedicated operation kind or attribute mapping exists yet.
 
 ---
 
@@ -303,7 +308,7 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 **Spans visible in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.system` or `gen_ai.provider.name` to be set on the span -- these are added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml` -- check `docker logs otel-collector` for the config path it loaded.
-- Option B: confirm the OpenPipeline routing entry is active -- go to **Settings -> OpenPipeline -> Spans** in Dynatrace and verify the `openinference-ai-spans` pipeline is enabled.
+- Option B: confirm the OpenPipeline routing entry is active — go to **Settings -> OpenPipeline -> Spans** in Dynatrace and verify the `openinference-ai-spans` pipeline is enabled and the routing matcher is `isNotNull(openinference.span.kind)`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.

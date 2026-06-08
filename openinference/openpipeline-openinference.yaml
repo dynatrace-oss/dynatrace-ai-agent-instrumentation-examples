@@ -153,6 +153,8 @@ processing:
             toName: "gen_ai.usage.input_tokens"
           - fromName: "llm.token_count.completion"
             toName: "gen_ai.usage.output_tokens"
+          - fromName: "llm.finish_reason"
+            toName: "gen_ai.response.finish_reasons"
 
     # ============================================================================
     # 4b. MAP CACHE TOKEN USAGE (GAP FIX)
@@ -175,7 +177,7 @@ processing:
     # ============================================================================
     - id: "openinference-cache-tokens"
       enabled: true
-      matcher: "toDouble(llm.token_count.prompt_details.cache_read) > 0 OR toDouble(llm.token_count.prompt_details.cache_write) > 0"
+      matcher: "isNotNull(`llm.token_count.prompt_details.cache_read`) OR isNotNull(`llm.token_count.prompt_details.cache_write`)"
       type: "dql"
       description: "Map OpenInference cache token usage to gen_ai.prompt_caching"
       dql:
@@ -232,11 +234,9 @@ processing:
       description: "Map LLM response metadata to official attributes"
       dql:
         script: |
-          // Official: gen_ai.response.finish_reasons (array)
           // Mirror request model to response model (OpenInference has no separate response model field)
           // Set gen_ai.system for Azure-hosted OpenAI
-          fieldsAdd gen_ai.response.finish_reasons = if(isNull(llm.finish_reason), array(), else: array(llm.finish_reason)),
-            gen_ai.response.model = gen_ai.request.model,
+          fieldsAdd gen_ai.response.model = gen_ai.request.model,
             gen_ai.system = if(gen_ai.provider.name == "azure", "azure.ai.openai", else: null)
     
     # ============================================================================
@@ -373,17 +373,44 @@ processing:
             toName: "gen_ai.guardrail.name"
 
     # ============================================================================
-    # 12. ADD SOURCE METADATA (OFFICIAL DT)
+    # 12. ADD SOURCE METADATA + CLEANUP LEFTOVER llm.* FIELDS
     # ============================================================================
+    # NOTE: fieldsAdd processor type evaluates `value` as a DQL expression —
+    # bare identifiers are field references (not string literals). Using a DQL
+    # processor instead so "openinference" is properly quoted as a string literal.
     - id: "openinference-source-metadata"
       enabled: true
       matcher: "true"
-      type: "fieldsAdd"
-      description: "Add source SDK metadata for tracking"
-      fieldsAdd:
+      type: "dql"
+      description: "Tag source SDK — string literal requires DQL processor, not fieldsAdd"
+      dql:
+        script: |
+          fieldsAdd `ai.observability.source` = "openinference"
+
+    # ============================================================================
+    # 12b. CLEANUP LEFTOVER llm.* / openinference.* FIELDS
+    # ============================================================================
+    - id: "openinference-cleanup"
+      enabled: true
+      matcher: "true"
+      type: "fieldsRemove"
+      description: "Remove leftover OpenInference source attributes after mapping"
+      fieldsRemove:
         fields:
-          - name: "ai.observability.source"
-            value: "openinference"
+          - "openinference.span.kind"
+          - "llm.invocation_parameters"
+          - "llm.token_count.total"
+          - "llm.token_count.prompt_details.audio"
+          - "llm.token_count.prompt_details.cache_read"
+          - "llm.token_count.prompt_details.cache_write"
+          - "llm.token_count.completion_details.audio"
+          - "llm.token_count.completion_details.reasoning"
+          - "llm.input_messages.0.message.role"
+          - "llm.input_messages.0.message.content"
+          - "llm.output_messages.0.message.role"
+          - "llm.output_messages.0.message.content"
+          - "input.mime_type"
+          - "output.mime_type"
 
     # ============================================================================
     # 13. SESSION & USER PASS-THROUGH (GAP FIX - DOCUMENTATION)
@@ -434,13 +461,12 @@ processing:
     # ============================================================================
     - id: "openinference-input-output-fallback"
       enabled: true
-      matcher: "isNotNull(input.value) AND isNull(gen_ai.input.messages) AND (isNotNull(llm.token_count.total) OR isNotNull(llm.model_name))"
+      matcher: "true"
       type: "dql"
-      description: "Interim: copy input.value/output.value to gen_ai.* so spans appear in Prompts list"
+      description: "Map input.value/output.value to gen_ai.* so spans appear in Prompts list"
       dql:
         script: |
-          fieldsAdd `gen_ai.input.messages` = `input.value`,
-            `gen_ai.output.messages` = `output.value`
+          fieldsAdd `gen_ai.input.messages` = `input.value`, `gen_ai.output.messages` = `output.value`
           | fieldsRemove `input.value`, `output.value`
 
     # ============================================================================
