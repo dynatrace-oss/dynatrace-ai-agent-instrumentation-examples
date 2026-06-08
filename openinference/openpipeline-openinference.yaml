@@ -175,13 +175,14 @@ processing:
     # ============================================================================
     - id: "openinference-cache-tokens"
       enabled: true
-      matcher: "isNotNull(llm.token_count.prompt_details.cache_read) OR isNotNull(llm.token_count.prompt_details.cache_write)"
+      matcher: "toDouble(llm.token_count.prompt_details.cache_read) > 0 OR toDouble(llm.token_count.prompt_details.cache_write) > 0"
       type: "dql"
       description: "Map OpenInference cache token usage to gen_ai.prompt_caching"
       dql:
         script: |
-          fieldsAdd `gen_ai.prompt_caching` = if(isNotNull(`llm.token_count.prompt_details.cache_read`), "read",
-                                              else: if(isNotNull(`llm.token_count.prompt_details.cache_write`), "write", else: null))
+          // Guard is > 0: Azure/OpenAI set cache_read = 0 on every span, so != nil would cause false positives.
+          fieldsAdd `gen_ai.prompt_caching` = if(toDouble(`llm.token_count.prompt_details.cache_read`) > 0, "read",
+                                              else: if(toDouble(`llm.token_count.prompt_details.cache_write`) > 0, "write", else: null))
           | fieldsRemove `llm.token_count.prompt_details.cache_read`, `llm.token_count.prompt_details.cache_write`
     
     # ============================================================================

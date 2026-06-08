@@ -74,12 +74,12 @@ The table below shows all OpenInference → Dynatrace translations applied by bo
 | _(derived)_ | `gen_ai.system = "azure.ai.openai"` | set when `gen_ai.provider.name == "azure"` |
 | `llm.token_count.prompt` | `gen_ai.usage.input_tokens` | |
 | `llm.token_count.completion` | `gen_ai.usage.output_tokens` | |
-| `llm.token_count.prompt_details.cache_read` | `gen_ai.prompt_caching = "read"` | source attribute removed |
-| `llm.token_count.prompt_details.cache_write` | `gen_ai.prompt_caching = "write"` | only set when `cache_read` is absent; source attribute removed |
+| `llm.token_count.prompt_details.cache_read` | `gen_ai.prompt_caching = "read"` | only when value **> 0** — Azure/OpenAI emit `cache_read = 0` on every span; source attribute removed |
+| `llm.token_count.prompt_details.cache_write` | `gen_ai.prompt_caching = "write"` | only when value **> 0** and `cache_read` is zero; source attribute removed |
 | `llm.temperature` | `gen_ai.request.temperature` | |
 | `llm.max_tokens` | `gen_ai.request.max_tokens` | |
 | `llm.top_p` | `gen_ai.request.top_p` | |
-| `llm.finish_reason` | `gen_ai.response.finish_reasons` | string promoted to single-element array |
+| `llm.finish_reason` | `gen_ai.response.finish_reasons` | source attribute removed after copy |
 | `embedding.vector_length` | `gen_ai.embeddings.dimension.count` | |
 | `agent.name` | `gen_ai.agent.name` | |
 | `tool.name` | `gen_ai.tool.name` | |
@@ -96,9 +96,6 @@ Some OpenInference attributes are intentionally left as-is:
 
 | Attribute(s) | Why not translated |
 |---|---|
-| `llm.token_count.total` | No Dynatrace target field; used only as a guard condition to detect LLM spans. Kept for debugging. |
-| `llm.finish_reason` | Source string retained alongside the translated `gen_ai.response.finish_reasons` array. Both coexist. |
-| `openinference.span.kind` | Kept alongside the translated `gen_ai.operation.kind`; useful for pipeline routing and debugging. |
 | `llm.input_messages.N.message.role/content` (N ≥ 1) | Indexed per-message attributes — OTTL and DQL cannot iterate over dynamic indices. Only index `0` is read for system instructions. The full conversation is surfaced via `input.value` → `gen_ai.input.messages`. |
 | `llm.output_messages.N.message.role/content` | Same reason as above. |
 | `session.id`, `user.id` | Names already match the OTel standard; pass through to Dynatrace unchanged. |

@@ -27,6 +27,12 @@ install: ## Install Python dependencies
 # ---------------------------------------------------------------------------
 run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
+	@echo "Waiting for collector port to be ready..."
+	@sleep 3
+	@until curl -s -o /dev/null -w '' http://localhost:4318/v1/traces -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null; do \
+      echo "  waiting..."; sleep 1; \
+    done
+	@echo "Collector port is responding"
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
 	  $(PYTHON) app.py
