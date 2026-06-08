@@ -37,6 +37,7 @@ processing:
     #   - TOOL → tool
     #   - AGENT → agent
     #   - RETRIEVER → retrieval
+    #   - GUARDRAIL → guardrail
     #
     # STATUS: ✅ Mapped with transformation logic
     # ============================================================================
@@ -53,7 +54,8 @@ processing:
                                           else: if(openinference.span.kind == "TOOL", "tool",
                                           else: if(openinference.span.kind == "AGENT", "agent",
                                           else: if(openinference.span.kind == "RETRIEVER", "retrieval",
-                                          else: "task"))))
+                                          else: if(openinference.span.kind == "GUARDRAIL", "guardrail",
+                                          else: "task")))))
     
     # ============================================================================
     # 2. SET OPERATION NAME FOR LLM (OFFICIAL gen_ai.operation.name)
@@ -119,13 +121,13 @@ processing:
     # ============================================================================
     - id: "openinference-llm-system-fallback"
       enabled: true
-      matcher: "isNotNull(llm.system) AND isNull(gen_ai.provider.name)"
-      type: "fieldsRename"
-      description: "Fallback: map llm.system to gen_ai.provider.name when llm.provider is absent"
-      fieldsRename:
-        fields:
-          - fromName: "llm.system"
-            toName: "gen_ai.provider.name"
+      matcher: "isNotNull(llm.system)"
+      type: "dql"
+      description: "Fallback: map llm.system to gen_ai.provider.name when llm.provider is absent; always remove llm.system"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.provider.name` = if(isNull(`gen_ai.provider.name`), `llm.system`, else: `gen_ai.provider.name`)
+          | fieldsRemove `llm.system`
 
     # ============================================================================
     # 4. MAP LLM USAGE (OFFICIAL gen_ai.usage.*)
@@ -165,23 +167,22 @@ processing:
     #   - Spec: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md#token-count
     #
     # DYNATRACE:
-    #   - Attributes: gen_ai.usage.prompt_caching.read_tokens,
-    #                 gen_ai.usage.prompt_caching.write_tokens
-    #   - Semantic Dict: gen_ai.yaml
+    #   - Attribute: gen_ai.prompt_caching (string enum: "read" | "write")
+    #   - App convention: set to "read" when cache_read tokens are present,
+    #                     "write" when only cache_write tokens are present.
     #
     # STATUS: ✅ GAP FIX — New processor
     # ============================================================================
     - id: "openinference-cache-tokens"
       enabled: true
       matcher: "isNotNull(llm.token_count.prompt_details.cache_read) OR isNotNull(llm.token_count.prompt_details.cache_write)"
-      type: "fieldsRename"
-      description: "Map OpenInference cache token usage to official gen_ai.usage.prompt_caching.*"
-      fieldsRename:
-        fields:
-          - fromName: "llm.token_count.prompt_details.cache_read"
-            toName: "gen_ai.usage.prompt_caching.read_tokens"
-          - fromName: "llm.token_count.prompt_details.cache_write"
-            toName: "gen_ai.usage.prompt_caching.write_tokens"
+      type: "dql"
+      description: "Map OpenInference cache token usage to gen_ai.prompt_caching"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.prompt_caching` = if(isNotNull(`llm.token_count.prompt_details.cache_read`), "read",
+                                              else: if(isNotNull(`llm.token_count.prompt_details.cache_write`), "write", else: null))
+          | fieldsRemove `llm.token_count.prompt_details.cache_read`, `llm.token_count.prompt_details.cache_write`
     
     # ============================================================================
     # 5. COPY REQUEST PARAMETERS (OFFICIAL gen_ai.request.*)
@@ -346,6 +347,31 @@ processing:
             toName: "gen_ai.tool.description"
 
     # ============================================================================
+    # 11b. GUARDRAIL DETAILS
+    # ============================================================================
+    # Maps the OpenInference guardrail validator name to a namespaced attribute.
+    # `validator_name` is not OTel-compliant (no namespace prefix); rename it so
+    # it is queryable alongside other gen_ai.* attributes.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: validator_name (string)
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.guardrail.name (string)
+    #
+    # STATUS: ✅ GAP FIX
+    # ============================================================================
+    - id: "openinference-guardrail-details"
+      enabled: true
+      matcher: "isNotNull(validator_name)"
+      type: "fieldsRename"
+      description: "Rename OpenInference validator_name to namespaced gen_ai.guardrail.name"
+      fieldsRename:
+        fields:
+          - fromName: "validator_name"
+            toName: "gen_ai.guardrail.name"
+
+    # ============================================================================
     # 12. ADD SOURCE METADATA (OFFICIAL DT)
     # ============================================================================
     - id: "openinference-source-metadata"
@@ -397,9 +423,8 @@ processing:
     # (llm.input_messages.N.message.role/content) which DQL cannot aggregate.
     # The Prompts page filterOut clause hides spans where input AND output are NULL.
     #
-    # WORKAROUND: Copy input.value/output.value to gen_ai.input.messages.
-    # NOTE: Use DQL fieldsAdd (copy) NOT fieldsRename — renaming removes
-    # input.value/output.value which Dynatrace's distributed tracing view uses.
+    # WORKAROUND: Copy input.value/output.value to gen_ai.input.messages and
+    # remove the originals.
     #
     # GUARD: Only runs when gen_ai.input.messages is not already set.
     # When the normalizer bug is fixed, this becomes a safe no-op.
@@ -415,3 +440,31 @@ processing:
         script: |
           fieldsAdd `gen_ai.input.messages` = `input.value`,
             `gen_ai.output.messages` = `output.value`
+          | fieldsRemove `input.value`, `output.value`
+
+    # ============================================================================
+    # 16. SYSTEM INSTRUCTIONS EXTRACTION
+    # ============================================================================
+    # Extracts the system prompt from the first input message when its role is
+    # "system" and maps it to gen_ai.system_instructions.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: llm.input_messages.0.message.role,
+    #                 llm.input_messages.0.message.content
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.system_instructions (string)
+    #
+    # STATUS: ✅ New processor
+    # ============================================================================
+    - id: "openinference-system-instructions"
+      enabled: true
+      matcher: "isNotNull(`llm.input_messages.0.message.role`)"
+      type: "dql"
+      description: "Extract system message into gen_ai.system_instructions"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.system_instructions` = if(
+            `llm.input_messages.0.message.role` == "system",
+            `llm.input_messages.0.message.content`
+          )

@@ -25,6 +25,7 @@ processors:
           - set(attributes["gen_ai.operation.kind"], "tool") where attributes["openinference.span.kind"] == "TOOL" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - set(attributes["gen_ai.operation.kind"], "agent") where attributes["openinference.span.kind"] == "AGENT" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - set(attributes["gen_ai.operation.kind"], "retrieval") where attributes["openinference.span.kind"] == "RETRIEVER" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - set(attributes["gen_ai.operation.kind"], "guardrail") where attributes["openinference.span.kind"] == "GUARDRAIL" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
           # ── 2. OPERATION NAME: LLM ────────────────────────────────────────────
           - set(attributes["gen_ai.operation.name"], "chat") where (attributes["llm.token_count.total"] != nil or attributes["llm.model_name"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
@@ -48,9 +49,9 @@ processors:
           - delete_key(attributes, "llm.token_count.completion") where attributes["llm.token_count.completion"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
           # ── 4b. CACHE TOKEN USAGE ─────────────────────────────────────────────
-          - set(attributes["gen_ai.usage.prompt_caching.read_tokens"], attributes["llm.token_count.prompt_details.cache_read"]) where attributes["llm.token_count.prompt_details.cache_read"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - set(attributes["gen_ai.prompt_caching"], "read") where attributes["llm.token_count.prompt_details.cache_read"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - set(attributes["gen_ai.prompt_caching"], "write") where attributes["llm.token_count.prompt_details.cache_write"] != nil and attributes["gen_ai.prompt_caching"] == nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - delete_key(attributes, "llm.token_count.prompt_details.cache_read") where attributes["llm.token_count.prompt_details.cache_read"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.usage.prompt_caching.write_tokens"], attributes["llm.token_count.prompt_details.cache_write"]) where attributes["llm.token_count.prompt_details.cache_write"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - delete_key(attributes, "llm.token_count.prompt_details.cache_write") where attributes["llm.token_count.prompt_details.cache_write"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
           # ── 5. REQUEST PARAMETERS ─────────────────────────────────────────────
@@ -88,6 +89,11 @@ processors:
           - set(attributes["gen_ai.tool.description"], attributes["tool.description"]) where attributes["tool.description"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - delete_key(attributes, "tool.description") where attributes["tool.description"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
+          # ── 11b. GUARDRAIL DETAILS ───────────────────────────────────────────────
+          # validator_name has no OTel namespace; rename to gen_ai.guardrail.name.
+          - set(attributes["gen_ai.guardrail.name"], attributes["validator_name"]) where attributes["validator_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - delete_key(attributes, "validator_name") where attributes["validator_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+
           # ── 12. SOURCE METADATA ─────────────────────────────────────────────────
           - set(attributes["ai.observability.source"], "openinference") where (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
@@ -104,6 +110,9 @@ processors:
           - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           # Mirror request model to response model (OpenInference has no separate response model field).
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+
+          # ── 16. SYSTEM INSTRUCTIONS ──────────────────────────────────────────────
+          - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
 exporters:
   debug:
