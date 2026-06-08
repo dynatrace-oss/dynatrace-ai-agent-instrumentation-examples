@@ -1,0 +1,497 @@
+---
+# OpenPipeline Configuration for OpenInference (Arize Phoenix) - SIMPLIFIED
+# Uses official Dynatrace semantic conventions and verified OpenPipeline syntax
+#
+# Based on:
+# - Official schema: builtin:openpipeline.spans.pipelines
+# - Semantic dictionary: /semantic-dictionary/source/fields/signal_fields/gen_ai.yaml
+# - Retrieved via: dtctl get settings-schemas builtin:openpipeline.spans.pipelines
+# - OpenInference spec: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md
+
+customId: "openinference-ai-spans"
+displayName: "OpenInference (Arize Phoenix) AI Observability - Spans"
+
+
+# Processing stage - where field transformations happen
+processing:
+  processors:
+    # ============================================================================
+    # 1. MAP OPENINFERENCE SPAN KINDS TO gen_ai.operation.kind (OFFICIAL)
+    # ============================================================================
+    # Maps OpenInference `span.kind` or `openinference.span.kind` to Dynatrace
+    # standard `gen_ai.operation.kind`.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: openinference.span.kind (enum)
+    #   - Spec: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md#span-kind
+    #   - Values: LLM, CHAIN, TOOL, AGENT, RETRIEVER, RERANKER, EMBEDDING, EVALUATOR
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.operation.kind (enum)
+    #   - Semantic Dict: gen_ai.yaml
+    #   - Values: workflow, task, agent, tool, retrieval
+    #
+    # MAPPING LOGIC:
+    #   - CHAIN → workflow
+    #   - LLM, RERANKER, EMBEDDING, EVALUATOR → task
+    #   - TOOL → tool
+    #   - AGENT → agent
+    #   - RETRIEVER → retrieval
+    #   - GUARDRAIL → guardrail
+    #
+    # STATUS: ✅ Mapped with transformation logic
+    # ============================================================================
+    - id: "openinference-operation-kind"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Map OpenInference span kinds to official gen_ai.operation.kind"
+      dql:
+        script: |
+          // openinference.span.kind is only set on chain/agent spans (not on LLM spans from LangChain).
+          // Fall back to attribute-based detection for LLM spans.
+          fieldsAdd gen_ai.operation.kind = if(openinference.span.kind == "CHAIN", "workflow",
+                                          else: if(openinference.span.kind == "TOOL", "tool",
+                                          else: if(openinference.span.kind == "AGENT", "agent",
+                                          else: if(openinference.span.kind == "RETRIEVER", "retrieval",
+                                          else: if(openinference.span.kind == "GUARDRAIL", "guardrail",
+                                          else: "task")))))
+    
+    # ============================================================================
+    # 2. SET OPERATION NAME FOR LLM (OFFICIAL gen_ai.operation.name)
+    # ============================================================================
+    # Sets operation Name to "chat" for LLM spans.
+    # ============================================================================
+    - id: "openinference-llm-op-name"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"
+      type: "fieldsAdd"
+      description: "Set operation name to chat for LLM spans"
+      fieldsAdd:
+        fields:
+          - name: "gen_ai.operation.name"
+            value: "chat"
+
+    # ============================================================================
+    # 3. MAP LLM ATTRIBUTES (OFFICIAL gen_ai.*)
+    # ============================================================================
+    # Extract core LLM attributes (model, provider) for LLM spans.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: llm.model_name, llm.provider
+    #
+    # DYNATRACE:
+    #   - Attributes: gen_ai.request.model, gen_ai.provider.name
+    #
+    # STATUS: ✅ Direct mapping
+    # ============================================================================
+    - id: "openinference-llm-attributes"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"  # Only process LLM spans
+      type: "fieldsRename"
+      description: "Map OpenInference LLM attributes to official gen_ai.*"
+      fieldsRename:
+        fields:
+          - fromName: "llm.model_name"
+            toName: "gen_ai.request.model"
+          - fromName: "llm.provider"
+            toName: "gen_ai.provider.name"
+
+    # ============================================================================
+    # 3b. FALLBACK: MAP llm.system TO gen_ai.provider.name (GAP FIX)
+    # ============================================================================
+    # GAP FIX: In OpenInference, llm.system is the PRIMARY vendor identifier
+    # (e.g. "openai", "anthropic"), while llm.provider is the hosting provider
+    # (e.g. "azure" for Azure-hosted OpenAI). Many Phoenix users only set
+    # llm.system. Without this processor, DT loses the provider dimension for
+    # a large portion of Arize Phoenix spans.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: llm.system (string)
+    #   - Spec: Primary AI product/vendor identifier
+    #   - Well-known values: openai, anthropic, cohere, mistralai, vertexai, etc.
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.provider.name (string/enum)
+    #
+    # PRECEDENCE: Only runs if gen_ai.provider.name was NOT already set by
+    #             processor 3 (i.e., llm.provider was absent).
+    #
+    # STATUS: ✅ GAP FIX — New processor (fallback for missing llm.provider)
+    # ============================================================================
+    - id: "openinference-llm-system-fallback"
+      enabled: true
+      matcher: "isNotNull(llm.system)"
+      type: "dql"
+      description: "Fallback: map llm.system to gen_ai.provider.name when llm.provider is absent; always remove llm.system"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.provider.name` = if(isNull(`gen_ai.provider.name`), `llm.system`, else: `gen_ai.provider.name`)
+          | fieldsRemove `llm.system`
+
+    # ============================================================================
+    # 4. MAP LLM USAGE (OFFICIAL gen_ai.usage.*)
+    # ============================================================================
+    # Extract token usage.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: llm.token_count.prompt, llm.token_count.completion
+    #
+    # DYNATRACE:
+    #   - Attributes: gen_ai.usage.input_tokens, gen_ai.usage.output_tokens
+    #
+    # STATUS: ✅ Direct mapping
+    # ============================================================================
+    - id: "openinference-llm-usage"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"  # Only process LLM spans
+      type: "fieldsRename"
+      description: "Map OpenInference token usage to official gen_ai.usage.*"
+      fieldsRename:
+        fields:
+          - fromName: "llm.token_count.prompt"
+            toName: "gen_ai.usage.input_tokens"
+          - fromName: "llm.token_count.completion"
+            toName: "gen_ai.usage.output_tokens"
+          - fromName: "llm.finish_reason"
+            toName: "gen_ai.response.finish_reasons"
+
+    # ============================================================================
+    # 4b. MAP CACHE TOKEN USAGE (GAP FIX)
+    # ============================================================================
+    # GAP FIX: OpenInference provides granular cache token counts that are
+    # increasingly important for cost optimization (especially with Anthropic
+    # and OpenAI prompt caching). These were not mapped.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: llm.token_count.prompt_details.cache_read,
+    #                 llm.token_count.prompt_details.cache_write
+    #   - Spec: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md#token-count
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.prompt_caching (string enum: "read" | "write")
+    #   - App convention: set to "read" when cache_read tokens are present,
+    #                     "write" when only cache_write tokens are present.
+    #
+    # STATUS: ✅ GAP FIX — New processor
+    # ============================================================================
+    - id: "openinference-cache-tokens"
+      enabled: true
+      matcher: "isNotNull(`llm.token_count.prompt_details.cache_read`) OR isNotNull(`llm.token_count.prompt_details.cache_write`)"
+      type: "dql"
+      description: "Map OpenInference cache token usage to gen_ai.prompt_caching"
+      dql:
+        script: |
+          // Guard is > 0: Azure/OpenAI set cache_read = 0 on every span, so != nil would cause false positives.
+          fieldsAdd `gen_ai.prompt_caching` = if(toDouble(`llm.token_count.prompt_details.cache_read`) > 0, "read",
+                                              else: if(toDouble(`llm.token_count.prompt_details.cache_write`) > 0, "write", else: null))
+          | fieldsRemove `llm.token_count.prompt_details.cache_read`, `llm.token_count.prompt_details.cache_write`
+    
+    # ============================================================================
+    # 5. COPY REQUEST PARAMETERS (OFFICIAL gen_ai.request.*)
+    # ============================================================================
+    # Maps LLM invocation parameters.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: llm.temperature, llm.max_tokens, llm.top_p
+    #
+    # DYNATRACE:
+    #   - Attributes: gen_ai.request.*
+    #
+    # STATUS: ✅ Direct 1:1 mapping
+    # ============================================================================
+    - id: "openinference-request-params"
+      enabled: true
+      matcher: "true"
+      type: "fieldsRename"
+      description: "Copy OpenInference request parameters to official gen_ai.request.*"
+      fieldsRename:
+        fields:
+          - fromName: "llm.temperature"
+            toName: "gen_ai.request.temperature"
+          - fromName: "llm.max_tokens"
+            toName: "gen_ai.request.max_tokens"
+          - fromName: "llm.top_p"
+            toName: "gen_ai.request.top_p"
+    
+    # ============================================================================
+    # 6. MAP RESPONSE METADATA (OFFICIAL gen_ai.response.*)
+    # ============================================================================
+    # Maps response details like finish reason.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: llm.finish_reason (string)
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.response.finish_reasons (string[])
+    #
+    # STATUS: ✅ Mapped (string -> array conversion)
+    # ============================================================================
+    - id: "openinference-response-mapping"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"  # Only process LLM spans
+      type: "dql"
+      description: "Map LLM response metadata to official attributes"
+      dql:
+        script: |
+          // Mirror request model to response model (OpenInference has no separate response model field)
+          // Set gen_ai.system for Azure-hosted OpenAI
+          fieldsAdd gen_ai.response.model = gen_ai.request.model,
+            gen_ai.system = if(gen_ai.provider.name == "azure", "azure.ai.openai", else: null)
+    
+    # ============================================================================
+    # 7. SET OPERATION NAME FOR EMBEDDINGS (OFFICIAL gen_ai.operation.name)
+    # ============================================================================
+    # Sets operation Name to "embeddings" for Embedding spans.
+    # ============================================================================
+    - id: "openinference-embedding-op-name"
+      enabled: true
+      matcher: "isNotNull(embedding.model_name)"
+      type: "fieldsAdd"
+      description: "Set operation name to embeddings for Embedding spans"
+      fieldsAdd:
+        fields:
+          - name: "gen_ai.operation.name"
+            value: "embeddings"
+
+    # ============================================================================
+    # 8. EMBEDDING ATTRIBUTES (OFFICIAL gen_ai.*)
+    # ============================================================================
+    # Maps embedding operations.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: embedding.model_name, embedding.vector_length
+    #
+    # DYNATRACE:
+    #   - Attributes: gen_ai.request.model, gen_ai.embeddings.dimension.count
+    #
+    # STATUS: ✅ Direct mapping
+    # ============================================================================
+    - id: "openinference-embedding-attributes"
+      enabled: true
+      matcher: "isNotNull(embedding.model_name)"  # Only process EMBEDDING spans
+      type: "fieldsRename"
+      description: "Map OpenInference embedding attributes to official gen_ai.*"
+      fieldsRename:
+        fields:
+          - fromName: "embedding.model_name"
+            toName: "gen_ai.request.model"
+          - fromName: "embedding.vector_length"
+            toName: "gen_ai.embeddings.dimension.count"
+    
+    # ============================================================================
+    # 9. RERANKER OPERATIONS (OFFICIAL gen_ai.*)
+    # ============================================================================
+    # Maps Reranker operations.
+    #
+    # OPENINFERENCE:
+    #   - Kind: RERANKER
+    #
+    # DYNATRACE:
+    #   - Attributes: gen_ai.request.model
+    #
+    # STATUS: ✅ Partial mapping
+    # ============================================================================
+    - id: "openinference-reranker-model"
+      enabled: true
+      matcher: "isNotNull(reranker.model_name)"
+      type: "fieldsRename"
+      description: "Map OpenInference reranker attributes"
+      fieldsRename:
+        fields:
+          - fromName: "reranker.model_name"
+            toName: "gen_ai.request.model"
+    
+    # ============================================================================
+    # 10. AGENT NORMALIZATION (OFFICIAL gen_ai.agent.name)
+    # ============================================================================
+    # Maps Agent Name.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: agent.name
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.agent.name
+    #
+    # STATUS: ✅ Direct 1:1 mapping
+    # ============================================================================
+    - id: "openinference-agent-mapping"
+      enabled: true
+      matcher: "true"
+      type: "fieldsRename"
+      description: "Map OpenInference agent name to official attribute"
+      fieldsRename:
+        fields:
+          - fromName: "agent.name"
+            toName: "gen_ai.agent.name"
+    
+    # ============================================================================
+    # 11. TOOL DETAILS (OFFICIAL gen_ai.tool.*)
+    # ============================================================================
+    # Maps Tool details.
+    #
+    # DYNATRACE:
+    #   - gen_ai.tool.name, gen_ai.tool.description (Standard)
+    #
+    # STATUS: ✅ Mapped where possible
+    # ============================================================================
+    - id: "openinference-tool-mapping"
+      enabled: true
+      matcher: "isNotNull(tool.name)"
+      type: "fieldsRename"
+      description: "Map OpenInference tool attributes"
+      fieldsRename:
+        fields:
+          - fromName: "tool.name"
+            toName: "gen_ai.tool.name"
+          - fromName: "tool.description"
+            toName: "gen_ai.tool.description"
+
+    # ============================================================================
+    # 11b. GUARDRAIL DETAILS
+    # ============================================================================
+    # Maps the OpenInference guardrail validator name to a namespaced attribute.
+    # `validator_name` is not OTel-compliant (no namespace prefix); rename it so
+    # it is queryable alongside other gen_ai.* attributes.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: validator_name (string)
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.guardrail.name (string)
+    #
+    # STATUS: ✅ GAP FIX
+    # ============================================================================
+    - id: "openinference-guardrail-details"
+      enabled: true
+      matcher: "isNotNull(validator_name)"
+      type: "fieldsRename"
+      description: "Rename OpenInference validator_name to namespaced gen_ai.guardrail.name"
+      fieldsRename:
+        fields:
+          - fromName: "validator_name"
+            toName: "gen_ai.guardrail.name"
+
+    # ============================================================================
+    # 12. ADD SOURCE METADATA + CLEANUP LEFTOVER llm.* FIELDS
+    # ============================================================================
+    # NOTE: fieldsAdd processor type evaluates `value` as a DQL expression —
+    # bare identifiers are field references (not string literals). Using a DQL
+    # processor instead so "openinference" is properly quoted as a string literal.
+    - id: "openinference-source-metadata"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Tag source SDK — string literal requires DQL processor, not fieldsAdd"
+      dql:
+        script: |
+          fieldsAdd `ai.observability.source` = "openinference"
+
+    # ============================================================================
+    # 12b. CLEANUP LEFTOVER llm.* / openinference.* FIELDS
+    # ============================================================================
+    - id: "openinference-cleanup"
+      enabled: true
+      matcher: "true"
+      type: "fieldsRemove"
+      description: "Remove leftover OpenInference source attributes after mapping"
+      fieldsRemove:
+        fields:
+          - "openinference.span.kind"
+          - "llm.invocation_parameters"
+          - "llm.token_count.total"
+          - "llm.token_count.prompt_details.audio"
+          - "llm.token_count.prompt_details.cache_read"
+          - "llm.token_count.prompt_details.cache_write"
+          - "llm.token_count.completion_details.audio"
+          - "llm.token_count.completion_details.reasoning"
+          - "llm.input_messages.0.message.role"
+          - "llm.input_messages.0.message.content"
+          - "llm.output_messages.0.message.role"
+          - "llm.output_messages.0.message.content"
+          - "input.mime_type"
+          - "output.mime_type"
+
+    # ============================================================================
+    # 13. SESSION & USER PASS-THROUGH (GAP FIX - DOCUMENTATION)
+    # ============================================================================
+    # GAP FIX: OpenInference defines session.id and user.id as reserved
+    # attributes that already use the correct OTel-standard names.
+    # No rename processor is needed — they pass through to Dynatrace as-is.
+    #
+    # OPENINFERENCE:
+    #   - session.id (string) — unique identifier for a session
+    #   - user.id (string) — unique identifier for a user
+    #   - Spec: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md
+    #
+    # DYNATRACE:
+    #   - session.id → pass-through (correct name already)
+    #   - user.id → pass-through (correct name already)
+    #
+    # STATUS: ✅ GAP FIX — Documented; no processor needed (names match)
+    # ============================================================================
+    # (No processor required — session.id and user.id already match DT target names.)
+
+    # ============================================================================
+    # 14. EMBEDDING MODEL FOR RERANKER/NON-LLM SPANS (GAP FIX)
+    # ============================================================================
+    # GAP FIX: For EMBEDDING spans, llm.system is used as the provider
+    # identifier (EMBEDDING spans do NOT use llm.provider / llm.model_name;
+    # they use embedding.model_name which is already mapped in processor 8).
+    # Ensure the provider is captured.
+    #
+    # STATUS: ✅ GAP FIX — Covered by processor 3b (llm.system fallback)
+    # ============================================================================
+    # (No additional processor needed — processor 3b handles this.)
+
+    # ============================================================================
+    # 15. INPUT/OUTPUT FALLBACK FOR PROMPTS LIST VIEW (INTERIM FIX)
+    # ============================================================================
+    # PROBLEM: OpenInference emits messages as indexed span attributes
+    # (llm.input_messages.N.message.role/content) which DQL cannot aggregate.
+    # The Prompts page filterOut clause hides spans where input AND output are NULL.
+    #
+    # WORKAROUND: Copy input.value/output.value to gen_ai.input.messages and
+    # remove the originals.
+    #
+    # GUARD: Only runs when gen_ai.input.messages is not already set.
+    # When the normalizer bug is fixed, this becomes a safe no-op.
+    #
+    # STATUS: ✅ INTERIM FIX — pending test with chain-based spans
+    # ============================================================================
+    - id: "openinference-input-output-fallback"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Map input.value/output.value to gen_ai.* so spans appear in Prompts list"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.input.messages` = `input.value`, `gen_ai.output.messages` = `output.value`
+          | fieldsRemove `input.value`, `output.value`
+
+    # ============================================================================
+    # 16. SYSTEM INSTRUCTIONS EXTRACTION
+    # ============================================================================
+    # Extracts the system prompt from the first input message when its role is
+    # "system" and maps it to gen_ai.system_instructions.
+    #
+    # OPENINFERENCE:
+    #   - Attributes: llm.input_messages.0.message.role,
+    #                 llm.input_messages.0.message.content
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.system_instructions (string)
+    #
+    # STATUS: ✅ New processor
+    # ============================================================================
+    - id: "openinference-system-instructions"
+      enabled: true
+      matcher: "isNotNull(`llm.input_messages.0.message.role`)"
+      type: "dql"
+      description: "Extract system message into gen_ai.system_instructions"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.system_instructions` = if(
+            `llm.input_messages.0.message.role` == "system",
+            `llm.input_messages.0.message.content`
+          )

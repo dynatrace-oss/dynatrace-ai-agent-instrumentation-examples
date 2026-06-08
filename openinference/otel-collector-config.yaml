@@ -4,17 +4,107 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+processors:
+  # Step 1: Tag OpenInference spans using attributes processor (always works)
+  attributes/tag_openinference:
+    include:
+      match_type: regexp
+      services: [".*"]
+      attributes:
+        - key: llm.system
+          value: ".*"
+    actions:
+      - key: ai.observability.source
+        value: openinference
+        action: upsert
+
+  # Step 2: Transform using attribute-based guards only
+  transform/openinference:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # ── 1. OPERATION KIND ─────────────────────────────────────────────────
+          # LLM → "task" is the DT gen_ai convention; other kinds map directly.
+          - set(attributes["gen_ai.operation.kind"], "task") where attributes["openinference.span.kind"] == "LLM"
+          - set(attributes["gen_ai.operation.kind"], "workflow") where attributes["openinference.span.kind"] == "CHAIN"
+          - set(attributes["gen_ai.operation.kind"], "tool") where attributes["openinference.span.kind"] == "TOOL"
+          - set(attributes["gen_ai.operation.kind"], "agent") where attributes["openinference.span.kind"] == "AGENT"
+          - set(attributes["gen_ai.operation.kind"], "retrieval") where attributes["openinference.span.kind"] == "RETRIEVER"
+          - set(attributes["gen_ai.operation.kind"], "guardrail") where attributes["openinference.span.kind"] == "GUARDRAIL"
+          - delete_key(attributes, "openinference.span.kind") where attributes["openinference.span.kind"] != nil
+
+          # ── 2. OPERATION NAME ─────────────────────────────────────────────────
+          - set(attributes["gen_ai.operation.name"], "chat") where attributes["llm.system"] != nil
+
+          # ── 3. MODEL ──────────────────────────────────────────────────────────
+          - set(attributes["gen_ai.request.model"], attributes["llm.model_name"]) where attributes["llm.model_name"] != nil
+          - set(attributes["gen_ai.response.model"], attributes["llm.model_name"]) where attributes["llm.model_name"] != nil
+          - delete_key(attributes, "llm.model_name") where attributes["llm.model_name"] != nil
+
+          # ── 4. PROVIDER ───────────────────────────────────────────────────────
+          - set(attributes["gen_ai.provider.name"], attributes["llm.provider"]) where attributes["llm.provider"] != nil
+          - delete_key(attributes, "llm.provider") where attributes["llm.provider"] != nil
+          - set(attributes["gen_ai.provider.name"], attributes["llm.system"]) where attributes["llm.system"] != nil and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - delete_key(attributes, "llm.system") where attributes["llm.system"] != nil
+
+          # ── 5. TOKEN USAGE ────────────────────────────────────────────────────
+          - set(attributes["gen_ai.usage.input_tokens"], attributes["llm.token_count.prompt"]) where attributes["llm.token_count.prompt"] != nil
+          - delete_key(attributes, "llm.token_count.prompt") where attributes["llm.token_count.prompt"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], attributes["llm.token_count.completion"]) where attributes["llm.token_count.completion"] != nil
+          - delete_key(attributes, "llm.token_count.completion") where attributes["llm.token_count.completion"] != nil
+          - delete_key(attributes, "llm.token_count.total") where attributes["llm.token_count.total"] != nil
+
+          # ── 6. CACHE TOKENS ───────────────────────────────────────────────────
+          - set(attributes["gen_ai.prompt_caching"], "read") where attributes["llm.token_count.prompt_details.cache_read"] != nil and attributes["llm.token_count.prompt_details.cache_read"] != 0
+          - delete_key(attributes, "llm.token_count.prompt_details.cache_read") where attributes["llm.token_count.prompt_details.cache_read"] != nil
+          - delete_key(attributes, "llm.token_count.prompt_details.cache_write") where attributes["llm.token_count.prompt_details.cache_write"] != nil
+          - delete_key(attributes, "llm.token_count.prompt_details.audio") where attributes["llm.token_count.prompt_details.audio"] != nil
+          - delete_key(attributes, "llm.token_count.completion_details.audio") where attributes["llm.token_count.completion_details.audio"] != nil
+          - delete_key(attributes, "llm.token_count.completion_details.reasoning") where attributes["llm.token_count.completion_details.reasoning"] != nil
+
+          # ── 7. REQUEST PARAMETERS ─────────────────────────────────────────────
+          - set(attributes["gen_ai.request.temperature"], attributes["llm.temperature"]) where attributes["llm.temperature"] != nil
+          - delete_key(attributes, "llm.temperature") where attributes["llm.temperature"] != nil
+          - set(attributes["gen_ai.request.max_tokens"], attributes["llm.max_tokens"]) where attributes["llm.max_tokens"] != nil
+          - delete_key(attributes, "llm.max_tokens") where attributes["llm.max_tokens"] != nil
+          - set(attributes["gen_ai.request.top_p"], attributes["llm.top_p"]) where attributes["llm.top_p"] != nil
+          - delete_key(attributes, "llm.top_p") where attributes["llm.top_p"] != nil
+          - delete_key(attributes, "llm.invocation_parameters") where attributes["llm.invocation_parameters"] != nil
+
+          # ── 8. FINISH REASON ──────────────────────────────────────────────────
+          - set(attributes["gen_ai.response.finish_reasons"], attributes["llm.finish_reason"]) where attributes["llm.finish_reason"] != nil
+          - delete_key(attributes, "llm.finish_reason") where attributes["llm.finish_reason"] != nil
+
+          # ── 9. INPUT/OUTPUT ───────────────────────────────────────────────────
+          - set(attributes["gen_ai.input.messages"], attributes["input.value"]) where attributes["input.value"] != nil
+          - delete_key(attributes, "input.value") where attributes["input.value"] != nil
+          - delete_key(attributes, "input.mime_type") where attributes["input.mime_type"] != nil
+          - set(attributes["gen_ai.output.messages"], attributes["output.value"]) where attributes["output.value"] != nil
+          - delete_key(attributes, "output.value") where attributes["output.value"] != nil
+          - delete_key(attributes, "output.mime_type") where attributes["output.mime_type"] != nil
+
+          # ── 10. SYSTEM INSTRUCTIONS ───────────────────────────────────────────
+          - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system"
+
+          # ── 11. MESSAGE DETAILS CLEANUP ───────────────────────────────────────
+          - delete_key(attributes, "llm.input_messages.0.message.role") where attributes["llm.input_messages.0.message.role"] != nil
+          - delete_key(attributes, "llm.input_messages.0.message.content") where attributes["llm.input_messages.0.message.content"] != nil
+          - delete_key(attributes, "llm.output_messages.0.message.role") where attributes["llm.output_messages.0.message.role"] != nil
+          - delete_key(attributes, "llm.output_messages.0.message.content") where attributes["llm.output_messages.0.message.content"] != nil
+
 exporters:
   debug:
     verbosity: detailed
-  otlphttp/dynatrace:
+  otlp_http/dynatrace:
     endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
     headers:
-       Authorization: "Api-Token ${env:DT_API_TOKEN}"
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: []
-      exporters: [debug, otlphttp/dynatrace]
+      processors: [attributes/tag_openinference, transform/openinference]
+      exporters: [debug, otlp_http/dynatrace]
