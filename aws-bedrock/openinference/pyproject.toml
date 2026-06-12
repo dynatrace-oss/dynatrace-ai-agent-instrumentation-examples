@@ -1,0 +1,14 @@
+[project]
+name = "openinference-demo-app"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "langchain",
+    "langchain-aws",
+    "openinference-instrumentation-langchain",
+    "openinference-instrumentation-bedrock",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "fastapi",
+    "uvicorn[standard]",
+]
