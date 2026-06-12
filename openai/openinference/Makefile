@@ -17,19 +17,13 @@ PYTHON              := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python 
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0
 override COLLECTOR_CONTAINER := otel-collector
 
-.PHONY: run run-openpipeline apply-openpipeline build push request stop logs install help
+.PHONY: run run-openpipeline build push request stop logs install help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies
 	$(PYTHON) -m pip install -r requirements.txt
-
-# ---------------------------------------------------------------------------
-# apply-openpipeline: deploy OpenPipeline config to current dtctl tenant
-# ---------------------------------------------------------------------------
-apply-openpipeline: ## Apply OpenPipeline config to current dtctl tenant
-	@bash apply-openpipeline.sh
 
 # ---------------------------------------------------------------------------
 # run: collector applies OpenInference → gen_ai.* transforms locally

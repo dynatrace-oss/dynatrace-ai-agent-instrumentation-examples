@@ -22,7 +22,7 @@ Use Dynatrace Intelligence to identify bottlenecks, optimize resource utilizatio
 
 Add Dynatrace instrumentation to AI agents in minutes using simple integration patterns and practical examples—bringing runtime observability directly into agent development workflows.
 
-![Tracing](/mcp/dynatrace.png)
+![Tracing](mcp/oneagent/dynatrace.png)
 
 ## Who This Repository Is For
 
