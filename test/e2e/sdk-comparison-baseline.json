@@ -5,7 +5,8 @@
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
-    "1.1.0 (2026-06-12): Fix provider priority inversion (gen_ai.system is the effective primary in coalesce); add gen_ai.token.type (AR-024); add gen_ai.client.operation.duration (AR-025); add legacy token fallback attributes (AR-026, AR-027); add evaluation subsystem (AR-028..AR-040); add gen_ai.bedrock.guardrail.contextual (AR-041); add gen_ai.conversation.id (AR-042); add gen_ai.request.temperature (AR-043); add gen_ai.system_instructions (AR-044); fix normalization.legacy_fallbacks direction (primary→legacy, not legacy→primary)."
+    "1.1.0 (2026-06-12): Add gen_ai.token.type (AR-024); add gen_ai.client.operation.duration (AR-025); add legacy token fallback attributes (AR-026, AR-027); add evaluation subsystem (AR-028..AR-040); add gen_ai.bedrock.guardrail.contextual (AR-041); add gen_ai.conversation.id (AR-042); add gen_ai.request.temperature (AR-043); add gen_ai.system_instructions (AR-044); fix normalization.legacy_fallbacks direction (primary→legacy, not legacy→primary).",
+    "1.1.1 (2026-06-12): Revert provider priority: gen_ai.system is deprecated in favor of gen_ai.provider.name per OTel semconv. The DQL coalesce(gen_ai.system, gen_ai.provider.name) checks the old field first for backward compatibility only, not because it is preferred."
   ],
   "comparison_contract": {
     "profile_selection": {
@@ -64,10 +65,10 @@
       "rules": [
         {
           "id": "provider_identity",
-          "primary": "gen_ai.system",
-          "fallback": "gen_ai.provider.name",
-          "fallback_deprecated": false,
-          "description": "Code uses coalesce(gen_ai.system, gen_ai.provider.name) — gen_ai.system is the effective primary. gen_ai.provider.name is accepted when gen_ai.system is absent, but neither is deprecated; both are valid identifiers from different semconv generations."
+          "primary": "gen_ai.provider.name",
+          "fallback": "gen_ai.system",
+          "fallback_deprecated": true,
+          "description": "gen_ai.system is the original/legacy attribute, deprecated in OTel semconv in favor of gen_ai.provider.name. The DQL coalesce(gen_ai.system, gen_ai.provider.name) checks gen_ai.system first only for backward compatibility with older SDKs still emitting it. Prefer gen_ai.provider.name in new instrumentation."
         },
         {
           "id": "input_tokens",
@@ -373,8 +374,10 @@
       "providers": ["azure", "bedrock", "openai", "generic"],
       "owned_by": "framework_or_provider_sdk",
       "used_by": ["base_ai_span_filter", "provider_quick_filter", "service_explorer_table", "distributed_tracing_intent", "onboarding_validation"],
-      "deprecated": false,
-      "note": "Effective primary in coalesce(gen_ai.system, gen_ai.provider.name). Not deprecated — different semconv generation from gen_ai.provider.name."
+      "deprecated": true,
+      "deprecated_role": "fallback",
+      "preferred_attribute": "gen_ai.provider.name",
+      "note": "Legacy attribute, deprecated in OTel semconv in favor of gen_ai.provider.name. Still accepted by the app's any-of gate for backward compatibility."
     },
     {
       "name": "gen_ai.provider.name",
