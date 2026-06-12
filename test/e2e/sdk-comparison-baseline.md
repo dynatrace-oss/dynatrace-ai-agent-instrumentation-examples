@@ -57,21 +57,21 @@ Profile precedence:
 | Attribute | Required Level | Used By Visuals |
 |---|---|---|
 | `gen_ai.provider.name` | required (primary) | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent |
-| `gen_ai.system` | deprecated fallback for `gen_ai.provider.name` | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent, onboarding_validation |
+| `gen_ai.system` | deprecated fallback for `gen_ai.provider.name` (only if primary missing) | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent, onboarding_validation |
 | `service.name` | required | service_quick_filter, service_explorer_table, onboarding_validation |
 | `gen_ai.request.model` | required | prompts_table, distributed_tracing_intent, onboarding_validation |
 | `gen_ai.response.model` | required | model_quick_filter, service_explorer_table, overview_charts, distributed_tracing_intent |
 | `gen_ai.usage.input_tokens` | required (primary) | prompts_table, service_explorer_table, overview_charts, distributed_tracing_intent |
-| `gen_ai.usage.prompt_tokens` | deprecated fallback for `gen_ai.usage.input_tokens` | service_explorer_table, overview_charts |
+| `gen_ai.usage.prompt_tokens` | deprecated fallback for `gen_ai.usage.input_tokens` (only if primary missing) | service_explorer_table, overview_charts |
 | `gen_ai.usage.output_tokens` | required (primary) | prompts_table, service_explorer_table, overview_charts |
-| `gen_ai.usage.completion_tokens` | deprecated fallback for `gen_ai.usage.output_tokens` | service_explorer_table |
+| `gen_ai.usage.completion_tokens` | deprecated fallback for `gen_ai.usage.output_tokens` (only if primary missing) | service_explorer_table |
 | `gen_ai.operation.name` | recommended | operation_breakdown, trace_analysis |
 | `gen_ai.agent.name` | recommended | agent_quick_filter, overview_charts |
 | `llm.request.type` | optional | distributed_tracing_intent |
 | `gen_ai.input.messages` | optional (primary content field) | prompts_table |
-| `gen_ai.prompt.0.content` | deprecated fallback for `gen_ai.input.messages` | prompts_table, distributed_tracing_intent, onboarding_validation |
+| `gen_ai.prompt.0.content` | deprecated fallback for `gen_ai.input.messages` (only if primary missing) | prompts_table, distributed_tracing_intent, onboarding_validation |
 | `gen_ai.output.messages` | optional (primary content field) | prompts_table |
-| `gen_ai.completion.0.content` | deprecated fallback for `gen_ai.output.messages` | prompts_table, distributed_tracing_intent |
+| `gen_ai.completion.0.content` | deprecated fallback for `gen_ai.output.messages` (only if primary missing) | prompts_table, distributed_tracing_intent |
 | `gen_ai.prompt.prompt_filter_results` | provider-specific | guardrail_overview_cards |
 | `gen_ai.completion.content_filter_results` | provider-specific | guardrail_overview_cards |
 | `gen_ai.bedrock.guardrail.activation` | provider-specific | guardrail_overview_cards |
