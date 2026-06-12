@@ -10,19 +10,29 @@ By integrating Dynatrace with AI agents, developers can monitor agent execution,
 
 Monitor AI agent interactions, tool usage, service dependencies, performance metrics, token consumption, and cost drivers—providing end-to-end visibility into how AI agent workflows behave at runtime.
 
+![Model Providers](assets/model-providers.png)
+
 ### Agent Execution Tracing and Debugging
 
 Trace agent execution from the initial request through prompt flows, tool calls, and service interactions to the final response—enabling faster debugging and root cause analysis across complex agent workflows.
+
+![Trace View](assets/trace-view.png)
 
 ### AI-Powered Workflow Insights
 
 Use Dynatrace Intelligence to identify bottlenecks, optimize resource utilization, and understand how complex agent workflows behave across distributed services.
 
+![Agents Topology](assets/agents-topology.png)
+
+### LLM Evaluations
+
+Evaluate AI agent responses at scale with built-in evaluation criteria—assess faithfulness, PII leakage, bias, context relevance, and user frustration across all prompts in your tenant.
+
+![Evaluations](assets/evaluations.png)
+
 ### Fast Agent Instrumentation
 
 Add Dynatrace instrumentation to AI agents in minutes using simple integration patterns and practical examples—bringing runtime observability directly into agent development workflows.
-
-![Tracing](mcp/oneagent/dynatrace.png)
 
 ## Who This Repository Is For
 

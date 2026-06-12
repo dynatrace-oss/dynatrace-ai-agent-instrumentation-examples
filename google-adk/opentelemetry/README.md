@@ -3,7 +3,7 @@
 
 This example contains a demo of an Academic Research Agent interface built on top of the [Google ADK](https://google.github.io/adk-docs/). The original example code can be found in the [adk-samples](https://github.com/google/adk-samples/tree/main/python/agents/academic-research) GitHub repo.
 
-![Tracing](./dynatrace.png)
+![Trace View](../../assets/trace-view.png)
 
 ## Dynatrace Instrumentation
 
