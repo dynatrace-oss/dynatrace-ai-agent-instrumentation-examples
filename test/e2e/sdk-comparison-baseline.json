@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "scope": "current-state",
   "date": "2026-06-12",
   "source_app": "Dynatrace AI Observability",
@@ -26,7 +26,7 @@
     },
     "pass_fail_rules": {
       "must_have_any": [
-        ["gen_ai.system", "gen_ai.provider.name"]
+        ["gen_ai.provider.name", "gen_ai.system"]
       ],
       "must_have_all": [
         "service.name",
@@ -151,7 +151,7 @@
     },
     "normalization": {
       "equivalents_any_of": [
-        ["gen_ai.system", "gen_ai.provider.name"],
+        ["gen_ai.provider.name", "gen_ai.system"],
         ["gen_ai.usage.input_tokens", "gen_ai.usage.prompt_tokens"],
         ["gen_ai.usage.output_tokens", "gen_ai.usage.completion_tokens"]
       ],
@@ -169,9 +169,10 @@
             "type": "inclusion_gate",
             "required": true,
             "logic": "any_of",
-            "attributes": ["gen_ai.system", "gen_ai.provider.name"],
-            "rule_ids": ["AR-001", "AR-002"],
-            "expression": "isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)"
+            "attributes": ["gen_ai.provider.name", "gen_ai.system"],
+            "rule_ids": ["AR-002", "AR-001"],
+            "expression": "isNotNull(gen_ai.provider.name) or isNotNull(gen_ai.system)",
+            "note": "gen_ai.system listed second — it is the deprecated fallback. DQL checks gen_ai.system first in coalesce for backward compat only."
           }
         ]
       },
@@ -492,7 +493,8 @@
       "used_by": ["prompts_table", "distributed_tracing_intent", "onboarding_validation"],
       "deprecated": true,
       "deprecated_role": "fallback",
-      "preferred_attribute": "gen_ai.input.messages"
+      "preferred_attribute": "gen_ai.input.messages",
+      "note": "Removed from OTel semconv (gen_ai.prompt family removed with no direct replacement). Retained in baseline as a fallback for older SDKs that still emit it; prefer gen_ai.input.messages."
     },
     {
       "name": "gen_ai.completion.0.content",
@@ -504,7 +506,8 @@
       "used_by": ["prompts_table", "distributed_tracing_intent"],
       "deprecated": true,
       "deprecated_role": "fallback",
-      "preferred_attribute": "gen_ai.output.messages"
+      "preferred_attribute": "gen_ai.output.messages",
+      "note": "Removed from OTel semconv (gen_ai.completion family removed with no direct replacement). Retained in baseline as a fallback for older SDKs that still emit it; prefer gen_ai.output.messages."
     },
     {
       "name": "gen_ai.prompt.prompt_filter_results",
@@ -595,8 +598,8 @@
       "providers": ["azure", "bedrock", "openai", "generic"],
       "owned_by": "framework_or_provider_sdk",
       "used_by": ["cost_dashboard"],
-      "allowed_values": ["input", "output"],
-      "note": "Required to split cost dashboard into input vs output cost lanes. Missing causes silent failure — cost shows as undifferentiated total."
+      "allowed_values": ["input", "output", "cache_read", "cache_creation"],
+      "note": "Required to split cost dashboard into input vs output cost lanes. 'cache_read' and 'cache_creation' are additional OTel semconv values for prompt-caching token accounting. Missing causes silent failure — cost shows as undifferentiated total."
     },
     {
       "name": "gen_ai.client.operation.duration",
