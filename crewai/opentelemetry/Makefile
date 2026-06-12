@@ -1,51 +1,36 @@
-SHELL               := /bin/bash
-
-# ---------------------------------------------------------------------------
-# Configuration — set in .env (KEY=value format, no export, no quotes)
-# ---------------------------------------------------------------------------
+SHELL            := /bin/bash
 -include .env
 export
 
-DT_ENDPOINT         ?= https://your-tenant.live.dynatrace.com
-DT_API_TOKEN        ?= dt0c01.*****
+PORT             ?= 8000
+PYTHON           := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
 
-PYTHON              := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
+DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
+DT_API_TOKEN     ?= dt0c01.*****
 
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0
 override COLLECTOR_CONTAINER := otel-collector
 
-.PHONY: run run-openpipeline stop logs install help
+.PHONY: install run build push request stop logs help
 
-help: ## Show this help
+help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies
 	$(PYTHON) -m pip install -r requirements.txt
 
-# ---------------------------------------------------------------------------
-# run: collector applies OpenInference → gen_ai.* transforms locally
-# ---------------------------------------------------------------------------
-run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
-	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
-	@echo "Waiting for collector port to be ready..."
-	@sleep 3
-	@until curl -s -o /dev/null -w '' http://localhost:4318/v1/traces -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null; do \
-      echo "  waiting..."; sleep 1; \
-    done
-	@echo "Collector port is responding"
-	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
-	  OTEL_EXPORTER_OTLP_HEADERS="" \
-	  $(PYTHON) app.py
+run: ## Start collector + run the CrewAI demo
+	@$(MAKE) _collector CONFIG=collector.config.yaml
+	$(PYTHON) -m crewai run
 
-# ---------------------------------------------------------------------------
-# run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
-# Deploy first with: dtctl apply -f openpipeline-openinference-dtctl.yaml
-#                    bash setup-routing.sh
-# ---------------------------------------------------------------------------
-run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
-	@OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
-	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
-	  $(PYTHON) app.py
+build: ## Not applicable — no container defined for this demo
+	@echo "build: no Dockerfile for this demo"
+
+push: ## Not applicable — no container defined for this demo
+	@echo "push: no Dockerfile for this demo"
+
+request: ## Not applicable — this demo runs as a CLI, not an HTTP server
+	@echo "request: this demo runs as a CLI script, not an HTTP server; use 'make run' instead"
 
 # ---------------------------------------------------------------------------
 # Internal targets
@@ -77,12 +62,8 @@ _collector:
 	done; \
 	echo "ERROR: collector did not become ready"; docker logs $(COLLECTOR_CONTAINER); exit 1
 
-# ---------------------------------------------------------------------------
-# Utility
-# ---------------------------------------------------------------------------
 stop: ## Stop and remove the OTel collector container
 	docker stop $(COLLECTOR_CONTAINER) && docker rm $(COLLECTOR_CONTAINER)
 
 logs: ## Tail collector logs
 	@touch collector.log && tail -F collector.log
-
