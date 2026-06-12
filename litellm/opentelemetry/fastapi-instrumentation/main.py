@@ -39,7 +39,7 @@ litellm.callbacks = [LiteLLMOTel()]
 # Route Python logs to the local OTLP collector (same endpoint as metrics/spans)
 _log_provider = LoggerProvider()
 _log_provider.add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter(endpoint="COLLECTOR_BASE_URL"))
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint=COLLECTOR_BASE_URL))
 )
 set_logger_provider(_log_provider)
 logging.basicConfig(level=logging.INFO)
@@ -49,7 +49,7 @@ logger = logging.getLogger("litellm-gateway")
 
 Traceloop.init(
     app_name="litellm-gateway",
-    api_endpoint=TRACELOOP_BASE_URL,
+    api_endpoint=COLLECTOR_BASE_URL,
     api_key="KEY",
     disable_batch=True,
     should_enrich_metrics=True,

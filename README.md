@@ -32,7 +32,7 @@ This repository is designed for:
 - Platform and DevOps engineers operating AI systems
 - AI practitioners working with agent frameworks
 
-If you’re building AI agents, copilots, chatbots, or autonomous systems, these examples will help you add observability to your agent workflows and gain deeper insight into how your AI systems operate in production.
+If you're building AI agents, copilots, chatbots, or autonomous systems, these examples will help you add observability to your agent workflows and gain deeper insight into how your AI systems operate in production.
 
 ## Coding Agent Observability
 
@@ -45,16 +45,51 @@ AI coding agents like Claude Code and OpenAI Codex CLI run autonomously in devel
 
 See the **[AI Coding Agents](./ai-coding-agents/)** section for setup guides covering Claude Code, OpenAI Codex CLI, OpenClaw, and the GitHub Copilot SDK.
 
-## Supported Frameworks
+## Demos
 
-This repository includes examples and guidance for integrating Dynatrace with the following AI Agent building frameworks and libraries:
+### SDK + Instrumentation Demos
 
-- [Google Agent Development Kit (ADK)](./google-adk-sample/)
-- [AWS Strands Agents](./aws-agent-sample/)
-- [OpenAI Agents SDK](./openai-agent-sample/)
-- [MCP - Model Context Protocol](./mcp/)
-- [AI Coding Agents](./ai-coding-agents/) — Claude Code, OpenAI Codex CLI, OpenClaw, GitHub Copilot SDK
+Monitor specific AI provider SDKs with Dynatrace.
 
-![MCP Agentic AI](/mcp/architecture.png)
+| SDK | OneAgent | OpenInference |
+|-----|----------|---------------|
+| [OpenAI](./openai/oneagent/) | ✓ | [✓](./openai/openinference/) |
+| [Anthropic (Bedrock)](./anthropic/oneagent/) | ✓ | — |
+| [AWS Bedrock](./aws-bedrock/oneagent/) | ✓ | [✓](./aws-bedrock/openinference/) |
+| [Cohere](./cohere/oneagent/) | ✓ | — |
+| [Groq](./groq/oneagent/) | ✓ | — |
+| [Haystack](./haystack/oneagent/) | ✓ | — |
+| [Mistral](./mistral/oneagent/) | ✓ | — |
+| [Ollama](./ollama/oneagent/) | ✓ | — |
 
-If you’re using a framework that isn’t listed here, don’t worry! [You can explore the Dynatrace Hub for the full list of supported technologies.](https://www.dynatrace.com/hub/?filter=ai-ml-observability&internal_source=doc&internal_medium=link&internal_campaign=cross)
+### Agent Framework Demos
+
+Monitor AI agent frameworks with Dynatrace.
+
+| Framework | Path |
+|-----------|------|
+| [OpenAI Agents SDK](./openai-agents/opentelemetry/) | openai-agents/opentelemetry |
+| [AWS Strands Agents](./aws-strands/oneagent/) | aws-strands/oneagent |
+| [AWS Bedrock Agents](./aws-bedrock-agents/oneagent/) | aws-bedrock-agents/oneagent |
+| [Google ADK](./google-adk/opentelemetry/) | google-adk/opentelemetry |
+| [MCP (Model Context Protocol)](./mcp/oneagent/) | mcp/oneagent |
+| [CrewAI](./crewai/opentelemetry/) | crewai/opentelemetry |
+| [Pydantic AI](./pydantic-ai/opentelemetry/) | pydantic-ai/opentelemetry |
+| [LiteLLM + FastAPI](./litellm/opentelemetry/) | litellm/opentelemetry |
+| [AI Coding Agents](./ai-coding-agents/) | ai-coding-agents |
+| [Real User Monitoring](./rum/opentelemetry/) | rum/opentelemetry |
+
+## Getting Started
+
+Each demo follows the same interface:
+
+```bash
+cd <sdk>/<instrumentation>
+make install   # install dependencies
+make run       # start app on port 8000
+make request   # send a test request (in a second terminal)
+```
+
+All demos expose `make help` for the full list of targets.
+
+If you're using a framework that isn't listed here, don't worry! [You can explore the Dynatrace Hub for the full list of supported technologies.](https://www.dynatrace.com/hub/?filter=ai-ml-observability&internal_source=doc&internal_medium=link&internal_campaign=cross)
