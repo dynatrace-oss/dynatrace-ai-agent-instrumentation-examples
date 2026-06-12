@@ -1,0 +1,346 @@
+{
+  "version": "1.0.0",
+  "scope": "current-state",
+  "date": "2026-06-12",
+  "source_app": "Dynatrace AI Observability",
+  "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
+  "comparison_contract": {
+    "profile_selection": {
+      "default_profile": "generic",
+      "scenario_overrides": {
+        "openinference-basic": {
+          "run_profiles": ["generic", "openai"],
+          "skip_profiles": ["bedrock", "azure"],
+          "reason": "Basic OpenInference sample uses OpenAI-compatible chat flow, not Bedrock/Azure guardrail provider paths."
+        }
+      },
+      "rules": [
+        "Always run generic profile checks.",
+        "Run provider-specific checks only when the scenario explicitly targets that provider profile.",
+        "Do not run Bedrock checks for openinference-basic unless provider is Bedrock."
+      ]
+    },
+    "pass_fail_rules": {
+      "must_have_any": [
+        ["gen_ai.system", "gen_ai.provider.name"]
+      ],
+      "must_have_all": [
+        "service.name",
+        "gen_ai.request.model",
+        "gen_ai.response.model",
+        "gen_ai.usage.input_tokens",
+        "gen_ai.usage.output_tokens"
+      ],
+      "provider_specific": {
+        "azure": [
+          "gen_ai.prompt.prompt_filter_results",
+          "gen_ai.completion.content_filter_results"
+        ],
+        "bedrock": [
+          "gen_ai.bedrock.guardrail.activation",
+          "gen_ai.bedrock.guardrail.content",
+          "gen_ai.bedrock.guardrail.sensitive_info",
+          "gen_ai.bedrock.guardrail.topics",
+          "gen_ai.bedrock.guardrail.words"
+        ],
+        "openai": [
+          "gen_ai.prompt_caching",
+          "gen_ai.cache.type"
+        ]
+      },
+      "notes": [
+        "Use service.name instead of k8s.deployment.name in GH runner tests.",
+        "Provider-specific checks only apply when that provider profile is under test.",
+        "Do not fail generic SDK tests for Dynatrace enrichment fields (dt.*)."
+      ]
+    },
+    "required_resolution": {
+      "mode": "primary_with_fallback",
+      "rules": [
+        {
+          "id": "provider_identity",
+          "primary": "gen_ai.provider.name",
+          "fallback": "gen_ai.system",
+          "fallback_deprecated": true,
+          "description": "Prefer gen_ai.provider.name. Accept gen_ai.system only when primary is missing."
+        },
+        {
+          "id": "input_tokens",
+          "primary": "gen_ai.usage.input_tokens",
+          "fallback": "gen_ai.usage.prompt_tokens",
+          "fallback_deprecated": true,
+          "description": "Prefer modern input token field; use legacy prompt_tokens only as fallback."
+        },
+        {
+          "id": "output_tokens",
+          "primary": "gen_ai.usage.output_tokens",
+          "fallback": "gen_ai.usage.completion_tokens",
+          "fallback_deprecated": true,
+          "description": "Prefer modern output token field; use legacy completion_tokens only as fallback."
+        },
+        {
+          "id": "prompt_content",
+          "primary": "gen_ai.input.messages",
+          "fallback": "gen_ai.prompt.0.content",
+          "fallback_deprecated": true,
+          "description": "Prefer structured input messages; use legacy prompt.0.content as fallback."
+        },
+        {
+          "id": "completion_content",
+          "primary": "gen_ai.output.messages",
+          "fallback": "gen_ai.completion.0.content",
+          "fallback_deprecated": true,
+          "description": "Prefer structured output messages; use legacy completion.0.content as fallback."
+        }
+      ]
+    },
+    "attribute_rule_ids": {
+      "gen_ai.system": "AR-001",
+      "gen_ai.provider.name": "AR-002",
+      "service.name": "AR-003",
+      "gen_ai.request.model": "AR-004",
+      "gen_ai.response.model": "AR-005",
+      "gen_ai.usage.input_tokens": "AR-006",
+      "gen_ai.usage.output_tokens": "AR-007",
+      "gen_ai.operation.name": "AR-008",
+      "llm.request.type": "AR-009",
+      "gen_ai.agent.name": "AR-010",
+      "gen_ai.input.messages": "AR-011",
+      "gen_ai.output.messages": "AR-012",
+      "gen_ai.prompt.0.content": "AR-013",
+      "gen_ai.completion.0.content": "AR-014",
+      "gen_ai.prompt.prompt_filter_results": "AR-015",
+      "gen_ai.completion.content_filter_results": "AR-016",
+      "gen_ai.bedrock.guardrail.activation": "AR-017",
+      "gen_ai.bedrock.guardrail.content": "AR-018",
+      "gen_ai.bedrock.guardrail.sensitive_info": "AR-019",
+      "gen_ai.bedrock.guardrail.topics": "AR-020",
+      "gen_ai.bedrock.guardrail.words": "AR-021",
+      "gen_ai.prompt_caching": "AR-022",
+      "gen_ai.cache.type": "AR-023"
+    },
+    "non_sdk_rule_ids": {
+      "dt.smartscape.service": "NS-001",
+      "dt.agent.module.type": "NS-002"
+    },
+    "normalization": {
+      "equivalents_any_of": [
+        ["gen_ai.system", "gen_ai.provider.name"],
+        ["gen_ai.usage.input_tokens", "gen_ai.usage.prompt_tokens"],
+        ["gen_ai.usage.output_tokens", "gen_ai.usage.completion_tokens"]
+      ],
+      "legacy_fallbacks": {
+        "gen_ai.prompt.0.content": ["gen_ai.input.messages"],
+        "gen_ai.completion.0.content": ["gen_ai.output.messages"]
+      }
+    }
+  },
+  "attributes": [
+    {
+      "name": "gen_ai.system",
+      "required_level": "required",
+      "group": "core-provider",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["base_ai_span_filter", "provider_quick_filter", "service_explorer_table", "distributed_tracing_intent", "onboarding_validation"],
+      "deprecated": true,
+      "deprecated_role": "fallback",
+      "preferred_attribute": "gen_ai.provider.name"
+    },
+    {
+      "name": "gen_ai.provider.name",
+      "required_level": "required",
+      "group": "core-provider",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["base_ai_span_filter", "provider_quick_filter", "service_explorer_table", "distributed_tracing_intent"]
+    },
+    {
+      "name": "service.name",
+      "required_level": "required",
+      "group": "core-service",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_otel_resource",
+      "used_by": ["service_quick_filter", "service_explorer_table", "onboarding_validation"]
+    },
+    {
+      "name": "gen_ai.request.model",
+      "required_level": "required",
+      "group": "core-model",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table", "distributed_tracing_intent", "onboarding_validation"]
+    },
+    {
+      "name": "gen_ai.response.model",
+      "required_level": "required",
+      "group": "core-model",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["model_quick_filter", "service_explorer_table", "overview_charts", "distributed_tracing_intent"]
+    },
+    {
+      "name": "gen_ai.usage.input_tokens",
+      "required_level": "required",
+      "group": "core-tokens",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table", "service_explorer_table", "overview_charts", "distributed_tracing_intent"]
+    },
+    {
+      "name": "gen_ai.usage.output_tokens",
+      "required_level": "required",
+      "group": "core-tokens",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table", "service_explorer_table", "overview_charts"]
+    },
+    {
+      "name": "gen_ai.operation.name",
+      "required_level": "recommended",
+      "group": "sdk-ops",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": ["operation_breakdown", "trace_analysis"],
+      "note": "Not always required by app filters but useful for SDK operation-level validation"
+    },
+    {
+      "name": "llm.request.type",
+      "required_level": "optional",
+      "group": "openinference",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "openinference_instrumentation",
+      "used_by": ["distributed_tracing_intent"]
+    },
+    {
+      "name": "gen_ai.agent.name",
+      "required_level": "recommended",
+      "group": "agent",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": ["agent_quick_filter", "overview_charts"]
+    },
+    {
+      "name": "gen_ai.input.messages",
+      "required_level": "optional",
+      "group": "content",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table"]
+    },
+    {
+      "name": "gen_ai.output.messages",
+      "required_level": "optional",
+      "group": "content",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table"]
+    },
+    {
+      "name": "gen_ai.prompt.0.content",
+      "required_level": "optional",
+      "group": "content-legacy",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table", "distributed_tracing_intent", "onboarding_validation"],
+      "deprecated": true,
+      "deprecated_role": "fallback",
+      "preferred_attribute": "gen_ai.input.messages"
+    },
+    {
+      "name": "gen_ai.completion.0.content",
+      "required_level": "optional",
+      "group": "content-legacy",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_or_provider_sdk",
+      "used_by": ["prompts_table", "distributed_tracing_intent"],
+      "deprecated": true,
+      "deprecated_role": "fallback",
+      "preferred_attribute": "gen_ai.output.messages"
+    },
+    {
+      "name": "gen_ai.prompt.prompt_filter_results",
+      "required_level": "provider-specific",
+      "group": "guardrails-azure",
+      "providers": ["azure"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.completion.content_filter_results",
+      "required_level": "provider-specific",
+      "group": "guardrails-azure",
+      "providers": ["azure"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.bedrock.guardrail.activation",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.bedrock.guardrail.content",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.bedrock.guardrail.sensitive_info",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.bedrock.guardrail.topics",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.bedrock.guardrail.words",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"]
+    },
+    {
+      "name": "gen_ai.prompt_caching",
+      "required_level": "provider-specific",
+      "group": "caching-openai",
+      "providers": ["openai"],
+      "owned_by": "provider_sdk",
+      "used_by": ["cached_vs_non_cached_chart"]
+    },
+    {
+      "name": "gen_ai.cache.type",
+      "required_level": "provider-specific",
+      "group": "caching-openai",
+      "providers": ["openai"],
+      "owned_by": "provider_sdk",
+      "used_by": ["cached_vs_non_cached_chart"]
+    }
+  ],
+  "non_sdk_fields": [
+    {
+      "name": "dt.smartscape.service",
+      "source": "dynatrace_enrichment",
+      "comparison": "ignore_for_sdk_pass_fail"
+    },
+    {
+      "name": "dt.agent.module.type",
+      "source": "dynatrace_enrichment",
+      "comparison": "ignore_for_sdk_pass_fail"
+    }
+  ]
+}
