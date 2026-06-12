@@ -7,7 +7,7 @@ Goal: make SDK/framework comparisons deterministic and consistent.
 
 ## What This Baseline Is
 
-`sdk-comparison-baseline.json` (v1.1.0) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
+`sdk-comparison-baseline.json` (v1.1.1) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
 
 It contains:
 - Core pass/fail rules (`must_have_any`, `must_have_all`)
@@ -82,13 +82,13 @@ Profile precedence:
 
 | Attribute | Rule ID | Required Level | Used By Visuals |
 |---|---|---|---|
-| `gen_ai.system` | AR-001 | required (effective primary) | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent, onboarding_validation |
-| `gen_ai.provider.name` | AR-002 | required (accepted fallback) | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent |
+| `gen_ai.provider.name` | AR-002 | required (primary) | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent |
+| `gen_ai.system` | AR-001 | required (deprecated fallback for `gen_ai.provider.name`) | base_ai_span_filter, provider_quick_filter, service_explorer_table, distributed_tracing_intent, onboarding_validation |
 | `service.name` | AR-003 | required | service_quick_filter, service_explorer_table, onboarding_validation |
 | `gen_ai.request.model` | AR-004 | required | prompts_table, distributed_tracing_intent, onboarding_validation |
 | `gen_ai.response.model` | AR-005 | required | model_quick_filter, service_explorer_table, overview_charts, distributed_tracing_intent |
 
-> **Provider identity note:** The app uses `coalesce(gen_ai.system, gen_ai.provider.name)` — `gen_ai.system` is checked first and wins when present. Neither field is deprecated; they come from different semconv generations. The `must_have_any` check passes if either is present.
+> **Provider identity note:** `gen_ai.system` is deprecated in OTel semconv in favor of `gen_ai.provider.name`. The app's DQL uses `coalesce(gen_ai.system, gen_ai.provider.name)` checking the old field first only for backward compatibility with older SDKs. Prefer `gen_ai.provider.name` in all new instrumentation. The `must_have_any` gate passes if either is present.
 
 ### Tokens & Performance
 
@@ -98,7 +98,7 @@ Profile precedence:
 | `gen_ai.usage.output_tokens` | AR-007 | required (primary) | prompts_table, service_explorer_table, overview_charts, cost_dashboard |
 | `gen_ai.usage.prompt_tokens` | AR-026 | optional (deprecated fallback for AR-006) | cost_dashboard |
 | `gen_ai.usage.completion_tokens` | AR-027 | optional (deprecated fallback for AR-007) | cost_dashboard |
-| `gen_ai.token.type` | AR-024 | recommended | cost_dashboard — splits input vs output cost lanes |
+| `gen_ai.token.type` | AR-024 | recommended | cost_dashboard — splits cost lanes; values: `input`, `output`, `cache_read`, `cache_creation` |
 | `gen_ai.client.operation.duration` | AR-025 | required | latency_charts — p99 and mean latency |
 
 ### Operations & Agents
@@ -115,8 +115,8 @@ Profile precedence:
 |---|---|---|---|
 | `gen_ai.input.messages` | AR-011 | optional (primary) | prompts_table |
 | `gen_ai.output.messages` | AR-012 | optional (primary) | prompts_table |
-| `gen_ai.prompt.0.content` | AR-013 | optional (deprecated fallback for AR-011) | prompts_table, distributed_tracing_intent, onboarding_validation |
-| `gen_ai.completion.0.content` | AR-014 | optional (deprecated fallback for AR-012) | prompts_table, distributed_tracing_intent |
+| `gen_ai.prompt.0.content` | AR-013 | optional (removed from semconv, legacy fallback for AR-011) | prompts_table, distributed_tracing_intent, onboarding_validation |
+| `gen_ai.completion.0.content` | AR-014 | optional (removed from semconv, legacy fallback for AR-012) | prompts_table, distributed_tracing_intent |
 | `gen_ai.system_instructions` | AR-043 | optional | prompts_table |
 | `gen_ai.conversation.id` | AR-041 | optional | prompts_table — groups spans into conversation threads |
 | `gen_ai.request.temperature` | AR-042 | optional | model_comparison_dashboard — display only |
@@ -182,8 +182,8 @@ Primary/fallback enforcement:
 These rules model app behavior better than a flat required/optional list.
 
 ### `all_genai_views`
-- Inclusion gate: `gen_ai.system` OR `gen_ai.provider.name`
-- `gen_ai.system` is the effective primary (coalesce order); either satisfies the gate.
+- Inclusion gate: `gen_ai.provider.name` OR `gen_ai.system` (deprecated fallback)
+- Either satisfies the gate; `gen_ai.provider.name` is the preferred modern attribute.
 - Meaning: span must first qualify as a GenAI span at all.
 
 ### `prompts_view`
@@ -230,7 +230,7 @@ These rules model app behavior better than a flat required/optional list.
 
 ### Generic profile
 - PASS if:
-  - `gen_ai.system` is present (or `gen_ai.provider.name` if `gen_ai.system` is missing), AND
+  - `gen_ai.provider.name` is present (or deprecated fallback `gen_ai.system` if primary is missing), AND
   - all `must_have_all` fields are present (or their declared equivalents from `equivalents_any_of`).
 - Ignore Azure/Bedrock/OpenAI provider-specific lists.
 - Flag missing recommended fields (`gen_ai.client.operation.duration`, `gen_ai.token.type`, `gen_ai.agent.name`) as `silent_failures` or `missing_recommended`.
