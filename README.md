@@ -72,6 +72,7 @@ Monitor AI agent frameworks with Dynatrace.
 | Framework | Path |
 |-----------|------|
 | [OpenAI Agents SDK](./openai-agents/opentelemetry/) | openai-agents/opentelemetry |
+| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | microsoft-agent-framework/opentelemetry |
 | [AWS Strands Agents](./aws-strands/oneagent/) | aws-strands/oneagent |
 | [AWS Bedrock Agents](./aws-bedrock-agents/oneagent/) | aws-bedrock-agents/oneagent |
 | [Google ADK](./google-adk/opentelemetry/) | google-adk/opentelemetry |
