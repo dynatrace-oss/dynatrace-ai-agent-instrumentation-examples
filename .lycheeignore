@@ -1,3 +1,6 @@
+# npmjs.com blocks automated requests with 403 — not a broken link
+https://www.npmjs.com
+
 # Localhost and loopback — dev/example URLs, never real targets
 http://localhost
 http://127.0.0.1
