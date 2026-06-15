@@ -26,6 +26,9 @@ jobs:
           - name: aws-bedrock-oneagent
             app_dir: aws-bedrock/oneagent
             test_run: TestAWSBedrockOneAgent
+          - name: aws-bedrock-openinference
+            app_dir: aws-bedrock/openinference
+            test_run: TestAWSBedrockOpenInference
 
     steps:
       - name: Checkout
