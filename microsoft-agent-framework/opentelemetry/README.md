@@ -63,6 +63,8 @@ make run
 
 ![Prompts view](assets/prompts.png)
 
+![smartscape.png](assets/smartscape.png)
+
 ## OTLP signals exported
 
 | Signal | Endpoint | Key attributes |
