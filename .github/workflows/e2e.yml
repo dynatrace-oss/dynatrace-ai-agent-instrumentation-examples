@@ -14,7 +14,6 @@ permissions:
 env:
   GO_VERSION: '1.22'
   UV_VERSION: '0.11.21'
-  ONEAGENT_VERSION: '1.374'
 
 jobs:
   oneagent:
@@ -59,7 +58,7 @@ jobs:
           INSTALLER_DIR=$(mktemp -d)
           trap 'rm -rf "$INSTALLER_DIR"' EXIT
           wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/version/${ONEAGENT_VERSION}?arch=x86" \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
           sudo sh "$INSTALLER_DIR/oneagent.sh" --set-infra-only=false
 
