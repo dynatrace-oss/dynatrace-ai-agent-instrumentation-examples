@@ -32,6 +32,21 @@ func Start(dir string) (*App, error) {
 	return a, nil
 }
 
+// StartCLI runs "make run" in dir as a background process without waiting for
+// an HTTP readiness endpoint. Use this for CLI-style apps that emit telemetry
+// autonomously without an HTTP interface.
+func StartCLI(dir string) (*App, error) {
+	cmd := exec.Command("make", "run")
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("make run: %w", err)
+	}
+	return &App{cmd: cmd}, nil
+}
+
 // Stop kills the app process.
 func (a *App) Stop() error {
 	if a.cmd.Process == nil {

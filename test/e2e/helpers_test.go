@@ -93,6 +93,39 @@ func startApp(t *testing.T, appDir string) {
 	})
 }
 
+// startCLIApp runs make install then starts make run in <repoRoot>/<appDir>
+// without waiting for an HTTP readiness endpoint. The app emits telemetry
+// autonomously; use assertGenAISpan to wait for spans.
+func startCLIApp(t *testing.T, appDir string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot(), appDir)
+
+	install := exec.Command("make", "install")
+	install.Dir = dir
+	install.Env = []string{
+		"PATH=" + os.Getenv("PATH"),
+		"HOME=" + os.Getenv("HOME"),
+	}
+	install.Stdout = os.Stdout
+	install.Stderr = os.Stderr
+	if err := install.Run(); err != nil {
+		t.Fatalf("make install in %s: %v", appDir, err)
+	}
+
+	app, err := process.StartCLI(dir)
+	if err != nil {
+		t.Fatalf("start cli app %s: %v", appDir, err)
+	}
+	t.Cleanup(func() {
+		if err := app.Stop(); err != nil {
+			t.Logf("warning: stop cli app %s: %v", appDir, err)
+		}
+		if err := exec.Command("make", "-C", dir, "stop").Run(); err != nil {
+			t.Logf("warning: make stop in %s: %v", appDir, err)
+		}
+	})
+}
+
 // assertGenAISpan polls DT until a span matching dql is found (3-minute
 // timeout), then asserts gen_ai.system equals wantSystem.
 func assertGenAISpan(t *testing.T, dql, wantSystem string) {
