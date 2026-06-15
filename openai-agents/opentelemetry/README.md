@@ -13,7 +13,7 @@ This example contains a demo of a Customer Service Agent interface built on top 
 
 The Dynatrace full-stack observability platform combined with Traceloop's OpenLLMetry OpenTelemetry SDK can seamlessly provide comprehensive insights into Large Language Models (LLMs) in production environments. By observing AI models, businesses can make informed decisions, optimize performance, and ensure compliance with emerging AI regulations.
 
-Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`api.py`](./python-backend/api.py) file.
+Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`api.py`](./api.py) file.
 
 ```python
 os.environ['TRACELOOP_TELEMETRY'] = "false"

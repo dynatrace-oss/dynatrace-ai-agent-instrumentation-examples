@@ -63,14 +63,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 
 | SDK | OneAgent | OpenInference |
 |-----|----------|---------------|
-| [OpenAI](./openai/oneagent/) | ✓ | [✓](./openai/openinference/) |
-| [Anthropic (Bedrock)](./anthropic/oneagent/) | ✓ | — |
-| [AWS Bedrock](./aws-bedrock/oneagent/) | ✓ | [✓](./aws-bedrock/openinference/) |
-| [Cohere](./cohere/oneagent/) | ✓ | — |
-| [Groq](./groq/oneagent/) | ✓ | — |
-| [Haystack](./haystack/oneagent/) | ✓ | — |
-| [Mistral](./mistral/oneagent/) | ✓ | — |
-| [Ollama](./ollama/oneagent/) | ✓ | — |
+| [OpenAI](./openai/openinference/) | — | [✓](./openai/openinference/) |
 
 ### Agent Framework Demos
 
