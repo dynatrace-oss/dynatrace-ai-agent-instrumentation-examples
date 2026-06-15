@@ -112,7 +112,7 @@ After success, verify in Dynatrace:
 - Metrics browser: search for `codex`
 - Log & Event Viewer: filter `service.name = codex_cli_rs`
 
-To validate in a [Dynatrace Notebook](https://docs.dynatrace.com/docs/analyze-explore-automate/notebooks), use this DQL query:
+To validate in a [Dynatrace Notebook](https://docs.dynatrace.com/docs/analyze-explore-automate/dashboards-and-notebooks/notebooks), use this DQL query:
 
 ```dql
 fetch logs
