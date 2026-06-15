@@ -1,69 +1,73 @@
-# Microsoft Agent Framework + Dynatrace (OTLP only)
+# Microsoft Agent Framework + Dynatrace
 
-This sample runs a Microsoft Agent Framework app and sends telemetry directly to Dynatrace via OTLP HTTP.
+This sample instruments a [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) agent with Dynatrace using the framework's native OpenTelemetry support — no additional instrumentation SDK required.
 
 ## What this sample does
 
-- Uses `agent-framework` with `OpenAIChatClient`
-- Calls one local tool (`get_weather`) during an agent run
-- Exports OpenTelemetry traces directly to Dynatrace OTLP ingest
-- Prints a trace ID so you can find the run in Dynatrace
+- Runs an `Agent` that calls Azure OpenAI to write a haiku about observability
+- Exports **traces** and **metrics** directly to Dynatrace via OTLP HTTP
+- Emits `gen_ai.agent.name`, `gen_ai.conversation.id`, `gen_ai.request.temperature`, prompt and completion content, token usage, and latency out of the box
+
+## How it works
+
+The framework self-instruments via OTel natively. Calling `Agent.run()` produces two nested spans:
+
+- **`invoke_agent`** span — from `AgentTelemetryLayer`, carries `gen_ai.agent.name`, `gen_ai.conversation.id`
+- **`chat`** span — from `ChatTelemetryLayer`, carries token counts, model, prompt/completion content
+
+Prompt and completion content (`gen_ai.input.messages` / `gen_ai.output.messages`) are set as span attributes when `enable_sensitive_data=True`, so they travel with traces and require no separate logs endpoint.
+
+Latency (`gen_ai.client.operation.duration`) and token type (`gen_ai.token.type`) are emitted as OTel **metrics** and require a separate metrics endpoint to populate the latency and cost dashboard views in Dynatrace.
 
 ## Prerequisites
 
 - Python 3.10+
-- A Dynatrace API token with `openTelemetryTrace.ingest`
-- Azure OpenAI compatible endpoint and key (some code changes would be needed to use a different model)
+- A Dynatrace API token with:
+  - `openTelemetryTrace.ingest` — for traces and prompts
+  - `metrics.ingest` — for latency charts and cost dashboard
+- An Azure OpenAI endpoint and key
 
 ## Environment
 
-This folder expects a `.env` file with at least:
+Copy `.env.sample` to `.env` and fill in the values:
 
 ```env
 OPENAI_API_KEY=...
 OPENAI_API_BASE=https://<resource>.openai.azure.com/openai/deployments/<deployment>
-OPENAI_API_VERSION=2024-07-01-preview
+OPENAI_API_VERSION=2025-04-01-preview
 MODEL=<deployment>
+TEMPERATURE=0.7
 
 DT_ENDPOINT=https://<tenant>.live.dynatrace.com
 DT_API_TOKEN=dt0c01....
 ```
 
-Notes:
-- `OPENAI_API_BASE` can include the deployment path as in this repo.
-- The app derives the Azure endpoint from `OPENAI_API_BASE` and uses `MODEL` as the deployment name.
+`OPENAI_API_BASE` can include the full deployment path — the app derives the Azure endpoint from it automatically.
 
-## Install
+## Install and run
 
 ```bash
-cd microsoft-agent-framework
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+cd microsoft-agent-framework/opentelemetry
+make install
+make run
 ```
 
-## Run
+## Dynatrace AI Observability views
 
-```bash
-cd microsoft-agent-framework
-source .venv/bin/activate
-python app.py
-```
+| View | What to look for |
+|------|-----------------|
+| **Overview** → Response time per model | p99 / mean latency per model (requires metrics endpoint) |
+| **Cost dashboard** | Input and output token cost split by lane (requires metrics endpoint) |
+| **Prompts** | Prompt and completion text, conversation grouping by `gen_ai.conversation.id` |
+| **Agent filter** | `observability-haiku-agent` appears under the agent quick filter |
 
-## Dynatrace verification
+![Prompts view](assets/prompts.png)
 
-1. Open Distributed Tracing or AI Observability in Dynatrace.
-2. Filter by service name `microsoft-agent-framework`.
-   This is fr instance what you would see in the Prompts view.
-   ![prompts.png](assets/prompts.png)
+## OTLP signals exported
 
-## OTLP setup used by this sample
+| Signal | Endpoint | Key attributes |
+|--------|----------|----------------|
+| Traces | `/api/v2/otlp/v1/traces` | `gen_ai.agent.name`, `gen_ai.input/output.messages`, token counts |
+| Metrics | `/api/v2/otlp/v1/metrics` | `gen_ai.client.operation.duration`, `gen_ai.client.token.usage` |
 
-At runtime, the app sets:
-
-- `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
-- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${DT_ENDPOINT}/api/v2/otlp/v1/traces`
-- `OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Api-Token ${DT_API_TOKEN}`
-- `OTEL_SERVICE_NAME=microsoft-agent-framework`
-
-Only traces are exported in this example.
+Metrics are exported with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`, which Dynatrace requires.
