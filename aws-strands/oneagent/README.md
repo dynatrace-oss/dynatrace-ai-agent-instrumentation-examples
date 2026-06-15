@@ -1,8 +1,8 @@
 ## Strands Agents
 
-This example contains a demo of a Personal Assistant Agent built on top of [Strands Agents](https://strandsagents.com/latest/).
+This example contains a demo of a Personal Assistant Agent built on top of [Strands Agents](https://strandsagents.com/).
 
-![Tracing](./dynatrace.png)
+![Trace View](../../assets/trace-view.png)
 
 ## Dynatrace Instrumentation
 

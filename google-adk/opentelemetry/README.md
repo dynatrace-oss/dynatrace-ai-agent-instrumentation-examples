@@ -3,7 +3,7 @@
 
 This example contains a demo of an Academic Research Agent interface built on top of the [Google ADK](https://google.github.io/adk-docs/). The original example code can be found in the [adk-samples](https://github.com/google/adk-samples/tree/main/python/agents/academic-research) GitHub repo.
 
-![Tracing](./dynatrace.png)
+![Trace View](../../assets/trace-view.png)
 
 ## Dynatrace Instrumentation
 
@@ -13,7 +13,7 @@ This example contains a demo of an Academic Research Agent interface built on to
 
 The Dynatrace full-stack observability platform combined with Traceloop's OpenLLMetry OpenTelemetry SDK can seamlessly provide comprehensive insights into Large Language Models (LLMs) in production environments. By observing AI models, businesses can make informed decisions, optimize performance, and ensure compliance with emerging AI regulations.
 
-Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`__init__.py`](./academic_research/__init__.py) files.
+Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`__init__.py`](./__init__.py) files.
 
 ```python
 os.environ['TRACELOOP_TELEMETRY'] = "false"

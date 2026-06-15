@@ -1,0 +1,19 @@
+# npmjs.com blocks automated requests with 403 — not a broken link
+https://www.npmjs.com
+
+# Localhost and loopback — dev/example URLs, never real targets
+http://localhost
+http://127.0.0.1
+
+# Placeholder URLs with template variables — not real links
+https://<.*>
+http://<.*>
+
+# Docker-internal hostnames used in compose examples
+http://tempo
+http://jaeger
+
+# Known DT tenant placeholder patterns (e.g. https://abc123.live.dynatrace.com used as examples)
+https://ENVIRONMENT_ID.live.dynatrace.com
+https://YOUR_ENV.live.dynatrace.com
+https://abc123.live.dynatrace.com

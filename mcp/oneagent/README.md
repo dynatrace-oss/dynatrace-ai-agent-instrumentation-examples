@@ -70,7 +70,7 @@ cd ai-agent
 uv run main.py
 ```
 
-![tracing](./dynatrace.png)
+![Trace View](../../assets/trace-view.png)
 
 
 

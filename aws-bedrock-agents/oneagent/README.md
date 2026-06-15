@@ -2,7 +2,7 @@
 
 This example contains a demo of a Personal Assistant Agent built on top of [Bedrock AgentCore Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html).
 
-![Tracing](./dynatrace.png)
+![Trace View](../../assets/trace-view.png)
 
 ## Dynatrace Instrumentation
 

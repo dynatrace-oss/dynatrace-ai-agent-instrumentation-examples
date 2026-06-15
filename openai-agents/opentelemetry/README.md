@@ -3,7 +3,7 @@
 
 This example contains a demo of a Customer Service Agent interface built on top of the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/). The original example code can be found in the [openai-cs-agents-demo](https://github.com/openai/openai-cs-agents-demo) GitHub repo.
 
-![Tracing](./dynatrace.png)
+![Trace View](../../assets/trace-view.png)
 
 ## Dynatrace Instrumentation
 
@@ -13,7 +13,7 @@ This example contains a demo of a Customer Service Agent interface built on top 
 
 The Dynatrace full-stack observability platform combined with Traceloop's OpenLLMetry OpenTelemetry SDK can seamlessly provide comprehensive insights into Large Language Models (LLMs) in production environments. By observing AI models, businesses can make informed decisions, optimize performance, and ensure compliance with emerging AI regulations.
 
-Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`api.py`](./python-backend/api.py) file.
+Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`api.py`](./api.py) file.
 
 ```python
 os.environ['TRACELOOP_TELEMETRY'] = "false"
@@ -91,4 +91,4 @@ The frontend will be available at: [http://localhost:3000](http://localhost:3000
 
 This command will also start the backend.
 
-![Demo Screenshot](screenshot.jpg)
+![Trace View](../../assets/trace-view.png)
