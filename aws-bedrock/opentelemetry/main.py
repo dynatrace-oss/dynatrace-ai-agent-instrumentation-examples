@@ -158,12 +158,13 @@ def run_agent():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     count = 0
+    max_runs = int(os.environ.get('MAX_RUNS', '60'))
     while True:
         run_agent()
         count += 1
-        sleep(5)
-        if count > 60:
+        if count >= max_runs:
             exit(0)
+        sleep(5)
 
 
 
