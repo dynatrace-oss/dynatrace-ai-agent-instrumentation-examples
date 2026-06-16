@@ -10,7 +10,7 @@ import (
 var dtClient *dynatrace.Client
 
 func TestMain(m *testing.M) {
-	dtClient = dynatrace.New(mustEnv("DT_ENDPOINT"), mustEnv("DT_API_TOKEN"))
+	dtClient = dynatrace.New(mustEnv("DT_APPS_ENDPOINT"), mustEnv("DT_API_TOKEN"))
 	os.Exit(m.Run())
 }
 
