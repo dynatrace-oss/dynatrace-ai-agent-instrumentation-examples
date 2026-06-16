@@ -1,0 +1,5 @@
+agent-framework
+agent-framework-openai
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+python-dotenv
