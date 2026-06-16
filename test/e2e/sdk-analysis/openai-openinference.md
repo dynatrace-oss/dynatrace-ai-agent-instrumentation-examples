@@ -1,6 +1,6 @@
 # OpenAI + OpenInference — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.1.1 | **Path**: `openai/openinference/app.py` | **Profile**: openinference-basic (generic + openai)
+> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `openai/openinference/app.py` | **Profile**: openinference-basic (generic + openai) | **Dashboard**: `abmodelversioning.dashboard.json`
 
 ## Instrumentation
 
@@ -27,23 +27,40 @@
 | Prompts — content | ⚠️ legacy | `gen_ai.prompt.0.content` + `gen_ai.completion.0.content` emitted; DT falls back to these |
 | Prompts — model column | ✅ | `gen_ai.request.model` present |
 | Latency charts | ❌ | No `gen_ai.client.operation.duration` metric; no metrics pipeline at all |
-| Cost dashboard | ❌ | No `gen_ai.client.token.usage` metric with `gen_ai.token.type` dimension |
+| Cost dashboard (span tokens) | ✅ | `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` present on spans (AR-006/AR-007 via fallback) |
+| Cost dashboard (metric) | ❌ | No `gen_ai.client.token.usage` metric (AR-044); no metrics pipeline configured |
+| Service health tile | ⚠️ | `span.status_code` (AR-047) auto-emitted by OTel SDK; functional if TracerProvider is correctly wired |
 | Agent quick filter | ❌ | No `gen_ai.agent.name` emitted |
 | Provider quick filter | ✅ | `gen_ai.system` = "openai" present |
 | Guardrails (Azure) | N/A | Not Azure profile; `gen_ai.system` = "openai" even if Azure endpoint used |
 | Guardrails (Bedrock) | N/A | Not Bedrock |
 | Cache hit rate (OpenAI) | ❌ | No `gen_ai.prompt_caching` or `gen_ai.cache.type` emitted |
 
+## Dashboard Coverage
+
+| Dashboard View | Populated? | Missing attributes |
+|----------------|------------|--------------------|
+| All GenAI spans | ✅ Yes | — |
+| Prompts list / detail | ⚠️ Legacy content | Modern `gen_ai.input.messages` / `gen_ai.output.messages` missing; falls back to deprecated attributes |
+| Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` metric (AR-025) not emitted; no metrics pipeline |
+| Cost dashboard tiles | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted; no metrics pipeline. Note: span token attributes AR-006/AR-007 are present (via fallback) but the cost dashboard metric tiles require the OTel metric, not span attributes. |
+| Service health tile | ⚠️ Partial | `span.status_code` (AR-047) auto-emitted by OTel SDK if TracerProvider is wired correctly |
+| Agent quick filter | ❌ Empty | `gen_ai.agent.name` (AR-010) not emitted — direct LLM call, no agent |
+| Cache hit rate chart | ❌ Empty | `gen_ai.prompt_caching` (AR-022) and `gen_ai.cache.type` (AR-023) not emitted |
+| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
+| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
+
 ## Silent failures
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Missing feature |
-|-----------|----------------|
-| `gen_ai.client.operation.duration` | All latency charts empty |
-| `gen_ai.token.type` (metric dimension) | Cost dashboard shows no data |
-| `gen_ai.agent.name` | Agent quick filter empty; all spans classified as LLM only |
-| `gen_ai.conversation.id` | No conversation thread grouping in prompts view |
+| Attribute | Rule ID | Missing feature |
+|-----------|---------|----------------|
+| `gen_ai.client.operation.duration` | AR-025 | All latency charts empty |
+| `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard metric tiles show $0 silently — distinct from span token attributes AR-006/AR-007. Requires a metrics pipeline (e.g. Traceloop `should_enrich_metrics=True` or custom `MeterProvider`). |
+| `gen_ai.token.type` (metric dimension) | AR-024 | Cost dashboard shows no data |
+| `gen_ai.agent.name` | AR-010 | Agent quick filter empty; all spans classified as LLM only |
+| `gen_ai.conversation.id` | AR-041 | No conversation thread grouping in prompts view |
 
 ## What to fix in the example app
 

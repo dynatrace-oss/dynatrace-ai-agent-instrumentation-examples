@@ -1,6 +1,6 @@
 # AWS Strands SDK — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.1.1 | **Path**: `aws-strands/oneagent/main.py` | **Profile**: bedrock
+> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `aws-strands/oneagent/main.py` | **Profile**: bedrock | **Dashboard**: `bedrock.dashboard.json`
 
 ## Instrumentation
 
@@ -27,22 +27,48 @@
 | Prompts — content | ❌ | Strands emits content as span events (`gen_ai.user.message`, `gen_ai.assistant.message`); DT reads `gen_ai.input.messages`/`gen_ai.output.messages` as span attributes, not events |
 | Prompts — model column | ✅ | `gen_ai.request.model` present |
 | Latency charts | ✅ | Strands SDK natively emits `gen_ai.client.operation.duration` metric; metrics pipeline configured in `dynatrace.py` |
-| Cost dashboard | ✅ | Strands natively emits `gen_ai.client.token.usage` with `gen_ai.token.type` dimension |
+| Cost dashboard (span tokens) | ✅ | `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` present on spans |
+| Cost dashboard (metric) | ✅ | Strands natively emits `gen_ai.client.token.usage` metric (AR-044) with `gen_ai.token.type` dimension |
+| Service health tile | ✅ | `span.status_code` (AR-047) auto-emitted by OTel SDK |
 | Agent quick filter | ✅ | Strands emits agent spans with `gen_ai.agent.name` |
 | Provider quick filter | ✅ | `gen_ai.system` present |
 | Guardrails (Azure) | N/A | Not Azure |
 | Guardrails (Bedrock) | ❌ | No Bedrock guardrails configured; `gen_ai.bedrock.guardrail.*` attributes not emitted |
 | Cache hit rate (OpenAI) | N/A | Not OpenAI |
 
+## Dashboard Coverage
+
+| Dashboard View | Populated? | Missing attributes |
+|----------------|------------|--------------------|
+| All GenAI spans | ✅ Yes | — |
+| Prompts list / detail | ❌ Empty | Content emitted as span events, not span attributes; DT prompts table requires span attributes `gen_ai.input.messages` / `gen_ai.output.messages` |
+| Latency charts (p99/mean) | ✅ Yes | — |
+| Cost dashboard tiles | ✅ Yes | `gen_ai.client.token.usage` metric natively emitted by Strands SDK |
+| Service health tile | ✅ Yes | `span.status_code` auto-emitted by OTel SDK |
+| Guardrail cards (Bedrock) | ❌ Empty | `gen_ai.bedrock.guardrail.activation` (AR-017), `gen_ai.bedrock.guardrail.content` (AR-018), `gen_ai.bedrock.guardrail.sensitive_info` (AR-019) not emitted |
+| Bedrock cache tiles | ❌ Empty | `gen_ai.prompt.caching` metric (AR-045) not emitted; no Bedrock prompt caching configured |
+| Agent quick filter | ✅ Yes | `gen_ai.agent.name` emitted by Strands |
+| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
+| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
+
 ## Silent failures
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Missing feature |
-|-----------|----------------|
-| `gen_ai.input.messages` / `gen_ai.output.messages` (as span attributes) | Prompts table content is empty; Strands emits these as span events, which DT does not currently read for the prompts table |
-| `gen_ai.bedrock.guardrail.*` | Bedrock guardrail cards empty (no guardrails configured) |
-| `gen_ai.conversation.id` | No conversation thread grouping |
+| Attribute | Rule ID | Missing feature |
+|-----------|---------|----------------|
+| `gen_ai.input.messages` / `gen_ai.output.messages` (as span attributes) | AR-011/AR-012 | Prompts table content is empty; Strands emits these as span events, which DT does not currently read for the prompts table |
+| `gen_ai.bedrock.guardrail.*` | AR-017/AR-018/AR-019 | Bedrock guardrail cards empty (no guardrails configured) |
+| `gen_ai.conversation.id` | AR-041 | No conversation thread grouping |
+
+## Dashboard gaps (Bedrock-specific)
+
+The following attributes are expected from the Bedrock SDK and are in the baseline contract, but **no dashboard tile in `bedrock.dashboard.json` currently visualises them**. Their absence does not degrade any current dashboard — this is a dashboard gap, not a silent failure:
+
+| Attribute | Rule ID | Note |
+|-----------|---------|------|
+| `gen_ai.bedrock.guardrail.topics` | AR-020 | Expected from Bedrock SDK; not yet visualised in bedrock.dashboard.json |
+| `gen_ai.bedrock.guardrail.words` | AR-021 | Expected from Bedrock SDK; not yet visualised in bedrock.dashboard.json |
 
 ## What to fix in the example app
 

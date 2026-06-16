@@ -1,6 +1,6 @@
 # LiteLLM + FastAPI — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.1.1 | **Path**: `litellm/opentelemetry/fastapi-instrumentation/main.py` | **Profile**: generic (multi-provider)
+> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `litellm/opentelemetry/fastapi-instrumentation/main.py` | **Profile**: generic | **Dashboard**: `abmodelversioning.dashboard.json`
 
 ## Instrumentation
 
@@ -27,21 +27,37 @@
 | Prompts — content | ⚠️ legacy | `gen_ai.prompt.0.content` + `gen_ai.completion.0.content` via LiteLLMOTel/Traceloop; DT falls back to these |
 | Prompts — model column | ✅ | `gen_ai.request.model` present |
 | Latency charts | ✅ | `should_enrich_metrics=True` → `gen_ai.client.operation.duration` emitted by Traceloop |
-| Cost dashboard | ✅ | `should_enrich_metrics=True` → `gen_ai.client.token.usage` with `gen_ai.token.type` |
+| Cost dashboard (span tokens) | ✅ | `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` present on spans (AR-006/AR-007 via fallback) |
+| Cost dashboard (metric) | ✅ | `should_enrich_metrics=True` → `gen_ai.client.token.usage` metric (AR-044) with `gen_ai.token.type` dimension emitted by Traceloop |
+| Service health tile | ✅ | `span.status_code` (AR-047) auto-emitted by OTel SDK |
 | Agent quick filter | ❌ | No `gen_ai.agent.name`; LiteLLM is an LLM gateway, not an agent framework |
 | Provider quick filter | ✅ | `gen_ai.system` present per provider |
 | Guardrails (Azure) | N/A | Not Azure profile |
 | Guardrails (Bedrock) | N/A | Not Bedrock profile |
 | Cache hit rate (OpenAI) | ❌ | No `gen_ai.prompt_caching` or `gen_ai.cache.type` emitted |
 
+## Dashboard Coverage
+
+| Dashboard View | Populated? | Missing attributes |
+|----------------|------------|--------------------|
+| All GenAI spans | ✅ Yes | — |
+| Prompts list / detail | ⚠️ Legacy content | Modern `gen_ai.input.messages` / `gen_ai.output.messages` missing; falls back to deprecated attributes |
+| Latency charts (p99/mean) | ✅ Yes | `gen_ai.client.operation.duration` emitted via `should_enrich_metrics=True` |
+| Cost dashboard tiles | ✅ Yes | `gen_ai.client.token.usage` metric (AR-044) emitted via `should_enrich_metrics=True` |
+| Service health tile | ✅ Yes | `span.status_code` auto-emitted by OTel SDK |
+| Agent quick filter | ❌ Empty | `gen_ai.agent.name` (AR-010) not applicable — LiteLLM is a gateway, not an agent |
+| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
+| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
+
 ## Silent failures
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Missing feature |
-|-----------|----------------|
-| `gen_ai.agent.name` | Agent quick filter empty; not applicable for a gateway |
-| `gen_ai.conversation.id` | No conversation thread grouping; request model is stateless |
+| Attribute | Rule ID | Missing feature |
+|-----------|---------|----------------|
+| `gen_ai.agent.name` | AR-010 | Agent quick filter empty; not applicable for a gateway |
+| `gen_ai.conversation.id` | AR-041 | No conversation thread grouping; request model is stateless |
+| `span.status_code` | AR-047 | Note: this IS auto-emitted by OTel SDK. If the OTel SDK pipeline is misconfigured, all requests would appear successful. |
 
 ## Note on custom metrics
 

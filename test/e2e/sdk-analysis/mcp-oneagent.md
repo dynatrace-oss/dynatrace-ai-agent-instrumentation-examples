@@ -1,6 +1,6 @@
 # MCP + LangGraph — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.1.1 | **Path**: `mcp/oneagent/ai-agent/main.py` | **Profile**: azure (Azure OpenAI)
+> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `mcp/oneagent/ai-agent/main.py` | **Profile**: azure | **Dashboard**: `azureai.dashboard.json`
 
 ## Instrumentation
 
@@ -27,25 +27,43 @@
 | Prompts — content | ⚠️ legacy | `gen_ai.prompt.0.content` + `gen_ai.completion.0.content` via Traceloop; DT falls back to these |
 | Prompts — model column | ✅ | `gen_ai.request.model` present |
 | Latency charts | ❌ | No `should_enrich_metrics=True` → `gen_ai.client.operation.duration` metric not emitted |
-| Cost dashboard | ❌ | No `gen_ai.client.token.usage` metric with `gen_ai.token.type` dimension |
+| Cost dashboard (span tokens) | ✅ | `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` present on spans (AR-006/AR-007 via fallback) |
+| Cost dashboard (metric) | ❌ | No `gen_ai.client.token.usage` metric (AR-044) — `should_enrich_metrics=True` not set |
+| Service health tile | ⚠️ | `span.status_code` (AR-047) auto-emitted by OTel SDK; functional if Traceloop OTel SDK is correctly initialised |
 | Agent quick filter | ❌ | `gen_ai.agent.name` is set on the Resource (not as a per-span attribute); DT's agent quick filter reads the span attribute, not the resource attribute — filter may be empty |
 | Provider quick filter | ✅ | `gen_ai.system` present |
 | Guardrails (Azure) | ❌ | `gen_ai.prompt.prompt_filter_results` and `gen_ai.completion.content_filter_results` not emitted |
 | Guardrails (Bedrock) | N/A | Not Bedrock |
 | Cache hit rate (OpenAI) | N/A | Azure profile — not applicable |
 
+## Dashboard Coverage
+
+| Dashboard View | Populated? | Missing attributes |
+|----------------|------------|--------------------|
+| All GenAI spans | ✅ Yes | — |
+| Prompts list / detail | ⚠️ Legacy content | Modern `gen_ai.input.messages` / `gen_ai.output.messages` missing; falls back to deprecated attributes |
+| Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` metric (AR-025) not emitted; `should_enrich_metrics=True` missing |
+| Cost dashboard tiles | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted; `gen_ai.token.type` dimension absent |
+| Service health tile | ⚠️ Partial | `span.status_code` (AR-047) may be present from OTel SDK auto-instrumentation |
+| Azure guardrail cards | ❌ Empty | `gen_ai.prompt.prompt_filter_results` (AR-015) and `gen_ai.completion.content_filter_results` (AR-016) not emitted |
+| Agent quick filter | ❌ Empty | `gen_ai.agent.name` (AR-010) set on Resource only, not per-span |
+| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
+| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
+
 ## Silent failures
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Missing feature |
-|-----------|----------------|
-| `gen_ai.client.operation.duration` | All latency charts empty |
-| `gen_ai.token.type` (metric dimension) | Cost dashboard shows no data |
-| `gen_ai.agent.name` (as span attribute) | Agent quick filter empty; currently only on Resource |
-| `gen_ai.conversation.id` | No conversation thread grouping |
-| `gen_ai.prompt.prompt_filter_results` | Azure guardrail cards empty |
-| `gen_ai.completion.content_filter_results` | Azure guardrail cards empty |
+| Attribute | Rule ID | Missing feature |
+|-----------|---------|----------------|
+| `gen_ai.client.operation.duration` | AR-025 | All latency charts empty |
+| `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard metric tiles show $0 — distinct from span token attributes AR-006/AR-007. Requires `should_enrich_metrics=True` or a custom MeterProvider. |
+| `gen_ai.token.type` (metric dimension) | AR-024 | Cost dashboard shows no data |
+| `gen_ai.agent.name` (as span attribute) | AR-010 | Agent quick filter empty; currently only on Resource |
+| `gen_ai.conversation.id` | AR-041 | No conversation thread grouping |
+| `gen_ai.prompt.prompt_filter_results` | AR-015 | Azure guardrail cards empty |
+| `gen_ai.completion.content_filter_results` | AR-016 | Azure guardrail cards empty |
+| `span.status_code` | AR-047 | If OTel SDK not properly wired, all requests appear successful; no error signal in health tile |
 
 ## What to fix in the example app
 

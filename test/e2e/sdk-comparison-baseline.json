@@ -1,16 +1,69 @@
 {
-  "version": "1.1.1",
+  "version": "1.2.0",
   "scope": "current-state",
-  "date": "2026-06-12",
+  "date": "2026-06-16",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.2.0 (2026-06-16): Add dashboard-derived attributes: gen_ai.client.token.usage metric (AR-044); gen_ai.prompt.caching metric (AR-045); gen_ai.guardrail.grounding_type dimension (AR-046); span.status_code (AR-047); gen_ai.model bigevent field (AR-048); event.type generic gate (AR-049). Add audit_trail and service_health view_rules (VR-016..VR-019). Add kong_gateway_metrics section (KO-001..KO-004) and nvidia_nim_metrics section (NV-001..NV-008). Note AR-020/AR-021 not yet visualised in any dashboard.",
     "1.1.0 (2026-06-12): Add gen_ai.token.type (AR-024); add gen_ai.client.operation.duration (AR-025); add legacy token fallback attributes (AR-026, AR-027); add evaluation subsystem (AR-028..AR-040); add gen_ai.bedrock.guardrail.contextual (AR-041); add gen_ai.conversation.id (AR-042); add gen_ai.request.temperature (AR-043); add gen_ai.system_instructions (AR-044); fix normalization.legacy_fallbacks direction (primary→legacy, not legacy→primary).",
     "1.1.1 (2026-06-12): Revert provider priority: gen_ai.system is deprecated in favor of gen_ai.provider.name per OTel semconv. The DQL coalesce(gen_ai.system, gen_ai.provider.name) checks the old field first for backward compatibility only, not because it is preferred."
   ],
   "comparison_contract": {
     "profile_selection": {
       "default_profile": "generic",
+      "profiles": {
+        "generic": {
+          "dashboard": "abmodelversioning.dashboard.json",
+          "description": "Provider-agnostic profile. Covers all attributes in the all_genai_views, prompts_view, cost_dashboard, latency_charts, and service_health view_rules. Used for any OTel-compliant SDK regardless of provider.",
+          "required_attributes": ["AR-001_or_AR-002", "AR-003", "AR-004", "AR-005", "AR-006", "AR-007"],
+          "optional_attributes": ["AR-008", "AR-009", "AR-010", "AR-011", "AR-012", "AR-024", "AR-041", "AR-042", "AR-043", "AR-044", "AR-047"]
+        },
+        "openai": {
+          "dashboard": "openai.dashboard.json",
+          "description": "OpenAI provider profile. Includes all generic checks plus OpenAI prompt-caching attributes.",
+          "extends": "generic",
+          "additional_required_attributes": [],
+          "additional_optional_attributes": ["AR-022", "AR-023"]
+        },
+        "azure": {
+          "dashboard": "azureai.dashboard.json",
+          "description": "Azure OpenAI provider profile. Includes all generic checks plus Azure content filter attributes.",
+          "extends": "generic",
+          "additional_required_attributes": ["AR-015", "AR-016"],
+          "additional_optional_attributes": []
+        },
+        "bedrock": {
+          "dashboard": "bedrock.dashboard.json",
+          "description": "AWS Bedrock provider profile. Includes all generic checks plus Bedrock guardrail, caching, and contextual grounding attributes.",
+          "extends": "generic",
+          "additional_required_attributes": ["AR-017", "AR-018", "AR-019"],
+          "additional_optional_attributes": ["AR-020", "AR-021", "AR-040", "AR-045", "AR-046"]
+        },
+        "google": {
+          "dashboard": "google.dashboard.json",
+          "description": "Google Gemini / Vertex AI provider profile. Includes all generic checks; no additional provider-specific guardrail attributes required.",
+          "extends": "generic",
+          "additional_required_attributes": [],
+          "additional_optional_attributes": []
+        },
+        "nvidia": {
+          "dashboard": "nvidia.dashboard.json",
+          "description": "NVIDIA NIM provider profile. The dashboard uses NIM Prometheus metrics (NV-001..NV-008) alongside OTel spans from the NIM OpenAI-compatible endpoint.",
+          "extends": "generic",
+          "additional_required_attributes": [],
+          "additional_optional_attributes": [],
+          "provider_metrics": ["NV-001", "NV-002", "NV-003", "NV-004", "NV-005", "NV-006", "NV-007", "NV-008"]
+        },
+        "kong": {
+          "dashboard": "kong.dashboard.json",
+          "description": "Kong AI Gateway profile. The dashboard is entirely metrics-driven (KO-001..KO-004 Prometheus metrics); it does not require OTel span attributes. The generic span checks apply only to the service-health tile that fetches spans alongside Kong metrics.",
+          "extends": "generic",
+          "additional_required_attributes": [],
+          "additional_optional_attributes": [],
+          "provider_metrics": ["KO-001", "KO-002", "KO-003", "KO-004"]
+        }
+      },
       "scenario_overrides": {
         "openinference-basic": {
           "run_profiles": ["generic", "openai"],
@@ -21,7 +74,8 @@
       "rules": [
         "Always run generic profile checks.",
         "Run provider-specific checks only when the scenario explicitly targets that provider profile.",
-        "Do not run Bedrock checks for openinference-basic unless provider is Bedrock."
+        "Do not run Bedrock checks for openinference-basic unless provider is Bedrock.",
+        "For kong and nvidia profiles, skip span-based must_have_all checks that cannot be satisfied from metrics alone; validate provider_metrics separately."
       ]
     },
     "pass_fail_rules": {
@@ -143,11 +197,33 @@
       "gen_ai.bedrock.guardrail.contextual": "AR-040",
       "gen_ai.conversation.id": "AR-041",
       "gen_ai.request.temperature": "AR-042",
-      "gen_ai.system_instructions": "AR-043"
+      "gen_ai.system_instructions": "AR-043",
+      "gen_ai.client.token.usage": "AR-044",
+      "gen_ai.prompt.caching": "AR-045",
+      "gen_ai.guardrail.grounding_type": "AR-046",
+      "span.status_code": "AR-047",
+      "gen_ai.model": "AR-048",
+      "event.type": "AR-049"
     },
     "non_sdk_rule_ids": {
       "dt.smartscape.service": "NS-001",
       "dt.agent.module.type": "NS-002"
+    },
+    "kong_metric_rule_ids": {
+      "kong_ai_llm_requests_total": "KO-001",
+      "kong_ai_llm_tokens_total": "KO-002",
+      "kong_ai_llm_provider_latency_ms": "KO-003",
+      "kong_kong_latency_ms": "KO-004"
+    },
+    "nvidia_metric_rule_ids": {
+      "e2e_request_latency_seconds": "NV-001",
+      "request_success_total": "NV-002",
+      "request_prompt_tokens": "NV-003",
+      "request_generation_tokens": "NV-004",
+      "time_to_first_token_seconds": "NV-005",
+      "generation_tokens_total": "NV-006",
+      "gpu_cache_usage_perc": "NV-007",
+      "num_requests_running": "NV-008"
     },
     "normalization": {
       "equivalents_any_of": [
@@ -361,6 +437,73 @@
             "rule_id": "AR-029",
             "expression": "if(countIf(gen_ai.evaluation.score.label != \"pass\") > 0, \"fail\", else: \"pass\")",
             "effect": "missing → verdict column blank, pass/fail summary unavailable"
+          }
+        ]
+      },
+      "service_health": {
+        "description": "Success/error split used in the health tile of every provider dashboard. Derived from the standard OTel span status field, not a gen_ai attribute.",
+        "depends_on": ["all_genai_views"],
+        "rules": [
+          {
+            "id": "VR-016",
+            "type": "status_expression",
+            "required": false,
+            "attribute": "span.status_code",
+            "rule_id": "AR-047",
+            "allowed_values": ["error", "ok"],
+            "expression": "if(span.status_code == \"error\", \"Failed\", else: \"Successful\")",
+            "effect": "missing → all spans counted as successful; no error signal in health tile"
+          }
+        ]
+      },
+      "audit_trail": {
+        "description": "Audit trail view driven by gen_ai.auditing bizevents. Independent of the span pipeline — data arrives via a separate bigevent stream.",
+        "depends_on": [],
+        "rules": [
+          {
+            "id": "VR-017",
+            "type": "event_type_gate",
+            "required": true,
+            "attribute": "event.type",
+            "rule_id": "AR-049",
+            "filter_value": "gen_ai.auditing",
+            "expression": "event.type == 'gen_ai.auditing'",
+            "note": "Audit trail data arrives as bizevents, not spans. SDK must emit gen_ai.auditing events separately."
+          },
+          {
+            "id": "VR-018",
+            "type": "grouping_key",
+            "required": true,
+            "attribute": "gen_ai.model",
+            "rule_id": "AR-048",
+            "purpose": "audit_model_grouping",
+            "expression": "summarize events=count(), by: { gen_ai.model }",
+            "effect": "missing → audit events cannot be grouped or filtered by model"
+          }
+        ]
+      },
+      "bedrock_cache_tiles": {
+        "description": "Bedrock prompt-caching tiles that track token savings from cache reads/writes. Uses gen_ai.prompt.caching metric (distinct from gen_ai.prompt_caching span attribute AR-022).",
+        "depends_on": ["all_genai_views"],
+        "rules": [
+          {
+            "id": "VR-019",
+            "type": "required_for_feature",
+            "required": false,
+            "attribute": "gen_ai.prompt.caching",
+            "rule_id": "AR-045",
+            "note": "Metric used as timeseries sum(gen_ai.prompt.caching) filtered by gen_ai.cache.type == 'read' or 'write'. Distinct from gen_ai.prompt_caching (AR-022) which is a span attribute denoting cache hit/miss.",
+            "effect": "missing → cache savings tiles empty; cost-of-cache tiles show $0"
+          },
+          {
+            "id": "VR-020",
+            "type": "split_filter",
+            "required": false,
+            "attribute": "gen_ai.guardrail.grounding_type",
+            "rule_id": "AR-046",
+            "allowed_values": ["GROUNDING", "RELEVANCE"],
+            "note": "Dimension on gen_ai.bedrock.guardrail.contextual (AR-040) metric. Separates grounding score from relevance score tiles in the Bedrock dashboard.",
+            "effect": "missing → grounding and relevance scores cannot be split; both shown as a single undifferentiated contextual score"
           }
         ]
       }
@@ -789,6 +932,91 @@
       "owned_by": "framework_or_provider_sdk",
       "used_by": ["prompts_table"],
       "note": "System-level prompt shown alongside user messages in the prompts detail view."
+    },
+    {
+      "name": "gen_ai.client.token.usage",
+      "rule_id": "AR-044",
+      "required_level": "recommended",
+      "group": "core-tokens",
+      "type": "metric",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": ["cost_dashboard"],
+      "dimensions": ["gen_ai.token.type", "gen_ai.provider.name"],
+      "note": "OTel metric (counter) that accumulates token counts. Used in timeseries queries: timeseries sum(gen_ai.client.token.usage) filtered by gen_ai.token.type dimension. Missing causes all cost dashboard tiles to show $0 with no error. Distinct from the span attributes gen_ai.usage.input_tokens/output_tokens (AR-006/AR-007) which carry per-span counts."
+    },
+    {
+      "name": "gen_ai.prompt.caching",
+      "rule_id": "AR-045",
+      "required_level": "optional",
+      "group": "caching-bedrock",
+      "type": "metric",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["bedrock_cache_tiles"],
+      "dimensions": ["gen_ai.cache.type"],
+      "dimension_values": {
+        "gen_ai.cache.type": ["read", "write"]
+      },
+      "note": "Distinct from gen_ai.prompt_caching (AR-022), which is a span attribute denoting a cache hit. gen_ai.prompt.caching is a metric used as timeseries sum(gen_ai.prompt.caching) filtered by gen_ai.cache.type to count cache-read and cache-write tokens for cost-savings calculation."
+    },
+    {
+      "name": "gen_ai.guardrail.grounding_type",
+      "rule_id": "AR-046",
+      "required_level": "optional",
+      "group": "guardrails-bedrock",
+      "type": "metric_dimension",
+      "providers": ["bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": ["guardrail_overview_cards"],
+      "allowed_values": ["GROUNDING", "RELEVANCE"],
+      "note": "Dimension on the gen_ai.bedrock.guardrail.contextual (AR-040) metric. Separates grounding score (factual accuracy) from relevance score (query relevance) in the Bedrock contextual grounding tiles. Missing causes both scores to be aggregated into a single undifferentiated contextual value."
+    },
+    {
+      "name": "span.status_code",
+      "rule_id": "AR-047",
+      "required_level": "recommended",
+      "group": "core-service",
+      "type": "span_attribute",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "otel_sdk",
+      "used_by": ["service_health"],
+      "allowed_values": ["ok", "error", "unset"],
+      "note": "Standard OTel span status attribute used across every provider dashboard for the success/error health tile. Not a gen_ai attribute — emitted automatically by OTel SDKs. Missing causes all requests to appear successful."
+    },
+    {
+      "name": "gen_ai.model",
+      "rule_id": "AR-048",
+      "required_level": "optional",
+      "group": "audit",
+      "type": "bigevent_field",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": ["audit_trail"],
+      "note": "Model identifier field on gen_ai.auditing bizevents. Used to group and filter audit events by model. Different from gen_ai.request.model (AR-004) and gen_ai.response.model (AR-005), which are span attributes."
+    },
+    {
+      "name": "event.type",
+      "rule_id": "AR-049",
+      "required_level": "required",
+      "group": "bigevent-gate",
+      "type": "bigevent_field",
+      "providers": ["azure", "bedrock", "openai", "generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": ["evaluation_results", "audit_trail"],
+      "known_values": [
+        {
+          "value": "gen_ai.evaluation.result",
+          "view": "evaluation_results",
+          "rule_id_context": "AR-036"
+        },
+        {
+          "value": "gen_ai.auditing",
+          "view": "audit_trail",
+          "rule_id_context": "AR-048"
+        }
+      ],
+      "note": "Primary gate field for all bizevents processed by the app. Each bigevent stream has its own event.type value; the app filters on this before reading any other bigevent fields."
     }
   ],
   "non_sdk_fields": [
@@ -803,6 +1031,138 @@
       "rule_id": "NS-002",
       "source": "dynatrace_enrichment",
       "comparison": "ignore_for_sdk_pass_fail"
+    }
+  ],
+  "dashboard_gaps": {
+    "note": "Attributes defined in the baseline that are not yet visualised in any dashboard tile. These are emitted by the SDK but have no corresponding dashboard query.",
+    "unvisualised": [
+      {
+        "name": "gen_ai.bedrock.guardrail.topics",
+        "rule_id": "AR-020",
+        "dashboards_checked": ["bedrock.dashboard.json"],
+        "note": "Attribute is expected from the Bedrock SDK but no dashboard tile queries it. The bedrock dashboard uses gen_ai.bedrock.guardrail.content (AR-018) for the 'toxic content' tile instead."
+      },
+      {
+        "name": "gen_ai.bedrock.guardrail.words",
+        "rule_id": "AR-021",
+        "dashboards_checked": ["bedrock.dashboard.json"],
+        "note": "Attribute is expected from the Bedrock SDK but no dashboard tile queries it."
+      }
+    ]
+  },
+  "kong_gateway_metrics": [
+    {
+      "name": "kong_ai_llm_requests_total",
+      "rule_id": "KO-001",
+      "type": "prometheus_counter",
+      "source": "kong_ai_gateway",
+      "dimensions": ["ai_provider", "ai_model"],
+      "used_by": ["kong_dashboard"],
+      "description": "Total AI LLM requests routed through Kong AI Gateway, split by provider and model."
+    },
+    {
+      "name": "kong_ai_llm_tokens_total",
+      "rule_id": "KO-002",
+      "type": "prometheus_counter",
+      "source": "kong_ai_gateway",
+      "dimensions": ["ai_model", "token_type"],
+      "dimension_values": {
+        "token_type": ["total_tokens", "completion_tokens", "prompt_tokens"]
+      },
+      "used_by": ["kong_dashboard"],
+      "description": "Total token consumption through Kong AI Gateway. token_type dimension maps to prompt_tokens/completion_tokens/total_tokens (different naming from OTel gen_ai.token.type)."
+    },
+    {
+      "name": "kong_ai_llm_provider_latency_ms",
+      "rule_id": "KO-003",
+      "type": "prometheus_histogram",
+      "source": "kong_ai_gateway",
+      "dimensions": [],
+      "used_by": ["kong_dashboard"],
+      "description": "End-to-end latency (ms) for LLM provider calls as measured by Kong AI Gateway."
+    },
+    {
+      "name": "kong_kong_latency_ms",
+      "rule_id": "KO-004",
+      "type": "prometheus_histogram",
+      "source": "kong_ai_gateway",
+      "dimensions": ["service", "route"],
+      "used_by": ["kong_dashboard"],
+      "description": "Kong gateway processing latency (ms), split by service and route."
+    }
+  ],
+  "nvidia_nim_metrics": [
+    {
+      "name": "e2e_request_latency_seconds",
+      "rule_id": "NV-001",
+      "type": "prometheus_histogram",
+      "source": "nvidia_nim_server",
+      "dimensions": ["model_name"],
+      "used_by": ["nvidia_dashboard"],
+      "description": "End-to-end request latency (seconds) for NIM inference requests."
+    },
+    {
+      "name": "request_success_total",
+      "rule_id": "NV-002",
+      "type": "prometheus_counter",
+      "source": "nvidia_nim_server",
+      "dimensions": [],
+      "used_by": ["nvidia_dashboard"],
+      "description": "Total number of successful NIM inference requests."
+    },
+    {
+      "name": "request_prompt_tokens",
+      "rule_id": "NV-003",
+      "type": "prometheus_counter",
+      "source": "nvidia_nim_server",
+      "dimensions": [],
+      "used_by": ["nvidia_dashboard"],
+      "description": "Total input (prompt) tokens processed by the NIM server."
+    },
+    {
+      "name": "request_generation_tokens",
+      "rule_id": "NV-004",
+      "type": "prometheus_counter",
+      "source": "nvidia_nim_server",
+      "dimensions": [],
+      "used_by": ["nvidia_dashboard"],
+      "description": "Total output (generation) tokens produced by the NIM server."
+    },
+    {
+      "name": "time_to_first_token_seconds",
+      "rule_id": "NV-005",
+      "type": "prometheus_histogram",
+      "source": "nvidia_nim_server",
+      "dimensions": [],
+      "used_by": ["nvidia_dashboard"],
+      "description": "Time from request receipt to first generated token (seconds) — key streaming latency metric."
+    },
+    {
+      "name": "generation_tokens_total",
+      "rule_id": "NV-006",
+      "type": "prometheus_counter",
+      "source": "nvidia_nim_server",
+      "dimensions": ["model_name"],
+      "used_by": ["nvidia_dashboard"],
+      "description": "Cumulative generation tokens produced, split by model. Used for throughput (rate: 1s) charts."
+    },
+    {
+      "name": "gpu_cache_usage_perc",
+      "rule_id": "NV-007",
+      "type": "prometheus_gauge",
+      "source": "nvidia_nim_server",
+      "dimensions": [],
+      "used_by": ["nvidia_dashboard"],
+      "description": "GPU KV-cache utilisation percentage. High values indicate memory pressure; affects batching capacity."
+    },
+    {
+      "name": "num_requests_running",
+      "rule_id": "NV-008",
+      "type": "prometheus_gauge",
+      "source": "nvidia_nim_server",
+      "dimensions": [],
+      "used_by": ["nvidia_dashboard"],
+      "description": "Number of inference requests currently in-flight on the NIM server."
     }
   ]
 }

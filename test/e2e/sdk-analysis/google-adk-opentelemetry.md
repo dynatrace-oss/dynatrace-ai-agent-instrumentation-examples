@@ -1,6 +1,6 @@
 # Google ADK (Academic Research Agent) — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.1.1 | **Path**: `google-adk/opentelemetry/` (`__init__.py` + `agent.py`) | **Profile**: generic (Google Vertex AI / Gemini)
+> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `google-adk/opentelemetry/` (`__init__.py` + `agent.py`) | **Profile**: google | **Dashboard**: `google.dashboard.json`
 
 ## Instrumentation
 
@@ -27,22 +27,38 @@
 | Prompts — content | ⚠️ legacy | `gen_ai.prompt.0.content` + `gen_ai.completion.0.content` via Traceloop; DT falls back to these |
 | Prompts — model column | ✅ | `gen_ai.request.model` present |
 | Latency charts | ❌ | No `should_enrich_metrics=True` → `gen_ai.client.operation.duration` metric not emitted |
-| Cost dashboard | ❌ | No `gen_ai.client.token.usage` metric with `gen_ai.token.type` dimension |
+| Cost dashboard (span tokens) | ✅ | `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` present on spans (AR-006/AR-007 via fallback) |
+| Cost dashboard (metric) | ❌ | No `gen_ai.client.token.usage` metric (AR-044) — `should_enrich_metrics=True` not set |
+| Service health tile | ⚠️ | `span.status_code` (AR-047) auto-emitted by OTel SDK; functional if Traceloop OTel SDK is correctly initialised |
 | Agent quick filter | ✅ | ADK agent names (`academic_coordinator`, sub-agents) captured by Traceloop's ADK instrumentor |
 | Provider quick filter | ✅ | `gen_ai.system` present |
 | Guardrails (Azure) | N/A | Not Azure |
 | Guardrails (Bedrock) | N/A | Not Bedrock |
 | Cache hit rate (OpenAI) | N/A | Not OpenAI |
 
+## Dashboard Coverage
+
+| Dashboard View | Populated? | Missing attributes |
+|----------------|------------|--------------------|
+| All GenAI spans | ✅ Yes | — |
+| Prompts list / detail | ⚠️ Legacy content | Modern `gen_ai.input.messages` / `gen_ai.output.messages` missing; falls back to deprecated attributes |
+| Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` metric (AR-025) not emitted; `should_enrich_metrics=True` missing |
+| Cost dashboard tiles | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted; `gen_ai.token.type` dimension absent |
+| Service health tile | ⚠️ Partial | `span.status_code` (AR-047) may be present from OTel SDK auto-instrumentation |
+| Agent quick filter | ✅ Yes | ADK agent names captured by Traceloop |
+| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
+| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
+
 ## Silent failures
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Missing feature |
-|-----------|----------------|
-| `gen_ai.client.operation.duration` | All latency charts empty |
-| `gen_ai.token.type` (metric dimension) | Cost dashboard shows no data |
-| `gen_ai.conversation.id` | No conversation thread grouping |
+| Attribute | Rule ID | Missing feature |
+|-----------|---------|----------------|
+| `gen_ai.client.operation.duration` | AR-025 | All latency charts empty |
+| `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard metric tiles show $0 — distinct from span token attributes AR-006/AR-007. Requires `should_enrich_metrics=True` or a custom MeterProvider. |
+| `gen_ai.token.type` (metric dimension) | AR-024 | Cost dashboard shows no data |
+| `gen_ai.conversation.id` | AR-041 | No conversation thread grouping |
 
 ## What to fix in the example app
 

@@ -1,6 +1,6 @@
 # Microsoft Agent Framework — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.1.1 | **Path**: `microsoft-agent-framework/opentelemetry/app.py` | **Profile**: azure (Azure OpenAI)
+> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `microsoft-agent-framework/opentelemetry/app.py` | **Profile**: azure | **Dashboard**: `azureai.dashboard.json`
 
 ## Instrumentation
 
@@ -27,12 +27,28 @@
 | Prompts — content | ✅ | `enable_sensitive_data=True` enables content capture; emitted as span attributes on `chat` spans |
 | Prompts — model column | ✅ | `gen_ai.request.model` present on `chat` spans |
 | Latency charts | ✅ | MAF natively emits `gen_ai.client.operation.duration` histogram with delta temporality |
-| Cost dashboard | ✅ | MAF natively emits `gen_ai.client.token.usage` with `gen_ai.token.type` dimension and delta temporality |
+| Cost dashboard (span tokens) | ✅ | `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` present on `chat` spans |
+| Cost dashboard (metric) | ✅ | MAF natively emits `gen_ai.client.token.usage` metric (AR-044) with `gen_ai.token.type` dimension and delta temporality |
+| Service health tile | ✅ | `span.status_code` (AR-047) auto-emitted by OTel SDK on every span |
 | Agent quick filter | ✅ | `gen_ai.agent.name` emitted on `invoke_agent` spans |
 | Provider quick filter | ✅ | Provider identity attribute present |
 | Guardrails (Azure) | ❌ | `gen_ai.prompt.prompt_filter_results` + `gen_ai.completion.content_filter_results` not emitted by MAF; Azure Content Safety not configured |
 | Guardrails (Bedrock) | N/A | Not Bedrock |
 | Cache hit rate (OpenAI) | N/A | Azure profile — not applicable |
+
+## Dashboard Coverage
+
+| Dashboard View | Populated? | Missing attributes |
+|----------------|------------|--------------------|
+| All GenAI spans | ✅ Yes | — |
+| Prompts list / detail | ✅ Yes | Content captured via `enable_sensitive_data=True` |
+| Latency charts (p99/mean) | ✅ Yes | `gen_ai.client.operation.duration` natively emitted |
+| Cost dashboard tiles | ✅ Yes | `gen_ai.client.token.usage` metric (AR-044) natively emitted with `gen_ai.token.type` |
+| Service health tile | ✅ Yes | `span.status_code` (AR-047) auto-emitted by OTel SDK |
+| Azure guardrail cards | ❌ Empty | `gen_ai.prompt.prompt_filter_results` (AR-015) and `gen_ai.completion.content_filter_results` (AR-016) not emitted by MAF |
+| Agent quick filter | ✅ Yes | `gen_ai.agent.name` on `invoke_agent` spans |
+| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
+| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
 
 ## Note on two-span model
 
@@ -46,11 +62,11 @@ This split means that `gen_ai.agent.name` and `gen_ai.request.model` never appea
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Missing feature |
-|-----------|----------------|
-| `gen_ai.prompt.prompt_filter_results` | Azure guardrail cards empty |
-| `gen_ai.completion.content_filter_results` | Azure guardrail cards empty |
-| `gen_ai.request.temperature` on `chat` spans | Model comparison dashboard may not correlate temperature with model (temperature is on `invoke_agent` span, model is on `chat` span) |
+| Attribute | Rule ID | Missing feature |
+|-----------|---------|----------------|
+| `gen_ai.prompt.prompt_filter_results` | AR-015 | Azure guardrail cards empty |
+| `gen_ai.completion.content_filter_results` | AR-016 | Azure guardrail cards empty |
+| `gen_ai.request.temperature` on `chat` spans | AR-042 | Model comparison dashboard may not correlate temperature with model (temperature is on `invoke_agent` span, model is on `chat` span) |
 
 ## What to fix in the example app
 
