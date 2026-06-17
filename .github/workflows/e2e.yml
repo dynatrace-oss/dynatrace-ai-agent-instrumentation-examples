@@ -26,9 +26,6 @@ jobs:
           - name: aws-bedrock-oneagent
             app_dir: aws-bedrock/oneagent
             test_run: TestAWSBedrockOneAgent
-          - name: aws-bedrock-openinference
-            app_dir: aws-bedrock/openinference
-            test_run: TestAWSBedrockOpenInference
 
     steps:
       - name: Checkout
@@ -88,7 +85,7 @@ jobs:
             sudo /opt/dynatrace/oneagent/agent/uninstall.sh
           fi
 
-  opentelemetry:
+  otelcol:
     name: E2E / ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
@@ -98,6 +95,9 @@ jobs:
           - name: aws-bedrock-opentelemetry
             app_dir: aws-bedrock/opentelemetry
             test_run: TestAWSBedrockOpenTelemetry
+          - name: aws-bedrock-openinference
+            app_dir: aws-bedrock/openinference
+            test_run: TestAWSBedrockOpenInference
 
     steps:
       - name: Checkout
