@@ -1,10 +1,11 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "scope": "current-state",
-  "date": "2026-06-16",
+  "date": "2026-06-17",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.2.1 (2026-06-17): Add VR-021 (conversation_thread view rule): gen_ai.conversation.id (AR-041) is set by AgentTelemetryLayer on invoke_agent spans only; ChatTelemetryLayer does not forward options to _get_span_attributes so inner chat spans never carry this attribute. Add span_scope note to AR-041. Update AR-041 note in attributes.",
     "1.2.0 (2026-06-16): Add dashboard-derived attributes: gen_ai.client.token.usage metric (AR-044); gen_ai.prompt.caching metric (AR-045); gen_ai.guardrail.grounding_type dimension (AR-046); span.status_code (AR-047); gen_ai.model bigevent field (AR-048); event.type generic gate (AR-049). Add audit_trail and service_health view_rules (VR-016..VR-019). Add kong_gateway_metrics section (KO-001..KO-004) and nvidia_nim_metrics section (NV-001..NV-008). Note AR-020/AR-021 not yet visualised in any dashboard.",
     "1.1.0 (2026-06-12): Add gen_ai.token.type (AR-024); add gen_ai.client.operation.duration (AR-025); add legacy token fallback attributes (AR-026, AR-027); add evaluation subsystem (AR-028..AR-040); add gen_ai.bedrock.guardrail.contextual (AR-041); add gen_ai.conversation.id (AR-042); add gen_ai.request.temperature (AR-043); add gen_ai.system_instructions (AR-044); fix normalization.legacy_fallbacks direction (primary→legacy, not legacy→primary).",
     "1.1.1 (2026-06-12): Revert provider priority: gen_ai.system is deprecated in favor of gen_ai.provider.name per OTel semconv. The DQL coalesce(gen_ai.system, gen_ai.provider.name) checks the old field first for backward compatibility only, not because it is preferred."
@@ -482,6 +483,24 @@
           }
         ]
       },
+      "conversation_thread": {
+        "description": "Conversation thread grouping in the prompts table. gen_ai.conversation.id groups spans into threads. In agent-framework SDKs the attribute is typically set only on the invoke_agent span (AgentTelemetryLayer passes all_options to _get_span_attributes); the inner chat span does not receive it because ChatTelemetryLayer does not pass the options dict. Thread grouping therefore depends on which span type the dashboard DQL queries.",
+        "depends_on": ["prompts_view"],
+        "rules": [
+          {
+            "id": "VR-021",
+            "type": "span_scope_note",
+            "required": false,
+            "attribute": "gen_ai.conversation.id",
+            "rule_id": "AR-041",
+            "expected_scope": {
+              "invoke_agent": "present",
+              "chat": "absent"
+            },
+            "effect": "absent_from_chat_span → prompts table conversation thread grouping is empty if DQL queries chat spans only; works if DQL queries invoke_agent spans or traverses the parent span hierarchy"
+          }
+        ]
+      },
       "bedrock_cache_tiles": {
         "description": "Bedrock prompt-caching tiles that track token savings from cache reads/writes. Uses gen_ai.prompt.caching metric (distinct from gen_ai.prompt_caching span attribute AR-022).",
         "depends_on": ["all_genai_views"],
@@ -911,7 +930,11 @@
       "providers": ["azure", "bedrock", "openai", "generic"],
       "owned_by": "framework_instrumentation",
       "used_by": ["prompts_table"],
-      "note": "Used to group spans into conversation threads in the prompts table."
+      "span_scope": {
+        "invoke_agent": "present — AgentTelemetryLayer passes all_options to _get_span_attributes",
+        "chat": "absent — ChatTelemetryLayer does not pass the options dict to _get_span_attributes"
+      },
+      "note": "Used to group spans into conversation threads in the prompts table. In agent-framework SDKs, this attribute is typically set only on the invoke_agent span by AgentTelemetryLayer; the inner chat (LLM) span does not carry it. See VR-021 for span-scope verification rule."
     },
     {
       "name": "gen_ai.request.temperature",

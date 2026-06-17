@@ -1,6 +1,6 @@
 # Microsoft Agent Framework — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `microsoft-agent-framework/opentelemetry/app.py` | **Profile**: azure | **Dashboard**: `azureai.dashboard.json` | **Branch**: `microsoft`
+> **Baseline**: sdk-comparison-baseline.json v1.2.1 | **Path**: `microsoft-agent-framework/opentelemetry/app.py` | **Profile**: azure | **Dashboard**: `azureai.dashboard.json` | **Branch**: `microsoft`
 
 ## Instrumentation
 
@@ -9,7 +9,7 @@
 - **OTel setup**: Custom `_configure_dynatrace_otlp()` sets both trace and metrics OTLP endpoints directly to Dynatrace (`DT_ENDPOINT`). Delta temporality configured via `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`. `configure_otel_providers(enable_sensitive_data=True)` initialises both `TracerProvider` and `MeterProvider`.
 - **Agent**: `Agent.run()` routes through `AgentTelemetryLayer` (sets `gen_ai.agent.name`). Direct `client.get_response()` would only hit `ChatTelemetryLayer` and would not emit `gen_ai.agent.name`.
 - **Content capture**: `enable_sensitive_data=True` enables `gen_ai.input.messages` / `gen_ai.output.messages`.
-- **Temperature & conversation**: `temperature` and `conversation_id` (UUID) passed via `default_options` — framework likely maps these to `gen_ai.request.temperature` (AR-042) and `gen_ai.conversation.id` (AR-041).
+- **Temperature & conversation**: `temperature` and `conversation_id` (UUID) passed via `default_options`. The framework maps `conversation_id` → `gen_ai.conversation.id` (AR-041) and `temperature` → `gen_ai.request.temperature` (AR-042), but **only on the agent span** (`invoke_agent`). `AgentTelemetryLayer._trace_agent_invocation` passes `all_options=dict(merged_options)` to `_get_span_attributes`; `ChatTelemetryLayer.get_response` does not pass the options dict at all, so the inner LLM (`chat`) span never carries `gen_ai.conversation.id`.
 - **Provider flush**: Explicit `force_flush()` + `shutdown()` on both trace and metric providers before exit ensures BatchSpanProcessor and PeriodicExportingMetricReader complete before the process exits.
 
 ## Verdict: PARTIAL
@@ -43,7 +43,7 @@
 | Service health tile | ✅ | `span.status_code` auto-emitted by OTel SDK |
 | Prompts — content | ✅ | `gen_ai.input.messages` + `gen_ai.output.messages` via `enable_sensitive_data=True` |
 | Prompts — model column | ✅ | `gen_ai.request.model` present |
-| Prompts — conversation thread | ✅ | `gen_ai.conversation.id` set via `default_options` |
+| Prompts — conversation thread | ⚠️ | `gen_ai.conversation.id` set on the **agent span** only (VR-021). Works if dashboard DQL queries `invoke_agent` spans; silent gap if it queries the inner `chat` spans. |
 | Latency charts | ✅ expected | Metrics pipeline active; `gen_ai.client.operation.duration` expected |
 | Cost dashboard (metric) | ✅ expected | `gen_ai.client.token.usage` metric expected; `gen_ai.token.type` dimension expected |
 | Cost dashboard (span tokens) | ✅ expected | `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` expected from `ChatTelemetryLayer` |
@@ -69,7 +69,7 @@
 | Agent vs LLM split | ✅ | `gen_ai.agent.name` present |
 | Top agents by volume | ✅ | — |
 | Recent prompts & completions | ✅ | Content capture enabled |
-| Conversation threads | ✅ | `gen_ai.conversation.id` set |
+| Conversation threads | ⚠️ | `gen_ai.conversation.id` on agent span only (VR-021); absent from inner LLM span |
 | Azure content filter cards | ❌ | AR-015 / AR-016 absent — Azure Content Safety not configured |
 | Evaluation results | ❌ | No evaluation bigevents emitted |
 | Audit trail | ❌ | No audit bigevents emitted |
@@ -78,6 +78,7 @@
 
 | Attribute | Rule ID | Missing feature |
 |-----------|---------|-----------------|
+| `gen_ai.conversation.id` (on `chat` span) | AR-041 / VR-021 | `gen_ai.conversation.id` is present on the `invoke_agent` span but absent from the inner `chat` span. If the prompts table DQL queries `chat` spans for conversation threading, threads will not group. |
 | `gen_ai.prompt.prompt_filter_results` | AR-015 | Azure content filter cards empty |
 | `gen_ai.completion.content_filter_results` | AR-016 | Azure content filter cards empty |
 | `gen_ai.evaluation.score.label` | AR-029 | Evaluation tab empty — no evaluation pipeline wired |
@@ -92,7 +93,11 @@ The demo does not configure Azure Content Safety, so AR-015/AR-016 will not be e
 
 The analysis assumes `agent_framework` emits standard OTel semconv metric names (`gen_ai.client.operation.duration`, `gen_ai.client.token.usage` with `gen_ai.token.type` dimension). Confirm this by running the app and checking the DT metrics explorer — if the metrics arrive under different names, update the baseline and the dashboard DQL queries accordingly.
 
-**3. No issues to fix in `app.py` itself**
+**3. Verify conversation thread grouping works end-to-end (VR-021)**
+
+`gen_ai.conversation.id` is set only on the `invoke_agent` span by `AgentTelemetryLayer`; `ChatTelemetryLayer` never forwards the options dict to `_get_span_attributes`, so the inner `chat` span does not carry this attribute. The prompts table thread grouping depends on which span type the DQL queries. To confirm: run the app, open the Dynatrace prompts view, and check whether spans are grouped by conversation. If threads are empty, the DQL needs to traverse to the parent `invoke_agent` span for `gen_ai.conversation.id`, or the framework needs to propagate the attribute to child LLM spans.
+
+**4. No issues to fix in `app.py` itself**
 
 - Metrics pipeline: correctly configured with delta temporality and explicit flush/shutdown.
 - Agent name: correctly propagated via `Agent.run()` → `AgentTelemetryLayer`.

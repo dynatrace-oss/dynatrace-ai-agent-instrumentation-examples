@@ -7,7 +7,7 @@ Goal: make SDK/framework comparisons deterministic and consistent.
 
 ## What This Baseline Is
 
-`sdk-comparison-baseline.json` (v1.2.0) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
+`sdk-comparison-baseline.json` (v1.2.1) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
 
 It contains:
 - Core pass/fail rules (`must_have_any`, `must_have_all`)
@@ -86,7 +86,7 @@ These attributes do **not** cause a FAIL verdict by themselves, but their absenc
 | `gen_ai.evaluation.score.label` | AR-029 | Evaluation results tab | Verdict column blank |
 | `gen_ai.agent.name` | AR-010 | Agent vs LLM distinction | All spans classified as LLM |
 | `gen_ai.prompt_caching` / `gen_ai.cache.type` | AR-022/AR-023 | Cache hit rate chart | 0% shown silently |
-| `gen_ai.conversation.id` | AR-041 | Conversation thread grouping | Prompts view shows no thread grouping |
+| `gen_ai.conversation.id` | AR-041 / VR-021 | Conversation thread grouping | Prompts view shows no thread grouping. In agent frameworks, attribute is present on `invoke_agent` span but absent from inner `chat` span — thread grouping silently fails if DQL queries `chat` spans. |
 | `span.status_code` | AR-047 | Service health tile | All requests appear successful; no error signal |
 
 ## Human-Readable Attribute Summary Table
@@ -144,7 +144,7 @@ Profile precedence:
 | `gen_ai.prompt.0.content` | AR-013 | optional (removed from semconv, legacy fallback for AR-011) | prompts_table, distributed_tracing_intent, onboarding_validation |
 | `gen_ai.completion.0.content` | AR-014 | optional (removed from semconv, legacy fallback for AR-012) | prompts_table, distributed_tracing_intent |
 | `gen_ai.system_instructions` | AR-043 | optional | prompts_table |
-| `gen_ai.conversation.id` | AR-041 | optional | prompts_table — groups spans into conversation threads |
+| `gen_ai.conversation.id` | AR-041 | optional | prompts_table — groups spans into conversation threads. **Span scope (agent frameworks):** set on `invoke_agent` span only; absent from inner `chat` span. See VR-021. |
 | `gen_ai.request.temperature` | AR-042 | optional | model_comparison_dashboard — display only |
 
 ### Guardrails (Azure)
@@ -318,6 +318,13 @@ These rules model app behavior better than a flat required/optional list.
 - Depends on: `all_genai_views`
 - Uses `gen_ai.prompt.caching` metric (AR-045) — a Prometheus-style counter, not the span attribute AR-022
 - Filtered by `gen_ai.cache.type` dimension (`read` / `write`) to compute cache savings cost
+
+### `conversation_thread` (VR-021)
+- Depends on: `prompts_view`
+- `gen_ai.conversation.id` (AR-041) is the thread grouping key in the prompts table
+- **Span scope in agent frameworks:** `AgentTelemetryLayer` sets this on the `invoke_agent` span by passing `all_options` to `_get_span_attributes`; `ChatTelemetryLayer` does not pass the options dict, so the inner `chat` (LLM) span never carries this attribute
+- Thread grouping works if the DQL queries `invoke_agent` spans or traverses the parent span hierarchy; silently fails (no threads shown) if the DQL queries `chat` spans only
+- **Verification:** run the app and confirm spans are grouped by conversation in the prompts view
 
 ## Minimal Decision Examples
 
