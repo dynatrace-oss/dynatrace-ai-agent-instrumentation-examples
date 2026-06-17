@@ -10,7 +10,7 @@ func TestAWSBedrockOpenTelemetry(t *testing.T) {
 	assertGenAISpan(t,
 		`fetch spans, from: now()-10m
 | filter gen_ai.system == "aws.bedrock"
-| filter service.name == "bedrock_example_app"
+| filter service.name == "aws-bedrock/opentelemetry"
 | limit 1`,
 		"aws.bedrock",
 	)

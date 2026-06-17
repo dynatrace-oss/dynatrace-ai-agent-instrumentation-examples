@@ -53,7 +53,7 @@ BotocoreInstrumentor().instrument()
 logging.info("Initializing traceloop...")
 traceloop = Traceloop()
 Traceloop.init(
-    app_name="bedrock_example_app",
+    app_name=os.environ.get("OTEL_SERVICE_NAME", "bedrock_example_app"),
     disable_batch=True,
     should_enrich_metrics=True,
     api_endpoint=COLLECTOR_BASE_URL,

@@ -26,6 +26,7 @@ jobs:
           - name: aws-bedrock-oneagent
             app_dir: aws-bedrock/oneagent
             test_run: TestAWSBedrockOneAgent
+            otel_service_name: aws-bedrock/oneagent
 
     steps:
       - name: Checkout
@@ -66,6 +67,7 @@ jobs:
         working-directory: test/e2e
         env:
           TEST_RUN: ${{ matrix.test_run }}
+          OTEL_SERVICE_NAME: ${{ matrix.otel_service_name }}
           DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
           DT_APPS_ENDPOINT: ${{ secrets.DT_APPS_ENDPOINT }}
           DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
@@ -95,9 +97,11 @@ jobs:
           - name: aws-bedrock-opentelemetry
             app_dir: aws-bedrock/opentelemetry
             test_run: TestAWSBedrockOpenTelemetry
+            otel_service_name: aws-bedrock/opentelemetry
           - name: aws-bedrock-openinference
             app_dir: aws-bedrock/openinference
             test_run: TestAWSBedrockOpenInference
+            otel_service_name: aws-bedrock/openinference
 
     steps:
       - name: Checkout
@@ -121,6 +125,7 @@ jobs:
         working-directory: test/e2e
         env:
           TEST_RUN: ${{ matrix.test_run }}
+          OTEL_SERVICE_NAME: ${{ matrix.otel_service_name }}
           DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
           DT_APPS_ENDPOINT: ${{ secrets.DT_APPS_ENDPOINT }}
           DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}

@@ -10,7 +10,7 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 
 	assertSpanExists(t,
 		`fetch spans, from: now()-10m
-| filter service.name == "haiku-writer"
+| filter service.name == "aws-bedrock/openinference"
 | limit 1`,
 	)
 }
