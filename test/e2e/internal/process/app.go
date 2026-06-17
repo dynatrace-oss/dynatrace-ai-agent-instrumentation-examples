@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
@@ -21,6 +22,7 @@ func Start(dir string) (*App, error) {
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("make run: %w", err)
 	}
@@ -41,18 +43,24 @@ func StartCLI(dir string) (*App, error) {
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("make run: %w", err)
 	}
 	return &App{cmd: cmd}, nil
 }
 
-// Stop kills the app process.
+// Stop kills the process group of the app, ensuring all child processes
+// (e.g. uvicorn workers) are terminated along with the main process.
 func (a *App) Stop() error {
 	if a.cmd.Process == nil {
 		return nil
 	}
-	if err := a.cmd.Process.Kill(); err != nil {
+	pgid, err := syscall.Getpgid(a.cmd.Process.Pid)
+	if err != nil {
+		return a.cmd.Process.Kill()
+	}
+	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
 		return err
 	}
 	_ = a.cmd.Wait()

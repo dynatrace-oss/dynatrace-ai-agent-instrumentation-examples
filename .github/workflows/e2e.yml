@@ -63,7 +63,7 @@ jobs:
           wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
             "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
-          sudo sh "$INSTALLER_DIR/oneagent.sh" --set-infra-only=false
+          sudo sh "$INSTALLER_DIR/oneagent.sh"
 
       - name: Run e2e test
         working-directory: test/e2e
