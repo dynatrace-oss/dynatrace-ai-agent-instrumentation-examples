@@ -126,6 +126,20 @@ func startCLIApp(t *testing.T, appDir string) {
 	})
 }
 
+// assertSpanExists polls DT until at least one span matching dql is found
+// (3-minute timeout). Use this when the relevant attribute cannot be asserted
+// (e.g. instrumentation libraries that don't emit gen_ai.system).
+func assertSpanExists(t *testing.T, dql string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	_, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil {
+		t.Fatalf("poll DT spans: %v", err)
+	}
+}
+
 // assertGenAISpan polls DT until a span matching dql is found (3-minute
 // timeout), then asserts gen_ai.system equals wantSystem.
 func assertGenAISpan(t *testing.T, dql, wantSystem string) {
