@@ -3,9 +3,6 @@ name: Nightly E2E Tests
 on:
   schedule:
     - cron: "0 2 * * *" # 02:00 UTC daily
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
