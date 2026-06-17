@@ -10,8 +10,8 @@ func TestAWSBedrockOneAgent(t *testing.T) {
 
 	assertGenAISpan(t,
 		`fetch spans, from: now()-10m
-| filter isNotNull(gen_ai.system)
 | filter gen_ai.system == "aws.bedrock"
+| filter isNull(telemetry.sdk.name)
 | limit 1`,
 		"aws.bedrock",
 	)

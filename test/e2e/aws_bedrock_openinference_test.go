@@ -10,8 +10,8 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 
 	assertGenAISpan(t,
 		`fetch spans, from: now()-10m
-| filter isNotNull(gen_ai.system)
 | filter gen_ai.system == "aws.bedrock"
+| filter service.name == "haiku-writer"
 | limit 1`,
 		"aws.bedrock",
 	)
