@@ -1,0 +1,7 @@
+langchain
+langchain-aws
+
+# openinference
+openinference-instrumentation-langchain
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
