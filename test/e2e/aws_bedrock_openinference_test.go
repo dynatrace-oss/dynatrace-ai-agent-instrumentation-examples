@@ -8,9 +8,9 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 	startApp(t, "aws-bedrock/openinference")
 	triggerHaiku(t, true)
 
-	assertSpanExists(t,
+	auditSpan(t, "aws-bedrock", "openinference", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock/openinference"
-| limit 1`,
-	)
+| filter isNotNull(gen_ai.request.model)
+| limit 1`)
 }

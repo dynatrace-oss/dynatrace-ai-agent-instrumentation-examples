@@ -48,6 +48,11 @@ type queryError struct {
 	Message string `json:"message"`
 }
 
+// Execute runs dql once and returns whatever records DT returns (no retry).
+func (c *Client) Execute(ctx context.Context, dql string) ([]map[string]interface{}, error) {
+	return c.execute(ctx, dql)
+}
+
 // PollUntilSpans repeatedly executes the DQL query until at least one record is
 // returned or the context deadline is reached.
 func (c *Client) PollUntilSpans(ctx context.Context, dql string, interval time.Duration) ([]map[string]interface{}, error) {

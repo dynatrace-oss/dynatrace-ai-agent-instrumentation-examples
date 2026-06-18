@@ -77,6 +77,24 @@ jobs:
           fi
           go test ./... -run "$TEST_RUN" -v -timeout 20m
 
+      - name: Write job summary
+        if: always()
+        run: |
+          for f in test/e2e/reports/*.md; do
+            [ -f "$f" ] || continue
+            echo "## $(basename "$f" .md)" >> "$GITHUB_STEP_SUMMARY"
+            cat "$f" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: span-audit-reports-${{ matrix.name }}
+          path: test/e2e/reports/
+          retention-days: 30
+
       - name: Uninstall OneAgent
         if: always()
         run: |
@@ -135,3 +153,21 @@ jobs:
             echo "Error: TEST_RUN contains invalid characters: $TEST_RUN"; exit 1
           fi
           go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      - name: Write job summary
+        if: always()
+        run: |
+          for f in test/e2e/reports/*.md; do
+            [ -f "$f" ] || continue
+            echo "## $(basename "$f" .md)" >> "$GITHUB_STEP_SUMMARY"
+            cat "$f" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: span-audit-reports-${{ matrix.name }}
+          path: test/e2e/reports/
+          retention-days: 30

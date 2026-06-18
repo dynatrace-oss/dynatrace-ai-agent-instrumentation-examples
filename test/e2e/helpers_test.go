@@ -140,6 +140,43 @@ func assertSpanExists(t *testing.T, dql string) {
 	}
 }
 
+// assertSpanWithAttrs polls DT until a span matching dql is found (3-minute
+// timeout), then asserts that every attribute in required is non-null, and that
+// at least one attribute in each anyOf group is non-null.
+func assertSpanWithAttrs(t *testing.T, dql string, required []string, anyOf [][]string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil {
+		t.Fatalf("poll DT spans: %v", err)
+	}
+	if len(records) == 0 {
+		t.Fatal("no spans returned from DT")
+	}
+
+	span := records[0]
+	for _, attr := range required {
+		v, ok := span[attr]
+		if !ok || v == nil || v == "" {
+			t.Errorf("span missing required attribute %q", attr)
+		}
+	}
+	for _, group := range anyOf {
+		found := false
+		for _, attr := range group {
+			if v, ok := span[attr]; ok && v != nil && v != "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("span missing at least one of %v", group)
+		}
+	}
+}
+
 // assertGenAISpan polls DT until a span matching dql is found (3-minute
 // timeout), then asserts gen_ai.system equals wantSystem.
 func assertGenAISpan(t *testing.T, dql, wantSystem string) {
