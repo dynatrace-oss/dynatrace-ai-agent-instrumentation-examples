@@ -17,7 +17,7 @@ PYTHON              := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python 
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0
 override COLLECTOR_CONTAINER := otel-collector
 
-.PHONY: run run-openpipeline build push request stop logs install help
+.PHONY: run run-local run-openpipeline build push request stop logs install help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -36,6 +36,28 @@ run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
       echo "  waiting..."; sleep 1; \
     done
 	@echo "Collector port is responding"
+	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+	  OTEL_EXPORTER_OTLP_HEADERS="" \
+	  $(PYTHON) app.py
+
+# ---------------------------------------------------------------------------
+# run-local: local otelcontribcol binary applies gen_ai_normalizer processor
+# ---------------------------------------------------------------------------
+run-local: ## Start local collector binary (gen_ai_normalizer mode) + app  [no Docker needed]
+	@echo "Starting local collector -> $(DT_ENDPOINT)"
+	@pkill -f "otelcontribcol_darwin_arm64" 2>/dev/null || true
+	@./otelcontribcol_darwin_arm64 \
+	  --config=otel-collector-config-genainormalizer.yaml \
+	  > collector.log 2>&1 &
+	@echo "Collector logs -> collector.log"
+	@echo "Waiting for collector port to be ready..."
+	@for i in $$(seq 1 15); do \
+	  if curl -s -o /dev/null -w '' http://localhost:4318/v1/traces -X POST \
+	    -H "Content-Type: application/json" -d '{}' 2>/dev/null; then \
+	    echo "Collector port is responding"; break; \
+	  fi; \
+	  echo "  ... ($$i/15)"; sleep 1; \
+	done
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
 	  $(PYTHON) app.py
