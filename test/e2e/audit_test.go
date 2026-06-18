@@ -292,8 +292,11 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string)
 }
 
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
-// scoped to the same service.name. Falls back to [anchor] on any error.
-func fetchTraceSpans(t *testing.T, ctx context.Context, anchor map[string]interface{}) []map[string]interface{} {
+// scoped to the same service.name. Polls until the span count stabilizes
+// (two consecutive equal non-zero counts) so spans that arrive in Dynatrace
+// at different times are not missed. Uses a fresh 2-minute budget independent
+// of the anchor-poll context.
+func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interface{}) []map[string]interface{} {
 	t.Helper()
 
 	traceID, ok := anchor["trace.id"]
@@ -310,15 +313,38 @@ func fetchTraceSpans(t *testing.T, ctx context.Context, anchor map[string]interf
 		svcName, traceIDStr,
 	)
 
-	spans, err := dtClient.Execute(ctx, dql)
-	if err != nil {
-		t.Logf("warning: fetch trace spans: %v; using anchor only", err)
-		return []map[string]interface{}{anchor}
+	// Poll until the span count stabilizes (two consecutive equal non-zero counts).
+	// Fresh 2-minute budget so anchor-poll time does not reduce this window.
+	stableCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	lastCount := -1
+	var lastSpans []map[string]interface{}
+
+	for {
+		spans, err := dtClient.Execute(stableCtx, dql)
+		if err != nil {
+			t.Logf("warning: fetch trace spans: %v; using anchor only", err)
+			return []map[string]interface{}{anchor}
+		}
+
+		if len(spans) > 0 && len(spans) == lastCount {
+			t.Logf("trace spans stabilized at %d", len(spans))
+			return spans
+		}
+		lastCount = len(spans)
+		lastSpans = spans
+
+		select {
+		case <-stableCtx.Done():
+			if len(lastSpans) > 0 {
+				t.Logf("warning: trace span count did not stabilize within timeout; using %d spans", len(lastSpans))
+				return lastSpans
+			}
+			return []map[string]interface{}{anchor}
+		case <-time.After(15 * time.Second):
+		}
 	}
-	if len(spans) == 0 {
-		return []map[string]interface{}{anchor}
-	}
-	return spans
 }
 
 // mergeSpans folds multiple span records into one map: for each attribute, the
