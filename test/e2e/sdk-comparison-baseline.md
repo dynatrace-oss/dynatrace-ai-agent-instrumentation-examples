@@ -23,7 +23,7 @@ It contains:
 
 ## How AI Should Use It
 
-1. Load `sdk-comparison-baseline.json` first. Check `changelog` to confirm you are on v1.2.0.
+1. Load `sdk-comparison-baseline.json` first. Check `changelog` to confirm you are on v1.2.1.
 2. Build an emitted-attributes set for the SDK under test.
 3. Apply contract rules in this order:
    - `profile_selection.profiles` — determine which profile applies and which dashboard it targets
