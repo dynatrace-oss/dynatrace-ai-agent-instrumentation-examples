@@ -5,33 +5,33 @@
 ## Instrumentation
 
 - **Library**: `groq` SDK (`groq.Groq`) — bare SDK, no OTel auto-instrumentation in application code.
-- **Provider**: Groq (`llama-3.1-8b-instant` model, default `llama-3.1-8b-instant`); uses an OpenAI-compatible REST API internally but does NOT use the `openai` package.
-- **OTel setup**: No application-level OTel or Traceloop configuration. The app is a minimal FastAPI service deployed to Kubernetes. Instrumentation is expected to come from the Dynatrace OneAgent injected at the pod level — the OneAgent provides auto-instrumentation for supported runtimes and may capture generic HTTP-level spans and process-level metadata. OneAgent does NOT have specific gen_ai instrumentation for the Groq SDK; it may capture HTTP spans but will not emit `gen_ai.*` attributes. There is no `gen_ai.*` span attribute emission from the app code itself.
+- **Provider**: Groq (`llama-3.1-8b-instant` model); uses an OpenAI-compatible REST API internally but does NOT use the `openai` package.
+- **OTel setup**: No application-level OTel configuration. The app is a minimal FastAPI service. Instrumentation comes from the Dynatrace OneAgent injected at the pod level. OneAgent provides auto-instrumentation via the experimental **Groq** sensor (Settings → OneAgent features → search "Groq"). The **Python FastAPI** sensor must also be enabled for HTTP entry-point spans. Experimental sensors are best-effort and not covered by DT support SLAs; attribute collection and schema may change without notice.
 
-## Verdict: FAIL
+## Verdict: PARTIAL
 
 | Check | Status | Detail |
 |-------|--------|--------|
-| Provider identity (`must_have_any`) | ❌ | No `gen_ai.provider.name` or `gen_ai.system` emitted from app code; OneAgent has no specific Groq SDK instrumentation |
-| `service.name` | ⚠️ | Likely set by OneAgent from K8s pod/deployment metadata; not explicitly set in app code |
-| `gen_ai.request.model` | ❌ | Not emitted from app code; would require dedicated Groq SDK instrumentation |
-| `gen_ai.response.model` | ❌ | Not emitted from app code |
-| `gen_ai.usage.input_tokens` | ❌ | Not emitted from app code |
-| `gen_ai.usage.output_tokens` | ❌ | Not emitted from app code |
+| Provider identity (`must_have_any`) | ✅ | Expected via experimental Groq sensor — `gen_ai.system` or `gen_ai.provider.name` captured automatically |
+| `service.name` | ✅ | Set by OneAgent from K8s pod/deployment metadata |
+| `gen_ai.request.model` | ✅ | Expected via experimental Groq sensor |
+| `gen_ai.response.model` | ✅ | Expected via experimental Groq sensor |
+| `gen_ai.usage.input_tokens` | ✅ | Expected via experimental Groq sensor |
+| `gen_ai.usage.output_tokens` | ✅ | Expected via experimental Groq sensor |
 
 ## App view coverage
 
 | View | Status | Root cause |
 |------|--------|------------|
-| All GenAI views gate | ❌ | No `gen_ai.provider.name` or `gen_ai.system` — spans will not qualify as GenAI spans in DT AI Observability |
-| Prompts — content | ❌ | No `gen_ai.input.messages` / `gen_ai.output.messages` / legacy fallbacks emitted |
-| Prompts — model column | ❌ | No `gen_ai.request.model` emitted |
-| Latency charts | ❌ | No `gen_ai.client.operation.duration` metric |
-| Cost dashboard (span tokens) | ❌ | No token count attributes on spans |
-| Cost dashboard (metric) | ❌ | No `gen_ai.client.token.usage` metric (AR-044); no metrics pipeline |
-| Service health tile | ❌ | No OTel spans with `span.status_code` from GenAI calls |
+| All GenAI views gate | ✅ | Provider identity captured by experimental Groq sensor |
+| Prompts — content | ❌ | Prompt capture (`gen_ai.input.messages` / `gen_ai.output.messages`) is only available for OpenAI and AWS Bedrock; experimental sensors do not support it |
+| Prompts — model column | ✅ | `gen_ai.request.model` expected via experimental sensor |
+| Latency charts | ❌ | OneAgent does not emit OTel `gen_ai.client.operation.duration` metrics; separate OTel SDK pipeline required |
+| Cost dashboard (span tokens) | ✅ | Token count attributes expected on spans via experimental sensor |
+| Cost dashboard (metric) | ❌ | OneAgent does not emit `gen_ai.client.token.usage` metric; separate OTel SDK pipeline required |
+| Service health tile | ✅ | Span status captured via experimental sensor |
 | Agent quick filter | N/A | Groq SDK is used directly — no agent framework |
-| Provider quick filter | ❌ | No provider identity attribute |
+| Provider quick filter | ✅ | Provider identity attribute captured by experimental sensor |
 | Guardrails (Azure) | N/A | Not Azure |
 | Guardrails (Bedrock) | N/A | Not Bedrock |
 | Cache hit rate (OpenAI) | N/A | Not OpenAI package |
@@ -40,11 +40,12 @@
 
 | Dashboard View | Populated? | Missing attributes |
 |----------------|------------|--------------------|
-| All GenAI spans | ❌ Empty | `gen_ai.provider.name` or `gen_ai.system` (AR-001/AR-002) — required gate |
-| Prompts list / detail | ❌ Empty | All content attributes missing |
-| Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` (AR-025) not emitted |
-| Cost dashboard tiles | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted; token span attributes absent |
-| Service health tile | ❌ Empty | No OTel GenAI spans at all |
+| All GenAI spans | ✅ Expected | Provider identity captured by experimental Groq sensor |
+| Prompts list / detail | ⚠️ Partial | Model column populated; prompt/response content absent — experimental sensor limitation |
+| Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` (AR-025) not emitted by OneAgent |
+| Cost dashboard tiles (span) | ✅ Expected | Token span attributes captured by experimental sensor |
+| Cost dashboard tiles (metric) | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted by OneAgent |
+| Service health tile | ✅ Expected | Span status captured |
 | Agent quick filter | N/A | Not an agent app |
 | Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
 | Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
@@ -55,62 +56,36 @@ Attributes absent that cause empty charts with no visible error:
 
 | Attribute | Rule ID | Missing feature |
 |-----------|---------|----------------|
-| `gen_ai.provider.name` / `gen_ai.system` | AR-002/AR-001 | All GenAI views empty — spans do not qualify as AI spans |
-| `gen_ai.client.operation.duration` | AR-025 | All latency charts empty |
-| `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard tiles show $0 silently; requires an OTel metrics pipeline |
-| `gen_ai.token.type` (metric dimension) | AR-024 | Cost dashboard shows no split between input/output cost lanes |
-| `span.status_code` | AR-047 | Service health tile shows all requests as successful if no OTel spans are present |
+| `gen_ai.input.messages` / `gen_ai.output.messages` | — | Prompt content not captured; experimental Groq sensor does not support prompt capture |
+| `gen_ai.client.operation.duration` | AR-025 | All latency charts empty; OneAgent uses internal metrics pipeline, not OTel gen_ai metrics |
+| `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard metric tiles empty; OTel metrics pipeline not present |
 
 ## What to fix in the example app
 
-**1. Add OTel instrumentation (critical — no data flows to DT AI Observability without this)**
+**1. Enable the experimental Groq sensor in OneAgent features**
 
-The app currently makes bare `Groq.chat.completions.create()` calls with no OTel instrumentation. OneAgent does not provide specific gen_ai instrumentation for the Groq SDK — only generic HTTP spans may be captured. To populate DT AI Observability views, add one of:
+Go to Settings → OneAgent features → search "Groq" → enable the experimental sensor. Restart the monitored process. The sensor is best-effort; attribute collection and schema may change without notice and is not covered by DT support SLAs.
 
-- **Option A — Traceloop SDK with `opentelemetry-instrumentation-groq`** (recommended for fastest path to full coverage):
+**2. Enable the Python FastAPI sensor**
 
-```python
-from traceloop.sdk import Traceloop
-Traceloop.init(
-    app_name="groq-demo",
-    api_endpoint=os.environ["DT_ENDPOINT"],
-    headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
-    should_enrich_metrics=True,
-    disable_batch=True,
-)
-# Traceloop auto-instruments Groq via opentelemetry-instrumentation-groq
-```
+Go to Settings → OneAgent features → enable **Python FastAPI** to capture HTTP entry-point spans.
 
-- **Option B — OpenTelemetry Groq instrumentor** (community-maintained — verify package availability before use):
+**3. Prompt content — manual OTel span required**
+
+Prompt capture is not available via the experimental Groq sensor. To capture message content, wrap `client.chat.completions.create()` in a manual OTel span:
 
 ```python
-from opentelemetry.instrumentation.groq import GroqInstrumentor
-GroqInstrumentor().instrument()
+span.set_attribute("gen_ai.input.messages", ...)   # prompt messages as JSON
+span.set_attribute("gen_ai.output.messages", ...)  # response messages as JSON
 ```
 
-- **Option C — Manual span creation**: Wrap each `client.chat.completions.create()` call in a custom OTel span and manually set `gen_ai.*` attributes.
-
-**2. Add metrics pipeline for latency and cost charts**
-
-If using Traceloop with `should_enrich_metrics=True`, metrics are synthesised automatically. If using manual instrumentation, add a `MeterProvider` with `OTLPMetricExporter` and record `gen_ai.client.operation.duration` and `gen_ai.client.token.usage`.
-
-**3. Set `service.name` explicitly**
-
-Add an OTel Resource with `service.name` to ensure consistent identification in DT:
-
-```python
-from opentelemetry.sdk.resources import Resource
-resource = Resource.create({"service.name": "groq-demo"})
-```
-
-**4. Extract token counts from Groq response**
-
-The Groq `chat.completions.create()` response includes `usage.prompt_tokens` and `usage.completion_tokens`. If instrumenting manually, map these to the modern attribute names on the span:
+For token extraction, map from the Groq response:
 
 ```python
 span.set_attribute("gen_ai.usage.input_tokens", response.usage.prompt_tokens)
 span.set_attribute("gen_ai.usage.output_tokens", response.usage.completion_tokens)
-span.set_attribute("gen_ai.provider.name", "groq")
-span.set_attribute("gen_ai.request.model", MODEL)
-span.set_attribute("gen_ai.response.model", response.model)
 ```
+
+**4. OTel metrics pipeline (optional — for latency and cost metric charts)**
+
+OneAgent does not emit OTel `gen_ai.*` metrics. If latency charts and the cost metric dashboard tile are required, add a separate OTel SDK pipeline with a `MeterProvider` and `OTLPMetricExporter` to record `gen_ai.client.operation.duration` and `gen_ai.client.token.usage`.

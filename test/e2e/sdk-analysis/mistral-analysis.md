@@ -1,116 +1,63 @@
 # Mistral AI — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.2.0 | **Path**: `mistral/app.py` | **Profile**: generic | **Dashboard**: `abmodelversioning.dashboard.json`
+> **Baseline**: sdk-comparison-baseline.json v1.2.1 | **Path**: `mistral/oneagent/app.py` | **Profile**: generic | **Dashboard**: `abmodelversioning.dashboard.json`
 
 ## Instrumentation
 
-- **Library**: `mistralai` SDK (`mistralai.client.Mistral`) — bare SDK, no OTel auto-instrumentation in application code.
+- **Library**: `mistralai` SDK (`Mistral.chat.complete()`) — bare SDK, no OTel auto-instrumentation in application code.
 - **Provider**: Mistral AI (`mistral-small-latest` model)
-- **OTel setup**: No application-level OTel or Traceloop configuration. The app is a minimal FastAPI service deployed to Kubernetes (`K8S_NAMESPACE=anna`, image `annadreal/mistralai-app-3:latest`). Instrumentation is expected to come from the Dynatrace OneAgent injected at the pod level — the OneAgent provides auto-instrumentation for supported runtimes and may capture HTTP-level spans and process-level metadata. There is no `gen_ai.*` span attribute emission from the app code itself; any such attributes depend entirely on OneAgent's Mistral provider support.
+- **OTel setup**: No application-level OTel. Dynatrace OneAgent auto-instruments via the experimental **Mistral AI** sensor (Settings → OneAgent features → search "Mistral"). Also enable **Python FastAPI** sensor for HTTP entry-point spans. Experimental sensors are best-effort; not covered by DT support SLAs.
 
-## Verdict: FAIL
+## Verdict: PARTIAL
 
 | Check | Status | Detail |
 |-------|--------|--------|
-| Provider identity (`must_have_any`) | ❌ | No `gen_ai.provider.name` or `gen_ai.system` emitted from app code; depends on OneAgent Mistral instrumentation support |
-| `service.name` | ⚠️ | Likely set by OneAgent from K8s pod/deployment metadata; not explicitly set in app code |
-| `gen_ai.request.model` | ❌ | Not emitted from app code; would require OneAgent Mistral SDK instrumentation |
-| `gen_ai.response.model` | ❌ | Not emitted from app code |
-| `gen_ai.usage.input_tokens` | ❌ | Not emitted from app code |
-| `gen_ai.usage.output_tokens` | ❌ | Not emitted from app code |
+| Provider identity (`must_have_any`) | ✅ expected | OneAgent experimental Mistral AI sensor emits provider identity |
+| `service.name` | ✅ | Set by OneAgent from K8s/process metadata |
+| `gen_ai.request.model` | ✅ expected | Captured by experimental Mistral AI sensor (best-effort) |
+| `gen_ai.response.model` | ✅ expected | Captured by experimental Mistral AI sensor (best-effort) |
+| `gen_ai.usage.input_tokens` | ✅ expected | Captured by experimental Mistral AI sensor (best-effort) |
+| `gen_ai.usage.output_tokens` | ✅ expected | Captured by experimental Mistral AI sensor (best-effort) |
 
 ## App view coverage
 
 | View | Status | Root cause |
 |------|--------|------------|
-| All GenAI views gate | ❌ | No `gen_ai.provider.name` or `gen_ai.system` — spans will not qualify as GenAI spans in DT AI Observability |
-| Prompts — content | ❌ | No `gen_ai.input.messages` / `gen_ai.output.messages` / legacy fallbacks emitted |
-| Prompts — model column | ❌ | No `gen_ai.request.model` emitted |
-| Latency charts | ❌ | No `gen_ai.client.operation.duration` metric |
-| Cost dashboard (span tokens) | ❌ | No token count attributes on spans |
-| Cost dashboard (metric) | ❌ | No `gen_ai.client.token.usage` metric (AR-044); no metrics pipeline |
-| Service health tile | ❌ | No OTel spans with `span.status_code` from GenAI calls |
-| Agent quick filter | N/A | Mistral SDK is used directly — no agent framework |
-| Provider quick filter | ❌ | No provider identity attribute |
-| Guardrails (Azure) | N/A | Not Azure |
-| Guardrails (Bedrock) | N/A | Not Bedrock |
-| Cache hit rate (OpenAI) | N/A | Not OpenAI |
-
-## Dashboard Coverage
-
-| Dashboard View | Populated? | Missing attributes |
-|----------------|------------|--------------------|
-| All GenAI spans | ❌ Empty | `gen_ai.provider.name` or `gen_ai.system` (AR-001/AR-002) — required gate |
-| Prompts list / detail | ❌ Empty | All content attributes missing |
-| Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` (AR-025) not emitted |
-| Cost dashboard tiles | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted; token span attributes absent |
-| Service health tile | ❌ Empty | No OTel GenAI spans at all |
-| Agent quick filter | N/A | Not an agent app |
-| Audit trail | ❌ Not applicable | No `gen_ai.auditing` bizevents emitted |
-| Evaluation results | ❌ Not applicable | No evaluation bizevents emitted |
+| All GenAI views gate | ✅ | Provider identity expected from experimental Mistral AI sensor |
+| Prompts — content | ❌ | Prompt capture (`gen_ai.input.messages` / `gen_ai.output.messages`) not available for experimental sensors; supported only for OpenAI and Bedrock |
+| Prompts — model column | ✅ | `gen_ai.request.model` expected from experimental Mistral AI sensor |
+| Latency charts | ❌ | OneAgent does not emit `gen_ai.client.operation.duration` OTel metric |
+| Cost dashboard (span tokens) | ✅ expected | Token counts on spans expected from experimental Mistral AI sensor |
+| Cost dashboard (metric) | ❌ | `gen_ai.client.token.usage` OTel metric not emitted by OneAgent |
+| Service health tile | ✅ | OneAgent FastAPI sensor captures HTTP spans with status codes |
+| Agent quick filter | N/A | Direct SDK, no agent framework |
+| Provider quick filter | ✅ expected | Provider identity expected from experimental Mistral AI sensor |
+| Guardrails | N/A | Not applicable |
 
 ## Silent failures
 
 Attributes absent that cause empty charts with no visible error:
 
-| Attribute | Rule ID | Missing feature |
-|-----------|---------|----------------|
-| `gen_ai.provider.name` / `gen_ai.system` | AR-002/AR-001 | All GenAI views empty — spans do not qualify as AI spans |
-| `gen_ai.client.operation.duration` | AR-025 | All latency charts empty |
-| `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard tiles show $0 silently; requires an OTel metrics pipeline |
-| `gen_ai.token.type` (metric dimension) | AR-024 | Cost dashboard shows no split between input/output cost lanes |
-| `span.status_code` | AR-047 | Service health tile shows all requests as successful if no OTel spans are present |
+| Attribute | Missing feature |
+|-----------|----------------|
+| `gen_ai.input.messages` / `gen_ai.output.messages` | Prompt capture not available (experimental sensor limitation) |
+| `gen_ai.client.operation.duration` | OneAgent does not emit this OTel metric; all latency charts empty |
+| `gen_ai.client.token.usage` (metric) | OneAgent does not emit this OTel metric; cost dashboard metric tiles empty |
 
 ## What to fix in the example app
 
-**1. Add OTel instrumentation (critical — no data flows to DT AI Observability without this)**
+**1. Enable the experimental Mistral AI sensor**
 
-The app currently makes bare `Mistral.chat.complete()` calls with no OTel instrumentation. To populate DT AI Observability views, add one of:
+Enable the experimental **Mistral AI** sensor in Settings → OneAgent features (search "Mistral"). Restart the Python process after enabling.
 
-- **Option A — Traceloop SDK** (recommended for fastest path to full coverage):
+**2. Enable the Python FastAPI sensor**
 
-```python
-from traceloop.sdk import Traceloop
-Traceloop.init(
-    app_name="mistral-demo",
-    api_endpoint=os.environ["DT_ENDPOINT"],
-    headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
-    should_enrich_metrics=True,
-    disable_batch=True,
-)
-# Traceloop auto-instruments Mistral via opentelemetry-instrumentation-mistralai
-```
+Enable the **Python FastAPI** sensor so HTTP entry-point spans nest the AI provider call correctly.
 
-- **Option B — OpenTelemetry Mistral instrumentor** (if available):
+**3. Add prompt content via manual OTel instrumentation**
 
-```python
-from opentelemetry.instrumentation.mistralai import MistralAIInstrumentor
-MistralAIInstrumentor().instrument()
-```
+Prompt content is not available via the experimental sensor. To populate the prompts view with input/output messages, add manual OTel instrumentation — wrap `chat.complete()` with a custom span and set `gen_ai.input.messages` / `gen_ai.output.messages` attributes — or wait for a supported sensor. Token counts can be extracted from `response.usage.prompt_tokens` → `gen_ai.usage.input_tokens` and `response.usage.completion_tokens` → `gen_ai.usage.output_tokens`.
 
-- **Option C — Manual span creation**: Wrap each `chat.complete()` call in a custom OTel span and manually set `gen_ai.*` attributes.
+**4. Add an OTel metrics pipeline for latency and cost charts**
 
-**2. Add metrics pipeline for latency and cost charts**
-
-If using Traceloop with `should_enrich_metrics=True`, metrics are synthesised automatically. If using manual instrumentation, add a `MeterProvider` with `OTLPMetricExporter` and record `gen_ai.client.operation.duration` and `gen_ai.client.token.usage`.
-
-**3. Set `service.name` explicitly**
-
-Add an OTel Resource with `service.name` to ensure consistent identification in DT:
-
-```python
-from opentelemetry.sdk.resources import Resource
-resource = Resource.create({"service.name": "mistral-demo"})
-```
-
-**4. Extract token counts from Mistral response**
-
-The Mistral `chat.complete()` response includes `usage.prompt_tokens` and `usage.completion_tokens`. If instrumenting manually, set these on the span using the modern attribute names:
-
-```python
-span.set_attribute("gen_ai.usage.input_tokens", response.usage.prompt_tokens)
-span.set_attribute("gen_ai.usage.output_tokens", response.usage.completion_tokens)
-span.set_attribute("gen_ai.provider.name", "mistral")
-span.set_attribute("gen_ai.request.model", model)
-span.set_attribute("gen_ai.response.model", response.model)
-```
+OTel metrics (`gen_ai.client.operation.duration`, `gen_ai.client.token.usage`) are not emitted by OneAgent. If latency charts and the cost dashboard metric tiles are required, add a separate OTel metrics pipeline.
