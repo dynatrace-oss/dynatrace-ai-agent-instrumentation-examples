@@ -1,6 +1,6 @@
 # E2E Tests — Local Setup
 
-End-to-end tests that start each demo app, invoke it, and assert that the expected `gen_ai.*` spans appear in Dynatrace. Tests use the [DQL query API](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-api/environment-api/query) to poll for spans.
+End-to-end tests that start each demo app, invoke it, and assert that the expected `gen_ai.*` spans appear in Dynatrace. Tests use the [DQL query API](https://docs.dynatrace.com/docs/platform/grail/dynatrace-query-language) to poll for spans.
 
 ## Prerequisites
 
