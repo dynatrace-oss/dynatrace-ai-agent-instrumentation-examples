@@ -156,11 +156,14 @@ func assertGenAISpan(t *testing.T, dql, wantSystem string) {
 	}
 
 	span := records[0]
-	system, ok := span["gen_ai.system"]
+	system, ok := span["gen_ai.provider.name"]
 	if !ok {
-		t.Fatal("span missing gen_ai.system")
+		system, ok = span["gen_ai.system"]
+	}
+	if !ok {
+		t.Fatal("span missing gen_ai.provider.name and gen_ai.system")
 	}
 	if system != wantSystem {
-		t.Errorf("gen_ai.system = %q, want %q", system, wantSystem)
+		t.Errorf("gen_ai.provider.name/gen_ai.system = %q, want %q", system, wantSystem)
 	}
 }
