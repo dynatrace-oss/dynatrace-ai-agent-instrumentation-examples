@@ -22,7 +22,7 @@ def _get_client():
 
 def write_haiku(topic: str) -> str:
     message = _get_client().messages.create(
-        model=os.environ.get("ANTHROPIC_MODEL_ID", "anthropic.claude-haiku-4-5-20251001:0"),
+        model=os.environ.get("ANTHROPIC_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         max_tokens=256,
         system="You are a haiku poet. Write a haiku (5-7-5 syllables) about the given topic. Reply with only the haiku, no extra text.",
         messages=[{"role": "user", "content": f"Topic: {topic}"}],
