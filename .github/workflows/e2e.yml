@@ -24,6 +24,10 @@ jobs:
             app_dir: aws-bedrock/oneagent
             test_run: TestAWSBedrockOneAgent
             otel_service_name: aws-bedrock/oneagent
+          - name: anthropic-oneagent
+            app_dir: anthropic/oneagent
+            test_run: TestAnthropicOneAgent
+            otel_service_name: anthropic/oneagent
 
     steps:
       - name: Checkout
