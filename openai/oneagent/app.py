@@ -19,11 +19,17 @@ def health():
 async def haiku() -> str:
     import asyncio
     api_version = os.getenv("OPENAI_API_VERSION")
-    client = openai.OpenAI(
-        base_url=os.getenv("OPENAI_API_BASE"),
-        api_key=os.getenv("OPENAI_API_KEY"),
-        **({"default_query": {"api-version": api_version}} if api_version else {}),
-    )
+    if api_version:
+        client = openai.AzureOpenAI(
+            azure_endpoint=os.getenv("OPENAI_API_BASE"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            api_version=api_version,
+        )
+    else:
+        client = openai.OpenAI(
+            base_url=os.getenv("OPENAI_API_BASE"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
 
     def _call() -> str:
         response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
