@@ -16,8 +16,10 @@ type App struct {
 
 // Start runs "make run" in dir as a background process and waits for port 8000
 // to accept connections before returning.
+// -e makes environment variables take priority over makefile variable assignments,
+// so credentials passed via the test environment override any app-local .env file.
 func Start(dir string) (*App, error) {
-	cmd := exec.Command("make", "run")
+	cmd := exec.Command("make", "-e", "run")
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
@@ -37,8 +39,10 @@ func Start(dir string) (*App, error) {
 // StartCLI runs "make run" in dir as a background process without waiting for
 // an HTTP readiness endpoint. Use this for CLI-style apps that emit telemetry
 // autonomously without an HTTP interface.
+// -e makes environment variables take priority over makefile variable assignments,
+// so credentials passed via the test environment override any app-local .env file.
 func StartCLI(dir string) (*App, error) {
-	cmd := exec.Command("make", "run")
+	cmd := exec.Command("make", "-e", "run")
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
