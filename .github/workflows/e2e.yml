@@ -117,6 +117,10 @@ jobs:
             app_dir: aws-bedrock/openinference
             test_run: TestAWSBedrockOpenInference
             otel_service_name: aws-bedrock/openinference
+          - name: openai-openinference
+            app_dir: openai/openinference
+            test_run: TestOpenAIOpenInference
+            otel_service_name: openai/openinference
 
     steps:
       - name: Checkout
@@ -146,6 +150,10 @@ jobs:
           DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           MAX_RUNS: '1'
         run: |
           set -euo pipefail
