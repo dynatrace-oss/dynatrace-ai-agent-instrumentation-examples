@@ -23,7 +23,7 @@ Demonstrates tracing Anthropic Bedrock SDK API calls with Dynatrace via OneAgent
 | `AWS_ACCESS_KEY_ID` | Yes | — | AWS access key ID |
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
-| `ANTHROPIC_MODEL_ID` | No | `anthropic.claude-haiku-4-5-20251001:0` | Bedrock model ID |
+| `ANTHROPIC_MODEL_ID` | No | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model ID |
 
 ## Makefile Targets
 
