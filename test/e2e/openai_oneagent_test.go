@@ -10,6 +10,7 @@ func TestOpenAIOneAgent(t *testing.T) {
 
 	auditSpan(t, "openai", "oneagent", OpenAIProfile,
 		`fetch spans, from: now()-10m
+| filter service.name == "openai/oneagent"
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
