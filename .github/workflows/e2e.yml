@@ -95,8 +95,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-          MODEL: ${{ matrix.ollama_model }}
+          MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: |
           set -euo pipefail
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
