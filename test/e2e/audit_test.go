@@ -291,6 +291,33 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string)
 		report.Verdict, len(spans), sdk, instrumentation)
 }
 
+// auditSpanOptional is like auditSpan but skips the (sub)test when no anchor
+// span is found within the timeout instead of failing. Use for provider-specific
+// audits where the provider may not have been selected in the current run.
+func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s spans found — provider likely not selected this run", sdk, instrumentation)
+		return
+	}
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
+	writeReport(t, report)
+
+	for _, r := range report.Required {
+		if r.Status == "fail" {
+			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
+		}
+	}
+	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
+		report.Verdict, len(spans), sdk, instrumentation)
+}
+
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
 // scoped to the same service.name. Polls until the span count stabilizes
 // (two consecutive equal non-zero counts) so spans that arrive in Dynatrace

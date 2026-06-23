@@ -11,9 +11,20 @@ func TestPydanticAIOpenTelemetry(t *testing.T) {
 		triggerMusicAgent(t)
 	}
 
-	auditSpan(t, "pydantic-ai", "opentelemetry", GenericProfile,
-		`fetch spans, from: now()-10m
+	t.Run("bedrock", func(t *testing.T) {
+		auditSpanOptional(t, "pydantic-ai", "opentelemetry-bedrock", BedrockProfile,
+			`fetch spans, from: now()-10m
 | filter service.name == "pydantic-ai-music-agent"
-| filter isNotNull(gen_ai.provider.name)
+| filter gen_ai.provider.name == "AWS Bedrock"
+| filter isNotNull(gen_ai.request.model)
 | limit 1`)
+	})
+	t.Run("azure", func(t *testing.T) {
+		auditSpanOptional(t, "pydantic-ai", "opentelemetry-azure", GenericProfile,
+			`fetch spans, from: now()-10m
+| filter service.name == "pydantic-ai-music-agent"
+| filter gen_ai.provider.name == "Azure OpenAI"
+| filter isNotNull(gen_ai.request.model)
+| limit 1`)
+	})
 }
