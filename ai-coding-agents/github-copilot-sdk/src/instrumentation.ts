@@ -20,6 +20,7 @@
  */
 
 import { SpanKind, SpanStatusCode, context, trace, type Span } from "@opentelemetry/api";
+import type { CopilotSession } from "@github/copilot-sdk";
 import { getTracer, getMeter } from "./telemetry.js";
 
 // ─── Metrics ────────────────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ function shouldCaptureContent(): boolean {
  * @returns An unsubscribe/cleanup function.
  */
 export function subscribeSessionTelemetry(
-  session: { on: (handler: (event: SdkEvent) => void) => (() => void) | void },
+  session: CopilotSession,
   sessionId: string,
   model: string,
 ): () => void {
@@ -116,7 +117,8 @@ export function subscribeSessionTelemetry(
   // Track active tool spans for cleanup
   const activeToolSpans = new Map<string, Span>();
 
-  const maybeUnsub = session.on((event: SdkEvent) => {
+  const maybeUnsub = session.on((rawEvent) => {
+    const event = rawEvent as unknown as SdkEvent;
     switch (event.type) {
       // ────────────────────────────────────────────────────────────────────
       // Buffer user prompt for content capture
