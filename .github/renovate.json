@@ -48,7 +48,18 @@
     },
     {
       "matchManagers": ["custom.regex"],
+      "matchDepNames": ["ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector"],
       "groupName": "collector image"
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["golang"],
+      "groupName": "go toolchain"
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["astral-sh/uv"],
+      "groupName": "uv"
     },
     {
       "matchManagers": ["npm"],
