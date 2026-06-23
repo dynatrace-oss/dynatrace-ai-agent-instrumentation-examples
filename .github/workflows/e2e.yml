@@ -8,8 +8,6 @@ on:
 permissions:
   contents: read
 
-env:
-
 jobs:
   oneagent:
     name: E2E / ${{ matrix.name }}
