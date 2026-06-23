@@ -107,6 +107,34 @@ func init() {
 	}
 }
 
+// OpenAIProfile extends generic with OpenAI prompt-caching attributes.
+var OpenAIProfile Profile
+
+func init() {
+	OpenAIProfile = Profile{
+		Name:     "openai",
+		Required: append([]AttributeCheck{}, genericRequired...),
+		Optional: append(append([]AttributeCheck{}, genericOptional...),
+			AttributeCheck{Name: "gen_ai.prompt_caching", RuleID: "AR-022"},
+			AttributeCheck{Name: "gen_ai.cache.type", RuleID: "AR-023"},
+		),
+	}
+}
+
+// AzureProfile extends generic with Azure content filter attributes.
+var AzureProfile Profile
+
+func init() {
+	AzureProfile = Profile{
+		Name: "azure",
+		Required: append(append([]AttributeCheck{}, genericRequired...),
+			AttributeCheck{Name: "gen_ai.prompt.prompt_filter_results", RuleID: "AR-015"},
+			AttributeCheck{Name: "gen_ai.completion.content_filter_results", RuleID: "AR-016"},
+		),
+		Optional: append([]AttributeCheck{}, genericOptional...),
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Core functions
 // ---------------------------------------------------------------------------
