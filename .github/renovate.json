@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "UTC",
+  "schedule": ["before 5am on Monday"],
+  "ignorePaths": ["**/.venv/**"],
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements", "pep621"],
+      "groupName": "python dependencies"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "docker base images"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "groupName": "go modules"
+    }
+  ]
+}
