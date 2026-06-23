@@ -56,6 +56,13 @@ jobs:
       - name: Install uv
         run: pip install "uv==$UV_VERSION"
 
+      - name: Cache Ollama model
+        if: matrix.ollama_model != ''
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ matrix.ollama_model }}
+
       - name: Set up Ollama
         if: matrix.ollama_model != ''
         run: |
