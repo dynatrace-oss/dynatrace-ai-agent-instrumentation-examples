@@ -14,7 +14,7 @@ BUILD_PLATFORM      ?= linux/amd64
 
 PYTHON              := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.48.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.50.0
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
