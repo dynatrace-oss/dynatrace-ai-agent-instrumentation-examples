@@ -14,7 +14,7 @@ install: ## Install Python dependencies
 	$(PYTHON) -m pip install -r backend/requirements.txt
 
 run: ## Run the Pydantic AI backend on port $(PORT)
-	$(PYTHON) -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT)
+	PYTHONPATH=backend $(PYTHON) -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
