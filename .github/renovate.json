@@ -3,7 +3,7 @@
   "extends": ["config:recommended"],
   "timezone": "UTC",
   "schedule": ["before 5am on Monday"],
-  "ignorePatterns": ["**/.venv/**"],
+  "ignorePaths": ["**/.venv/**"],
   "customManagers": [
     {
       "customType": "regex",
