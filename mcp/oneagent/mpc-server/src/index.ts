@@ -14,10 +14,6 @@ import {propagation, ROOT_CONTEXT, context} from "@opentelemetry/api";
 const server = new McpServer({
   name: "weather",
   version: "1.0.0",
-  capabilities: {
-    resources: {},
-    tools: {},
-  },
 });
 
 

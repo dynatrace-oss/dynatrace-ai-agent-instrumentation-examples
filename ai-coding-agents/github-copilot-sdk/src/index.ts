@@ -14,7 +14,7 @@ import { initTelemetry, shutdownTelemetry } from "./telemetry.js";
 // so that any auto-instrumented HTTP calls are captured.
 initTelemetry();
 
-import { CopilotClient, defineTool } from "@github/copilot-sdk";
+import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";
 import { subscribeSessionTelemetry } from "./instrumentation.js";
 
 // ── Define tools ────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ const getCurrentTime = defineTool("get_current_time", {
 
 async function main() {
   const client = new CopilotClient({
-    githubToken: process.env.GH_TOKEN,
+    gitHubToken: process.env.GH_TOKEN,
   });
 
   await client.start();
@@ -47,7 +47,7 @@ async function main() {
       content: "You are a helpful assistant. Answer questions concisely.",
     },
     streaming: true,
-    onPermissionRequest: async () => ({ kind: "approved" }),
+    onPermissionRequest: approveAll,
   });
 
   console.log(`Session created: ${session.sessionId}`);
