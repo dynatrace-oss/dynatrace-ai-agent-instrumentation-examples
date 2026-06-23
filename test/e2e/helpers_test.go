@@ -83,6 +83,30 @@ func triggerMusicAgent(t *testing.T) {
 	}
 }
 
+// triggerCSAgent POSTs an airline question to /chat on localhost:8000.
+func triggerCSAgent(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/chat"
+
+	b, _ := json.Marshal(map[string]string{"message": "What is the baggage allowance for economy class?"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /chat: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /chat returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // startApp runs make install then starts make run in <repoRoot>/<appDir>.
 // Registers cleanup to stop the app and, for apps with a collector, make stop.
 func startApp(t *testing.T, appDir string) {
