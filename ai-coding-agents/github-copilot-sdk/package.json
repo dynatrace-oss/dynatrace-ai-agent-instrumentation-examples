@@ -8,13 +8,13 @@
     "start": "node --env-file=.env dist/index.js"
   },
   "dependencies": {
-    "@github/copilot-sdk": "0.1.29",
+    "@github/copilot-sdk": "0.3.0",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-metrics-otlp-proto": "^0.57.2",
-    "@opentelemetry/exporter-trace-otlp-proto": "^0.57.2",
+    "@opentelemetry/exporter-metrics-otlp-proto": "^0.219.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.219.0",
     "@opentelemetry/resources": "^1.30.1",
     "@opentelemetry/sdk-metrics": "^1.30.1",
-    "@opentelemetry/sdk-node": "^0.57.2",
+    "@opentelemetry/sdk-node": "^0.219.0",
     "@opentelemetry/sdk-trace-base": "^1.30.1",
     "@opentelemetry/semantic-conventions": "^1.28.0"
   },
