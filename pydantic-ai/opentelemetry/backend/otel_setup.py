@@ -11,8 +11,8 @@ def setup_otel(service_name: str = "pydantic-ai-music-agent"):
     Returns (tracer_provider, meter_provider) so callers can pass them into
     pydantic-ai's InstrumentationSettings.
     """
-    dt_endpoint = os.environ.get("DT-ENDPOINT", "").rstrip("/")
-    dt_api_token = os.environ.get("DT-TOKEN", "")
+    dt_endpoint = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+    dt_api_token = os.environ.get("DT_API_TOKEN", "")
 
     if not dt_endpoint or not dt_api_token:
         print("[otel] DT-ENDPOINT or DT-TOKEN not set — OTel export disabled")

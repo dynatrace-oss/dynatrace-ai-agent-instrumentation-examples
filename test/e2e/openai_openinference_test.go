@@ -9,7 +9,7 @@ func TestOpenAIOpenInference(t *testing.T) {
 	// No triggerHaiku — the haiku request is issued by make run itself.
 	startCLIApp(t, "openai/openinference")
 
-	auditSpan(t, "openai", "openinference", GenericProfile,
+	auditSpan(t, "openai", "openinference", OpenAIProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "openai/openinference"
 | filter isNotNull(gen_ai.request.model)
