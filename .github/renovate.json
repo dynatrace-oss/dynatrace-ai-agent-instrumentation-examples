@@ -13,20 +13,6 @@
       ],
       "depNameTemplate": "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
       "datasourceTemplate": "docker"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"],
-      "matchStrings": ["GO_VERSION: '(?<currentValue>[^']+)'"],
-      "depNameTemplate": "golang",
-      "datasourceTemplate": "golang-version"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"],
-      "matchStrings": ["UV_VERSION: '(?<currentValue>[^']+)'"],
-      "depNameTemplate": "astral-sh/uv",
-      "datasourceTemplate": "github-releases"
     }
   ],
   "packageRules": [
@@ -50,16 +36,6 @@
       "matchManagers": ["custom.regex"],
       "matchDepNames": ["ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector"],
       "groupName": "collector image"
-    },
-    {
-      "matchManagers": ["custom.regex"],
-      "matchDepNames": ["golang"],
-      "groupName": "go toolchain"
-    },
-    {
-      "matchManagers": ["custom.regex"],
-      "matchDepNames": ["astral-sh/uv"],
-      "groupName": "uv"
     },
     {
       "matchManagers": ["npm"],
