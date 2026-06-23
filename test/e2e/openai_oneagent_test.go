@@ -13,6 +13,6 @@ func TestOpenAIOneAgent(t *testing.T) {
 | filter service.name == "openai/oneagent"
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
-| sort timestamp desc
+| sort startTime desc
 | limit 1`)
 }
