@@ -77,7 +77,7 @@ Monitor AI agent frameworks with Dynatrace.
 
 | Framework | OneAgent | OpenInference | OpenTelemetry |
 |-----------|----------|---------------|---------------|
-| [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | [✓](./aws-bedrock-agents/openinference/) | — |
+| [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/oneagent/) | [✓](./aws-strands/oneagent/) | — | — |
 | [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
 | [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
