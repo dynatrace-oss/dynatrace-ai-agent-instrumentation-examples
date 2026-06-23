@@ -1,0 +1,93 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Tag all Langfuse spans before the main transform so the source is always set.
+  attributes/tag_langfuse:
+    include:
+      match_type: regexp
+      services: [".*"]
+      attributes:
+        - key: langfuse.observation.type
+          value: ".*"
+    actions:
+      - key: ai.observability.source
+        value: langfuse
+        action: upsert
+
+  transform/langfuse:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # ── 1. OPERATION NAME ─────────────────────────────────────────────────
+          # langfuse.observation.type: "generation" | "embedding" | "span" | "event"
+          - set(attributes["gen_ai.operation.name"], "chat") where attributes["langfuse.observation.type"] == "generation"
+          - set(attributes["gen_ai.operation.name"], "embeddings") where attributes["langfuse.observation.type"] == "embedding"
+          - set(attributes["gen_ai.operation.name"], attributes["langfuse.observation.type"]) where attributes["langfuse.observation.type"] != nil and attributes["gen_ai.operation.name"] == nil
+
+          # ── 2. REQUEST MODEL ──────────────────────────────────────────────────
+          - set(attributes["gen_ai.request.model"], attributes["langfuse.observation.model.name"]) where attributes["langfuse.observation.model.name"] != nil
+
+          # ── 3. PROVIDER INFERENCE ─────────────────────────────────────────────
+          - set(attributes["gen_ai.provider.name"], "openai") where IsMatch(attributes["gen_ai.request.model"], "^(gpt-|o[1-9]|text-|davinci|babbage|curie|ada)") and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "anthropic") where IsMatch(attributes["gen_ai.request.model"], "^claude-") and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "google") where IsMatch(attributes["gen_ai.request.model"], "^(gemini-|palm)") and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "meta") where IsMatch(attributes["gen_ai.request.model"], "(?i)llama") and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "mistral") where IsMatch(attributes["gen_ai.request.model"], "^(mistral|mixtral)") and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "cohere") where IsMatch(attributes["gen_ai.request.model"], "^(command|embed-|rerank)") and attributes["gen_ai.provider.name"] == nil
+
+          # ── 4. RESPONSE MODEL (P1 — critical) ────────────────────────────────
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["langfuse.observation.type"] == "generation" and attributes["gen_ai.request.model"] != nil
+
+          # ── 5. LLM REQUEST TYPE (P2) ──────────────────────────────────────────
+          - set(attributes["llm.request.type"], "chat") where attributes["langfuse.observation.type"] == "generation"
+
+          # ── 6. TOKEN USAGE ────────────────────────────────────────────────────
+          # langfuse 4.x emits token counts as a JSON string in langfuse.observation.usage_details.
+          # ParseJSON extracts the values; Int() converts float64 JSON numbers to int64.
+          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["prompt_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["completion_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
+
+          # ── 7. INPUT MESSAGES (P3) ───────────────────────────────────────────
+          - set(attributes["gen_ai.input.messages"], attributes["langfuse.observation.input"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.input"] != nil
+
+          # ── 8. OUTPUT MESSAGES (P4) ─────────────────────────────────────────
+          - set(attributes["gen_ai.output.messages"], attributes["langfuse.observation.output"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.output"] != nil
+
+          # ── 9. CONVERSATION ID (P5) ─────────────────────────────────────────
+          - set(attributes["gen_ai.conversation.id"], attributes["langfuse.session_id"]) where attributes["langfuse.session_id"] != nil
+          - set(attributes["gen_ai.conversation.id"], attributes["langfuse.sessionId"]) where attributes["langfuse.sessionId"] != nil and attributes["gen_ai.conversation.id"] == nil
+
+          # ── 10. SESSION & USER IDS ───────────────────────────────────────────
+          - set(attributes["session.id"], attributes["langfuse.session_id"]) where attributes["langfuse.session_id"] != nil
+          - set(attributes["session.id"], attributes["langfuse.sessionId"]) where attributes["langfuse.sessionId"] != nil and attributes["session.id"] == nil
+          - delete_key(attributes, "langfuse.session_id") where attributes["langfuse.session_id"] != nil
+          - delete_key(attributes, "langfuse.sessionId") where attributes["langfuse.sessionId"] != nil
+
+          - set(attributes["user.id"], attributes["langfuse.user_id"]) where attributes["langfuse.user_id"] != nil
+          - set(attributes["user.id"], attributes["langfuse.userId"]) where attributes["langfuse.userId"] != nil and attributes["user.id"] == nil
+          - delete_key(attributes, "langfuse.user_id") where attributes["langfuse.user_id"] != nil
+          - delete_key(attributes, "langfuse.userId") where attributes["langfuse.userId"] != nil
+
+          # ── 11. TEMPERATURE ───────────────────────────────────────────────────
+          # langfuse 4.x emits model parameters as a JSON string in langfuse.observation.model.parameters.
+          - set(attributes["gen_ai.request.temperature"], Double(ParseJSON(attributes["langfuse.observation.model.parameters"])["temperature"])) where attributes["langfuse.observation.model.parameters"] != nil
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp_http/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes/tag_langfuse, transform/langfuse]
+      exporters: [debug, otlp_http/dynatrace]

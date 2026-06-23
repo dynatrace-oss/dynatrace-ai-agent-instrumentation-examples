@@ -133,6 +133,10 @@ jobs:
             app_dir: openai/openinference
             test_run: TestOpenAIOpenInference
             otel_service_name: openai/openinference
+          - name: langfuse-opentelemetry
+            app_dir: langfuse/opentelemetry
+            test_run: TestLangfuseOpenTelemetry
+            otel_service_name: langfuse
 
     steps:
       - name: Checkout

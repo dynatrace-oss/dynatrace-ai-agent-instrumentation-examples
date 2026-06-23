@@ -1,0 +1,185 @@
+---
+# OpenPipeline configuration for Langfuse OTel export
+#
+# Normalizes langfuse.* span attributes (langfuse SDK 4.x) to Dynatrace gen_ai.* semantic conventions.
+#
+# Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
+# then add a routing entry:
+#   Matcher:  isNotNull(langfuse.observation.type)
+#   Pipeline: langfuse-ai-spans
+
+customId: "langfuse-ai-spans"
+displayName: "Langfuse AI Observability - Spans"
+
+processing:
+  processors:
+
+    # ============================================================================
+    # 1. OPERATION NAME
+    # ============================================================================
+    # langfuse 4.x sets langfuse.observation.type on every span:
+    #   "generation" → chat LLM call
+    #   "embedding"  → embedding call
+    #   "span"       → generic span (tool, agent step, etc.)
+    #   "event"      → event marker
+    # ============================================================================
+    - id: "langfuse-operation-name"
+      enabled: true
+      matcher: "isNotNull(langfuse.observation.type)"
+      type: "dql"
+      description: "Map langfuse.observation.type to gen_ai.operation.name"
+      dql:
+        script: |
+          fieldsAdd gen_ai.operation.name = if(langfuse.observation.type == "generation", "chat",
+                                          else: if(langfuse.observation.type == "embedding", "embeddings",
+                                          else: langfuse.observation.type))
+
+    # ============================================================================
+    # 2. REQUEST MODEL
+    # ============================================================================
+    # langfuse.observation.model.name is only set on generation and embedding spans.
+    # ============================================================================
+    - id: "langfuse-model"
+      enabled: true
+      matcher: "isNotNull(langfuse.observation.model.name)"
+      type: "fieldsRename"
+      description: "Map langfuse.observation.model.name to gen_ai.request.model"
+      fieldsRename:
+        fields:
+          - fromName: "langfuse.observation.model.name"
+            toName: "gen_ai.request.model"
+
+    # ============================================================================
+    # 3. PROVIDER INFERENCE
+    # ============================================================================
+    # Infer gen_ai.provider.name from the model name prefix.
+    # ============================================================================
+    - id: "langfuse-provider-inference"
+      enabled: true
+      matcher: "isNotNull(gen_ai.request.model)"
+      type: "dql"
+      description: "Infer gen_ai.provider.name from model name prefix"
+      dql:
+        script: |
+          fieldsAdd gen_ai.provider.name = if(matchesPhrase(gen_ai.request.model, "gpt-") OR matchesPhrase(gen_ai.request.model, "o1") OR matchesPhrase(gen_ai.request.model, "o3") OR matchesPhrase(gen_ai.request.model, "o4") OR matchesPhrase(gen_ai.request.model, "text-") OR matchesPhrase(gen_ai.request.model, "davinci"), "openai",
+                                         else: if(matchesPhrase(gen_ai.request.model, "claude-"), "anthropic",
+                                         else: if(matchesPhrase(gen_ai.request.model, "gemini-") OR matchesPhrase(gen_ai.request.model, "palm"), "google",
+                                         else: if(matchesPhrase(gen_ai.request.model, "llama"), "meta",
+                                         else: if(matchesPhrase(gen_ai.request.model, "mistral") OR matchesPhrase(gen_ai.request.model, "mixtral"), "mistral",
+                                         else: if(matchesPhrase(gen_ai.request.model, "command") OR matchesPhrase(gen_ai.request.model, "embed-"), "cohere",
+                                         else: null))))))
+
+    # ============================================================================
+    # 4. RESPONSE MODEL (P1 — CRITICAL: baseline FAIL without this)
+    # ============================================================================
+    # Langfuse does not emit a separate response model attribute.
+    # Mirror gen_ai.request.model to gen_ai.response.model on generation spans.
+    # ============================================================================
+    - id: "langfuse-response-model"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation" AND isNotNull(gen_ai.request.model)'
+      type: "dql"
+      description: "Mirror gen_ai.request.model to gen_ai.response.model (Langfuse has no separate response model)"
+      dql:
+        script: |
+          fieldsAdd gen_ai.response.model = gen_ai.request.model
+
+    # ============================================================================
+    # 5. LLM REQUEST TYPE (P2)
+    # ============================================================================
+    # Required for the Prompts view filter in the AI Observability app.
+    # ============================================================================
+    - id: "langfuse-llm-request-type"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation"'
+      type: "fieldsAdd"
+      description: "Set llm.request.type for generation spans"
+      fieldsAdd:
+        fields:
+          - name: "llm.request.type"
+            value: "chat"
+
+    # ============================================================================
+    # 6. TOKEN USAGE
+    # ============================================================================
+    # langfuse 4.x emits token counts as a JSON string in langfuse.observation.usage_details.
+    # OpenPipeline DQL does not have parseJson; use regexpExtract to pull the numbers out.
+    # ============================================================================
+    - id: "langfuse-token-usage"
+      enabled: true
+      matcher: "isNotNull(langfuse.observation.usage_details)"
+      type: "dql"
+      description: "Extract token counts from langfuse.observation.usage_details via regex"
+      dql:
+        script: |
+          parse langfuse.observation.usage_details, "JSON_OBJECT:usage"
+          | fieldsAdd gen_ai.usage.input_tokens = toLong(usage[prompt_tokens]),
+                      gen_ai.usage.output_tokens = toLong(usage[completion_tokens])
+          | fieldsRemove usage, langfuse.observation.usage_details
+
+    # ============================================================================
+    # 7. INPUT MESSAGES (P3)
+    # ============================================================================
+    # langfuse.observation.input holds the serialized prompt messages on generation spans.
+    # ============================================================================
+    - id: "langfuse-input-messages"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation" AND isNotNull(langfuse.observation.input)'
+      type: "fieldsRename"
+      description: "Rename langfuse.observation.input to gen_ai.input.messages"
+      fieldsRename:
+        fields:
+          - fromName: "langfuse.observation.input"
+            toName: "gen_ai.input.messages"
+
+    # ============================================================================
+    # 8. OUTPUT MESSAGES (P4)
+    # ============================================================================
+    - id: "langfuse-output-messages"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation" AND isNotNull(langfuse.observation.output)'
+      type: "fieldsRename"
+      description: "Rename langfuse.observation.output to gen_ai.output.messages"
+      fieldsRename:
+        fields:
+          - fromName: "langfuse.observation.output"
+            toName: "gen_ai.output.messages"
+
+    # ============================================================================
+    # 9. CONVERSATION ID (P5)
+    # ============================================================================
+    - id: "langfuse-conversation-id"
+      enabled: true
+      matcher: "isNotNull(langfuse.session_id) OR isNotNull(langfuse.sessionId)"
+      type: "dql"
+      description: "Copy langfuse.session_id to gen_ai.conversation.id"
+      dql:
+        script: |
+          fieldsAdd gen_ai.conversation.id = if(isNotNull(langfuse.session_id), langfuse.session_id,
+                                            else: langfuse.sessionId)
+
+    # ============================================================================
+    # 10. SESSION & USER IDS
+    # ============================================================================
+    - id: "langfuse-session-user"
+      enabled: true
+      matcher: "isNotNull(langfuse.session_id) OR isNotNull(langfuse.user_id) OR isNotNull(langfuse.sessionId) OR isNotNull(langfuse.userId)"
+      type: "dql"
+      description: "Rename langfuse session and user identifiers to OTel standard names"
+      dql:
+        script: |
+          fieldsAdd session.id = if(isNotNull(langfuse.session_id), langfuse.session_id, else: langfuse.sessionId),
+                    user.id    = if(isNotNull(langfuse.user_id), langfuse.user_id, else: langfuse.userId)
+          | fieldsRemove langfuse.session_id, langfuse.sessionId, langfuse.user_id, langfuse.userId
+
+    # ============================================================================
+    # 11. SOURCE METADATA
+    # ============================================================================
+    - id: "langfuse-source-metadata"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Tag all Langfuse spans with ai.observability.source"
+      dql:
+        script: |
+          fieldsAdd `ai.observability.source` = "langfuse"
