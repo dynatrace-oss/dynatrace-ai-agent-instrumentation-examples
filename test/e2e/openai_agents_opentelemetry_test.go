@@ -11,6 +11,7 @@ func TestOpenAIAgentsOpenTelemetry(t *testing.T) {
 	auditSpan(t, "openai-agents", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "openai-cs-agents"
-| filter gen_ai.system == "openai"
+| filter gen_ai.provider.name == "azure.ai.openai"
+| filter isNotNull(gen_ai.request.model)
 | limit 1`)
 }
