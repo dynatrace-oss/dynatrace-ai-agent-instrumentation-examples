@@ -4,6 +4,31 @@
   "timezone": "UTC",
   "schedule": ["before 5am on Monday"],
   "ignorePaths": ["**/.venv/**"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Makefile$"],
+      "matchStrings": [
+        "ghcr\\.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:(?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"],
+      "matchStrings": ["GO_VERSION: '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "golang",
+      "datasourceTemplate": "golang-version"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^\\.github/workflows/[^/]+\\.ya?ml$"],
+      "matchStrings": ["UV_VERSION: '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "astral-sh/uv",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
   "packageRules": [
     {
       "matchManagers": ["pip_requirements", "pep621"],
@@ -20,6 +45,14 @@
     {
       "matchManagers": ["gomod"],
       "groupName": "go modules"
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "groupName": "collector image"
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies"
     }
   ]
 }
