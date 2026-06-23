@@ -51,8 +51,8 @@ tracer = trace.get_tracer("music-agent-api")
 
 def _bedrock_provider() -> BedrockProvider:
     return BedrockProvider(
-        aws_access_key_id=os.environ["Bedrock_username"],
-        aws_secret_access_key=os.environ["bedrock_key"],
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         region_name="us-east-1",
     )
 
@@ -61,11 +61,11 @@ def build_azure_model() -> tuple[OpenAIModel, str, str]:
     # Azure endpoint is only reachable from the corporate network;
     # falls back to a Bedrock model when unavailable.
     provider = AzureProvider(
-        azure_endpoint=os.environ["Azure_openai_endpoint"],
-        api_key=os.environ["Azure_openai_key"],
-        api_version="2024-02-01",
+        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+        api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        api_version=os.environ["AZURE_OPENAI_API_VERSION"],
     )
-    deployment = os.environ["Azure_openai_deployment"]
+    deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
     return OpenAIModel(deployment, provider=provider), "Azure OpenAI", deployment
 
 
@@ -103,6 +103,11 @@ class AnswerResponse(BaseModel):
     answer: str
     provider: str
     model: str
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/")

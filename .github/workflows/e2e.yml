@@ -154,6 +154,10 @@ jobs:
             app_dir: openai/openinference
             test_run: TestOpenAIOpenInference
             otel_service_name: openai/openinference
+          - name: pydantic-ai-opentelemetry
+            app_dir: pydantic-ai/opentelemetry
+            test_run: TestPydanticAIOpenTelemetry
+            otel_service_name: pydantic-ai-music-agent
 
     steps:
       - name: Checkout
@@ -187,6 +191,10 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           MAX_RUNS: '1'
         run: |
           set -euo pipefail

@@ -15,7 +15,7 @@ The app is a **Music History Explorer**: ask questions about jazz, classic rock,
 
 pydantic-ai ships with **native OpenTelemetry support** via `InstrumentationSettings`. Passing it to an `Agent` automatically emits spans following the [GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) — no monkey-patching or third-party SDKs required.
 
-`otel_setup.py` initialises a `TracerProvider` and `MeterProvider` that export to Dynatrace over OTLP/HTTP:
+`otel_setup.py` reads `DT_ENDPOINT` and `DT_API_TOKEN` from the environment and initialises a `TracerProvider` and `MeterProvider` that export to Dynatrace over OTLP/HTTP:
 
 ```python
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -91,17 +91,18 @@ Create or update the `.env` file at the **repo root** (one level above this fold
 
 ```bash
 # Dynatrace
-DT-ENDPOINT=https://<YOUR_ENV_ID>.live.dynatrace.com
-DT-TOKEN=dt0c01.<YOUR_TOKEN>
+DT_ENDPOINT=https://<YOUR_ENV_ID>.live.dynatrace.com
+DT_API_TOKEN=dt0c01.<YOUR_TOKEN>
 
 # AWS Bedrock
-Bedrock_username=<AWS_ACCESS_KEY_ID>
-bedrock_key=<AWS_SECRET_ACCESS_KEY>
+AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID>
+AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
 
-# Azure OpenAI (optional)
-Azure_openai_endpoint=https://<YOUR_RESOURCE>.openai.azure.com/
-Azure_openai_key=<YOUR_AZURE_KEY>
-Azure_openai_deployment=<YOUR_DEPLOYMENT_NAME>
+# Azure OpenAI (optional — falls back to Bedrock if not set)
+AZURE_OPENAI_ENDPOINT=https://<YOUR_RESOURCE>.openai.azure.com/
+AZURE_OPENAI_API_KEY=<YOUR_AZURE_KEY>
+AZURE_OPENAI_DEPLOYMENT=<YOUR_DEPLOYMENT_NAME>
+AZURE_OPENAI_API_VERSION=2024-02-01
 ```
 
 ### Install dependencies

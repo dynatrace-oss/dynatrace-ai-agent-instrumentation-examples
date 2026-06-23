@@ -59,6 +59,30 @@ func triggerHaiku(t *testing.T, withBody bool) {
 	}
 }
 
+// triggerMusicAgent POSTs a question to /api/ask on localhost:8000.
+func triggerMusicAgent(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/api/ask"
+
+	b, _ := json.Marshal(map[string]string{"question": "Tell me the what is the shortest music known"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/ask: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /api/ask returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // startApp runs make install then starts make run in <repoRoot>/<appDir>.
 // Registers cleanup to stop the app and, for apps with a collector, make stop.
 func startApp(t *testing.T, appDir string) {
