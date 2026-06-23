@@ -32,6 +32,11 @@ jobs:
             app_dir: openai/oneagent
             test_run: TestOpenAIOneAgent
             otel_service_name: openai/oneagent
+          - name: ollama-oneagent
+            app_dir: ollama/oneagent
+            test_run: TestOllamaOneAgent
+            otel_service_name: ollama/oneagent
+            ollama_model: tinyllama
 
     steps:
       - name: Checkout
@@ -50,6 +55,15 @@ jobs:
 
       - name: Install uv
         run: pip install "uv==$UV_VERSION"
+
+      - name: Set up Ollama
+        if: matrix.ollama_model != ''
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
+          ollama pull ${{ matrix.ollama_model }}
 
       - name: Install Dynatrace OneAgent
         env:
@@ -82,6 +96,7 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.ollama_model }}
         run: |
           set -euo pipefail
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
