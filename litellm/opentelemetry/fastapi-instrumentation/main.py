@@ -50,7 +50,6 @@ logger = logging.getLogger("litellm-gateway")
 Traceloop.init(
     app_name="litellm-gateway",
     api_endpoint=COLLECTOR_BASE_URL,
-    api_key="KEY",
     disable_batch=True,
     should_enrich_metrics=True,
     metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL),

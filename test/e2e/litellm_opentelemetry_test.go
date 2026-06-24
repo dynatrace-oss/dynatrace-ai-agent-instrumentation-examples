@@ -5,6 +5,10 @@ import (
 )
 
 func TestLiteLLMOpenTelemetry(t *testing.T) {
+	// CI sets OPENAI_API_BASE to the Azure endpoint for other tests; clear it so
+	// LiteLLM routes gpt-4o-mini to api.openai.com, not the Azure deployment.
+	t.Setenv("OPENAI_API_BASE", "")
+
 	startApp(t, "litellm/opentelemetry")
 	triggerLiteLLMChat(t)
 

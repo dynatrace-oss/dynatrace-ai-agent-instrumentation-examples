@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.azure import AzureProvider
 from pydantic_ai.providers.bedrock import BedrockProvider
 
@@ -57,7 +57,7 @@ def _bedrock_provider() -> BedrockProvider:
     )
 
 
-def build_azure_model() -> tuple[OpenAIModel, str, str]:
+def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     # Azure endpoint is only reachable from the corporate network;
     # falls back to a Bedrock model when unavailable.
     provider = AzureProvider(
@@ -66,7 +66,7 @@ def build_azure_model() -> tuple[OpenAIModel, str, str]:
         api_version=os.environ["AZURE_OPENAI_API_VERSION"],
     )
     deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
-    return OpenAIModel(deployment, provider=provider), "Azure OpenAI", deployment
+    return OpenAIChatModel(deployment, provider=provider), "Azure OpenAI", deployment
 
 
 def build_bedrock_sonnet() -> tuple[BedrockConverseModel, str, str]:
