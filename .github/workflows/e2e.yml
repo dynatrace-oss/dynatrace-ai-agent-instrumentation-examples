@@ -167,6 +167,11 @@ jobs:
             app_dir: openai-agents/opentelemetry
             test_run: TestOpenAIAgentsOpenTelemetry
             otel_service_name: openai-cs-agents
+          - name: mcp-opentelemetry
+            app_dir: mcp/opentelemetry
+            test_run: TestMCPOpenTelemetry
+            otel_service_name: mcp-agent-demo
+            node_version: '22'
           - name: litellm-opentelemetry
             app_dir: litellm/opentelemetry
             test_run: TestLiteLLMOpenTelemetry

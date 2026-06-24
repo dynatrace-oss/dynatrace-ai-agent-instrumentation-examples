@@ -83,6 +83,30 @@ func triggerMusicAgent(t *testing.T) {
 	}
 }
 
+// triggerMCPAgent POSTs a weather question to /invoke on localhost:8000.
+func triggerMCPAgent(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/invoke"
+
+	b, _ := json.Marshal(map[string]string{"message": "What is the weather?"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /invoke: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /invoke returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // triggerCSAgent POSTs an airline question to /chat on localhost:8000.
 func triggerCSAgent(t *testing.T) {
 	t.Helper()
