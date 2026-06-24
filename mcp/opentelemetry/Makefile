@@ -2,6 +2,8 @@ SHELL            := /bin/bash
 -include .env
 export
 
+APP_IMAGE        ?=
+BUILD_PLATFORM   ?= linux/amd64
 PORT             ?= 8000
 
 .PHONY: install run build push request help
@@ -13,8 +15,9 @@ install: ## Install dependencies for agent and MCP server
 	cd ai-agent && uv sync
 	cd mpc-server && npm install
 
-run: ## Run the MCP AI agent (requires MCP server running separately)
-	cd ai-agent && uv run python3 -m uvicorn main:app --host 0.0.0.0 --port $(PORT)
+run: ## Run app locally on port $(PORT)
+	(cd mpc-server && npm run start) & \
+	cd ai-agent && uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"

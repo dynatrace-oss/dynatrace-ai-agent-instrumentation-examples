@@ -7,11 +7,11 @@ def setup_tracing(service_name):
     # the data reported to Dynatrace
     os.environ['TRACELOOP_TELEMETRY'] = "false"
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
-    token = read_secret("dynatrace_otel")
+    token = os.environ.get("DT_API_TOKEN") or read_secret("dynatrace_otel")
     headers = { "Authorization": f"Api-Token {token}" }
-    OTEL_ENDPOINT = os.environ.get(
-        "OTEL_ENDPOINT", "https://wkf10640.live.dynatrace.com/api/v2/otlp" #manually configure your DT tenant here
-    )
+    OTEL_ENDPOINT = os.environ.get("OTEL_ENDPOINT", "").rstrip("/")
+    if not OTEL_ENDPOINT:
+        raise ValueError("OTEL_ENDPOINT environment variable is required")
     resource = {
         "gen_ai.agent.name": service_name,
         "service.name": service_name,
