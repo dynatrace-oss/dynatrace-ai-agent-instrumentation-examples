@@ -45,6 +45,7 @@ _instrumentation = InstrumentationSettings(
     meter_provider=_meter_provider,
     include_content=True,  # capture prompts & completions as span events
 )
+Agent.instrument_all(_instrumentation)
 
 tracer = trace.get_tracer("music-agent-api")
 
@@ -137,7 +138,6 @@ async def ask_question(request: QuestionRequest):
                 agent = Agent(
                     model=model,
                     system_prompt=MUSIC_SYSTEM_PROMPT,
-                    instrument=_instrumentation,
                 )
                 result = await agent.run(request.question)
                 answer = result.output if hasattr(result, "output") else result.data
