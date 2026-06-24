@@ -124,7 +124,6 @@ func triggerLiteLLMChat(t *testing.T) {
 		"messages": []map[string]string{
 			{"role": "user", "content": "Write a haiku about observability"},
 		},
-		"max_tokens": 60,
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
