@@ -210,6 +210,38 @@ func startCLIApp(t *testing.T, appDir string) {
 	})
 }
 
+// startCLIAppWithTarget runs make install then starts make <target> in <repoRoot>/<appDir>.
+// Use when a non-default make target is needed (e.g. "run-openpipeline").
+func startCLIAppWithTarget(t *testing.T, appDir, target string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot(), appDir)
+
+	install := exec.Command("make", "install")
+	install.Dir = dir
+	install.Env = []string{
+		"PATH=" + os.Getenv("PATH"),
+		"HOME=" + os.Getenv("HOME"),
+	}
+	install.Stdout = os.Stdout
+	install.Stderr = os.Stderr
+	if err := install.Run(); err != nil {
+		t.Fatalf("make install in %s: %v", appDir, err)
+	}
+
+	app, err := process.StartCLIWithTarget(dir, target)
+	if err != nil {
+		t.Fatalf("start cli app %s (%s): %v", appDir, target, err)
+	}
+	t.Cleanup(func() {
+		if err := app.Stop(); err != nil {
+			t.Logf("warning: stop cli app %s: %v", appDir, err)
+		}
+		if err := exec.Command("make", "-C", dir, "stop").Run(); err != nil {
+			t.Logf("warning: make stop in %s: %v", appDir, err)
+		}
+	})
+}
+
 // assertSpanExists polls DT until at least one span matching dql is found
 // (3-minute timeout). Use this when the relevant attribute cannot be asserted
 // (e.g. instrumentation libraries that don't emit gen_ai.system).

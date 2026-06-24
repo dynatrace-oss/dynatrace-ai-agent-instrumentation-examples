@@ -159,6 +159,10 @@ jobs:
             test_run: TestLangfuseOpenTelemetryNode
             otel_service_name: langfuse-node
             needs_node: true
+          - name: langfuse-opentelemetry-openpipeline
+            app_dir: langfuse/opentelemetry
+            test_run: TestLangfuseOpenTelemetryOpenPipeline
+            otel_service_name: langfuse-openpipeline
           - name: pydantic-ai-opentelemetry
             app_dir: pydantic-ai/opentelemetry
             test_run: TestPydanticAIOpenTelemetry

@@ -77,6 +77,12 @@ processors:
           # langfuse 4.x emits model parameters as a JSON string in langfuse.observation.model.parameters.
           - set(attributes["gen_ai.request.temperature"], Double(ParseJSON(attributes["langfuse.observation.model.parameters"])["temperature"])) where attributes["langfuse.observation.model.parameters"] != nil
 
+          # ── 12. CLEANUP ───────────────────────────────────────────────────────
+          # Remove the routing discriminator after transformation. OpenPipeline routes
+          # on isNotNull(langfuse.observation.type), so deleting it here prevents
+          # collector-transformed spans from being re-processed by OpenPipeline.
+          - delete_key(attributes, "langfuse.observation.type")
+
 exporters:
   debug:
     verbosity: detailed
