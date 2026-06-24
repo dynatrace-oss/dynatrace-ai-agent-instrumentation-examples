@@ -154,6 +154,10 @@ jobs:
             app_dir: pydantic-ai/opentelemetry
             test_run: TestPydanticAIOpenTelemetry
             otel_service_name: pydantic-ai-music-agent
+          - name: openai-agents-opentelemetry
+            app_dir: openai-agents/opentelemetry
+            test_run: TestOpenAIAgentsOpenTelemetry
+            otel_service_name: openai-cs-agents
 
     steps:
       - name: Checkout
