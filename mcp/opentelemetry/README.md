@@ -17,7 +17,7 @@ The Agent uses a tool to randomly select a city and request a weather forecast f
 The Dynatrace end-to-end AI-powered observability platform combined with Traceloop's [OpenLLMetry OpenTelemetry SDK](https://github.com/traceloop/openllmetry) can seamlessly provide comprehensive insights into AI Agents in production environments. By observing AI agents and MCP servers, businesses can make informed decisions, optimize performance, cost, and get visibility into the execution flow through tracing.
 
 We simplified this process, hiding all the complexity inside [dynatrace.py](./ai-agent/dynatrace.py).
-For sending data to your Dynatrace tenant, you can configure the `OTEL_ENDPOINT` env var with your Dynatrace URL for ingesting [OTLP](https://docs.dynatrace.com/docs/shortlink/otel-getstarted-otlpexport), for example: `https://wkf10640.live.dynatrace.com/api/v2/otlp`.
+For sending data to your Dynatrace tenant, configure the `OTEL_ENDPOINT` env var with your Dynatrace [OTLP](https://docs.dynatrace.com/docs/shortlink/otel-getstarted-otlpexport) ingest URL, for example: `https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp`.
 
 The Dynatrace API access token will be read from your filesystem under `/etc/secrets/dynatrace_otel`.
 
@@ -52,7 +52,7 @@ export AZURE_OPENAI_ENDPOINT=https://<YOUR_RESOURCE>.openai.azure.com/
 export AZURE_OPENAI_DEPLOYMENT=<YOUR_DEPLOYMENT>
 ```
 
-The `DT_API_TOKEN` env var takes precedence over the `/etc/secrets/dynatrace_otel` file, which is used for Kubernetes deployments.
+`DT_API_TOKEN` takes precedence over the `/etc/secrets/dynatrace_otel` file, which is used for Kubernetes deployments.
 
 ### Install and run
 

@@ -207,6 +207,7 @@ jobs:
           TEST_RUN: ${{ matrix.test_run }}
           OTEL_SERVICE_NAME: ${{ matrix.otel_service_name }}
           DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
+          OTEL_ENDPOINT: ${{ secrets.DT_ENDPOINT }}/api/v2/otlp
           DT_APPS_ENDPOINT: ${{ secrets.DT_APPS_ENDPOINT }}
           DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
