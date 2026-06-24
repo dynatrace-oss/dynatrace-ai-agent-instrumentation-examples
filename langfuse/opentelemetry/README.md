@@ -145,6 +145,7 @@ make run-openpipeline
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
 2. Your haiku request appears in the Explorer tab with model name, token usage, and message content.
+   ![AI Observability — Langfuse span explorer](assets/explorer.png)
 3. Open a span to inspect the full conversation and `gen_ai.*` attributes.
 4. Spans with the same `session_id` are grouped under the same conversation thread.
 

@@ -56,6 +56,15 @@ Node.js app → OTLP → Dynatrace → (OpenPipeline: langfuse.* → gen_ai.*)
 
 Requires the processors from `../opentelemetry/openpipeline-langfuse.yaml` to be deployed.
 
+## Visualize in Dynatrace AI Observability
+
+1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
+2. Your haiku request appears in the Explorer tab with model name, token usage, and message content.
+   ![AI Observability — Langfuse Node.js span explorer](assets/explorer.png)
+3. Open a span to inspect the full `gen_ai.*` attributes.
+
+---
+
 ## Environment variables
 
 | Variable | Required | Description |
