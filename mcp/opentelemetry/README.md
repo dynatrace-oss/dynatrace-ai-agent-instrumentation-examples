@@ -19,7 +19,7 @@ The Dynatrace end-to-end AI-powered observability platform combined with Tracelo
 We simplified this process, hiding all the complexity inside [dynatrace.py](./ai-agent/dynatrace.py).
 For sending data to your Dynatrace tenant, configure the `OTEL_ENDPOINT` env var with your Dynatrace [OTLP](https://docs.dynatrace.com/docs/shortlink/otel-getstarted-otlpexport) ingest URL, for example: `https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp`.
 
-The Dynatrace API access token will be read from your filesystem under `/etc/secrets/dynatrace_otel`.
+The Dynatrace API access token is read from the `DT_API_TOKEN` environment variable, with a fallback to `/etc/secrets/dynatrace_otel` for Kubernetes deployments.
 
 ### MCP Server
 
@@ -27,7 +27,7 @@ The Model Context Protocol (MCP) server in this example demonstrates how to crea
 
 This example MCP server exposes a weather forecast tool that returns mock weather data for various cities. The AI agent connects to this server using LangChain's [LangGraph MCP adapter](https://docs.langchain.com/oss/python/langchain/mcp), demonstrating how agents can dynamically discover and use external capabilities. The server includes comprehensive OpenTelemetry tracing to provide full observability into tool invocations.
 
-The MCP server also reads the Dynatrace API access token from your filesystem under `/etc/secrets/dynatrace_otel`.
+The MCP server reads the same `DT_API_TOKEN` and `OTEL_ENDPOINT` environment variables as the AI agent.
 
 ## How to use
 
@@ -51,8 +51,6 @@ export AZURE_OPENAI_API_VERSION=2024-12-01-preview
 export AZURE_OPENAI_ENDPOINT=https://<YOUR_RESOURCE>.openai.azure.com/
 export AZURE_OPENAI_DEPLOYMENT=<YOUR_DEPLOYMENT>
 ```
-
-`DT_API_TOKEN` takes precedence over the `/etc/secrets/dynatrace_otel` file, which is used for Kubernetes deployments.
 
 ### Install and run
 
