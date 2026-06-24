@@ -10,6 +10,7 @@ func TestAWSBedrockOneAgent(t *testing.T) {
 
 	auditSpan(t, "aws-bedrock", "oneagent", BedrockProfile,
 		`fetch spans, from: now()-10m
+| filter service.name == "aws-bedrock/oneagent"
 | filter gen_ai.provider.name == "aws_bedrock" and dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | limit 1`)

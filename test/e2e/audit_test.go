@@ -107,6 +107,34 @@ func init() {
 	}
 }
 
+// OpenAIProfile extends generic with OpenAI prompt-caching attributes.
+var OpenAIProfile Profile
+
+func init() {
+	OpenAIProfile = Profile{
+		Name:     "openai",
+		Required: append([]AttributeCheck{}, genericRequired...),
+		Optional: append(append([]AttributeCheck{}, genericOptional...),
+			AttributeCheck{Name: "gen_ai.prompt_caching", RuleID: "AR-022"},
+			AttributeCheck{Name: "gen_ai.cache.type", RuleID: "AR-023"},
+		),
+	}
+}
+
+// AzureProfile extends generic with Azure content filter attributes.
+var AzureProfile Profile
+
+func init() {
+	AzureProfile = Profile{
+		Name: "azure",
+		Required: append(append([]AttributeCheck{}, genericRequired...),
+			AttributeCheck{Name: "gen_ai.prompt.prompt_filter_results", RuleID: "AR-015"},
+			AttributeCheck{Name: "gen_ai.completion.content_filter_results", RuleID: "AR-016"},
+		),
+		Optional: append([]AttributeCheck{}, genericOptional...),
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Core functions
 // ---------------------------------------------------------------------------
@@ -276,6 +304,33 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string)
 	}
 	if len(records) == 0 {
 		t.Fatalf("no spans returned from DT")
+	}
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
+	writeReport(t, report)
+
+	for _, r := range report.Required {
+		if r.Status == "fail" {
+			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
+		}
+	}
+	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
+		report.Verdict, len(spans), sdk, instrumentation)
+}
+
+// auditSpanOptional is like auditSpan but skips the (sub)test when no anchor
+// span is found within the timeout instead of failing. Use for provider-specific
+// audits where the provider may not have been selected in the current run.
+func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s spans found — provider likely not selected this run", sdk, instrumentation)
+		return
 	}
 
 	spans := fetchTraceSpans(t, ctx, records[0])

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "UTC",
+  "schedule": ["before 5am on Monday"],
+  "ignorePaths": ["**/.venv/**"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Makefile$"],
+      "matchStrings": [
+        "ghcr\\.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:(?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements", "pep621"],
+      "groupName": "python dependencies"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "docker base images"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "groupName": "go modules"
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector"],
+      "groupName": "collector image"
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies"
+    }
+  ]
+}

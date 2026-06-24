@@ -13,82 +13,65 @@ This example contains a demo of a Customer Service Agent interface built on top 
 
 The Dynatrace full-stack observability platform combined with Traceloop's OpenLLMetry OpenTelemetry SDK can seamlessly provide comprehensive insights into Large Language Models (LLMs) in production environments. By observing AI models, businesses can make informed decisions, optimize performance, and ensure compliance with emerging AI regulations.
 
-Enabling and configuring OpenLLMetry is as easy as to copy/paste this snippet into your [`api.py`](./api.py) file.
+Enabling and configuring OpenLLMetry requires a Traceloop init call in [`api.py`](./api.py):
 
 ```python
 os.environ['TRACELOOP_TELEMETRY'] = "false"
 os.environ['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] = "delta"
 
-def read_secret(secret: str):
-    try:
-        with open(f"/etc/secrets/{secret}", "r") as f:
-            return f.read().rstrip()
-    except Exception as e:
-        print("No token was provided")
-        print(e)
-        return ""
-
-token = read_secret("dynatrace_otel") # read your DT API token from a file in /etc/secrets/dynatrace_otel
+token = os.environ.get("DT_API_TOKEN") or read_secret("dynatrace_otel")
 headers = {"Authorization": f"Api-Token {token}"}
+_dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
+
 from traceloop.sdk import Traceloop
 Traceloop.init(
     app_name="openai-cs-agents",
-    api_endpoint="https://wkf10640.live.dynatrace.com/api/v2/otlp", # configure your DT tenant here
+    api_endpoint=DT_OTLP_ENDPOINT,
     disable_batch=True,
     headers=headers,
     should_enrich_metrics=True,
 )
 ```
 
+The token is read from the `DT_API_TOKEN` environment variable first, falling back to `/etc/secrets/dynatrace_otel` for Kubernetes deployments.
 
 ## How to use
 
-### Setting your OpenAI API key
+### Prerequisites
 
-You can set your [Azure]OpenAI API key in your environment variables by running the following command in your terminal:
+- Python 3.11+
+- Azure OpenAI resource with a `gpt-4o` deployment
+- A Dynatrace environment with an API token scoped to `openTelemetryTrace.ingest` and `metrics.ingest`
 
-```bash
-export OPENAI_API_KEY=your_api_key
-```
-
-```bash
-export AZURE_OPENAI_API_KEY=your_api_key
-export AZURE_OPENAI_API_VERSION='2024-08-01-preview'
-export AZURE_OPENAI_ENDPOINT=your_endpoint
-export AZURE_OPENAI_DEPLOYMENT=your_deployment
-```
-
-
-Alternatively, you can set the `OPENAI` and/or `AZURE` environment variables in an `.env` file at the root of the `python-backend` folder. You will need to install the `python-dotenv` package to load the environment variables from the `.env` file.
-
-### Install dependencies
-
-Install the dependencies for the backend by running the following commands:
+### Configure environment variables
 
 ```bash
-cd python-backend
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Dynatrace
+export DT_ENDPOINT=https://<YOUR_ENV_ID>.live.dynatrace.com
+export DT_API_TOKEN=dt0c01.<YOUR_TOKEN>
+
+# Azure OpenAI
+export AZURE_OPENAI_API_KEY=<YOUR_KEY>
+export AZURE_OPENAI_API_VERSION=2024-08-01-preview
+export AZURE_OPENAI_ENDPOINT=https://<YOUR_RESOURCE>.openai.azure.com/
+export AZURE_OPENAI_DEPLOYMENT=gpt-4o
 ```
 
-For the UI, you can run:
+### Install and run
 
 ```bash
-cd ui
-npm install
+make install   # install Python dependencies
+make run       # start the backend on port 8000
+make request   # send a test question (in a second terminal)
 ```
 
-### Run the app
-
-From the `ui` folder, run:
+The backend API is available at [http://localhost:8000](http://localhost:8000). A Next.js frontend is available in the `ui/` folder:
 
 ```bash
-npm run dev
+cd ui && npm install && npm run dev
 ```
 
-The frontend will be available at: [http://localhost:3000](http://localhost:3000)
-
-This command will also start the backend.
+The frontend will be available at [http://localhost:3000](http://localhost:3000).
 
 ![Trace View](../../assets/trace-view.png)

@@ -8,10 +8,6 @@ on:
 permissions:
   contents: read
 
-env:
-  GO_VERSION: '1.22'
-  UV_VERSION: '0.11.21'
-
 jobs:
   oneagent:
     name: E2E / ${{ matrix.name }}
@@ -32,6 +28,11 @@ jobs:
             app_dir: openai/oneagent
             test_run: TestOpenAIOneAgent
             otel_service_name: openai/oneagent
+          - name: ollama-oneagent
+            app_dir: ollama/oneagent
+            test_run: TestOllamaOneAgent
+            otel_service_name: ollama/oneagent
+            ollama_model: tinyllama
 
     steps:
       - name: Checkout
@@ -40,7 +41,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: test/e2e/go.mod
           cache: false
 
       - name: Set up Python
@@ -49,7 +50,23 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        run: pip install "uv==$UV_VERSION"
+        run: pip install -r test/e2e/requirements-tools.txt
+
+      - name: Cache Ollama model
+        if: matrix.ollama_model != ''
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ matrix.ollama_model }}
+
+      - name: Set up Ollama
+        if: matrix.ollama_model != ''
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
+          ollama pull ${{ matrix.ollama_model }}
 
       - name: Install Dynatrace OneAgent
         env:
@@ -81,7 +98,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: |
           set -euo pipefail
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
@@ -142,6 +159,14 @@ jobs:
             test_run: TestLangfuseOpenTelemetryNode
             otel_service_name: langfuse-node
             needs_node: true
+          - name: pydantic-ai-opentelemetry
+            app_dir: pydantic-ai/opentelemetry
+            test_run: TestPydanticAIOpenTelemetry
+            otel_service_name: pydantic-ai-music-agent
+          - name: openai-agents-opentelemetry
+            app_dir: openai-agents/opentelemetry
+            test_run: TestOpenAIAgentsOpenTelemetry
+            otel_service_name: openai-cs-agents
 
     steps:
       - name: Checkout
@@ -150,7 +175,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: test/e2e/go.mod
           cache: false
 
       - name: Set up Python
@@ -159,7 +184,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        run: pip install "uv==$UV_VERSION"
+        run: pip install -r test/e2e/requirements-tools.txt
 
       - name: Set up Node.js
         if: ${{ matrix.needs_node }}
@@ -181,6 +206,10 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           MAX_RUNS: '1'
         run: |
           set -euo pipefail

@@ -1,0 +1,27 @@
+version: 2
+# Version updates disabled (open-pull-requests-limit: 0) — Renovate handles dependency updates.
+# Security alerts remain active via GitHub repository settings.
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "gomod"
+    directory: "/test/e2e"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0

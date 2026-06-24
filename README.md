@@ -61,27 +61,46 @@ See the **[AI Coding Agents](./ai-coding-agents/)** section for setup guides cov
 
 Monitor specific AI provider SDKs with Dynatrace.
 
-| SDK | OneAgent | OpenInference |
-|-----|----------|---------------|
-| [OpenAI](./openai/openinference/) | — | [✓](./openai/openinference/) |
+| Provider | OneAgent | OpenInference | OpenTelemetry |
+|----------|----------|---------------|---------------|
+| [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) |
+| [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | [✓](./cohere/oneagent/) | — | — |
+| [Groq](./groq/oneagent/) | [✓](./groq/oneagent/) | — | — |
+| [Mistral](./mistral/oneagent/) | [✓](./mistral/oneagent/) | — | — |
+| [Ollama](./ollama/oneagent/) | [✓](./ollama/oneagent/) | — | — |
+| [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) | — |
 
 ### Agent Framework Demos
 
 Monitor AI agent frameworks with Dynatrace.
 
-| Framework | Path |
-|-----------|------|
-| [OpenAI Agents SDK](./openai-agents/opentelemetry/) | openai-agents/opentelemetry |
-| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | microsoft-agent-framework/opentelemetry |
-| [AWS Strands Agents](./aws-strands/oneagent/) | aws-strands/oneagent |
-| [AWS Bedrock Agents](./aws-bedrock-agents/oneagent/) | aws-bedrock-agents/oneagent |
-| [Google ADK](./google-adk/opentelemetry/) | google-adk/opentelemetry |
-| [MCP (Model Context Protocol)](./mcp/oneagent/) | mcp/oneagent |
-| [CrewAI](./crewai/opentelemetry/) | crewai/opentelemetry |
-| [Pydantic AI](./pydantic-ai/opentelemetry/) | pydantic-ai/opentelemetry |
-| [LiteLLM + FastAPI](./litellm/opentelemetry/) | litellm/opentelemetry |
-| [AI Coding Agents](./ai-coding-agents/) | ai-coding-agents |
-| [Real User Monitoring](./rum/opentelemetry/) | rum/opentelemetry |
+| Framework | OneAgent | OpenInference | OpenTelemetry |
+|-----------|----------|---------------|---------------|
+| [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
+| [AWS Strands Agents](./aws-strands/oneagent/) | [✓](./aws-strands/oneagent/) | — | — |
+| [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
+| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
+| [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
+| [LiteLLM](./litellm/opentelemetry/) | — | — | [✓](./litellm/opentelemetry/) |
+| [MCP (Model Context Protocol)](./mcp/oneagent/) | [✓](./mcp/oneagent/) | — | — |
+| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
+| [OpenAI Agents SDK](./openai-agents/opentelemetry/) | — | — | [✓](./openai-agents/opentelemetry/) |
+| [Pydantic AI](./pydantic-ai/opentelemetry/) | — | — | [✓](./pydantic-ai/opentelemetry/) |
+| [Real User Monitoring](./rum/opentelemetry/) | — | — | [✓](./rum/opentelemetry/) |
+
+### AI Coding Agent Demos
+
+Observe AI coding agents with zero code changes using built-in OpenTelemetry signals.
+
+| Agent | Path |
+|-------|------|
+| [Claude Code](./ai-coding-agents/claude-code/) | ai-coding-agents/claude-code |
+| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | ai-coding-agents/github-copilot-sdk |
+| [OpenAI Codex](./ai-coding-agents/openai-codex/) | ai-coding-agents/openai-codex |
+| [OpenClaw](./ai-coding-agents/openclaw/) | ai-coding-agents/openclaw |
+| [OpenClaw Observability Plugin](./ai-coding-agents/openclaw-observability-plugin/) | ai-coding-agents/openclaw-observability-plugin |
+| [OpenCode](./ai-coding-agents/opencode/) | ai-coding-agents/opencode |
 
 ## Getting Started
 

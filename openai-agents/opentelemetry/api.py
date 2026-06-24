@@ -12,9 +12,10 @@ def read_secret(secret: str):
         print(e)
         return ""
 
-token = read_secret("dynatrace_otel")
+token = os.environ.get("DT_API_TOKEN") or read_secret("dynatrace_otel")
 headers = {"Authorization": f"Api-Token {token}"}
-DT_OTLP_ENDPOINT = "https://wkf10640.live.dynatrace.com/api/v2/otlp"
+_dt_base = os.environ.get("DT_ENDPOINT", "https://wkf10640.live.dynatrace.com").rstrip("/")
+DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
 
 from traceloop.sdk import Traceloop
 Traceloop.init(
@@ -218,6 +219,11 @@ def _build_agents_list() -> List[Dict[str, Any]]:
 # =========================
 # Main Chat Endpoint
 # =========================
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(req: ChatRequest):
