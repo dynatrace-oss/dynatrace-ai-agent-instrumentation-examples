@@ -150,6 +150,15 @@ jobs:
             app_dir: openai/openinference
             test_run: TestOpenAIOpenInference
             otel_service_name: openai/openinference
+          - name: langfuse-opentelemetry
+            app_dir: langfuse/opentelemetry
+            test_run: TestLangfuseOpenTelemetry
+            otel_service_name: langfuse
+          - name: langfuse-opentelemetry-node
+            app_dir: langfuse/opentelemetry-node
+            test_run: TestLangfuseOpenTelemetryNode
+            otel_service_name: langfuse-node
+            needs_node: true
           - name: pydantic-ai-opentelemetry
             app_dir: pydantic-ai/opentelemetry
             test_run: TestPydanticAIOpenTelemetry
@@ -180,6 +189,12 @@ jobs:
 
       - name: Install uv
         run: pip install -r test/e2e/requirements-tools.txt
+
+      - name: Set up Node.js
+        if: ${{ matrix.needs_node }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
 
       - name: Run e2e test
         working-directory: test/e2e
