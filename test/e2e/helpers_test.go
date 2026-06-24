@@ -108,12 +108,19 @@ func triggerCSAgent(t *testing.T) {
 }
 
 // triggerLiteLLMChat POSTs a chat completion request to /chat/completions on localhost:8000.
+// When OPENAI_API_VERSION is set the environment is Azure; the model is prefixed with
+// "azure/" so LiteLLM routes to the Azure deployment instead of api.openai.com.
 func triggerLiteLLMChat(t *testing.T) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/chat/completions"
 
+	model := "gpt-5.4-mini"
+	if deployment := os.Getenv("MODEL"); deployment != "" && os.Getenv("OPENAI_API_VERSION") != "" {
+		model = "azure/" + deployment
+	}
+
 	b, _ := json.Marshal(map[string]interface{}{
-		"model": "gpt-4o-mini",
+		"model": model,
 		"messages": []map[string]string{
 			{"role": "user", "content": "Write a haiku about observability"},
 		},
