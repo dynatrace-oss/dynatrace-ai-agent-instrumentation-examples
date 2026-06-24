@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.azure import AzureProvider
 from pydantic_ai.providers.bedrock import BedrockProvider
 
@@ -45,6 +45,7 @@ _instrumentation = InstrumentationSettings(
     meter_provider=_meter_provider,
     include_content=True,  # capture prompts & completions as span events
 )
+Agent.instrument_all(_instrumentation)
 
 tracer = trace.get_tracer("music-agent-api")
 
@@ -57,7 +58,7 @@ def _bedrock_provider() -> BedrockProvider:
     )
 
 
-def build_azure_model() -> tuple[OpenAIModel, str, str]:
+def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     # Azure endpoint is only reachable from the corporate network;
     # falls back to a Bedrock model when unavailable.
     provider = AzureProvider(
@@ -66,7 +67,7 @@ def build_azure_model() -> tuple[OpenAIModel, str, str]:
         api_version=os.environ["AZURE_OPENAI_API_VERSION"],
     )
     deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
-    return OpenAIModel(deployment, provider=provider), "Azure OpenAI", deployment
+    return OpenAIChatModel(deployment, provider=provider), "Azure OpenAI", deployment
 
 
 def build_bedrock_sonnet() -> tuple[BedrockConverseModel, str, str]:
@@ -137,13 +138,12 @@ async def ask_question(request: QuestionRequest):
                 agent = Agent(
                     model=model,
                     system_prompt=MUSIC_SYSTEM_PROMPT,
-                    instrument=_instrumentation,
                 )
                 result = await agent.run(request.question)
                 answer = result.output if hasattr(result, "output") else result.data
 
                 # Record token usage on the outer span
-                usage = result.usage()
+                usage = result.usage
                 if usage:
                     span.set_attribute("gen_ai.usage.input_tokens", usage.input_tokens or 0)
                     span.set_attribute("gen_ai.usage.output_tokens", usage.output_tokens or 0)
