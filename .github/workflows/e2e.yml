@@ -158,6 +158,10 @@ jobs:
             app_dir: openai-agents/opentelemetry
             test_run: TestOpenAIAgentsOpenTelemetry
             otel_service_name: openai-cs-agents
+          - name: litellm-opentelemetry
+            app_dir: litellm/opentelemetry
+            test_run: TestLiteLLMOpenTelemetry
+            otel_service_name: litellm-gateway
 
     steps:
       - name: Checkout

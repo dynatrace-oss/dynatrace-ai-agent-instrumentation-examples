@@ -84,6 +84,11 @@ app = FastAPI()
 FastAPIInstrumentor.instrument_app(app)
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
