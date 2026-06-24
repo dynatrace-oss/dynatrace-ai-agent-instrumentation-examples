@@ -143,7 +143,7 @@ async def ask_question(request: QuestionRequest):
                 answer = result.output if hasattr(result, "output") else result.data
 
                 # Record token usage on the outer span
-                usage = result.usage()
+                usage = result.usage
                 if usage:
                     span.set_attribute("gen_ai.usage.input_tokens", usage.input_tokens or 0)
                     span.set_attribute("gen_ai.usage.output_tokens", usage.output_tokens or 0)
