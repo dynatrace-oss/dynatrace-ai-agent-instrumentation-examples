@@ -16,7 +16,7 @@ install: ## Install dependencies for agent and MCP server
 	cd mpc-server && npm install
 
 run: ## Run app locally on port $(PORT)
-	(cd mpc-server && npm run start) & \
+	(cd mpc-server && PORT=3000 npm run start) & \
 	cd ai-agent && uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
