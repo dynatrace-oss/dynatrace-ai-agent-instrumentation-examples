@@ -4,17 +4,11 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from main import setup_instrumentation, write_haiku, _guardrail_config
+from main import setup_instrumentation, write_haiku
 
 setup_instrumentation()
 
 app = FastAPI(title="Haiku Writer")
-
-
-@app.on_event("startup")
-async def trigger_guardrail_on_startup():
-    if _guardrail_config():
-        await asyncio.to_thread(write_haiku, "football strategies for the World Cup")
 
 
 class HaikuRequest(BaseModel):
