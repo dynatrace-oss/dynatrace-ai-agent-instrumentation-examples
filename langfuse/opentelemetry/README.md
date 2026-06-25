@@ -1,7 +1,7 @@
 # Langfuse + Dynatrace AI Observability
 
 Generate a haiku with an LLM, send the Langfuse trace to Dynatrace, and see it in the **AI Observability** app.
-Langfuse uses its own semantic conventions (`langfuse.model`, `langfuse.usage.*`, `langfuse.as_type`, etc.) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
+Langfuse SDK 4.x emits its own semantic conventions (`langfuse.observation.*`) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
 
 ---
 
@@ -22,7 +22,7 @@ Langfuse uses its own semantic conventions (`langfuse.model`, `langfuse.usage.*`
 ## What you'll build
 
 - Calls an LLM to generate a haiku using the Langfuse instrumentation library.
-- Produces OpenTelemetry traces with Langfuse semantic conventions (`langfuse.*` attributes).
+- Produces OpenTelemetry traces with Langfuse SDK 4.x semantic conventions (`langfuse.observation.*` attributes).
 - Normalizes Langfuse attributes to Dynatrace `gen_ai.*` format -- either via a local OTel Collector or via Dynatrace OpenPipeline.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, conversation grouping, and message content.
 
@@ -74,6 +74,7 @@ DT_API_TOKEN=dt0c01.****.*****
 OPENAI_API_KEY=**********************
 MODEL=gpt-4o-mini                        # optional, defaults to gpt-4o-mini
 TOPIC=observability                      # optional, haiku topic
+LANGFUSE_SESSION_ID=demo-session         # optional, maps to gen_ai.conversation.id
 
 # Azure OpenAI (optional)
 OPENAI_API_BASE=https://your-endpoint.openai.azure.com/
@@ -102,7 +103,7 @@ App  →  Langfuse SDK (OTLP export)  →  OTel Collector (transform processor) 
 make run
 ```
 
-The collector listens on port `4318`. The `transform/langfuse` processor renames `langfuse.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
+The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A `spanmetrics` connector also derives `gen_ai.client.operation.duration` (latency histogram) and `gen_ai.client.requests_total` (counter) from spans.
 
 **Useful commands:**
 
@@ -130,7 +131,7 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`.
 4. Go to the **Routing** tab and add an entry:
-   - Matcher: `isNotNull(langfuse.as_type)`
+   - Matcher: `isNotNull(langfuse.observation.type)`
    - Pipeline: `langfuse-ai-spans`
 
 ### Step 2 -- Run the app
@@ -153,23 +154,23 @@ make run-openpipeline
 
 ## Attribute mapping reference
 
+These mappings are applied by both the OTel Collector (`transform/langfuse` processor) and Dynatrace OpenPipeline. Langfuse SDK 4.x attribute names are used.
+
 | Langfuse source | Dynatrace target | Notes |
 |---|---|---|
-| `langfuse.as_type` | `gen_ai.operation.name` | `"generation"` → `"chat"`, `"embedding"` → `"embeddings"`, others pass through |
-| `langfuse.model` | `gen_ai.request.model` | generation and embedding spans only |
+| `langfuse.observation.type` | `gen_ai.operation.name` | `"generation"` → `"chat"`, `"embedding"` → `"embeddings"`, others pass through |
+| `langfuse.observation.model.name` | `gen_ai.request.model` | generation and embedding spans only |
 | _(derived from model name)_ | `gen_ai.provider.name` | inferred from model prefix (openai, anthropic, google, meta, mistral, cohere) |
 | _(mirrored)_ | `gen_ai.response.model` | copied from `gen_ai.request.model` on generation spans |
 | _(hardcoded)_ | `llm.request.type = "chat"` | set on generation spans for Prompts view filter |
-| `langfuse.usage.prompt_tokens` / `langfuse.usage.input` | `gen_ai.usage.input_tokens` | both SDK schemas supported |
-| `langfuse.usage.completion_tokens` / `langfuse.usage.output` | `gen_ai.usage.output_tokens` | both SDK schemas supported |
-| `langfuse.usage.cache_read_input_tokens` | `gen_ai.usage.prompt_caching.cache_read_input_tokens` | |
-| `langfuse.usage.cache_creation_input_tokens` | `gen_ai.usage.prompt_caching.cache_creation_input_tokens` | |
-| `langfuse.input` | `gen_ai.input.messages` | generation spans only; prompt content |
-| `langfuse.output` | `gen_ai.output.messages` | generation spans only; completion content |
-| `langfuse.session_id` / `langfuse.sessionId` | `gen_ai.conversation.id` + `session.id` | enables conversation thread grouping |
+| `langfuse.observation.usage_details` (JSON) | `gen_ai.usage.input_tokens` | extracted from `prompt_tokens` key |
+| `langfuse.observation.usage_details` (JSON) | `gen_ai.usage.output_tokens` | extracted from `completion_tokens` key |
+| `langfuse.observation.input` | `gen_ai.input.messages` | generation spans only; prompt messages |
+| `langfuse.observation.output` | `gen_ai.output.messages` | generation spans only; completion content |
+| `langfuse.observation.model.parameters` (JSON) | `gen_ai.request.temperature` | extracted from `temperature` key |
+| `langfuse.session_id` / `langfuse.sessionId` / `session.id` | `gen_ai.conversation.id` + `session.id` | enables conversation thread grouping; Python SDK sets `session.id` directly |
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
-| `langfuse.modelParameters.temperature` | `gen_ai.request.temperature` | |
-| `langfuse.version` / `langfuse.release` | `service.version` | |
+| `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
 
 ---
@@ -189,7 +190,7 @@ make run-openpipeline
 **Spans in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.provider.name` to be set -- added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml`.
-- Option B: confirm the OpenPipeline routing entry is active -- matcher `isNotNull(langfuse.as_type)`, pipeline `langfuse-ai-spans`.
+- Option B: confirm the OpenPipeline routing entry is active -- matcher `isNotNull(langfuse.observation.type)`, pipeline `langfuse-ai-spans`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
