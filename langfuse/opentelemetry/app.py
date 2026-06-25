@@ -1,7 +1,6 @@
 import os
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from langfuse import Langfuse, observe, get_client
-from langfuse.decorators import langfuse_context
+from langfuse import Langfuse, observe, get_client, langfuse_context
 from langfuse.openai import OpenAI, AzureOpenAI
 
 
