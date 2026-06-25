@@ -33,6 +33,14 @@ jobs:
             test_run: TestOllamaOneAgent
             otel_service_name: ollama/oneagent
             ollama_model: tinyllama
+          # MOCKED: no real GROQ_API_KEY yet — an in-process httptest stub intercepts
+          # Groq SDK calls. OneAgent instruments at the SDK level so spans carry
+          # real Groq attributes. Replace with GROQ_API_KEY secret once ICP-6025 is complete.
+          - name: groq-oneagent
+            app_dir: groq/oneagent
+            test_run: TestGroqOneAgent
+            otel_service_name: groq/oneagent
+            ollama_model: tinyllama
 
     steps:
       - name: Checkout
