@@ -33,6 +33,14 @@ jobs:
             test_run: TestOllamaOneAgent
             otel_service_name: ollama/oneagent
             ollama_model: tinyllama
+          # MOCKED: no real GROQ_API_KEY yet — Groq SDK is pointed at a local
+          # Ollama instance (tinyllama) via GROQ_BASE_URL. Replace ollama_model
+          # with a real GROQ_API_KEY secret once ICP-6025 is complete.
+          - name: groq-oneagent
+            app_dir: groq/oneagent
+            test_run: TestGroqOneAgent
+            otel_service_name: groq/oneagent
+            ollama_model: tinyllama
 
     steps:
       - name: Checkout
