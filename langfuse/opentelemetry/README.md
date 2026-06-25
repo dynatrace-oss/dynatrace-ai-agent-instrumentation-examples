@@ -1,7 +1,7 @@
 # Langfuse + Dynatrace AI Observability
 
 Generate a haiku with an LLM, send the Langfuse trace to Dynatrace, and see it in the **AI Observability** app.
-Langfuse uses its own semantic conventions (`langfuse.model`, `langfuse.usage.*`, `langfuse.as_type`, etc.) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
+Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfuse.observation.model.name`, `langfuse.observation.usage_details`, etc.) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
 
 ---
 
@@ -130,7 +130,7 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`.
 4. Go to the **Routing** tab and add an entry:
-   - Matcher: `isNotNull(langfuse.as_type)`
+   - Matcher: `isNotNull(langfuse.observation.type)`
    - Pipeline: `langfuse-ai-spans`
 
 ### Step 2 -- Run the app
@@ -155,21 +155,18 @@ make run-openpipeline
 
 | Langfuse source | Dynatrace target | Notes |
 |---|---|---|
-| `langfuse.as_type` | `gen_ai.operation.name` | `"generation"` → `"chat"`, `"embedding"` → `"embeddings"`, others pass through |
-| `langfuse.model` | `gen_ai.request.model` | generation and embedding spans only |
+| `langfuse.observation.type` | `gen_ai.operation.name` | `"generation"` → `"chat"`, `"embedding"` → `"embeddings"`, others pass through |
+| `langfuse.observation.model.name` | `gen_ai.request.model` | generation and embedding spans only |
 | _(derived from model name)_ | `gen_ai.provider.name` | inferred from model prefix (openai, anthropic, google, meta, mistral, cohere) |
 | _(mirrored)_ | `gen_ai.response.model` | copied from `gen_ai.request.model` on generation spans |
 | _(hardcoded)_ | `llm.request.type = "chat"` | set on generation spans for Prompts view filter |
-| `langfuse.usage.prompt_tokens` / `langfuse.usage.input` | `gen_ai.usage.input_tokens` | both SDK schemas supported |
-| `langfuse.usage.completion_tokens` / `langfuse.usage.output` | `gen_ai.usage.output_tokens` | both SDK schemas supported |
-| `langfuse.usage.cache_read_input_tokens` | `gen_ai.usage.prompt_caching.cache_read_input_tokens` | |
-| `langfuse.usage.cache_creation_input_tokens` | `gen_ai.usage.prompt_caching.cache_creation_input_tokens` | |
-| `langfuse.input` | `gen_ai.input.messages` | generation spans only; prompt content |
-| `langfuse.output` | `gen_ai.output.messages` | generation spans only; completion content |
+| `langfuse.observation.usage_details` | `gen_ai.usage.input_tokens` | JSON field `prompt_tokens` |
+| `langfuse.observation.usage_details` | `gen_ai.usage.output_tokens` | JSON field `completion_tokens` |
+| `langfuse.observation.input` | `gen_ai.input.messages` | generation spans only; prompt content |
+| `langfuse.observation.output` | `gen_ai.output.messages` | generation spans only; completion content |
 | `langfuse.session_id` / `langfuse.sessionId` | `gen_ai.conversation.id` + `session.id` | enables conversation thread grouping |
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
-| `langfuse.modelParameters.temperature` | `gen_ai.request.temperature` | |
-| `langfuse.version` / `langfuse.release` | `service.version` | |
+| `langfuse.observation.model.parameters` | `gen_ai.request.temperature` | JSON field `temperature` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
 
 ---
@@ -189,7 +186,7 @@ make run-openpipeline
 **Spans in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.provider.name` to be set -- added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml`.
-- Option B: confirm the OpenPipeline routing entry is active -- matcher `isNotNull(langfuse.as_type)`, pipeline `langfuse-ai-spans`.
+- Option B: confirm the OpenPipeline routing entry is active -- matcher `isNotNull(langfuse.observation.type)`, pipeline `langfuse-ai-spans`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
