@@ -15,9 +15,10 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 
 export const setupTracing = (serviceName: string) => {
 
-  const api = fs.readFileSync('/etc/secrets/dynatrace_otel').toString().trim();
-  const otel_endpoint = process.env.OTEL_ENDPOINT;
-  const otlp_url = otel_endpoint?.endsWith("/v1/traces") ? otel_endpoint : otel_endpoint + "/v1/traces";
+  const api = process.env.DT_API_TOKEN ?? fs.readFileSync('/etc/secrets/dynatrace_otel').toString().trim();
+  const otel_endpoint = process.env.OTEL_ENDPOINT?.replace(/\/$/, '');
+  if (!otel_endpoint) throw new Error('OTEL_ENDPOINT environment variable is required');
+  const otlp_url = otel_endpoint.endsWith("/v1/traces") ? otel_endpoint : otel_endpoint + "/v1/traces";
   const exporter = new OTLPTraceExporter({
     url: otlp_url,
     headers: {

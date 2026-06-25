@@ -167,6 +167,11 @@ jobs:
             app_dir: openai-agents/opentelemetry
             test_run: TestOpenAIAgentsOpenTelemetry
             otel_service_name: openai-cs-agents
+          - name: mcp-opentelemetry
+            app_dir: mcp/opentelemetry
+            test_run: TestMCPOpenTelemetry
+            otel_service_name: mcp-agent-demo
+            node_version: '22'
           - name: litellm-opentelemetry
             app_dir: litellm/opentelemetry
             test_run: TestLiteLLMOpenTelemetry
@@ -202,6 +207,7 @@ jobs:
           TEST_RUN: ${{ matrix.test_run }}
           OTEL_SERVICE_NAME: ${{ matrix.otel_service_name }}
           DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
+          OTEL_ENDPOINT: ${{ secrets.DT_ENDPOINT }}/api/v2/otlp
           DT_APPS_ENDPOINT: ${{ secrets.DT_APPS_ENDPOINT }}
           DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
