@@ -14,11 +14,16 @@ const TOPIC = process.env.TOPIC ?? "observability";
 // The OTel Collector (or Dynatrace OpenPipeline) transforms these to gen_ai.* attributes.
 // Note: the Langfuse Node.js SDK does not yet support OTel export; this demo emits
 // the attributes manually using @opentelemetry/api.
+const TEMPERATURE = 0.7;
+const SESSION_ID = process.env.LANGFUSE_SESSION_ID ?? "demo-session";
+
 async function generateHaiku(topic: string): Promise<string> {
   const span = tracer.startSpan("generate-haiku");
   try {
     span.setAttribute("langfuse.observation.type", "generation");
     span.setAttribute("langfuse.observation.model.name", MODEL);
+    span.setAttribute("langfuse.observation.model.parameters", JSON.stringify({ temperature: TEMPERATURE }));
+    span.setAttribute("langfuse.session_id", SESSION_ID);
 
     const messages = [{ role: "user" as const, content: `Write a haiku about ${topic}.` }];
     span.setAttribute("langfuse.observation.input", JSON.stringify(messages));
@@ -38,10 +43,12 @@ async function generateHaiku(topic: string): Promise<string> {
       model: MODEL,
       messages,
       max_completion_tokens: 50,
+      temperature: TEMPERATURE,
     });
 
-    const output = response.choices[0]?.message?.content ?? "";
-    span.setAttribute("langfuse.observation.output", output);
+    const content = response.choices[0]?.message?.content ?? "";
+    // Emit as JSON array matching the gen_ai.output.messages format expected by OpenPipeline.
+    span.setAttribute("langfuse.observation.output", JSON.stringify([{ role: "assistant", content }]));
 
     if (response.usage) {
       span.setAttribute(
@@ -55,7 +62,7 @@ async function generateHaiku(topic: string): Promise<string> {
     }
 
     span.setStatus({ code: SpanStatusCode.OK });
-    return output;
+    return content;
   } catch (err) {
     span.setStatus({ code: SpanStatusCode.ERROR, message: String(err) });
     throw err;

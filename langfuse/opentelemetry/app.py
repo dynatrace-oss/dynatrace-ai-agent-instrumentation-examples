@@ -1,6 +1,7 @@
 import os
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from langfuse import Langfuse, observe, get_client
+from langfuse.decorators import langfuse_context
 from langfuse.openai import OpenAI, AzureOpenAI
 
 
@@ -27,10 +28,14 @@ Langfuse(
 )
 
 MODEL: str = os.environ.get("MODEL", "gpt-4o-mini")
+TEMPERATURE: float = float(os.environ.get("TEMPERATURE", "0.7"))
 
 
 @observe()
 def generate_haiku(topic: str = "observability") -> str:
+    langfuse_context.update_current_trace(
+        session_id=os.environ.get("LANGFUSE_SESSION_ID", "demo-session"),
+    )
     api_version = os.getenv("OPENAI_API_VERSION")
     if api_version:
         client = AzureOpenAI(
@@ -48,6 +53,7 @@ def generate_haiku(topic: str = "observability") -> str:
         model=MODEL,
         messages=[{"role": "user", "content": f"Write a haiku about {topic}."}],
         max_completion_tokens=50,
+        temperature=TEMPERATURE,
     )
     return response.choices[0].message.content
 

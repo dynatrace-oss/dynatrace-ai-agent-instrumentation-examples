@@ -59,8 +59,11 @@ processors:
           - set(attributes["gen_ai.output.messages"], attributes["langfuse.observation.output"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.output"] != nil
 
           # ── 9. CONVERSATION ID (P5) ─────────────────────────────────────────
+          # Node/manual path: langfuse.session_id attribute on the span.
           - set(attributes["gen_ai.conversation.id"], attributes["langfuse.session_id"]) where attributes["langfuse.session_id"] != nil
           - set(attributes["gen_ai.conversation.id"], attributes["langfuse.sessionId"]) where attributes["langfuse.sessionId"] != nil and attributes["gen_ai.conversation.id"] == nil
+          # Python SDK path: sets session.id using the standard OTel attribute name.
+          - set(attributes["gen_ai.conversation.id"], attributes["session.id"]) where attributes["session.id"] != nil and attributes["gen_ai.conversation.id"] == nil
 
           # ── 10. SESSION & USER IDS ───────────────────────────────────────────
           - set(attributes["session.id"], attributes["langfuse.session_id"]) where attributes["langfuse.session_id"] != nil
@@ -77,6 +80,43 @@ processors:
           # langfuse 4.x emits model parameters as a JSON string in langfuse.observation.model.parameters.
           - set(attributes["gen_ai.request.temperature"], Double(ParseJSON(attributes["langfuse.observation.model.parameters"])["temperature"])) where attributes["langfuse.observation.model.parameters"] != nil
 
+          # ── 12. SPAN STATUS ───────────────────────────────────────────────────
+          # The Langfuse Python SDK does not set OTel span status on success, leaving it UNSET.
+          # Set OK for generation spans so the service health tile in Dynatrace reflects success.
+          # ERROR level observations map to ERROR status.
+          - set(status.code, STATUS_CODE_ERROR) where attributes["langfuse.observation.level"] == "ERROR" and status.code == STATUS_CODE_UNSET
+          - set(status.code, STATUS_CODE_OK) where attributes["langfuse.observation.type"] == "generation" and status.code == STATUS_CODE_UNSET
+
+  metricstransform/spanmetrics:
+    transforms:
+      - include: duration
+        match_type: strict
+        action: update
+        new_name: gen_ai.client.operation.duration
+      - include: calls_total
+        match_type: strict
+        action: update
+        new_name: gen_ai.client.requests_total
+
+connectors:
+  # spanmetrics derives operation latency metrics from spans, emitting:
+  #   - calls_total  (span count per provider/model/operation)
+  #   - duration     (histogram — satisfies gen_ai.client.operation.duration / AR-025)
+  # These are renamed to OTel semconv names by the metricstransform processor below.
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 15.0, 30.0, 60.0]
+    dimensions:
+      - name: gen_ai.provider.name
+        default: unknown
+      - name: gen_ai.request.model
+        default: unknown
+      - name: gen_ai.operation.name
+        default: unknown
+    metrics_flush_interval: 30s
+    metrics_expiration: 5m
+
 exporters:
   debug:
     verbosity: detailed
@@ -90,4 +130,8 @@ service:
     traces:
       receivers: [otlp]
       processors: [attributes/tag_langfuse, transform/langfuse]
-      exporters: [debug, otlp_http/dynatrace]
+      exporters: [debug, otlp_http/dynatrace, spanmetrics]
+    metrics:
+      receivers: [spanmetrics]
+      processors: [metricstransform/spanmetrics]
+      exporters: [otlp_http/dynatrace]
