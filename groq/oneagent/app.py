@@ -16,7 +16,10 @@ def health():
 
 @app.post("/haiku", response_class=PlainTextResponse)
 async def haiku() -> str:
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    client = Groq(
+        api_key=os.getenv("GROQ_API_KEY"),
+        base_url=os.getenv("GROQ_BASE_URL"),
+    )
 
     def _call() -> str:
         response = client.chat.completions.create(
