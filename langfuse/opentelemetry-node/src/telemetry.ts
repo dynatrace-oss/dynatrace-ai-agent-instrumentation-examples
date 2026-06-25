@@ -1,8 +1,19 @@
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { LangfuseSpanProcessor } from "@langfuse/otel";
 
 let sdk: NodeSDK | null = null;
+
+function parseHeaders(raw: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const pair of raw.split(",")) {
+    const idx = pair.indexOf("=");
+    if (idx !== -1) {
+      headers[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+    }
+  }
+  return headers;
+}
 
 // Must be called before any import that creates spans (including Langfuse).
 // Reads OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS from env.
@@ -14,8 +25,13 @@ export function initTelemetry(): void {
     return;
   }
 
+  const exporter = new OTLPTraceExporter({
+    url: `${endpoint}/v1/traces`,
+    headers: parseHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS ?? ""),
+  });
+
   sdk = new NodeSDK({
-    spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter()),
+    spanProcessors: [new LangfuseSpanProcessor({ exporter })],
   });
 
   sdk.start();
