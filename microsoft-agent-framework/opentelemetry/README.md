@@ -36,7 +36,7 @@ OPENAI_API_KEY=...
 OPENAI_API_BASE=https://<resource>.openai.azure.com/openai/deployments/<deployment>
 OPENAI_API_VERSION=2025-04-01-preview
 MODEL=<deployment>
-TEMPERATURE=0.7
+TEMPERATURE=1  # model-dependent: some models only accept the default (1)
 
 DT_ENDPOINT=https://<tenant>.live.dynatrace.com
 DT_API_TOKEN=dt0c01....
