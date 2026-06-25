@@ -9,7 +9,7 @@ import { startActiveObservation, propagateAttributes } from "@langfuse/tracing";
 
 const MODEL = process.env.MODEL ?? "gpt-5.4-mini";
 const TOPIC = process.env.TOPIC ?? "observability";
-const TEMPERATURE = 0.7;
+const TEMPERATURE = 1;
 const SESSION_ID = process.env.LANGFUSE_SESSION_ID ?? "demo-session";
 
 function createOpenAIClient(): OpenAI {
