@@ -73,6 +73,7 @@ async def main() -> None:
         description="Writes concise haikus about software observability.",
         instructions="You write concise haikus about software observability.",
         default_options={
+            "temperature": 1,
             "conversation_id": str(uuid.uuid4()),
         },
     )
