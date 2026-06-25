@@ -176,6 +176,10 @@ jobs:
             app_dir: litellm/opentelemetry
             test_run: TestLiteLLMOpenTelemetry
             otel_service_name: litellm-gateway
+          - name: microsoft-agent-framework-opentelemetry
+            app_dir: microsoft-agent-framework/opentelemetry
+            test_run: TestMicrosoftAgentFrameworkOpenTelemetry
+            otel_service_name: microsoft-agent-framework
 
     steps:
       - name: Checkout
