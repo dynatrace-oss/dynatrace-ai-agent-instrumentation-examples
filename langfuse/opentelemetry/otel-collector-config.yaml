@@ -87,35 +87,11 @@ processors:
           - set(status.code, STATUS_CODE_ERROR) where attributes["langfuse.observation.level"] == "ERROR" and status.code == STATUS_CODE_UNSET
           - set(status.code, STATUS_CODE_OK) where attributes["langfuse.observation.type"] == "generation" and status.code == STATUS_CODE_UNSET
 
-  metricstransform/spanmetrics:
-    transforms:
-      - include: duration
-        match_type: strict
-        action: update
-        new_name: gen_ai.client.operation.duration
-      - include: calls_total
-        match_type: strict
-        action: update
-        new_name: gen_ai.client.requests_total
-
-connectors:
-  # spanmetrics derives operation latency metrics from spans, emitting:
-  #   - calls_total  (span count per provider/model/operation)
-  #   - duration     (histogram — satisfies gen_ai.client.operation.duration / AR-025)
-  # These are renamed to OTel semconv names by the metricstransform processor below.
-  spanmetrics:
-    histogram:
-      explicit:
-        buckets: [0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 15.0, 30.0, 60.0]
-    dimensions:
-      - name: gen_ai.provider.name
-        default: unknown
-      - name: gen_ai.request.model
-        default: unknown
-      - name: gen_ai.operation.name
-        default: unknown
-    metrics_flush_interval: 30s
-    metrics_expiration: 5m
+          # ── 13. CLEANUP ───────────────────────────────────────────────────────
+          # Remove the routing discriminator after transformation. OpenPipeline routes
+          # on isNotNull(langfuse.observation.type), so deleting it here prevents
+          # collector-transformed spans from being re-processed by OpenPipeline.
+          - delete_key(attributes, "langfuse.observation.type")
 
 exporters:
   debug:
@@ -130,8 +106,4 @@ service:
     traces:
       receivers: [otlp]
       processors: [attributes/tag_langfuse, transform/langfuse]
-      exporters: [debug, otlp_http/dynatrace, spanmetrics]
-    metrics:
-      receivers: [spanmetrics]
-      processors: [metricstransform/spanmetrics]
-      exporters: [otlp_http/dynatrace]
+      exporters: [debug, otlp_http/dynatrace]

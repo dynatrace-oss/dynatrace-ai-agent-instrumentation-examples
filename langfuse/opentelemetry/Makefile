@@ -47,7 +47,7 @@ run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
 # Routing matcher: isNotNull(langfuse.as_type)
 # ---------------------------------------------------------------------------
 run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
-	@OTEL_SERVICE_NAME=langfuse \
+	@OTEL_SERVICE_NAME=langfuse-openpipeline \
 	  OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
 	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
 	  $(PYTHON) app.py

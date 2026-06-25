@@ -1,7 +1,7 @@
 # Langfuse + Dynatrace AI Observability
 
 Generate a haiku with an LLM, send the Langfuse trace to Dynatrace, and see it in the **AI Observability** app.
-Langfuse SDK 4.x emits its own semantic conventions (`langfuse.observation.*`) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
+Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfuse.observation.model.name`, `langfuse.observation.usage_details`, etc.) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
 
 ---
 
@@ -72,7 +72,7 @@ DT_ENDPOINT=https://abc12345.live.dynatrace.com
 DT_API_TOKEN=dt0c01.****.*****
 
 OPENAI_API_KEY=**********************
-MODEL=gpt-4o-mini                        # optional, defaults to gpt-4o-mini
+MODEL=gpt-5.4-mini                       # optional, defaults to gpt-5.4-mini
 TOPIC=observability                      # optional, haiku topic
 LANGFUSE_SESSION_ID=demo-session         # optional, maps to gen_ai.conversation.id
 
@@ -103,7 +103,7 @@ App  →  Langfuse SDK (OTLP export)  →  OTel Collector (transform processor) 
 make run
 ```
 
-The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A `spanmetrics` connector also derives `gen_ai.client.operation.duration` (latency histogram) and `gen_ai.client.requests_total` (counter) from spans.
+The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
 
 **Useful commands:**
 

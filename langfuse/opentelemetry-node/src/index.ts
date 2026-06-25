@@ -7,7 +7,7 @@ import OpenAI, { AzureOpenAI } from "openai";
 import { observeOpenAI } from "@langfuse/openai";
 import { startActiveObservation, propagateAttributes } from "@langfuse/tracing";
 
-const MODEL = process.env.MODEL ?? "gpt-4o-mini";
+const MODEL = process.env.MODEL ?? "gpt-5.4-mini";
 const TOPIC = process.env.TOPIC ?? "observability";
 const TEMPERATURE = 0.7;
 const SESSION_ID = process.env.LANGFUSE_SESSION_ID ?? "demo-session";

@@ -13,7 +13,7 @@ collector config (`../opentelemetry/otel-collector-config.yaml`).
 - Node.js 20+
 - Docker (for the collector path)
 - OpenAI or Azure OpenAI API credentials
-- Dynatrace tenant with an API token (`openTelemetryTrace.ingest` + `metrics.ingest` scopes)
+- Dynatrace tenant with an API token (`openTelemetryTrace.ingest` scope)
 
 ## Quick start
 
@@ -69,6 +69,6 @@ Requires the processors from `../opentelemetry/openpipeline-langfuse.yaml` to be
 | `OPENAI_API_KEY` | yes | OpenAI or Azure OpenAI key |
 | `OPENAI_API_BASE` | no | Override OpenAI base URL (or Azure endpoint) |
 | `OPENAI_API_VERSION` | no | Azure OpenAI API version (activates Azure client) |
-| `MODEL` | no | Model/deployment name (default: `gpt-4o-mini`) |
+| `MODEL` | no | Model/deployment name (default: `gpt-5.4-mini`) |
 | `TOPIC` | no | Haiku topic (default: `observability`) |
 | `LANGFUSE_SESSION_ID` | no | Session ID mapped to `gen_ai.conversation.id` (default: `demo-session`) |

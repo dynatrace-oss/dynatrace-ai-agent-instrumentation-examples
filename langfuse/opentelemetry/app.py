@@ -27,7 +27,7 @@ Langfuse(
     ),
 )
 
-MODEL: str = os.environ.get("MODEL", "gpt-4o-mini")
+MODEL: str = os.environ.get("MODEL", "gpt-5.4-mini")
 TEMPERATURE: float = float(os.environ.get("TEMPERATURE", "0.7"))
 
 
