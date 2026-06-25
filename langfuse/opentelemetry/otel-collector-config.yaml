@@ -48,16 +48,16 @@ processors:
 
           # ── 6. TOKEN USAGE ────────────────────────────────────────────────────
           # langfuse 4.x emits token counts as a JSON string in langfuse.observation.usage_details.
-          # ParseJSON extracts the values; Int() converts float64 JSON numbers to int64.
-          # Key names vary by model: prompt_tokens/completion_tokens (gpt-4o),
+          # Key names vary by model: prompt_tokens/completion_tokens (gpt-4o-mini),
           # input/output_reasoning_tokens (gpt-5 reasoning models).
-          # Condition guards prevent Int(nil)=0 from blocking the fallback chain.
-          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["prompt_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and ParseJSON(attributes["langfuse.observation.usage_details"])["prompt_tokens"] != nil
-          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["input_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and ParseJSON(attributes["langfuse.observation.usage_details"])["input_tokens"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
-          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["input"])) where attributes["langfuse.observation.usage_details"] != nil and ParseJSON(attributes["langfuse.observation.usage_details"])["input"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
-          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["completion_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and ParseJSON(attributes["langfuse.observation.usage_details"])["completion_tokens"] != nil
-          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and ParseJSON(attributes["langfuse.observation.usage_details"])["output_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
-          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_reasoning_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and ParseJSON(attributes["langfuse.observation.usage_details"])["output_reasoning_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
+          # Fallback chain: error_mode:ignore causes Int(nil) to throw, skipping the
+          # statement and leaving the attribute nil so the next fallback fires.
+          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["prompt_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
+          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["input_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
+          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["input"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["completion_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_reasoning_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
 
           # ── 7. INPUT MESSAGES (P3) ───────────────────────────────────────────
           - set(attributes["gen_ai.input.messages"], attributes["langfuse.observation.input"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.input"] != nil
