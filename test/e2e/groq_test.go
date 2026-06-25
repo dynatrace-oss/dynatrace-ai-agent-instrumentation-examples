@@ -1,20 +1,11 @@
 package e2e
 
 import (
-	"os"
 	"testing"
 )
 
 func TestGroqOneAgent(t *testing.T) {
-	if os.Getenv("GROQ_API_KEY") == "" {
-		// No real key — point the Groq SDK at a local Ollama instance.
-		// The SDK default base is https://api.groq.com (host only); it appends
-		// /openai/v1/chat/completions internally, so GROQ_BASE_URL must be the
-		// bare host so the final path aligns with Ollama's OpenAI-compatible endpoint.
-		// In CI the ollama_model matrix field triggers install + model pull.
-		t.Setenv("GROQ_API_KEY", "ollama-stub")
-		t.Setenv("GROQ_BASE_URL", "http://localhost:11434")
-	}
+	startOpenAICompatibleMock(t, "GROQ_API_KEY", "GROQ_BASE_URL")
 	startApp(t, "groq/oneagent")
 	triggerHaiku(t, false)
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -283,6 +284,52 @@ func assertSpanWithAttrs(t *testing.T, dql string, required []string, anyOf [][]
 			t.Errorf("span missing at least one of %v", group)
 		}
 	}
+}
+
+// startOpenAICompatibleMock starts a local OpenAI-compatible stub and wires it
+// into the test environment via the given env var names. Only active when
+// apiKeyEnvVar is not already set — real-key CI runs pass through unmodified.
+// Serves both /openai/v1/chat/completions and /v1/chat/completions so it works
+// with SDKs that include the version prefix in their base URL (e.g. Groq) and
+// those that do not (e.g. OpenAI-compatible clients pointing at a bare host).
+// model is returned in the response body; set it to the value of MODEL or any
+// sentinel string useful for asserting gen_ai.response.model in DT.
+func startOpenAICompatibleMock(t *testing.T, apiKeyEnvVar, baseURLEnvVar string) {
+	t.Helper()
+	if os.Getenv(apiKeyEnvVar) != "" {
+		return
+	}
+	handler := func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":      "chatcmpl-mock",
+			"object":  "chat.completion",
+			"created": 1700000000,
+			"model":   os.Getenv("MODEL"),
+			"choices": []map[string]interface{}{
+				{
+					"index": 0,
+					"message": map[string]string{
+						"role":    "assistant",
+						"content": "Code flows like water\nBugs surface in morning light\nLogs reveal the truth",
+					},
+					"finish_reason": "stop",
+				},
+			},
+			"usage": map[string]int{
+				"prompt_tokens":     10,
+				"completion_tokens": 20,
+				"total_tokens":      30,
+			},
+		})
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/openai/v1/chat/completions", handler)
+	mux.HandleFunc("/v1/chat/completions", handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv(baseURLEnvVar, srv.URL)
+	t.Setenv(apiKeyEnvVar, "mock-key-for-e2e")
 }
 
 // assertGenAISpan polls DT until a span matching dql is found (3-minute
