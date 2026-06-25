@@ -113,8 +113,8 @@ processing:
       dql:
         script: |
           parse langfuse.observation.usage_details, "JSON_OBJECT:usage"
-          | fieldsAdd gen_ai.usage.input_tokens = coalesce(toLong(usage[prompt_tokens]), toLong(usage[input_tokens])),
-                      gen_ai.usage.output_tokens = coalesce(toLong(usage[completion_tokens]), toLong(usage[output_tokens]))
+          | fieldsAdd gen_ai.usage.input_tokens = coalesce(toLong(usage[prompt_tokens]), toLong(usage[input_tokens]), toLong(usage[input])),
+                      gen_ai.usage.output_tokens = coalesce(toLong(usage[completion_tokens]), toLong(usage[output_tokens]), toLong(usage[output_reasoning_tokens]))
           | fieldsRemove usage, langfuse.observation.usage_details
 
     # ============================================================================
