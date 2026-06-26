@@ -192,6 +192,10 @@ jobs:
             app_dir: microsoft-agent-framework/opentelemetry
             test_run: TestMicrosoftAgentFrameworkOpenTelemetry
             otel_service_name: microsoft-agent-framework
+          - name: aws-strands-oneagent
+            app_dir: aws-strands/oneagent
+            test_run: TestAWSStrandsOneAgent
+            otel_service_name: aws-agent-sdk
 
     steps:
       - name: Checkout

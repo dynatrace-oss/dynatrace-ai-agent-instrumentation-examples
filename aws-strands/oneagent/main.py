@@ -2,6 +2,7 @@ from dynatrace import init
 init()
 
 import os
+from opentelemetry import trace
 from strands_tools import calculator, current_time
 
 from boto3 import Session
@@ -13,6 +14,8 @@ URLLib3Instrumentor().instrument()
 
 import urllib3
 http = urllib3.PoolManager()
+
+otel_tracer = trace.get_tracer("strands-agents.tracer")
 
 
 @tool
@@ -92,8 +95,6 @@ Always provide the appointment id so that I can update it if required"""
     print(results.metrics)
 
 
-from opentelemetry import trace
-
 if __name__ == "__main__":
-    with trace.get_tracer("strands-agents.tracer").start_as_current_span(name="/api", kind=trace.SpanKind.SERVER):
+    with otel_tracer.start_as_current_span(name="/api", kind=trace.SpanKind.SERVER):
         main()

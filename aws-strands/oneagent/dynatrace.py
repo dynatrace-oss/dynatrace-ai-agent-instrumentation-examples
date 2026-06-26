@@ -12,7 +12,7 @@ def read_secret(secret: str):
 def init():
     os.environ['TRACELOOP_TELEMETRY'] = "false"
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
-    token = read_secret("dynatrace_otel")
+    token = read_secret("dynatrace_otel") or os.environ.get("DT_API_TOKEN", "")
     headers = {"Authorization": f"Api-Token {token}"}
     OTEL_ENDPOINT = os.environ.get(
         "OTEL_ENDPOINT", "https://wkf10640.live.dynatrace.com/api/v2/otlp" #manually configure your DT tenant here
