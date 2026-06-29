@@ -1,0 +1,42 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  transform/strands:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # Strands emits gen_ai.prompt / gen_ai.completion; map to the OTel GenAI
+          # convention (gen_ai.input.messages / gen_ai.output.messages) that the
+          # Dynatrace AI Observability app queries.
+          - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
+          - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/strands, batch]
+      exporters: [otlphttp/dynatrace]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]

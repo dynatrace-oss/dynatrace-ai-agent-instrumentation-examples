@@ -12,13 +12,12 @@ This example contains a demo of a Personal Assistant Agent built on top of [Stra
 Strands Agents comes with [OpenTelemetry](https://opentelemetry.io/) support out-of-the-box.
 We just need to register an [OpenTelemetry SDK](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/overview.md#sdk) to send the data to Dynatrace.
 
-We simplified this process, hiding all the complexity inside [dynatrace.py](./dynatrace.py).
-For sending data to your Dynatrace tenant, configure the following environment variables:
+The app sends spans to a local [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) ([`otel-collector-config.yaml`](./otel-collector-config.yaml)), which remaps Strands' non-standard span attributes to the OTel GenAI convention and forwards everything to Dynatrace.
 
-- `OTEL_ENDPOINT` — your Dynatrace OTLP ingest URL, e.g. `https://<tenant>.live.dynatrace.com/api/v2/otlp`
+Configure the following environment variables (or add them to a `.env` file):
+
+- `DT_ENDPOINT` — your Dynatrace OTLP ingest URL, e.g. `https://<tenant>.live.dynatrace.com`
 - `DT_API_TOKEN` — Dynatrace API token with `openpipeline:traces:ingest` and `openpipeline:metrics:ingest` scopes
-
-The token is read from `DT_API_TOKEN` (or from `/etc/secrets/dynatrace_otel` when running on a host with mounted secrets).
 
 ## How to use
 
@@ -39,4 +38,8 @@ Ensure your account has access to the model `us.anthropic.claude-haiku-4-5-20251
 
 ### Run the app
 
-`uv run main.py`
+```bash
+make run
+```
+
+This starts the OTel Collector (Docker) and then runs the agent. Use `make stop` to shut down the collector afterwards.
