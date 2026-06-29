@@ -3,7 +3,6 @@ SHELL            := /bin/bash
 export
 
 PORT                 ?= 8000
-PYTHON               := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
 COLLECTOR_BASE_URL   ?= localhost:4317
 
 DT_ENDPOINT          ?= https://your-tenant.live.dynatrace.com
@@ -18,11 +17,11 @@ help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies (fastapi-instrumentation demo)
-	$(PYTHON) -m pip install -r fastapi-instrumentation/requirements.txt
+	uv sync
 
 run: ## Start collector + FastAPI instrumentation demo on port $(PORT)
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
-	cd fastapi-instrumentation && COLLECTOR_BASE_URL=$(COLLECTOR_BASE_URL) $(PYTHON) -m uvicorn main:app --host 0.0.0.0 --port $(PORT)
+	cd fastapi-instrumentation && COLLECTOR_BASE_URL=$(COLLECTOR_BASE_URL) uv run python3 -m uvicorn main:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
