@@ -43,30 +43,14 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 
 
-key = os.environ.get('AWS_KEY')
-sec = os.environ.get("AWS_SECRET")
-
 def main():
     model = BedrockModel(
-        model_id="anthropic.claude-3-7-sonnet-20250219-v1:0",
-        max_tokens=64000,
+        model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         boto_session=Session(
-            region_name="eu-central-1",
-            aws_access_key_id=key,
-            aws_secret_access_key=sec,
+            region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
         ),
-        # boto_client_config=Config(
-        #    read_timeout=900,
-        #    connect_timeout=900,
-        #    retries=dict(max_attempts=3, mode="adaptive"),
-        # ),
-        additional_request_fields={
-            # "maxTokens": 4000,
-            "thinking": {
-                "type": "disabled",
-                # "budget_tokens": 2048,
-            }
-        },
     )
     system_prompt = """You are a helpful personal assistant that specializes in managing my appointments and calendar. 
 You have access to appointment management tools, a calculator, and can check the current time to help me organize my schedule effectively. 
