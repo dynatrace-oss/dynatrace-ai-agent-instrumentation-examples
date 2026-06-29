@@ -3,7 +3,6 @@ SHELL            := /bin/bash
 export
 
 PORT             ?= 8000
-PYTHON           := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
 
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
@@ -17,11 +16,11 @@ help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies
-	$(PYTHON) -m pip install -r requirements.txt
+	uv sync
 
 run: ## Start collector + run the AWS Bedrock tracing demo
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
-	$(PYTHON) main.py
+	uv run python3 main.py
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
