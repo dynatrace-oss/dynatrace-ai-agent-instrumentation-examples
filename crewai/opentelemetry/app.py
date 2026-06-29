@@ -2,6 +2,7 @@ import asyncio
 import os
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
+os.environ.setdefault("OTEL_SERVICE_NAME", "crewai")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
 from traceloop.sdk import Traceloop

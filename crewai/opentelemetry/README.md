@@ -69,6 +69,10 @@ In the Dynatrace **AI Observability** app you can filter by service, agent name,
 
 ![distributed trace](assets/crewai_distributed_trace.png)
 
+![Prompt and completion captured in Dynatrace AI Observability](assets/prompt.png)
+
+![Agent activity and token usage per agent in Dynatrace AI Observability](assets/agent.png)
+
 | View | What to look for |
 |------|-----------------|
 | **Distributed Tracing** | Filter by `service.name = crewai` |
