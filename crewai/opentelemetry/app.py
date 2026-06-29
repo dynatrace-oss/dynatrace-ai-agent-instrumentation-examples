@@ -37,6 +37,7 @@ async def haiku() -> str:
         base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
+        is_litellm=True,
     )
 
     def _call() -> str:
