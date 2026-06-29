@@ -5,6 +5,7 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - OpenAI API key (`OPENAI_API_KEY`)
 - Dynatrace OneAgent installed on the host
 

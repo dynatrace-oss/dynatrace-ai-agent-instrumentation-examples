@@ -22,6 +22,7 @@ Latency (`gen_ai.client.operation.duration`) and token type (`gen_ai.token.type`
 ## Prerequisites
 
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - A Dynatrace API token with:
   - `openTelemetryTrace.ingest` — for traces and prompts
   - `metrics.ingest` — for latency charts and cost dashboard
