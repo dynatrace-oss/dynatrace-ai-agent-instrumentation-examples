@@ -199,7 +199,7 @@ jobs:
           - name: aws-strands-opentelemetry
             app_dir: aws-strands/opentelemetry
             test_run: TestAWSStrandsOpenTelemetry
-            otel_service_name: aws-agent-sdk
+            otel_service_name: aws-strands/opentelemetry
 
     steps:
       - name: Checkout

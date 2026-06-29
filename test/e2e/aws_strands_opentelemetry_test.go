@@ -11,7 +11,7 @@ func TestAWSStrandsOpenTelemetry(t *testing.T) {
 	// because the demo does not configure Bedrock guardrails — expected FAIL in report.
 	auditSpan(t, "aws-strands", "opentelemetry", BedrockProfile,
 		`fetch spans, from: now()-10m
-| filter service.name == "aws-agent-sdk"
+| filter service.name == "aws-strands/opentelemetry"
 | filter isNotNull(gen_ai.system)
 | filter isNotNull(gen_ai.request.model)
 | limit 1`)

@@ -36,7 +36,7 @@ def init():
     from opentelemetry.sdk.resources import Resource
 
     resource = Resource.create(
-        {"service.name": "aws-agent-sdk", "service.version": "0.0.0"}
+        {"service.name": os.environ.get("OTEL_SERVICE_NAME", "aws-strands/opentelemetry"), "service.version": "0.0.0"}
     )
 
     provider = TracerProvider(resource=resource)
