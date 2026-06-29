@@ -19,7 +19,8 @@ Traceloop.init(
     should_enrich_metrics=True,
 )
 
-MODEL: str = os.environ.get("MODEL", "azure/genai-demo")
+_model = os.environ.get("MODEL", "genai-demo")
+MODEL: str = _model if "/" in _model else f"azure/{_model}"
 
 app = FastAPI()
 

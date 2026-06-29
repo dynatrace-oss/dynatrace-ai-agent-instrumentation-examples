@@ -11,6 +11,7 @@ This sample instruments a [CrewAI](https://docs.crewai.com) agent with Dynatrace
 ## Prerequisites
 
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (`pip install uv`)
 - A Dynatrace API token with `openTelemetryTrace.ingest` and `metrics.ingest`
 - An Azure OpenAI endpoint and key
 
@@ -46,7 +47,7 @@ make request
 
 | Target | Description |
 |--------|-------------|
-| `make install` | Install Python dependencies |
+| `make install` | Create venv and install dependencies via uv |
 | `make run` | Start the FastAPI app on port 8000 |
 | `make request` | POST /haiku to localhost:8000 |
 
