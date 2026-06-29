@@ -2,6 +2,10 @@ SHELL            := /bin/bash
 -include .env
 export
 
+APP_IMAGE        ?=
+BUILD_PLATFORM   ?= linux/amd64
+PORT             ?= 8000
+
 .PHONY: install run build push request help
 
 help: ## Show available targets
@@ -10,14 +14,16 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Run the Strands agent demo
-	uv run python3 main.py
+run: ## Run app locally on port $(PORT)
+	uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
 
-build: ## Not applicable — no container defined for this demo
-	@echo "build: no Dockerfile for this demo"
+build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
+	docker buildx build --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) .
 
-push: ## Not applicable — no container defined for this demo
-	@echo "push: no Dockerfile for this demo"
+push: ## Build and push container image to registry
+	docker buildx build --no-cache --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) --push .
 
-request: ## Not applicable — this demo runs as a CLI, not an HTTP server
-	@echo "request: this demo runs as a CLI script, not an HTTP server; use 'make run' instead"
+request: ## POST /haiku to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/haiku \
+	  -H 'Content-Type: application/json' \
+	  -d '{"topic":"e2e test"}' | python3 -m json.tool
