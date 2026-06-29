@@ -289,13 +289,13 @@ func statusIcon(status string) string {
 	}
 }
 
-// auditSpan polls DT until a span matching dql is found (3-minute timeout),
+// auditSpan polls DT until a span matching dql is found (5-minute timeout),
 // then fetches all spans in the same trace to build a complete attribute picture.
 // Writes JSON + markdown reports to test/e2e/reports/. Logs (but does NOT fail)
 // any required attribute gaps. The test fails only if no anchor span is found.
 func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
@@ -324,7 +324,7 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string)
 // audits where the provider may not have been selected in the current run.
 func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)

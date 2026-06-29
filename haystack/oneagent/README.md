@@ -5,6 +5,7 @@ Demonstrates tracing Haystack framework (Azure OpenAI backend) API calls with Dy
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Azure OpenAI resource (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`)
 - Dynatrace OneAgent installed on the host
 

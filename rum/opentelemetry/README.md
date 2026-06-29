@@ -134,6 +134,7 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 ### Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Node.js 18+
 - A Dynatrace environment with RUM enabled
 - AWS Bedrock access (or Azure OpenAI)
@@ -175,9 +176,9 @@ All paths below are relative to the repo root.
 ### Option A — Vanilla HTML frontend (simplest)
 
 ```bash
-cd real-user-monitoring-frontends/backend
-pip install -r requirements.txt
-python main.py
+cd rum/opentelemetry
+make install
+make run
 ```
 
 Open **http://localhost:8000** — the FastAPI server serves the HTML file directly.
@@ -187,9 +188,9 @@ Open **http://localhost:8000** — the FastAPI server serves the HTML file direc
 Run the FastAPI backend first (it handles all AI calls):
 
 ```bash
-cd real-user-monitoring-frontends/backend
-pip install -r requirements.txt
-python main.py          # stays on :8000
+cd rum/opentelemetry
+make install
+make run   # stays on :8000
 ```
 
 In a second terminal, start the Next.js dev server:

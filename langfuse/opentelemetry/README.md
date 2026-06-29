@@ -33,6 +33,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 - A Dynatrace tenant -- start a free trial at https://dt-url.net/trial
 - Docker installed and running (Option A only)
 - Python 3.8+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - An OpenAI-compatible API key and endpoint
 
 ---

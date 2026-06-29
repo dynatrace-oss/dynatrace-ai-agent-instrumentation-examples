@@ -3,7 +3,6 @@ SHELL            := /bin/bash
 export
 
 PORT             ?= 8000
-PYTHON           := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
 
 .PHONY: install run build push request help
 
@@ -11,10 +10,10 @@ help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies
-	$(PYTHON) -m pip install -r backend/requirements.txt
+	uv sync
 
 run: ## Run the Pydantic AI backend on port $(PORT)
-	PYTHONPATH=backend $(PYTHON) -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT)
+	PYTHONPATH=backend uv run python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
