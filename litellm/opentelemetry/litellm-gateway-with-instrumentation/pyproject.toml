@@ -9,4 +9,5 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-grpc>=1.42.0",
     "opentelemetry-instrumentation-fastapi>=0.61.0",
     "opentelemetry-instrumentation-httpx>=0.61.0",
+    "websockets>=12.0",
 ]
