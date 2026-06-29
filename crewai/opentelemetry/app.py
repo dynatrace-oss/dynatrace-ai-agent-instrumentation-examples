@@ -4,9 +4,6 @@ import os
 os.environ["TRACELOOP_TELEMETRY"] = "false"
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
-from crewai import Agent, Task, Crew, LLM
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
 from traceloop.sdk import Traceloop
 
 _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
@@ -18,6 +15,10 @@ Traceloop.init(
     disable_batch=True,
     should_enrich_metrics=True,
 )
+
+from crewai import Agent, Task, Crew, LLM
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 
 _model = os.environ.get("MODEL", "genai-demo")
 MODEL: str = _model if "/" in _model else f"azure/{_model}"
