@@ -3,7 +3,7 @@ name = "pydantic-ai-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "pydantic-ai",
+    "pydantic-ai>=1.0.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "python-dotenv",
