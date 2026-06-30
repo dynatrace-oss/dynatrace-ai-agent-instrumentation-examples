@@ -397,6 +397,7 @@ func startCohereCompatibleMock(t *testing.T) {
 	t.Cleanup(srv.Close)
 	t.Setenv("CO_API_URL", srv.URL)
 	t.Setenv("COHERE_API_KEY", "mock-key-for-e2e")
+	t.Setenv("MODEL", "command-r-08-2024")
 }
 
 // assertGenAISpan polls DT until a span matching dql is found (3-minute
