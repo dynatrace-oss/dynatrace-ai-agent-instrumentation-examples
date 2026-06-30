@@ -1,6 +1,6 @@
 ## Google Agent Development Kit (ADK) + OpenTelemetry
 
-Demonstrates tracing Google ADK agent calls with Dynatrace via Traceloop (OpenLLMetry). The ADK agent runs with Vertex AI as the model backend (`GOOGLE_GENAI_USE_VERTEXAI=TRUE`), so spans carry `gen_ai.system = google_vertex_ai`.
+Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Traceloop (OpenLLMetry). The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. The ADK runs with Vertex AI as the model backend (`GOOGLE_GENAI_USE_VERTEXAI=TRUE`), so spans carry `gen_ai.system = google_vertex_ai`.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ Demonstrates tracing Google ADK agent calls with Dynatrace via Traceloop (OpenLL
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DT_API_TOKEN` | Yes | — | Dynatrace API token (ingest scope) |
-| `DT_OTEL_ENDPOINT` | Yes | — | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
+| `OTEL_ENDPOINT` | Yes | — | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
 | `GOOGLE_GENAI_USE_VERTEXAI` | Yes | — | Set to `TRUE` to use Vertex AI as ADK backend |
 | `GOOGLE_CLOUD_PROJECT` | Yes | — | GCP project ID |
 | `GOOGLE_CLOUD_LOCATION` | No | `us-central1` | GCP region |
@@ -35,7 +35,7 @@ Demonstrates tracing Google ADK agent calls with Dynatrace via Traceloop (OpenLL
 |--------|-------------|
 | `make install` | Install Python dependencies |
 | `make run` | Run app locally on port 8000 |
-| `make request` | POST /haiku to localhost:8000 |
+| `make request` | POST /research to localhost:8000 |
 | `make help` | Show all available targets |
 
 ## Dynatrace Instrumentation
@@ -47,7 +47,7 @@ from traceloop.sdk import Traceloop
 
 Traceloop.init(
     app_name="google-adk-samples",
-    api_endpoint=os.environ["DT_OTEL_ENDPOINT"],
+    api_endpoint=os.environ["OTEL_ENDPOINT"],
     headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
     disable_batch=True,
 )
