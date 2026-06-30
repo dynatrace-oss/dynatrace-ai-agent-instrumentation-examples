@@ -16,5 +16,6 @@ func TestAWSStrandsOpenTelemetryOpenPipeline(t *testing.T) {
 | filter service.name == "aws-strands/opentelemetry-openpipeline"
 | filter isNotNull(gen_ai.system)
 | filter isNotNull(gen_ai.request.model)
+| sort timestamp desc
 | limit 1`)
 }

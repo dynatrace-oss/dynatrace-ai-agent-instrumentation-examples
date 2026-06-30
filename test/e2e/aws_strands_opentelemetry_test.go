@@ -14,5 +14,6 @@ func TestAWSStrandsOpenTelemetry(t *testing.T) {
 | filter service.name == "aws-strands/opentelemetry"
 | filter isNotNull(gen_ai.system)
 | filter isNotNull(gen_ai.request.model)
+| sort timestamp desc
 | limit 1`)
 }
