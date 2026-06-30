@@ -35,6 +35,7 @@ type SpanReport struct {
 	Instrumentation string            `json:"instrumentation"`
 	Profile         string            `json:"profile"`
 	Verdict         string            `json:"verdict"` // "PASS"|"PARTIAL"|"FAIL"
+	Note            string            `json:"note,omitempty"`
 	Required        []AttributeResult `json:"required"`
 	Optional        []AttributeResult `json:"optional"`
 	GeneratedAt     string            `json:"generated_at"`
@@ -252,6 +253,9 @@ func buildMarkdown(r SpanReport) string {
 	fmt.Fprintf(&sb, "# %s / %s — Span Audit Report\n\n", r.SDK, r.Instrumentation)
 	fmt.Fprintf(&sb, "**Profile:** %s | **Verdict:** %s %s | **Generated:** %s\n\n",
 		r.Profile, icon, r.Verdict, r.GeneratedAt)
+	if r.Note != "" {
+		fmt.Fprintf(&sb, "> **Note:** %s\n\n", r.Note)
+	}
 
 	sb.WriteString("## Required Attributes\n\n")
 	sb.WriteString("| Rule ID | Attribute | Status | Notes |\n")
@@ -293,7 +297,8 @@ func statusIcon(status string) string {
 // then fetches all spans in the same trace to build a complete attribute picture.
 // Writes JSON + markdown reports to test/e2e/reports/. Logs (but does NOT fail)
 // any required attribute gaps. The test fails only if no anchor span is found.
-func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string) {
+// An optional note string is included in the report (e.g. to document mock backends).
+func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string, note ...string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -308,6 +313,9 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string)
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
 	writeReport(t, report)
 
 	for _, r := range report.Required {
@@ -322,7 +330,8 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string)
 // auditSpanOptional is like auditSpan but skips the (sub)test when no anchor
 // span is found within the timeout instead of failing. Use for provider-specific
 // audits where the provider may not have been selected in the current run.
-func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql string) {
+// An optional note string is included in the report (e.g. to document mock backends).
+func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql string, note ...string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -335,6 +344,9 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
 	writeReport(t, report)
 
 	for _, r := range report.Required {

@@ -35,12 +35,19 @@ jobs:
             ollama_model: tinyllama
           # MOCKED: no real GROQ_API_KEY yet — an in-process httptest stub intercepts
           # Groq SDK calls. OneAgent instruments at the SDK level so spans carry
-          # real Groq attributes. Replace with GROQ_API_KEY secret once ICP-6025 is complete.
+          # real Groq attributes. Replace with GROQ_API_KEY when available
           - name: groq-oneagent
             app_dir: groq/oneagent
             test_run: TestGroqOneAgent
             otel_service_name: groq/oneagent
             ollama_model: tinyllama
+          # MOCKED: no real COHERE_API_KEY yet — an in-process httptest stub intercepts
+          # Cohere SDK calls via CO_API_URL. OneAgent instruments at the SDK level so spans
+          # carry real Cohere attributes. Replace with COHERE_API_KEY when available
+          - name: cohere-oneagent
+            app_dir: cohere/oneagent
+            test_run: TestCohereOneAgent
+            otel_service_name: cohere/oneagent
 
     steps:
       - name: Checkout
