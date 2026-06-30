@@ -20,7 +20,7 @@ from google.adk import Agent
 
 from . import prompt
 
-MODEL = os.environ.get("MODEL", "gemini-2.0-flash")
+MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 
 academic_newresearch_agent = Agent(
     model=MODEL,

@@ -21,7 +21,7 @@ from google.adk.tools import google_search
 
 from . import prompt
 
-MODEL = os.environ.get("MODEL", "gemini-2.0-flash")
+MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 
 
 academic_websearch_agent = Agent(
