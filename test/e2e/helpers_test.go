@@ -364,6 +364,41 @@ func startOpenAICompatibleMock(t *testing.T, apiKeyEnvVar, baseURLEnvVar string)
 	t.Setenv(apiKeyEnvVar, "mock-key-for-e2e")
 }
 
+// startCohereCompatibleMock starts a local Cohere v2 API stub and wires it
+// into the test environment. Only active when COHERE_API_KEY is not already
+// set — real-key CI runs pass through unmodified.
+// The Cohere Python SDK reads CO_API_URL for the base URL override.
+func startCohereCompatibleMock(t *testing.T) {
+	t.Helper()
+	if os.Getenv("COHERE_API_KEY") != "" {
+		return
+	}
+	handler := func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id": "chat-mock",
+			"message": map[string]interface{}{
+				"role": "assistant",
+				"content": []map[string]interface{}{
+					{"type": "text", "text": "Code flows like water\nBugs surface in morning light\nLogs reveal the truth"},
+				},
+			},
+			"finish_reason": "COMPLETE",
+			"usage": map[string]interface{}{
+				"billed_units": map[string]int{"input_tokens": 10, "output_tokens": 20},
+				"tokens":       map[string]int{"input_tokens": 10, "output_tokens": 20},
+			},
+			"model": os.Getenv("MODEL"),
+		})
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/chat", handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("CO_API_URL", srv.URL)
+	t.Setenv("COHERE_API_KEY", "mock-key-for-e2e")
+}
+
 // assertGenAISpan polls DT until a span matching dql is found (3-minute
 // timeout), then asserts gen_ai.system equals wantSystem.
 func assertGenAISpan(t *testing.T, dql, wantSystem string) {
