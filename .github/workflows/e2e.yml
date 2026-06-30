@@ -200,6 +200,10 @@ jobs:
             app_dir: aws-strands/opentelemetry
             test_run: TestAWSStrandsOpenTelemetry
             otel_service_name: aws-strands/opentelemetry
+          - name: aws-strands-opentelemetry-openpipeline
+            app_dir: aws-strands/opentelemetry
+            test_run: TestAWSStrandsOpenTelemetryOpenPipeline
+            otel_service_name: aws-strands/opentelemetry-openpipeline
 
     steps:
       - name: Checkout

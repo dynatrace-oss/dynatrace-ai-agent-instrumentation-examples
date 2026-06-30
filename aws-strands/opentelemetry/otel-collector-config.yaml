@@ -19,6 +19,10 @@ processors:
           # Dynatrace AI Observability app queries.
           - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
           - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
+          # Delete the source attributes after remapping so the OpenPipeline routing
+          # matcher (isNotNull(gen_ai.prompt)) does not re-process collector-transformed spans.
+          - delete_key(attributes, "gen_ai.prompt") where attributes["gen_ai.input.messages"] != nil
+          - delete_key(attributes, "gen_ai.completion") where attributes["gen_ai.output.messages"] != nil
 
 exporters:
   otlphttp/dynatrace:
