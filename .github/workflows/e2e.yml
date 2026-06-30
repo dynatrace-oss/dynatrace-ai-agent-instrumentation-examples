@@ -4,50 +4,75 @@ on:
   schedule:
     - cron: "0 2 * * *" # 02:00 UTC daily
   workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Run only this suite by name (e.g. openai-oneagent, litellm-opentelemetry). Leave blank to run all.'
+        required: false
+        type: string
+  pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  # Computes which matrix entries should run based on the trigger:
+  #   schedule           → all entries (consolidated nightly job handles oneagent separately)
+  #   workflow_dispatch  → selected suite only; all entries if no suite input given
+  #   pull_request       → entries whose suite name was matched by paths-filter
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      oneagent-matrix: ${{ steps.compute.outputs.oneagent-matrix }}
+      otelcol-matrix: ${{ steps.compute.outputs.otelcol-matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Detect changed paths
+        id: paths-filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
+        with:
+          filters: |
+            aws-bedrock-oneagent: 'aws-bedrock/oneagent/**'
+            anthropic-oneagent: 'anthropic/oneagent/**'
+            openai-oneagent: 'openai/oneagent/**'
+            ollama-oneagent: 'ollama/oneagent/**'
+            groq-oneagent: 'groq/oneagent/**'
+            cohere-oneagent: 'cohere/oneagent/**'
+            aws-bedrock-opentelemetry: 'aws-bedrock/opentelemetry/**'
+            aws-bedrock-openinference: 'aws-bedrock/openinference/**'
+            openai-openinference: 'openai/openinference/**'
+            langfuse-opentelemetry: 'langfuse/opentelemetry/**'
+            langfuse-opentelemetry-node: 'langfuse/opentelemetry-node/**'
+            langfuse-opentelemetry-openpipeline: 'langfuse/opentelemetry/**'
+            pydantic-ai-opentelemetry: 'pydantic-ai/opentelemetry/**'
+            openai-agents-opentelemetry: 'openai-agents/opentelemetry/**'
+            mcp-opentelemetry: 'mcp/opentelemetry/**'
+            litellm-opentelemetry: 'litellm/opentelemetry/**'
+            microsoft-agent-framework-opentelemetry: 'microsoft-agent-framework/opentelemetry/**'
+            crewai-opentelemetry: 'crewai/opentelemetry/**'
+
+      - name: Compute matrices
+        id: compute
+        env:
+          EVENT: ${{ github.event_name }}
+          SUITE_INPUT: ${{ inputs.suite }}
+          CHANGED_SUITES: ${{ steps.paths-filter.outputs.changes || '[]' }}
+        run: bash .github/scripts/compute-e2e-matrix.sh
+
+  # Per-suite oneagent job for PR and workflow_dispatch triggers.
+  # Each matrix entry runs on its own runner and installs/uninstalls OneAgent independently.
+  # On schedule, use oneagent-nightly instead (installs OneAgent once across all suites).
   oneagent:
     name: E2E / ${{ matrix.name }}
+    needs: filter
+    if: (github.event_name == 'pull_request' || inputs.suite != '') && needs.filter.outputs.oneagent-matrix != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: aws-bedrock-oneagent
-            app_dir: aws-bedrock/oneagent
-            test_run: TestAWSBedrockOneAgent
-            otel_service_name: aws-bedrock/oneagent
-          - name: anthropic-oneagent
-            app_dir: anthropic/oneagent
-            test_run: TestAnthropicOneAgent
-            otel_service_name: anthropic/oneagent
-          - name: openai-oneagent
-            app_dir: openai/oneagent
-            test_run: TestOpenAIOneAgent
-            otel_service_name: openai/oneagent
-          - name: ollama-oneagent
-            app_dir: ollama/oneagent
-            test_run: TestOllamaOneAgent
-            otel_service_name: ollama/oneagent
-            ollama_model: tinyllama
-          # MOCKED: no real GROQ_API_KEY yet — an in-process httptest stub intercepts
-          # Groq SDK calls. OneAgent instruments at the SDK level so spans carry
-          # real Groq attributes. Replace with GROQ_API_KEY when available
-          - name: groq-oneagent
-            app_dir: groq/oneagent
-            test_run: TestGroqOneAgent
-            otel_service_name: groq/oneagent
-            ollama_model: tinyllama
-          # MOCKED: no real COHERE_API_KEY yet — an in-process httptest stub intercepts
-          # Cohere SDK calls via CO_API_URL. OneAgent instruments at the SDK level so spans
-          # carry real Cohere attributes. Replace with COHERE_API_KEY when available
-          - name: cohere-oneagent
-            app_dir: cohere/oneagent
-            test_run: TestCohereOneAgent
-            otel_service_name: cohere/oneagent
+        include: ${{ fromJson(needs.filter.outputs.oneagent-matrix) }}
 
     steps:
       - name: Checkout
@@ -146,63 +171,165 @@ jobs:
             sudo /opt/dynatrace/oneagent/agent/uninstall.sh
           fi
 
+  # Consolidated nightly OneAgent job.
+  # Installs OneAgent once, runs all oneagent suites sequentially, then uninstalls.
+  # Only runs on the nightly schedule — PR and dispatch use the per-suite oneagent job above.
+  oneagent-nightly:
+    name: E2E / oneagent (nightly consolidated)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.suite == '')
+    runs-on: ubuntu-latest
+    env:
+      DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
+      DT_APPS_ENDPOINT: ${{ secrets.DT_APPS_ENDPOINT }}
+      DT_API_TOKEN: ${{ secrets.DT_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+      AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: test/e2e/go.mod
+          cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install -r test/e2e/requirements-tools.txt
+
+      - name: Cache Ollama model
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.ollama/models
+          key: ollama-tinyllama
+
+      - name: Set up Ollama
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
+          ollama pull tinyllama
+
+      - name: Install Dynatrace OneAgent
+        env:
+          DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "${DT_ENDPOINT}" in
+            https://*) ;;
+            *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
+          esac
+          INSTALLER_DIR=$(mktemp -d)
+          trap 'rm -rf "$INSTALLER_DIR"' EXIT
+          wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+            --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
+          sudo sh "$INSTALLER_DIR/oneagent.sh"
+
+      - name: Run aws-bedrock-oneagent
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestAWSBedrockOneAgent
+          OTEL_SERVICE_NAME: aws-bedrock/oneagent
+          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      - name: Run anthropic-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestAnthropicOneAgent
+          OTEL_SERVICE_NAME: anthropic/oneagent
+          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      - name: Run openai-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestOpenAIOneAgent
+          OTEL_SERVICE_NAME: openai/oneagent
+          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      - name: Run ollama-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestOllamaOneAgent
+          OTEL_SERVICE_NAME: ollama/oneagent
+          MODEL: tinyllama
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      # MOCKED: no real GROQ_API_KEY yet — an in-process httptest stub intercepts
+      # Groq SDK calls. OneAgent instruments at the SDK level so spans carry
+      # real Groq attributes. Replace MODEL with GROQ_API_KEY when available.
+      - name: Run groq-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestGroqOneAgent
+          OTEL_SERVICE_NAME: groq/oneagent
+          MODEL: tinyllama
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      # MOCKED: no real COHERE_API_KEY yet — an in-process httptest stub intercepts
+      # Cohere SDK calls via CO_API_URL. OneAgent instruments at the SDK level so spans
+      # carry real Cohere attributes. Replace with COHERE_API_KEY when available.
+      - name: Run cohere-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestCohereOneAgent
+          OTEL_SERVICE_NAME: cohere/oneagent
+          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      - name: Write job summary
+        if: always()
+        run: |
+          for f in test/e2e/reports/*.md; do
+            [ -f "$f" ] || continue
+            echo "## $(basename "$f" .md)" >> "$GITHUB_STEP_SUMMARY"
+            cat "$f" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: span-audit-reports-oneagent-nightly
+          path: test/e2e/reports/
+          retention-days: 30
+
+      - name: Uninstall OneAgent
+        if: always()
+        run: |
+          if [ -f /opt/dynatrace/oneagent/agent/uninstall.sh ]; then
+            sudo /opt/dynatrace/oneagent/agent/uninstall.sh
+          fi
+
   otelcol:
     name: E2E / ${{ matrix.name }}
+    needs: filter
+    if: needs.filter.outputs.otelcol-matrix != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: aws-bedrock-opentelemetry
-            app_dir: aws-bedrock/opentelemetry
-            test_run: TestAWSBedrockOpenTelemetry
-            otel_service_name: aws-bedrock/opentelemetry
-          - name: aws-bedrock-openinference
-            app_dir: aws-bedrock/openinference
-            test_run: TestAWSBedrockOpenInference
-            otel_service_name: aws-bedrock/openinference
-          - name: openai-openinference
-            app_dir: openai/openinference
-            test_run: TestOpenAIOpenInference
-            otel_service_name: openai/openinference
-          - name: langfuse-opentelemetry
-            app_dir: langfuse/opentelemetry
-            test_run: TestLangfuseOpenTelemetry
-            otel_service_name: langfuse
-          - name: langfuse-opentelemetry-node
-            app_dir: langfuse/opentelemetry-node
-            test_run: TestLangfuseOpenTelemetryNode
-            otel_service_name: langfuse-node
-            needs_node: true
-          - name: langfuse-opentelemetry-openpipeline
-            app_dir: langfuse/opentelemetry
-            test_run: TestLangfuseOpenTelemetryOpenPipeline
-            otel_service_name: langfuse-openpipeline
-          - name: pydantic-ai-opentelemetry
-            app_dir: pydantic-ai/opentelemetry
-            test_run: TestPydanticAIOpenTelemetry
-            otel_service_name: pydantic-ai-music-agent
-          - name: openai-agents-opentelemetry
-            app_dir: openai-agents/opentelemetry
-            test_run: TestOpenAIAgentsOpenTelemetry
-            otel_service_name: openai-cs-agents
-          - name: mcp-opentelemetry
-            app_dir: mcp/opentelemetry
-            test_run: TestMCPOpenTelemetry
-            otel_service_name: mcp-agent-demo
-            node_version: '22'
-          - name: litellm-opentelemetry
-            app_dir: litellm/opentelemetry
-            test_run: TestLiteLLMOpenTelemetry
-            otel_service_name: litellm-gateway
-          - name: microsoft-agent-framework-opentelemetry
-            app_dir: microsoft-agent-framework/opentelemetry
-            test_run: TestMicrosoftAgentFrameworkOpenTelemetry
-            otel_service_name: microsoft-agent-framework
-          - name: crewai-opentelemetry
-            app_dir: crewai/opentelemetry
-            test_run: TestCrewAIOpenTelemetry
-            otel_service_name: crewai
+        include: ${{ fromJson(needs.filter.outputs.otelcol-matrix) }}
 
     steps:
       - name: Checkout
@@ -223,10 +350,10 @@ jobs:
         run: pip install -r test/e2e/requirements-tools.txt
 
       - name: Set up Node.js
-        if: ${{ matrix.needs_node }}
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: ${{ matrix.needs_node || matrix.node_version != '' }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node_version || '22' }}
 
       - name: Run e2e test
         working-directory: test/e2e
