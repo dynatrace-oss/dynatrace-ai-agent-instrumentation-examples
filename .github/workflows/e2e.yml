@@ -103,7 +103,7 @@ jobs:
   oneagent:
     name: E2E / ${{ matrix.name }}
     needs: filter
-    if: github.event_name != 'schedule' && needs.filter.outputs.oneagent-matrix != '[]'
+    if: (github.event_name == 'pull_request' || inputs.suite != '') && needs.filter.outputs.oneagent-matrix != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -212,7 +212,7 @@ jobs:
   # Only runs on the nightly schedule — PR and dispatch use the per-suite oneagent job above.
   oneagent-nightly:
     name: E2E / oneagent (nightly consolidated)
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.suite == '')
     runs-on: ubuntu-latest
     env:
       DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
