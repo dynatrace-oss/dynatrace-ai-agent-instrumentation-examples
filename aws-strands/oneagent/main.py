@@ -1,11 +1,8 @@
 import os
-import urllib3
 from datetime import datetime, timezone
 from boto3 import Session
 from strands import Agent, tool
 from strands.models import BedrockModel
-
-http = urllib3.PoolManager()
 
 
 @tool
@@ -33,17 +30,9 @@ def create_appointment(date: str, location: str, title: str) -> str:
         title (str): Title of the appointment.
 
     Returns:
-        str: The ID of the newly created appointment.
-
-    Raises:
-        ValueError: If the date format is invalid.
+        str: Confirmation message with appointment details.
     """
-    try:
-        contents = http.request("GET", "http://0.0.0.0:8081/api/v1/random")
-        new_title = contents.data.decode("utf-8")
-    except Exception:
-        new_title = title
-    return f"Appointment '{new_title}' at {location} on {date} created"
+    return f"Appointment '{title}' at {location} on {date} created"
 
 
 def create_agent() -> Agent:
