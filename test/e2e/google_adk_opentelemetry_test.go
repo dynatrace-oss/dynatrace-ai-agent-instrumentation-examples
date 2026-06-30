@@ -6,7 +6,7 @@ import (
 
 func TestGoogleADKOpenTelemetry(t *testing.T) {
 	startApp(t, "google-adk/opentelemetry")
-	triggerHaiku(t, true)
+	triggerResearch(t)
 
 	auditSpan(t, "google-adk", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m

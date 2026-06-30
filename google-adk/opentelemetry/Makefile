@@ -21,7 +21,7 @@ build: ## Not applicable — no container defined for this demo
 push: ## Not applicable — no container defined for this demo
 	@echo "push: no Dockerfile for this demo"
 
-request: ## POST /haiku to localhost:$(PORT)
-	curl -s -X POST http://localhost:$(PORT)/haiku \
+request: ## POST /research to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/research \
 	  -H 'Content-Type: application/json' \
-	  -d '{"topic":"observability"}' | python3 -m json.tool
+	  -d '{"topic":"Attention is All You Need"}'

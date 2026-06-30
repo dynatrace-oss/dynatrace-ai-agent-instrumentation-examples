@@ -1,4 +1,3 @@
-import asyncio
 import os
 import uuid
 
@@ -17,30 +16,20 @@ Traceloop.init(
 
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
-from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai.types import Content, Part
 from pydantic import BaseModel
 
-MODEL = os.environ.get("MODEL", "gemini-2.0-flash")
-
-haiku_agent = LlmAgent(
-    name="haiku_agent",
-    model=MODEL,
-    instruction=(
-        "You are a haiku poet. Write a haiku about the given topic. "
-        "Return only the haiku, nothing else."
-    ),
-)
+from agent import academic_coordinator
 
 session_service = InMemorySessionService()
 
 app = FastAPI()
 
 
-class HaikuRequest(BaseModel):
-    topic: str = "observability"
+class ResearchRequest(BaseModel):
+    topic: str = "Attention is All You Need"
 
 
 @app.get("/health")
@@ -48,19 +37,22 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/haiku", response_class=PlainTextResponse)
-async def haiku(req: HaikuRequest) -> str:
+@app.post("/research", response_class=PlainTextResponse)
+async def research(req: ResearchRequest) -> str:
     runner = Runner(
-        agent=haiku_agent,
+        agent=academic_coordinator,
         app_name="google-adk-samples",
         session_service=session_service,
     )
-    session = session_service.create_session(
+    session = await session_service.create_session(
         app_name="google-adk-samples",
         user_id="e2e",
         session_id=str(uuid.uuid4()),
     )
-    message = Content(role="user", parts=[Part(text=f"Write a haiku about {req.topic}.")])
+    message = Content(
+        role="user",
+        parts=[Part(text=f"Briefly summarize the key contributions of the paper: {req.topic}")],
+    )
 
     async def _run() -> str:
         async for event in runner.run_async(
