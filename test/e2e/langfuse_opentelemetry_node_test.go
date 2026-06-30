@@ -15,5 +15,6 @@ func TestLangfuseOpenTelemetryNode(t *testing.T) {
 | filter service.name == "langfuse-node"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 }
