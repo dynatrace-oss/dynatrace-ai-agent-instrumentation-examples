@@ -1,8 +1,44 @@
+import ast
+import math
 import os
+from datetime import datetime, timezone
 from boto3 import Session
 from strands import Agent, tool
 from strands.models import BedrockModel
-from strands_tools import calculator, current_time
+
+
+@tool
+def current_time(timezone_name: str = "UTC") -> str:
+    """
+    Get the current date and time in ISO 8601 format.
+
+    Args:
+        timezone_name (str): Timezone name (e.g. 'UTC', 'US/Eastern'). Defaults to UTC.
+
+    Returns:
+        str: Current datetime in ISO 8601 format.
+    """
+    return datetime.now(timezone.utc).isoformat()
+
+
+@tool
+def calculator(expression: str) -> str:
+    """
+    Evaluate a mathematical expression and return the result.
+
+    Args:
+        expression (str): Mathematical expression to evaluate (e.g. "2 + 2", "sqrt(16)").
+
+    Returns:
+        str: The numeric result of the expression.
+    """
+    allowed = {k: v for k, v in math.__dict__.items() if not k.startswith("_")}
+    allowed["abs"] = abs
+    try:
+        result = eval(compile(ast.parse(expression, mode="eval"), "<expr>", "eval"), {"__builtins__": {}}, allowed)
+        return str(result)
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
 @tool
