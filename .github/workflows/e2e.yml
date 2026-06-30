@@ -20,6 +20,7 @@ jobs:
   #   workflow_dispatch  → selected suite only; all entries if no suite input given
   #   pull_request       → entries whose suite name was matched by paths-filter
   filter:
+   if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     outputs:
       oneagent-matrix: ${{ steps.compute.outputs.oneagent-matrix }}
