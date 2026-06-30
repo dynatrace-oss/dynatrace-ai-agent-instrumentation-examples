@@ -5,6 +5,7 @@ Demonstrates tracing Groq SDK API calls with Dynatrace via OneAgent auto-instrum
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Groq API key (`GROQ_API_KEY`)
 - Dynatrace OneAgent installed on the host
 

@@ -16,5 +16,6 @@ func TestGroqOneAgent(t *testing.T) {
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
-| limit 1`)
+| limit 1`,
+		"Backend mocked: ollama running tinyllama locally serves Groq-compatible requests via GROQ_BASE_URL. Replace with a real GROQ_API_KEY secret for live validation.")
 }

@@ -5,6 +5,7 @@ Demonstrates tracing Mistral AI SDK API calls with Dynatrace via OneAgent auto-i
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Mistral API key (`MISTRAL_API_KEY`)
 - Dynatrace OneAgent installed on the host
 

@@ -5,6 +5,7 @@ Demonstrates tracing Ollama SDK API calls with Dynatrace via OneAgent auto-instr
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Ollama running locally or accessible at `OLLAMA_HOST`
 - Dynatrace OneAgent installed on the host
 

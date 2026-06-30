@@ -5,6 +5,7 @@ Demonstrates tracing Cohere SDK API calls with Dynatrace via OneAgent auto-instr
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Cohere API key (`COHERE_API_KEY`)
 - Dynatrace OneAgent installed on the host
 
@@ -20,7 +21,8 @@ Demonstrates tracing Cohere SDK API calls with Dynatrace via OneAgent auto-instr
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `COHERE_API_KEY` | Yes | — | Cohere API key |
-| `MODEL` | No | `command-r-08-2024` | Model to use |
+| `MODEL` | No | `command-r-08-2024` | Cohere model to use |
+| `CO_API_URL` | No | — | Override Cohere base URL (e.g. for local testing) |
 
 ## Makefile Targets
 
