@@ -24,12 +24,12 @@
     "@opentelemetry/sdk-trace-base": "2.8.0",
     "@opentelemetry/sdk-trace-node": "2.8.0",
     "@opentelemetry/semantic-conventions": "^1.29.0",
-    "zod": "^3.25.76"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.7.2",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.0"
   },
   "files": [
     "build"
