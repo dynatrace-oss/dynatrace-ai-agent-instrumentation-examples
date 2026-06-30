@@ -5,7 +5,6 @@ requires-python = ">=3.12"
 dependencies = [
     "strands-agents",
     "boto3",
-    "oneagent-sdk",
     "fastapi",
     "uvicorn[standard]",
 ]
