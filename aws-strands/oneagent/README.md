@@ -2,7 +2,7 @@
 
 Demonstrates tracing [Strands Agents](https://strandsagents.com/) + AWS Bedrock API calls with Dynatrace via OneAgent auto-instrumentation.
 
-![Prompts View](../../assets/aws-strands-oneagent-prompts.png)
+![Prompts View](assets/prompts.png)
 
 ## Prerequisites
 

@@ -3,6 +3,8 @@
 Run a Personal Assistant Agent built on [Strands Agents](https://strandsagents.com/), send traces to Dynatrace, and see them in the **AI Observability** app.
 Strands uses non-standard span attributes (`gen_ai.prompt`, `gen_ai.completion`, `gen_ai.usage.prompt_tokens`, etc.) — this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format.
 
+![AI Observability — Strands agentic trace](assets/explorer.png)
+
 ---
 
 ## Table of contents
