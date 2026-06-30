@@ -17,5 +17,6 @@ func TestCohereOneAgent(t *testing.T) {
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | sort timestamp desc
-| limit 1`)
+| limit 1`,
+		"Backend mocked: in-process httptest stub intercepts Cohere SDK calls via CO_API_URL. Replace with a real COHERE_API_KEY secret for live validation.")
 }
