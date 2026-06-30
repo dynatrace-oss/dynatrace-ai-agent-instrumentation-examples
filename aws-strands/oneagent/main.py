@@ -1,3 +1,5 @@
+import ast
+import math
 import os
 from datetime import datetime, timezone
 from boto3 import Session
@@ -35,6 +37,25 @@ def create_appointment(date: str, location: str, title: str) -> str:
     return f"Appointment '{title}' at {location} on {date} created"
 
 
+@tool
+def calculator(expression: str) -> str:
+    """
+    Evaluate a mathematical expression and return the result.
+
+    Args:
+        expression (str): A mathematical expression to evaluate (e.g. '2 + 2', 'sqrt(16)').
+
+    Returns:
+        str: The result of the expression.
+    """
+    allowed = {k: getattr(math, k) for k in dir(math) if not k.startswith("_")}
+    try:
+        result = eval(ast.parse(expression, mode="eval").body, {"__builtins__": {}}, allowed)  # noqa: S307
+        return str(result)
+    except Exception as e:
+        return f"Error: {e}"
+
+
 def create_agent() -> Agent:
     model = BedrockModel(
         model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
@@ -51,7 +72,7 @@ def create_agent() -> Agent:
             "You have access to appointment management tools and can check the current time "
             "to help organise schedules. Always provide the appointment id so that it can be updated if required."
         ),
-        tools=[current_time, create_appointment],
+        tools=[current_time, create_appointment, calculator],
     )
 
 

@@ -2,10 +2,12 @@ package e2e
 
 import (
 	"testing"
+	"time"
 )
 
 func TestAWSStrandsOneAgent(t *testing.T) {
 	startApp(t, "aws-strands/oneagent")
+	time.Sleep(10 * time.Second)
 	triggerAgent(t)
 
 	// gen_ai.bedrock.guardrail.* (AR-017/AR-018/AR-019) are not emitted
