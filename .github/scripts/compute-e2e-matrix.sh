@@ -13,7 +13,8 @@ OA_ALL='[
   {"name":"openai-oneagent","app_dir":"openai/oneagent","test_run":"TestOpenAIOneAgent","otel_service_name":"openai/oneagent"},
   {"name":"ollama-oneagent","app_dir":"ollama/oneagent","test_run":"TestOllamaOneAgent","otel_service_name":"ollama/oneagent","ollama_model":"tinyllama"},
   {"name":"groq-oneagent","app_dir":"groq/oneagent","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
-  {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"}
+  {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
+  {"name":"aws-strands-oneagent","app_dir":"aws-strands/oneagent","test_run":"TestAWSStrandsOneAgent","otel_service_name":"aws-strands/oneagent"}
 ]'
 
 OC_ALL='[
@@ -28,7 +29,9 @@ OC_ALL='[
   {"name":"mcp-opentelemetry","app_dir":"mcp/opentelemetry","test_run":"TestMCPOpenTelemetry","otel_service_name":"mcp-agent-demo","node_version":"22"},
   {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway"},
   {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_run":"TestMicrosoftAgentFrameworkOpenTelemetry","otel_service_name":"microsoft-agent-framework"},
-  {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"}
+  {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"},
+  {"name":"aws-strands-opentelemetry","app_dir":"aws-strands/opentelemetry","test_run":"TestAWSStrandsOpenTelemetry","otel_service_name":"aws-strands/opentelemetry"},
+  {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then

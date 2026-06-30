@@ -40,6 +40,7 @@ jobs:
             ollama-oneagent: 'ollama/oneagent/**'
             groq-oneagent: 'groq/oneagent/**'
             cohere-oneagent: 'cohere/oneagent/**'
+            aws-strands-oneagent: 'aws-strands/oneagent/**'
             aws-bedrock-opentelemetry: 'aws-bedrock/opentelemetry/**'
             aws-bedrock-openinference: 'aws-bedrock/openinference/**'
             openai-openinference: 'openai/openinference/**'
@@ -52,6 +53,8 @@ jobs:
             litellm-opentelemetry: 'litellm/opentelemetry/**'
             microsoft-agent-framework-opentelemetry: 'microsoft-agent-framework/opentelemetry/**'
             crewai-opentelemetry: 'crewai/opentelemetry/**'
+            aws-strands-opentelemetry: 'aws-strands/opentelemetry/**'
+            aws-strands-opentelemetry-openpipeline: 'aws-strands/opentelemetry/**'
 
       - name: Compute matrices
         id: compute
