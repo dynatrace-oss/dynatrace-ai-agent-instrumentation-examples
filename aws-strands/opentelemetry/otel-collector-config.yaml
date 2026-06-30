@@ -23,6 +23,13 @@ processors:
           # matcher (isNotNull(gen_ai.prompt)) does not re-process collector-transformed spans.
           - delete_key(attributes, "gen_ai.prompt") where attributes["gen_ai.input.messages"] != nil
           - delete_key(attributes, "gen_ai.completion") where attributes["gen_ai.output.messages"] != nil
+          # Strands does not emit gen_ai.response.model; mirror the request model.
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+          # Rename legacy token attribute names to current OTel GenAI convention.
+          - set(attributes["gen_ai.usage.input_tokens"], attributes["gen_ai.usage.prompt_tokens"]) where attributes["gen_ai.usage.prompt_tokens"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
+          - set(attributes["gen_ai.usage.output_tokens"], attributes["gen_ai.usage.completion_tokens"]) where attributes["gen_ai.usage.completion_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
+          - delete_key(attributes, "gen_ai.usage.prompt_tokens") where attributes["gen_ai.usage.input_tokens"] != nil
+          - delete_key(attributes, "gen_ai.usage.completion_tokens") where attributes["gen_ai.usage.output_tokens"] != nil
 
 exporters:
   otlphttp/dynatrace:
