@@ -52,7 +52,7 @@ func triggerAgent(t *testing.T) {
 	const url = "http://127.0.0.1:8000/agent"
 
 	b, _ := json.Marshal(map[string]string{
-		"task": "Book 'Agent fun' on 2027-01-15 at 3pm in NYC. This meeting will discuss all the fun things that an agent can do",
+		"task": "Book 'Agent fun' for tomorrow 3pm in NYC. This meeting will discuss all the fun things that an agent can do",
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {

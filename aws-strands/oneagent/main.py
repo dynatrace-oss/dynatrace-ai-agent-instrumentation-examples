@@ -1,5 +1,3 @@
-import ast
-import math
 import os
 from datetime import datetime, timezone
 from boto3 import Session
@@ -19,26 +17,6 @@ def current_time(timezone_name: str = "UTC") -> str:
         str: Current datetime in ISO 8601 format.
     """
     return datetime.now(timezone.utc).isoformat()
-
-
-@tool
-def calculator(expression: str) -> str:
-    """
-    Evaluate a mathematical expression and return the result.
-
-    Args:
-        expression (str): Mathematical expression to evaluate (e.g. "2 + 2", "sqrt(16)").
-
-    Returns:
-        str: The numeric result of the expression.
-    """
-    allowed = {k: v for k, v in math.__dict__.items() if not k.startswith("_")}
-    allowed["abs"] = abs
-    try:
-        result = eval(compile(ast.parse(expression, mode="eval"), "<expr>", "eval"), {"__builtins__": {}}, allowed)
-        return str(result)
-    except Exception as exc:
-        return f"Error: {exc}"
 
 
 @tool
@@ -70,10 +48,10 @@ def create_agent() -> Agent:
         model=model,
         system_prompt=(
             "You are a helpful personal assistant that specialises in managing appointments and calendars. "
-            "You have access to appointment management tools, a calculator, and can check the current time "
+            "You have access to appointment management tools and can check the current time "
             "to help organise schedules. Always provide the appointment id so that it can be updated if required."
         ),
-        tools=[current_time, calculator, create_appointment],
+        tools=[current_time, create_appointment],
     )
 
 
