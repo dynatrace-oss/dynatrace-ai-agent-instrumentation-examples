@@ -18,7 +18,7 @@ jobs:
   # Computes which matrix entries should run based on the trigger:
   #   schedule           → all entries (consolidated nightly job handles oneagent separately)
   #   workflow_dispatch  → selected suite only; all entries if no suite input given
-  #   pull_request       → entries whose app_dir overlaps the changed files
+  #   pull_request       → entries whose suite name was matched by paths-filter
   filter:
     runs-on: ubuntu-latest
     outputs:
@@ -27,16 +27,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Detect changed paths
+        id: paths-filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
         with:
-          fetch-depth: 0
+          filters: |
+            aws-bedrock-oneagent: 'aws-bedrock/oneagent/**'
+            anthropic-oneagent: 'anthropic/oneagent/**'
+            openai-oneagent: 'openai/oneagent/**'
+            ollama-oneagent: 'ollama/oneagent/**'
+            groq-oneagent: 'groq/oneagent/**'
+            cohere-oneagent: 'cohere/oneagent/**'
+            aws-bedrock-opentelemetry: 'aws-bedrock/opentelemetry/**'
+            aws-bedrock-openinference: 'aws-bedrock/openinference/**'
+            openai-openinference: 'openai/openinference/**'
+            langfuse-opentelemetry: 'langfuse/opentelemetry/**'
+            langfuse-opentelemetry-node: 'langfuse/opentelemetry-node/**'
+            langfuse-opentelemetry-openpipeline: 'langfuse/opentelemetry/**'
+            pydantic-ai-opentelemetry: 'pydantic-ai/opentelemetry/**'
+            openai-agents-opentelemetry: 'openai-agents/opentelemetry/**'
+            mcp-opentelemetry: 'mcp/opentelemetry/**'
+            litellm-opentelemetry: 'litellm/opentelemetry/**'
+            microsoft-agent-framework-opentelemetry: 'microsoft-agent-framework/opentelemetry/**'
+            crewai-opentelemetry: 'crewai/opentelemetry/**'
 
       - name: Compute matrices
         id: compute
         env:
           EVENT: ${{ github.event_name }}
           SUITE_INPUT: ${{ inputs.suite }}
-          BASE_REF: ${{ github.base_ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CHANGED_SUITES: ${{ steps.paths-filter.outputs.changes || '[]' }}
         run: |
           set -euo pipefail
 
@@ -70,21 +92,9 @@ jobs:
           EOF
           )
 
-          filter_by_changed() {
-            local all="$1"
-            # Get directories of changed files relative to repo root
-            local changed_dirs
-            changed_dirs=$(git diff --name-only "${BASE_SHA}" HEAD | xargs -I{} dirname {} 2>/dev/null | sort -u || true)
-            local changed_json
-            changed_json=$(echo "$changed_dirs" | jq -R . | jq -s .)
-            # Include a suite if any changed directory starts with its app_dir
-            echo "$all" | jq --argjson changed "$changed_json" \
-              '[.[] | . as $e | select($changed | map(startswith($e.app_dir)) | any)]'
-          }
-
           if [[ "$EVENT" == "pull_request" ]]; then
-            OA_MATRIX=$(filter_by_changed "$OA_ALL")
-            OC_MATRIX=$(filter_by_changed "$OC_ALL")
+            OA_MATRIX=$(echo "$OA_ALL" | jq --argjson changed "$CHANGED_SUITES" '[.[] | select(.name as $n | $changed | index($n) != null)]')
+            OC_MATRIX=$(echo "$OC_ALL" | jq --argjson changed "$CHANGED_SUITES" '[.[] | select(.name as $n | $changed | index($n) != null)]')
           elif [[ -n "${SUITE_INPUT:-}" ]]; then
             OA_MATRIX=$(echo "$OA_ALL" | jq --arg s "$SUITE_INPUT" '[.[] | select(.name == $s)]')
             OC_MATRIX=$(echo "$OC_ALL" | jq --arg s "$SUITE_INPUT" '[.[] | select(.name == $s)]')
