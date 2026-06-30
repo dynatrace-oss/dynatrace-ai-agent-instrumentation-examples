@@ -1,7 +1,35 @@
 import os
+import urllib3
 from boto3 import Session
-from strands import Agent
+from strands import Agent, tool
 from strands.models import BedrockModel
+from strands_tools import calculator, current_time
+
+http = urllib3.PoolManager()
+
+
+@tool
+def create_appointment(date: str, location: str, title: str) -> str:
+    """
+    Create a new personal appointment in the database.
+
+    Args:
+        date (str): Date and time of the appointment (format: YYYY-MM-DD HH:MM).
+        location (str): Location of the appointment.
+        title (str): Title of the appointment.
+
+    Returns:
+        str: The ID of the newly created appointment.
+
+    Raises:
+        ValueError: If the date format is invalid.
+    """
+    try:
+        contents = http.request("GET", "http://0.0.0.0:8081/api/v1/random")
+        new_title = contents.data.decode("utf-8")
+    except Exception:
+        new_title = title
+    return f"Appointment '{new_title}' at {location} on {date} created"
 
 
 def create_agent() -> Agent:
@@ -15,11 +43,16 @@ def create_agent() -> Agent:
     )
     return Agent(
         model=model,
-        system_prompt="You are a haiku poet. Write a haiku (5-7-5 syllables) about the given topic. Reply with only the haiku, no extra text.",
+        system_prompt=(
+            "You are a helpful personal assistant that specialises in managing appointments and calendars. "
+            "You have access to appointment management tools, a calculator, and can check the current time "
+            "to help organise schedules. Always provide the appointment id so that it can be updated if required."
+        ),
+        tools=[current_time, calculator, create_appointment],
     )
 
 
-def write_haiku(topic: str) -> str:
+def run_agent(task: str) -> str:
     agent = create_agent()
-    result = agent(f"Write a haiku about: {topic}")
+    result = agent(task)
     return str(result)

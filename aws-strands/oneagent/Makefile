@@ -23,7 +23,7 @@ build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 push: ## Build and push container image to registry
 	docker buildx build --no-cache --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) --push .
 
-request: ## POST /haiku to localhost:$(PORT)
-	curl -s -X POST http://localhost:$(PORT)/haiku \
+request: ## POST /agent to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/agent \
 	  -H 'Content-Type: application/json' \
-	  -d '{"topic":"e2e test"}' | python3 -m json.tool
+	  -d '{"task":"Book Agent fun for tomorrow 3pm in NYC. This meeting will discuss all the fun things that an agent can do"}' | python3 -m json.tool

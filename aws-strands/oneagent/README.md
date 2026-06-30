@@ -17,11 +17,11 @@ Demonstrates tracing [Strands Agents](https://strandsagents.com/) + AWS Bedrock 
 1. Copy `.env.sample` to `.env` and fill in your credentials
 2. `make install` — install dependencies
 3. `make run` — start the app on port 8000
-4. `make request` — send a test haiku request (in a second terminal)
+4. `make request` — send a test agent request (in a second terminal)
 
 ## How It Works
 
-The app exposes a FastAPI HTTP server. A POST to `/haiku` creates a Strands `Agent` backed by `BedrockModel` and asks it to write a haiku on the given topic. OneAgent auto-instruments the underlying Bedrock HTTPS calls and forwards `gen_ai.*` spans to Dynatrace without any manual SDK setup.
+The app exposes a FastAPI HTTP server. A POST to `/agent` creates a Strands `Agent` backed by `BedrockModel` configured as a personal assistant with access to tools: `calculator`, `current_time`, and `create_appointment`. OneAgent auto-instruments the underlying Bedrock HTTPS calls and forwards `gen_ai.*` spans to Dynatrace without any manual SDK setup.
 
 ## Environment Variables
 
@@ -40,5 +40,5 @@ The app exposes a FastAPI HTTP server. A POST to `/haiku` creates a Strands `Age
 | `make run` | Run app locally on port 8000 |
 | `make build` | Build container image (`APP_IMAGE`, `BUILD_PLATFORM`) |
 | `make push` | Build and push image to registry |
-| `make request` | POST /haiku to localhost:8000 |
+| `make request` | POST /agent to localhost:8000 |
 | `make help` | Show all available targets |

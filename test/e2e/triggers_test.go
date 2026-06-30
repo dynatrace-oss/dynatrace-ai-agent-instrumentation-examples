@@ -46,6 +46,32 @@ func triggerHaiku(t *testing.T, withBody bool) {
 	}
 }
 
+// triggerAgent POSTs a task to /agent on localhost:8000.
+func triggerAgent(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/agent"
+
+	b, _ := json.Marshal(map[string]string{
+		"task": "Book 'Agent fun' for tomorrow 3pm in NYC. This meeting will discuss all the fun things that an agent can do",
+	})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent returned %d: %s", resp.StatusCode, body)
+	}
+}
+
 // triggerMusicAgent POSTs a question to /api/ask on localhost:8000.
 func triggerMusicAgent(t *testing.T) {
 	t.Helper()

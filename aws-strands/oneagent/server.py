@@ -3,20 +3,20 @@ import oneagent
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from main import write_haiku
+from main import run_agent
 
 oneagent.initialize()
 
-app = FastAPI(title="Strands Haiku Writer")
+app = FastAPI(title="Strands Personal Assistant")
 
 
-class HaikuRequest(BaseModel):
-    topic: str
+class AgentRequest(BaseModel):
+    task: str
 
 
-class HaikuResponse(BaseModel):
-    topic: str
-    haiku: str
+class AgentResponse(BaseModel):
+    task: str
+    result: str
 
 
 @app.get("/health")
@@ -24,9 +24,9 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/haiku", response_model=HaikuResponse)
-async def haiku(req: HaikuRequest):
-    if not req.topic.strip():
-        raise HTTPException(status_code=400, detail="topic must not be empty")
-    result = await asyncio.to_thread(write_haiku, req.topic)
-    return HaikuResponse(topic=req.topic, haiku=result)
+@app.post("/agent", response_model=AgentResponse)
+async def agent(req: AgentRequest):
+    if not req.task.strip():
+        raise HTTPException(status_code=400, detail="task must not be empty")
+    result = await asyncio.to_thread(run_agent, req.task)
+    return AgentResponse(task=req.task, result=result)

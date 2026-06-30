@@ -6,7 +6,7 @@ import (
 
 func TestAWSStrandsOneAgent(t *testing.T) {
 	startApp(t, "aws-strands/oneagent")
-	triggerHaiku(t, true)
+	triggerAgent(t)
 
 	// gen_ai.bedrock.guardrail.* (AR-017/AR-018/AR-019) are not emitted
 	// because the demo does not configure Bedrock guardrails — expected FAIL in report.
