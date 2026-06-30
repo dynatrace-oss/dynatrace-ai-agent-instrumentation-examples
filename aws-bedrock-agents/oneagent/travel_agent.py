@@ -1,6 +1,17 @@
 import os
 from typing import Annotated
 from langchain.chat_models import init_chat_model
+
+
+def _guardrail_config():
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+    if not guardrail_id:
+        return None
+    return {
+        "guardrailIdentifier": guardrail_id,
+        "guardrailVersion": os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),
+        "trace": "enabled",
+    }
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START
 from langgraph.graph.message import add_messages
@@ -34,17 +45,15 @@ def web_search(query: str) -> str:
 
 def get_llm():
     model_id = os.getenv("BEDROCK_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0")
-    
-    try:
-        llm = init_chat_model(
-            model_id,
-            model_provider="bedrock_converse",
-            temperature=0.0,
-            max_tokens=512,
-        )
-        return llm
-    except Exception as e:
-        raise
+    kwargs = {
+        "model_provider": "bedrock_converse",
+        "temperature": 0.0,
+        "max_tokens": 512,
+    }
+    gc = _guardrail_config()
+    if gc:
+        kwargs["guardrails"] = gc
+    return init_chat_model(model_id, **kwargs)
 
 llm = get_llm()
 tools = [web_search]

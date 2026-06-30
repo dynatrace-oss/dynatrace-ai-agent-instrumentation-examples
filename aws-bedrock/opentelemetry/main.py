@@ -67,19 +67,56 @@ Traceloop.set_association_properties({
 })
 
 
+def _guardrail_config():
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+    if not guardrail_id:
+        return None
+    return {
+        "guardrailIdentifier": guardrail_id,
+        "guardrailVersion": os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),
+        "trace": "enabled",
+    }
+
+
 @task("run_converse")
 def run_converse(client_context):
     logging.info("Calling Converse API with Boto3...")
+    kwargs = {
+        "modelId": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "messages": [
+            {
+                "role": "user",
+                "content": [{"text": "Write a one-sentence bedtime story about a unicorn."}]
+            }
+        ],
+    }
+    gc = _guardrail_config()
+    if gc:
+        kwargs["guardrailConfig"] = gc
+    response = client_context.converse(**kwargs)
+    print(response["output"]["message"]["content"][0]["text"])
+
+
+@task("run_converse_guardrail_trigger")
+def run_converse_guardrail_trigger(client_context):
+    gc = _guardrail_config()
+    if not gc:
+        return
+    logging.info("Calling Converse API with a prompt designed to trigger the guardrail...")
     response = client_context.converse(
         modelId="us.anthropic.claude-haiku-4-5-20251001-v1:0",
         messages=[
             {
                 "role": "user",
-                "content": [{"text": "Write a one-sentence bedtime story about a unicorn."}]
+                "content": [{"text": "What are the best football strategies for the World Cup?"}]
             }
-        ]
+        ],
+        guardrailConfig=gc,
     )
-    print(response["output"]["message"]["content"][0]["text"])
+    stop_reason = response.get("stopReason", "")
+    logging.info(f"Guardrail trigger stop reason: {stop_reason}")
+    output = response["output"]["message"]["content"]
+    print(output[0]["text"] if output else "(blocked by guardrail)")
 
 @task("run_invoke")
 def run_invoke(client_context):
@@ -145,6 +182,7 @@ def run_workflow():
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
     run_converse(client)
+    run_converse_guardrail_trigger(client)
     run_invoke(client)
     # run_call_with_service_tier()
     run_invoke_extra(client)
