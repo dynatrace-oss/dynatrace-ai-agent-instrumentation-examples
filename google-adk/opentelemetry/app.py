@@ -10,7 +10,7 @@ from traceloop.sdk import Traceloop
 
 Traceloop.init(
     app_name="google-adk-samples",
-    api_endpoint=os.environ["DT_OTEL_ENDPOINT"],
+    api_endpoint=os.environ["OTEL_ENDPOINT"],
     headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
     disable_batch=True,
 )
