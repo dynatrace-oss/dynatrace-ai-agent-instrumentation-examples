@@ -192,6 +192,10 @@ jobs:
             app_dir: microsoft-agent-framework/opentelemetry
             test_run: TestMicrosoftAgentFrameworkOpenTelemetry
             otel_service_name: microsoft-agent-framework
+          - name: crewai-opentelemetry
+            app_dir: crewai/opentelemetry
+            test_run: TestCrewAIOpenTelemetry
+            otel_service_name: crewai
 
     steps:
       - name: Checkout

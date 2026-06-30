@@ -1,2 +1,0 @@
-crewai==1.6.1
-traceloop-sdk==0.61.0
