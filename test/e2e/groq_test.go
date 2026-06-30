@@ -12,7 +12,7 @@ func TestGroqOneAgent(t *testing.T) {
 	auditSpan(t, "groq", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "groq/oneagent"
-| filter gen_ai.provider.name == "groq"
+| filter gen_ai.provider.name == "groq" or gen_ai.system == "groq"
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | filter isNotNull(dt.smartscape.service)

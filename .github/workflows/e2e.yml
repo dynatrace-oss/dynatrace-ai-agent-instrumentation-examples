@@ -396,6 +396,14 @@ jobs:
         with:
           node-version: ${{ matrix.node_version || '22' }}
 
+      - name: Set up Google credentials
+        if: matrix.needs_google
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+        run: |
+          echo "$GOOGLE_CREDENTIALS_JSON" > /tmp/gcp-credentials.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-credentials.json" >> $GITHUB_ENV
+
       - name: Run e2e test
         working-directory: test/e2e
         env:
@@ -410,11 +418,14 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: us-central1
+          GOOGLE_GENAI_USE_VERTEXAI: ${{ matrix.needs_google && 'TRUE' || '' }}
           MAX_RUNS: '1'
         run: |
           set -euo pipefail
