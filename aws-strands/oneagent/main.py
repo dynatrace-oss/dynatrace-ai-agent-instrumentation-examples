@@ -1,11 +1,25 @@
 import os
 import urllib3
+from datetime import datetime, timezone
 from boto3 import Session
 from strands import Agent, tool
 from strands.models import BedrockModel
-from strands_tools import calculator, current_time
 
 http = urllib3.PoolManager()
+
+
+@tool
+def current_time(timezone_name: str = "UTC") -> str:
+    """
+    Get the current date and time in ISO 8601 format.
+
+    Args:
+        timezone_name (str): Timezone name (e.g. 'UTC', 'US/Eastern'). Defaults to UTC.
+
+    Returns:
+        str: Current datetime in ISO 8601 format.
+    """
+    return datetime.now(timezone.utc).isoformat()
 
 
 @tool
@@ -48,7 +62,7 @@ def create_agent() -> Agent:
             "You have access to appointment management tools, a calculator, and can check the current time "
             "to help organise schedules. Always provide the appointment id so that it can be updated if required."
         ),
-        tools=[current_time, calculator, create_appointment],
+        tools=[current_time, create_appointment],
     )
 
 
