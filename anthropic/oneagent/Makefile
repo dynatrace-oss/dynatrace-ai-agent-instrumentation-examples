@@ -15,7 +15,7 @@ install: ## Install Python dependencies
 	uv sync
 
 run: ## Run app locally on port $(PORT)
-	uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT) --app-dir $(shell pwd)
+	uv run python3 -m uvicorn anthropic_app:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 	docker buildx build --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) .
