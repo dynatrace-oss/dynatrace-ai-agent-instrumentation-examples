@@ -11,15 +11,28 @@ import (
 
 var dtClient *dynatrace.Client
 
-// testRunID is a unique identifier for this test run, injected into every app
-// as an OTEL resource attribute so DQL queries are scoped to spans from this
-// run only — preventing interference between concurrent or recent pipeline runs.
+// testRunID is a nanosecond-precision identifier generated once per test suite
+// run. It is propagated to every app process via OTEL_RESOURCE_ATTRIBUTES so
+// that OTel SDK apps (Python Resource.create(), Node.js NodeSDK auto-detection)
+// include it as a span resource attribute. scopedDQL in audit_test.go then
+// filters DQL queries to only spans carrying this ID, giving exact per-run
+// isolation even when two pipelines execute simultaneously.
+//
+// OneAgent apps are excluded from this mechanism — see scopedDQL for details.
 var testRunID string
+
+// suiteStartTime is recorded at suite startup and used by scopedDQL as a
+// timestamp lower-bound for OneAgent spans, which do not carry test.run.id.
+var suiteStartTime time.Time
 
 func TestMain(m *testing.M) {
 	testRunID = fmt.Sprintf("%d", time.Now().UnixNano())
-	// Propagate to all child processes started by startApp/startCLIApp.
-	// The OTel SDK merges OTEL_RESOURCE_ATTRIBUTES automatically into the resource.
+	suiteStartTime = time.Now()
+
+	// Inject test.run.id into every child process started by startApp /
+	// startCLIApp. process.Start uses cmd.Env = os.Environ(), so any variable
+	// set here is inherited. The OTel SDK merges OTEL_RESOURCE_ATTRIBUTES
+	// automatically; no app code changes are required.
 	existing := os.Getenv("OTEL_RESOURCE_ATTRIBUTES")
 	runAttr := "test.run.id=" + testRunID
 	if existing != "" {
