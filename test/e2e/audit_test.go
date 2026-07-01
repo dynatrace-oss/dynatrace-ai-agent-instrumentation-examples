@@ -293,6 +293,15 @@ func statusIcon(status string) string {
 	}
 }
 
+// assertNotErrorSpan fails the test if the span carries span.status_code == "error".
+// The DQL filter already excludes error spans, but this catches any that slip through.
+func assertNotErrorSpan(t *testing.T, span map[string]interface{}) {
+	t.Helper()
+	if v, ok := span["span.status_code"]; ok && fmt.Sprint(v) == "error" {
+		t.Fatalf("matched an error span (span.status_code=error); check the app for failures: %v", span)
+	}
+}
+
 // auditSpan polls DT until a span matching dql is found (5-minute timeout),
 // then fetches all spans in the same trace to build a complete attribute picture.
 // Writes JSON + markdown reports to test/e2e/reports/. Logs (but does NOT fail)
@@ -310,6 +319,7 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	if len(records) == 0 {
 		t.Fatalf("no spans returned from DT")
 	}
+	assertNotErrorSpan(t, records[0])
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
@@ -341,6 +351,7 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 		t.Skipf("no %s/%s spans found — provider likely not selected this run", sdk, instrumentation)
 		return
 	}
+	assertNotErrorSpan(t, records[0])
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
