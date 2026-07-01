@@ -72,3 +72,4 @@ Requires the processors from `../opentelemetry/openpipeline-langfuse.yaml` to be
 | `MODEL` | no | Model/deployment name (default: `gpt-5.4-mini`) |
 | `TOPIC` | no | Haiku topic (default: `observability`) |
 | `LANGFUSE_SESSION_ID` | no | Session ID mapped to `gen_ai.conversation.id` (default: `demo-session`) |
+| `OTEL_RESOURCE_ATTRIBUTES` | no | Set to `gen_ai.agent.name=<value>` to control the agent name shown in the Dynatrace AI Observability smartscape topology; works for both collector and OpenPipeline paths; falls back to `"langfuse-demo"` if not set |

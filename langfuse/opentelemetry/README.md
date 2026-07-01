@@ -76,6 +76,11 @@ MODEL=gpt-5.4-mini                       # optional, defaults to gpt-5.4-mini
 TOPIC=observability                      # optional, haiku topic
 LANGFUSE_SESSION_ID=demo-session         # optional, maps to gen_ai.conversation.id
 
+# Agent name shown in the Dynatrace AI Observability smartscape topology.
+# Change this to any name that describes what this Langfuse app does.
+# Works for both the OTel Collector path and the OpenPipeline path.
+OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=langfuse-demo
+
 # Azure OpenAI (optional)
 OPENAI_API_BASE=https://your-endpoint.openai.azure.com/
 OPENAI_API_VERSION=2024-07-01-preview
@@ -172,6 +177,7 @@ These mappings are applied by both the OTel Collector (`transform/langfuse` proc
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
 | `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
+| `OTEL_RESOURCE_ATTRIBUTES` (env) | `gen_ai.agent.name` | set in `.env` as `gen_ai.agent.name=<value>`; used to create GENAI_AGENT entity and smartscape topology connections; falls back to `"langfuse-demo"` if not set |
 
 ---
 

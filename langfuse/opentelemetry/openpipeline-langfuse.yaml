@@ -217,15 +217,17 @@ processing:
     # 13. AGENT NAME
     # ============================================================================
     # gen_ai.agent.name is required by Dynatrace to create a GENAI_AGENT entity and
-    # connect the service in the smartscape topology. Langfuse does not emit it, so
-    # set it to the span name on generation spans. The span name is set by the SDK to
-    # the observation name (@observe function name / startActiveObservation name).
+    # connect the service in the smartscape topology. The recommended approach is to
+    # set OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=<your-agent> in the app
+    # environment — Dynatrace merges OTel resource attributes into the span record
+    # before OpenPipeline processing, so the value arrives here automatically.
+    # The processor below is a fallback for spans that arrive without it already set.
     # ============================================================================
     - id: "langfuse-agent-name"
       enabled: true
       matcher: 'langfuse.observation.type == "generation" AND isNull(gen_ai.agent.name)'
       type: "dql"
-      description: "Set gen_ai.agent.name from span name for smartscape topology"
+      description: "Fallback: set gen_ai.agent.name for spans missing it (prefer OTEL_RESOURCE_ATTRIBUTES)"
       dql:
         script: |
           fieldsAdd gen_ai.agent.name = "langfuse-demo"
