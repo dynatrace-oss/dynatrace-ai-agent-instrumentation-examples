@@ -24,6 +24,7 @@ Demonstrates tracing LangChain + AWS Bedrock API calls with Dynatrace via OneAge
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
 | `BEDROCK_MODEL_ID` | No | `anthropic.claude-3-5-sonnet-20241022-v2:0` | Bedrock model ID |
+| `DT_APPLICATIONID` | No | `aws-bedrock-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 

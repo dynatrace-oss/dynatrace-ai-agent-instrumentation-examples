@@ -3,6 +3,7 @@ SHELL            := /bin/bash
 export
 
 APP_IMAGE        ?=
+DT_APPLICATIONID ?= ollama-oneagent
 BUILD_PLATFORM   ?= linux/amd64
 PORT             ?= 8000
 

@@ -22,6 +22,7 @@ Demonstrates tracing Groq SDK API calls with Dynatrace via OneAgent auto-instrum
 |----------|----------|---------|-------------|
 | `GROQ_API_KEY` | Yes | — | Groq API key |
 | `MODEL` | No | `llama-3.1-8b-instant` | Model to use |
+| `DT_APPLICATIONID` | No | `groq-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 

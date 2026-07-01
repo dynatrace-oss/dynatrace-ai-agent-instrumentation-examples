@@ -24,6 +24,7 @@ Demonstrates tracing Anthropic Bedrock SDK API calls with Dynatrace via OneAgent
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
 | `ANTHROPIC_MODEL_ID` | No | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model ID |
+| `DT_APPLICATIONID` | No | `anthropic-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 

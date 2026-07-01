@@ -24,6 +24,7 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 | `MODEL` | No | `gpt-4o` | Model to use |
 | `OPENAI_API_BASE` | No | — | Custom API base URL (e.g. Azure OpenAI endpoint) |
 | `OPENAI_API_VERSION` | No | — | API version (required for Azure OpenAI) |
+| `DT_APPLICATIONID` | No | `openai-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 

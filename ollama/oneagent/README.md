@@ -22,6 +22,7 @@ Demonstrates tracing Ollama SDK API calls with Dynatrace via OneAgent auto-instr
 |----------|----------|---------|-------------|
 | `OLLAMA_HOST` | No | `http://localhost:11434` | Ollama server URL |
 | `MODEL` | No | `llama3.2` | Model to use |
+| `DT_APPLICATIONID` | No | `ollama-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 
