@@ -57,6 +57,7 @@ async def research(req: ResearchRequest) -> str:
         app_name="google-adk-samples",
         user_id="e2e",
         session_id=str(uuid.uuid4()),
+        state={"seminal_paper": req.topic},
     )
     message = Content(
         role="user",
