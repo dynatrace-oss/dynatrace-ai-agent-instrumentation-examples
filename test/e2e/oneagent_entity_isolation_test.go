@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 )
@@ -18,19 +19,32 @@ import (
 // spans from unrelated services. This makes the Smartscape topology in the
 // GenAI Observability app meaningless.
 //
-// The query looks for any dt.smartscape.service value associated with spans
-// from more than one service.name within the last 3 hours. If any such entity
-// exists the test fails and logs the offending entity IDs and the merged
-// service names so that the root cause can be diagnosed.
+// The test is scoped to the current job run via the NIGHTLY_START_TIME env var
+// (set by the CI workflow at job start). It skips when that variable is absent
+// so that it does not interfere with per-suite PR runs or local executions.
 func TestOneAgentEntityIsolation(t *testing.T) {
+	startTimeStr := os.Getenv("NIGHTLY_START_TIME")
+	if startTimeStr == "" {
+		t.Skip("NIGHTLY_START_TIME not set — skipping entity isolation check (only runs in oneagent-nightly CI job)")
+	}
+
+	// Validate the timestamp so a malformed value produces a clear error.
+	if _, err := time.Parse(time.RFC3339, startTimeStr); err != nil {
+		t.Fatalf("NIGHTLY_START_TIME %q is not a valid RFC3339 timestamp: %v", startTimeStr, err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
-	dql := `fetch spans, from: now()-3h
+	// Fetch a window wide enough to cover the whole nightly job, then narrow
+	// to spans generated on or after job start to exclude any leftover spans
+	// from a previous run.
+	dql := fmt.Sprintf(`fetch spans, from: now()-4h
 | filter dt.openpipeline.source == "oneagent" and isNotNull(gen_ai.provider.name)
 | filter isNotNull(dt.smartscape.service)
+| filter timestamp >= "%s"
 | summarize services = collectDistinct(service.name), by: {dt.smartscape.service}
-| filter arraySize(services) > 1`
+| filter arraySize(services) > 1`, startTimeStr)
 
 	records, err := dtClient.Execute(ctx, dql)
 	if err != nil {
