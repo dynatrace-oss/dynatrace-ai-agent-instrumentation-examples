@@ -1,4 +1,5 @@
-SHELL            := /bin/bash
+
+\SHELL            := /bin/bash
 -include .env
 export
 

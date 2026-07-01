@@ -20,8 +20,8 @@ Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Tra
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GOOGLE_API_KEY` | Yes | — | Google AI Studio API key |
-| `MODEL` | No | `gemini-2.0-flash` | Gemini model to use |
+| `GOOGLE_API_KEY` | Yes | — | Google AI Studio API key (`aistudio.google.com/apikey`) |
+| `MODEL` | No | `gemini-3.1-flash-lite` | Gemini model to use |
 | `DT_API_TOKEN` | Yes | — | Dynatrace API token (ingest scope) |
 | `OTEL_ENDPOINT` | Yes | — | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
 
