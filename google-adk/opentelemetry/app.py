@@ -5,14 +5,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from traceloop.sdk import Traceloop
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
-Traceloop.init(
-    app_name="google-adk-samples",
-    api_endpoint=os.environ["OTEL_ENDPOINT"],
-    headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
-    disable_batch=True,
+resource = Resource.create({SERVICE_NAME: "google-adk-samples"})
+provider = TracerProvider(resource=resource)
+provider.add_span_processor(
+    SimpleSpanProcessor(
+        OTLPSpanExporter(
+            endpoint=f"{os.environ['OTEL_ENDPOINT']}/v1/traces",
+            headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
+        )
+    )
 )
+trace.set_tracer_provider(provider)
 
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse

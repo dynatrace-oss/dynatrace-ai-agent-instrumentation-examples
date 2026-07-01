@@ -1,6 +1,6 @@
 ## Google Agent Development Kit (ADK) + OpenTelemetry
 
-Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Traceloop (OpenLLMetry). The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`.
+Demonstrates tracing a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`.
 
 ## Prerequisites
 
@@ -36,17 +36,26 @@ Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Tra
 
 ## Dynatrace Instrumentation
 
-Traceloop's OpenLLMetry SDK auto-instruments the Gemini SDK calls made by Google ADK:
+Google ADK has built-in OpenTelemetry tracing. The app configures a standard OTLP exporter pointing to Dynatrace — ADK picks it up automatically via the global tracer provider:
 
 ```python
-from traceloop.sdk import Traceloop
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
-Traceloop.init(
-    app_name="google-adk-samples",
-    api_endpoint=os.environ["OTEL_ENDPOINT"],
-    headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
-    disable_batch=True,
+resource = Resource.create({SERVICE_NAME: "google-adk-samples"})
+provider = TracerProvider(resource=resource)
+provider.add_span_processor(
+    SimpleSpanProcessor(
+        OTLPSpanExporter(
+            endpoint=f"{os.environ['OTEL_ENDPOINT']}/v1/traces",
+            headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
+        )
+    )
 )
+trace.set_tracer_provider(provider)
 ```
 
 > [!TIP]

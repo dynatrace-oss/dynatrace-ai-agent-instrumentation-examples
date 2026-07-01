@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "google-adk>=1.0.0",
-    "vertexai>=1.71.0",
-    "traceloop-sdk>=0.61.0",
+    "opentelemetry-sdk>=1.28.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.28.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
     "python-dotenv>=1.0.0",
