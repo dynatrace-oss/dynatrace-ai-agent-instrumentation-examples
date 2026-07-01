@@ -32,8 +32,15 @@ OC_ALL='[
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then
-  OA_MATRIX=$(echo "$OA_ALL" | jq --argjson changed "$CHANGED_SUITES" '[.[] | select(.name as $n | $changed | index($n) != null)]')
-  OC_MATRIX=$(echo "$OC_ALL" | jq --argjson changed "$CHANGED_SUITES" '[.[] | select(.name as $n | $changed | index($n) != null)]')
+  # If any test-suite file changed (test/e2e/**), run all suites so that
+  # changes to shared test infrastructure are validated against every app.
+  if echo "$CHANGED_SUITES" | jq -e 'index("test-suite") != null' > /dev/null; then
+    OA_MATRIX=$(echo "$OA_ALL" | jq -c .)
+    OC_MATRIX=$(echo "$OC_ALL" | jq -c .)
+  else
+    OA_MATRIX=$(echo "$OA_ALL" | jq --argjson changed "$CHANGED_SUITES" '[.[] | select(.name as $n | $changed | index($n) != null)]')
+    OC_MATRIX=$(echo "$OC_ALL" | jq --argjson changed "$CHANGED_SUITES" '[.[] | select(.name as $n | $changed | index($n) != null)]')
+  fi
 elif [[ -n "${SUITE_INPUT:-}" ]]; then
   OA_MATRIX=$(echo "$OA_ALL" | jq --arg s "$SUITE_INPUT" '[.[] | select(.name == $s)]')
   OC_MATRIX=$(echo "$OC_ALL" | jq --arg s "$SUITE_INPUT" '[.[] | select(.name == $s)]')

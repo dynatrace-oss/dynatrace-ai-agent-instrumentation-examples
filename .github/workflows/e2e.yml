@@ -34,24 +34,75 @@ jobs:
         uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
         with:
           filters: |
-            aws-bedrock-oneagent: 'aws-bedrock/oneagent/**'
-            anthropic-oneagent: 'anthropic/oneagent/**'
-            openai-oneagent: 'openai/oneagent/**'
-            ollama-oneagent: 'ollama/oneagent/**'
-            groq-oneagent: 'groq/oneagent/**'
-            cohere-oneagent: 'cohere/oneagent/**'
-            aws-bedrock-opentelemetry: 'aws-bedrock/opentelemetry/**'
-            aws-bedrock-openinference: 'aws-bedrock/openinference/**'
-            openai-openinference: 'openai/openinference/**'
-            langfuse-opentelemetry: 'langfuse/opentelemetry/**'
-            langfuse-opentelemetry-node: 'langfuse/opentelemetry-node/**'
-            langfuse-opentelemetry-openpipeline: 'langfuse/opentelemetry/**'
-            pydantic-ai-opentelemetry: 'pydantic-ai/opentelemetry/**'
-            openai-agents-opentelemetry: 'openai-agents/opentelemetry/**'
-            mcp-opentelemetry: 'mcp/opentelemetry/**'
-            litellm-opentelemetry: 'litellm/opentelemetry/**'
-            microsoft-agent-framework-opentelemetry: 'microsoft-agent-framework/opentelemetry/**'
-            crewai-opentelemetry: 'crewai/opentelemetry/**'
+            # Shared test fixture files — changes here affect every suite so the
+            # full matrix runs. Fixture files use the fixture_* naming convention
+            # to distinguish them from per-suite *_test.go files; adding a new
+            # per-suite test file does NOT trigger a full run.
+            #
+            # internal/ contains the Dynatrace DQL client (dynatrace/client.go)
+            # and the app process manager (process/app.go) used by all tests.
+            test-suite: |
+              test/e2e/fixture_*
+              test/e2e/internal/**
+              test/e2e/go.mod
+              test/e2e/go.sum
+            aws-bedrock-oneagent: |
+              aws-bedrock/oneagent/**
+              test/e2e/aws_bedrock_oneagent_test.go
+            anthropic-oneagent: |
+              anthropic/oneagent/**
+              test/e2e/anthropic_oneagent_test.go
+            openai-oneagent: |
+              openai/oneagent/**
+              test/e2e/openai_oneagent_test.go
+            ollama-oneagent: |
+              ollama/oneagent/**
+              test/e2e/ollama_test.go
+            groq-oneagent: |
+              groq/oneagent/**
+              test/e2e/groq_test.go
+            cohere-oneagent: |
+              cohere/oneagent/**
+              test/e2e/cohere_test.go
+            aws-bedrock-opentelemetry: |
+              aws-bedrock/opentelemetry/**
+              test/e2e/aws_bedrock_opentelemetry_test.go
+            aws-bedrock-openinference: |
+              aws-bedrock/openinference/**
+              test/e2e/aws_bedrock_openinference_test.go
+            openai-openinference: |
+              openai/openinference/**
+              test/e2e/openai_openinference_test.go
+            langfuse-opentelemetry: |
+              langfuse/opentelemetry/**
+              test/e2e/langfuse_opentelemetry_test.go
+            langfuse-opentelemetry-node: |
+              langfuse/opentelemetry-node/**
+              test/e2e/langfuse_opentelemetry_node_test.go
+            langfuse-opentelemetry-openpipeline: |
+              langfuse/opentelemetry/**
+              test/e2e/langfuse_opentelemetry_openpipeline_test.go
+            pydantic-ai-opentelemetry: |
+              pydantic-ai/opentelemetry/**
+              test/e2e/pydantic_ai_opentelemetry_test.go
+            openai-agents-opentelemetry: |
+              openai-agents/opentelemetry/**
+              test/e2e/openai_agents_opentelemetry_test.go
+            mcp-opentelemetry: |
+              mcp/opentelemetry/**
+              test/e2e/mcp_opentelemetry_test.go
+            litellm-opentelemetry: |
+              litellm/opentelemetry/**
+              test/e2e/litellm_opentelemetry_test.go
+            microsoft-agent-framework-opentelemetry: |
+              microsoft-agent-framework/opentelemetry/**
+              test/e2e/microsoft_agent_framework_opentelemetry_test.go
+            crewai-opentelemetry: |
+              crewai/opentelemetry/**
+              test/e2e/crewai_opentelemetry_test.go
+            google-adk-opentelemetry: |
+              google-adk/opentelemetry/**
+              test/e2e/google_adk_opentelemetry_test.go
 
       - name: Compute matrices
         id: compute
