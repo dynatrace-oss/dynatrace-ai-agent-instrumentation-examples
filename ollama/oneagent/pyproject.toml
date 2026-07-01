@@ -6,4 +6,5 @@ dependencies = [
     "ollama>=0.3.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
+    "oneagent-sdk",
 ]

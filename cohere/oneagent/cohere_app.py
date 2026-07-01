@@ -1,6 +1,23 @@
 import asyncio
 import os
 import cohere
+
+_web_app_info = None
+
+
+def setup_instrumentation() -> None:
+    global _web_app_info
+    import oneagent
+    oneagent.initialize()
+    sdk = oneagent.get_sdk()
+    _web_app_info = sdk.create_web_application_info(
+        virtual_host="localhost",
+        application_id=os.environ.get("OTEL_SERVICE_NAME", "cohere/oneagent"),
+        context_root="/",
+    )
+
+
+setup_instrumentation()
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 

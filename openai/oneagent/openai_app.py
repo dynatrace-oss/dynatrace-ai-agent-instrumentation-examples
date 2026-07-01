@@ -1,5 +1,22 @@
 import os
 import openai
+
+_web_app_info = None
+
+
+def setup_instrumentation() -> None:
+    global _web_app_info
+    import oneagent
+    oneagent.initialize()
+    sdk = oneagent.get_sdk()
+    _web_app_info = sdk.create_web_application_info(
+        virtual_host="localhost",
+        application_id=os.environ.get("OTEL_SERVICE_NAME", "openai/oneagent"),
+        context_root="/",
+    )
+
+
+setup_instrumentation()
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk
 from fastapi import FastAPI
