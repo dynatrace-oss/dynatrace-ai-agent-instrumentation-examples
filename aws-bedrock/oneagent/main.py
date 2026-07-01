@@ -4,19 +4,10 @@ from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-_web_app_info = None
-
 
 def setup_instrumentation() -> None:
-    global _web_app_info
     import oneagent
     oneagent.initialize()
-    sdk = oneagent.get_sdk()
-    _web_app_info = sdk.create_web_application_info(
-        virtual_host="localhost",
-        application_id=os.environ.get("OTEL_SERVICE_NAME", "aws-bedrock/oneagent"),
-        context_root="/",
-    )
 
 
 _chain = None
