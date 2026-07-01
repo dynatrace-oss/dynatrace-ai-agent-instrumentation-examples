@@ -1,33 +1,29 @@
 ## Google Agent Development Kit (ADK) + OpenTelemetry
 
-Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Traceloop (OpenLLMetry). The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. The ADK runs with Vertex AI as the model backend (`GOOGLE_GENAI_USE_VERTEXAI=TRUE`), so spans carry `gen_ai.system = google_vertex_ai`.
+Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Traceloop (OpenLLMetry). The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`.
 
 ## Prerequisites
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- GCP project with Vertex AI enabled and application default credentials
+- Google AI Studio API key (`aistudio.google.com/apikey`)
 - Dynatrace environment with API token
 
 ## Quick Start
 
-1. Copy `\.env\.sample` to `.env` and fill in your credentials
-2. Authenticate with GCP: `gcloud auth application-default login`
-3. `make install` — install dependencies
-4. `make run` — start the app on port 8000
-5. `make request` — send a test haiku request (in a second terminal)
+1. Copy `.env.sample` to `.env` and fill in your credentials
+2. `make install` — install dependencies
+3. `make run` — start the app on port 8000
+4. `make request` — send a test research request (in a second terminal)
 
 ## Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
+| `GOOGLE_API_KEY` | Yes | — | Google AI Studio API key |
+| `MODEL` | No | `gemini-2.0-flash` | Gemini model to use |
 | `DT_API_TOKEN` | Yes | — | Dynatrace API token (ingest scope) |
 | `OTEL_ENDPOINT` | Yes | — | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
-| `GOOGLE_GENAI_USE_VERTEXAI` | Yes | — | Set to `TRUE` to use Vertex AI as ADK backend |
-| `GOOGLE_CLOUD_PROJECT` | Yes | — | GCP project ID |
-| `GOOGLE_CLOUD_LOCATION` | No | `us-central1` | GCP region |
-| `GOOGLE_APPLICATION_CREDENTIALS` | No | — | Path to service account key (if not using gcloud ADC) |
-| `MODEL` | No | `gemini-2.0-flash` | Gemini model to use |
 
 ## Makefile Targets
 
@@ -40,7 +36,7 @@ Demonstrates tracing a multi-agent Google ADK application with Dynatrace via Tra
 
 ## Dynatrace Instrumentation
 
-Traceloop's OpenLLMetry SDK auto-instruments the Vertex AI SDK calls made by Google ADK:
+Traceloop's OpenLLMetry SDK auto-instruments the Gemini SDK calls made by Google ADK:
 
 ```python
 from traceloop.sdk import Traceloop

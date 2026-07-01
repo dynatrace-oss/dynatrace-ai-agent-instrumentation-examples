@@ -23,7 +23,7 @@ import prompt
 from sub_agents.academic_newresearch import academic_newresearch_agent
 from sub_agents.academic_websearch import academic_websearch_agent
 
-MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
+MODEL = os.environ.get("MODEL", "gemini-2.0-flash")
 
 
 academic_coordinator = LlmAgent(
