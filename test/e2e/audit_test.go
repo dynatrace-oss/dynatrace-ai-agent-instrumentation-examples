@@ -302,6 +302,12 @@ func assertNotErrorSpan(t *testing.T, span map[string]interface{}) {
 	}
 }
 
+// scopedDQL appends a test.run.id filter so DQL only returns spans from this
+// specific test run, preventing interference between concurrent pipeline runs.
+func scopedDQL(dql string) string {
+	return dql + fmt.Sprintf("\n| filter test.run.id == %q", testRunID)
+}
+
 // auditSpan polls DT until a span matching dql is found (5-minute timeout),
 // then fetches all spans in the same trace to build a complete attribute picture.
 // Writes JSON + markdown reports to test/e2e/reports/. Logs (but does NOT fail)
@@ -312,7 +318,7 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
 	if err != nil {
 		t.Fatalf("poll DT spans: %v", err)
 	}
@@ -346,7 +352,7 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
 	if err != nil || len(records) == 0 {
 		t.Skipf("no %s/%s spans found — provider likely not selected this run", sdk, instrumentation)
 		return
