@@ -29,7 +29,7 @@ OC_ALL='[
   {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_file":"test/e2e/litellm_opentelemetry_test.go","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway"},
   {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetry","otel_service_name":"microsoft-agent-framework"},
   {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_test.go","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"},
-  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"TestGoogleADKOpenTelemetry","otel_service_name":"google-adk-samples","needs_google":true}
+  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"TestGoogleADKOpenTelemetry","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then
