@@ -4,9 +4,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from main import setup_instrumentation, write_haiku
-
-setup_instrumentation()
+from main import write_haiku
 
 app = FastAPI(title="Haiku Writer")
 

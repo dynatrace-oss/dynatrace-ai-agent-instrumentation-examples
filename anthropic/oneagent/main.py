@@ -2,12 +2,6 @@ import os
 
 import anthropic
 
-
-def setup_instrumentation() -> None:
-    import oneagent
-    oneagent.initialize()
-
-
 _client = None
 
 
