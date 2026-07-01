@@ -100,9 +100,6 @@ jobs:
             crewai-opentelemetry: |
               crewai/opentelemetry/**
               test/e2e/crewai_opentelemetry_test.go
-            google-adk-opentelemetry: |
-              google-adk/opentelemetry/**
-              test/e2e/google_adk_opentelemetry_test.go
 
       - name: Compute matrices
         id: compute
