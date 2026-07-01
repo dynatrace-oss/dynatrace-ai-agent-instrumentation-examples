@@ -271,6 +271,14 @@ jobs:
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
+      # Runs after all six per-service steps to detect entity merging: if OneAgent
+      # assigned spans from multiple service.name values to the same SERVICE entity
+      # (AI-167), this step fails and logs the offending entity IDs.
+      - name: Assert entity isolation
+        if: always()
+        working-directory: test/e2e
+        run: go test ./... -run "TestOneAgentEntityIsolation" -v -timeout 5m
+
       - name: Write job summary
         if: always()
         run: |
