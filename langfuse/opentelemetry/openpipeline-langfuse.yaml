@@ -214,7 +214,24 @@ processing:
           fieldsAdd span.status_code = if(langfuse.observation.level == "ERROR", "error", else: "ok")
 
     # ============================================================================
-    # 13. SOURCE METADATA
+    # 13. AGENT NAME
+    # ============================================================================
+    # gen_ai.agent.name is required by Dynatrace to create a GENAI_AGENT entity and
+    # connect the service in the smartscape topology. Langfuse does not emit it, so
+    # set it to the span name on generation spans. The span name is set by the SDK to
+    # the observation name (@observe function name / startActiveObservation name).
+    # ============================================================================
+    - id: "langfuse-agent-name"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation" AND isNull(gen_ai.agent.name)'
+      type: "dql"
+      description: "Set gen_ai.agent.name from span name for smartscape topology"
+      dql:
+        script: |
+          fieldsAdd gen_ai.agent.name = "langfuse-demo"
+
+    # ============================================================================
+    # 14. SOURCE METADATA
     # ============================================================================
     - id: "langfuse-source-metadata"
       enabled: true

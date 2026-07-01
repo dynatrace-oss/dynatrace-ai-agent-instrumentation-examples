@@ -94,7 +94,14 @@ processors:
           - set(status.code, STATUS_CODE_ERROR) where attributes["langfuse.observation.level"] == "ERROR" and status.code == STATUS_CODE_UNSET
           - set(status.code, STATUS_CODE_OK) where attributes["langfuse.observation.type"] == "generation" and status.code == STATUS_CODE_UNSET
 
-          # ── 13. CLEANUP ───────────────────────────────────────────────────────
+          # ── 13. AGENT NAME ───────────────────────────────────────────────────
+          # gen_ai.agent.name is required by Dynatrace to create a GENAI_AGENT entity and
+          # connect the service in the smartscape topology. Langfuse does not emit it, so
+          # set it to the span name on generation spans. The span name is set by the SDK to
+          # the observation name (@observe function name / startActiveObservation name).
+          - set(attributes["gen_ai.agent.name"], "langfuse-demo") where attributes["langfuse.observation.type"] == "generation" and attributes["gen_ai.agent.name"] == nil
+
+          # ── 14. CLEANUP ───────────────────────────────────────────────────────
           # Remove the routing discriminator after transformation. OpenPipeline routes
           # on isNotNull(langfuse.observation.type), so deleting it here prevents
           # collector-transformed spans from being re-processed by OpenPipeline.
