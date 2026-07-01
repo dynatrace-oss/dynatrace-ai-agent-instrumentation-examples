@@ -46,6 +46,8 @@ jobs:
               test/e2e/internal/**
               test/e2e/go.mod
               test/e2e/go.sum
+              .github/workflows/e2e.yml
+              .github/scripts/compute-e2e-matrix.sh
             aws-bedrock-oneagent: |
               aws-bedrock/oneagent/**
               test/e2e/aws_bedrock_oneagent_test.go
