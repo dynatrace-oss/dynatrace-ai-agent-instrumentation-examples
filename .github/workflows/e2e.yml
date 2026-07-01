@@ -83,7 +83,8 @@ jobs:
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull ${{ matrix.ollama_model }}
 
-      - name: Install Dynatrace OneAgent
+      - name: Resolve OneAgent installer version
+        id: oneagent-version
         env:
           DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
           DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
@@ -93,12 +94,38 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
-          INSTALLER_DIR=$(mktemp -d)
-          trap 'rm -rf "$INSTALLER_DIR"' EXIT
-          wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+          VERSION=$(curl -sS --fail \
+            --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
+            | jq -r '.latestAgentVersion')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Error: could not resolve latest OneAgent version from metainfo endpoint"; exit 1
+          fi
+          echo "resolved OneAgent version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OneAgent installer
+        id: oneagent-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/oneagent/oneagent.sh
+          key: oneagent-installer-${{ steps.oneagent-version.outputs.version }}-x86
+
+      - name: Download Dynatrace OneAgent installer
+        if: steps.oneagent-cache.outputs.cache-hit != 'true'
+        env:
+          DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
+          DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
+          VERSION: ${{ steps.oneagent-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.cache/oneagent
+          wget --timeout=60 -O ~/.cache/oneagent/oneagent.sh \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/version/${VERSION}?arch=x86" \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
-          sudo sh "$INSTALLER_DIR/oneagent.sh"
+
+      - name: Install Dynatrace OneAgent
+        run: sudo sh ~/.cache/oneagent/oneagent.sh
 
       - name: Run e2e test
         working-directory: test/e2e
@@ -196,7 +223,8 @@ jobs:
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull tinyllama
 
-      - name: Install Dynatrace OneAgent
+      - name: Resolve OneAgent installer version
+        id: oneagent-version
         env:
           DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
         run: |
@@ -205,12 +233,37 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
-          INSTALLER_DIR=$(mktemp -d)
-          trap 'rm -rf "$INSTALLER_DIR"' EXIT
-          wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+          VERSION=$(curl -sS --fail \
+            --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
+            | jq -r '.latestAgentVersion')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Error: could not resolve latest OneAgent version from metainfo endpoint"; exit 1
+          fi
+          echo "resolved OneAgent version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OneAgent installer
+        id: oneagent-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/oneagent/oneagent.sh
+          key: oneagent-installer-${{ steps.oneagent-version.outputs.version }}-x86
+
+      - name: Download Dynatrace OneAgent installer
+        if: steps.oneagent-cache.outputs.cache-hit != 'true'
+        env:
+          DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
+          VERSION: ${{ steps.oneagent-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.cache/oneagent
+          wget --timeout=60 -O ~/.cache/oneagent/oneagent.sh \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/version/${VERSION}?arch=x86" \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
-          sudo sh "$INSTALLER_DIR/oneagent.sh"
+
+      - name: Install Dynatrace OneAgent
+        run: sudo sh ~/.cache/oneagent/oneagent.sh
 
       - name: Run aws-bedrock-oneagent
         working-directory: test/e2e
