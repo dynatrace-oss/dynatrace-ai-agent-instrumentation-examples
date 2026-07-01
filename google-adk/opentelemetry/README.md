@@ -2,6 +2,8 @@
 
 Demonstrates tracing a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`.
 
+![Google ADK — AI Observability Prompt View](./assets/google-adk-prompt-view.png)
+
 ## Prerequisites
 
 - Python 3.11+

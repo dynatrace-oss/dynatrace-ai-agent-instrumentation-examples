@@ -23,7 +23,7 @@ provider.add_span_processor(
 )
 trace.set_tracer_provider(provider)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -75,4 +75,7 @@ async def research(req: ResearchRequest) -> str:
                         return part.text
         return ""
 
-    return await _run()
+    result = await _run()
+    if not result:
+        raise HTTPException(status_code=500, detail="agent returned no response")
+    return result
