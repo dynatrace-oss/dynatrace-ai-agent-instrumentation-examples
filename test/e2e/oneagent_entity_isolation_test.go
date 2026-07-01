@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 )
@@ -30,7 +31,19 @@ var oneagentSuites = []string{
 // process group fingerprint, producing a single SERVICE entity that carries
 // spans from unrelated services. This makes the Smartscape topology in the
 // GenAI Observability app meaningless.
+//
+// The test is scoped to the current job run via the NIGHTLY_START_TIME env var
+// (set by the CI workflow at job start). It skips when that variable is absent
+// so that it does not interfere with per-suite PR runs or local executions.
 func TestOneAgentEntityIsolation(t *testing.T) {
+	startTimeStr := os.Getenv("NIGHTLY_START_TIME")
+	if startTimeStr == "" {
+		t.Skip("NIGHTLY_START_TIME not set — skipping entity isolation check (only runs in oneagent-nightly CI job)")
+	}
+	if _, err := time.Parse(time.RFC3339, startTimeStr); err != nil {
+		t.Fatalf("NIGHTLY_START_TIME %q is not a valid RFC3339 timestamp: %v", startTimeStr, err)
+	}
+
 	// Step 1: wait until enriched spans from all expected services are visible.
 	// This guards against a false pass caused by dt.smartscape.service enrichment
 	// not yet being complete when the check runs.
@@ -38,7 +51,7 @@ func TestOneAgentEntityIsolation(t *testing.T) {
 	waitCtx, waitCancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer waitCancel()
 
-	if err := pollUntilAllServicesEnriched(waitCtx, t); err != nil {
+	if err := pollUntilAllServicesEnriched(waitCtx, t, startTimeStr); err != nil {
 		t.Fatalf("timed out waiting for enriched spans from all oneagent services: %v", err)
 	}
 	t.Log("all services have enriched spans — running entity isolation check")
@@ -47,11 +60,12 @@ func TestOneAgentEntityIsolation(t *testing.T) {
 	assertCtx, assertCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer assertCancel()
 
-	mergeDQL := `fetch spans, from: now()-2h
+	mergeDQL := fmt.Sprintf(`fetch spans, from: now()-2h
 | filter dt.openpipeline.source == "oneagent" and isNotNull(gen_ai.provider.name)
 | filter isNotNull(dt.smartscape.service)
+| filter timestamp >= "%s"
 | summarize services = collectDistinct(service.name), by: {dt.smartscape.service}
-| filter arraySize(services) > 1`
+| filter arraySize(services) > 1`, startTimeStr)
 
 	records, err := dtClient.Execute(assertCtx, mergeDQL)
 	if err != nil {
@@ -70,13 +84,14 @@ func TestOneAgentEntityIsolation(t *testing.T) {
 // pollUntilAllServicesEnriched polls DT until every service in oneagentSuites
 // has at least one span with dt.smartscape.service set, confirming that the
 // Dynatrace enrichment pipeline has processed spans from the full run.
-func pollUntilAllServicesEnriched(ctx context.Context, t *testing.T) error {
+func pollUntilAllServicesEnriched(ctx context.Context, t *testing.T, startTimeStr string) error {
 	t.Helper()
 
-	dql := `fetch spans, from: now()-2h
+	dql := fmt.Sprintf(`fetch spans, from: now()-2h
 | filter dt.openpipeline.source == "oneagent" and isNotNull(gen_ai.provider.name)
 | filter isNotNull(dt.smartscape.service)
-| summarize count = count(), by: {service.name}`
+| filter timestamp >= "%s"
+| summarize count = count(), by: {service.name}`, startTimeStr)
 
 	for {
 		records, err := dtClient.Execute(ctx, dql)

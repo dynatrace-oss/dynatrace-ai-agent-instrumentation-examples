@@ -282,7 +282,7 @@ jobs:
         working-directory: test/e2e
         env:
           NIGHTLY_START_TIME: ${{ env.NIGHTLY_START_TIME }}
-        run: go test ./... -run "TestOneAgentEntityIsolation" -v -timeout 5m
+        run: go test ./... -run "TestOneAgentEntityIsolation" -v -timeout 15m
 
       - name: Write job summary
         if: always()
