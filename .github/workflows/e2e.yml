@@ -16,9 +16,9 @@ permissions:
 
 jobs:
   # Computes which matrix entries should run based on the trigger:
-  #   schedule           → all entries (consolidated nightly job handles oneagent separately)
+  #   schedule           → all entries
   #   workflow_dispatch  → selected suite only; all entries if no suite input given
-  #   pull_request       → entries whose suite name was matched by paths-filter
+  #   pull_request       → all entries (full validation on every PR)
   filter:
     runs-on: ubuntu-latest
     outputs:
@@ -28,87 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Detect changed paths
-        id: paths-filter
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
-        with:
-          filters: |
-            # Shared test fixture files — changes here affect every suite so the
-            # full matrix runs. Fixture files use the fixture_* naming convention
-            # to distinguish them from per-suite *_test.go files; adding a new
-            # per-suite test file does NOT trigger a full run.
-            #
-            # internal/ contains the Dynatrace DQL client (dynatrace/client.go)
-            # and the app process manager (process/app.go) used by all tests.
-            test-suite: |
-              test/e2e/fixture_*
-              test/e2e/internal/**
-              test/e2e/go.mod
-              test/e2e/go.sum
-              .github/workflows/e2e.yml
-              .github/scripts/compute-e2e-matrix.sh
-            aws-bedrock-oneagent: |
-              aws-bedrock/oneagent/**
-              test/e2e/aws_bedrock_oneagent_test.go
-            anthropic-oneagent: |
-              anthropic/oneagent/**
-              test/e2e/anthropic_oneagent_test.go
-            openai-oneagent: |
-              openai/oneagent/**
-              test/e2e/openai_oneagent_test.go
-            ollama-oneagent: |
-              ollama/oneagent/**
-              test/e2e/ollama_test.go
-            groq-oneagent: |
-              groq/oneagent/**
-              test/e2e/groq_test.go
-            cohere-oneagent: |
-              cohere/oneagent/**
-              test/e2e/cohere_test.go
-            aws-bedrock-opentelemetry: |
-              aws-bedrock/opentelemetry/**
-              test/e2e/aws_bedrock_opentelemetry_test.go
-            aws-bedrock-openinference: |
-              aws-bedrock/openinference/**
-              test/e2e/aws_bedrock_openinference_test.go
-            openai-openinference: |
-              openai/openinference/**
-              test/e2e/openai_openinference_test.go
-            langfuse-opentelemetry: |
-              langfuse/opentelemetry/**
-              test/e2e/langfuse_opentelemetry_test.go
-            langfuse-opentelemetry-node: |
-              langfuse/opentelemetry-node/**
-              test/e2e/langfuse_opentelemetry_node_test.go
-            langfuse-opentelemetry-openpipeline: |
-              langfuse/opentelemetry/**
-              test/e2e/langfuse_opentelemetry_openpipeline_test.go
-            pydantic-ai-opentelemetry: |
-              pydantic-ai/opentelemetry/**
-              test/e2e/pydantic_ai_opentelemetry_test.go
-            openai-agents-opentelemetry: |
-              openai-agents/opentelemetry/**
-              test/e2e/openai_agents_opentelemetry_test.go
-            mcp-opentelemetry: |
-              mcp/opentelemetry/**
-              test/e2e/mcp_opentelemetry_test.go
-            litellm-opentelemetry: |
-              litellm/opentelemetry/**
-              test/e2e/litellm_opentelemetry_test.go
-            microsoft-agent-framework-opentelemetry: |
-              microsoft-agent-framework/opentelemetry/**
-              test/e2e/microsoft_agent_framework_opentelemetry_test.go
-            crewai-opentelemetry: |
-              crewai/opentelemetry/**
-              test/e2e/crewai_opentelemetry_test.go
-
       - name: Compute matrices
         id: compute
         env:
           EVENT: ${{ github.event_name }}
           SUITE_INPUT: ${{ inputs.suite }}
-          CHANGED_SUITES: ${{ steps.paths-filter.outputs.changes || '[]' }}
+          BASE_REF: ${{ github.base_ref }}
         run: bash .github/scripts/compute-e2e-matrix.sh
 
   # Per-suite oneagent job for PR and workflow_dispatch triggers.
