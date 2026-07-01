@@ -30,7 +30,7 @@ def setup_instrumentation() -> None:
     from openinference.instrumentation.langchain import LangChainInstrumentor
     from openinference.instrumentation.bedrock import BedrockInstrumentor
 
-    resource = Resource({SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", "haiku-writer")})
+    resource = Resource.create({SERVICE_NAME: os.environ.get("OTEL_SERVICE_NAME", "haiku-writer")})
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(BatchSpanProcessor(_otlp_exporter()))
     trace_api.set_tracer_provider(provider)
