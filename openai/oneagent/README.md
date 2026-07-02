@@ -24,7 +24,6 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 | `MODEL` | No | `gpt-4o` | Model to use |
 | `OPENAI_API_BASE` | No | — | Custom API base URL (e.g. Azure OpenAI endpoint) |
 | `OPENAI_API_VERSION` | No | — | API version (required for Azure OpenAI) |
-| `DT_APPLICATIONID` | No | `openai-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 
@@ -36,3 +35,7 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 | `make push` | Build and push image to registry |
 | `make request` | POST /haiku to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Smartscape service entity
+
+OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.

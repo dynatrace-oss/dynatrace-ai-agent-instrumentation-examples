@@ -22,7 +22,6 @@ Demonstrates tracing Groq SDK API calls with Dynatrace via OneAgent auto-instrum
 |----------|----------|---------|-------------|
 | `GROQ_API_KEY` | Yes | — | Groq API key |
 | `MODEL` | No | `llama-3.1-8b-instant` | Model to use |
-| `DT_APPLICATIONID` | No | `groq-oneagent` | OneAgent application identifier — ensures a distinct Smartscape SERVICE entity when multiple services share the same host |
 
 ## Makefile Targets
 
@@ -34,3 +33,7 @@ Demonstrates tracing Groq SDK API calls with Dynatrace via OneAgent auto-instrum
 | `make push` | Build and push image to registry |
 | `make request` | POST /haiku to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Smartscape service entity
+
+OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.

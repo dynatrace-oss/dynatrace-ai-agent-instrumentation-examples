@@ -6,7 +6,7 @@ from fastapi.responses import PlainTextResponse
 
 MODEL: str = os.environ.get("MODEL", "command-r-08-2024")
 
-app = FastAPI()
+app = FastAPI(title="cohere-oneagent")
 
 
 @app.get("/health")

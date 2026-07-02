@@ -220,7 +220,6 @@ jobs:
         env:
           TEST_RUN: TestAWSBedrockOneAgent
           OTEL_SERVICE_NAME: aws-bedrock/oneagent
-          DT_APPLICATIONID: aws-bedrock-oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
@@ -230,7 +229,6 @@ jobs:
         env:
           TEST_RUN: TestAnthropicOneAgent
           OTEL_SERVICE_NAME: anthropic/oneagent
-          DT_APPLICATIONID: anthropic-oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
@@ -240,7 +238,6 @@ jobs:
         env:
           TEST_RUN: TestOpenAIOneAgent
           OTEL_SERVICE_NAME: openai/oneagent
-          DT_APPLICATIONID: openai-oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
@@ -250,7 +247,6 @@ jobs:
         env:
           TEST_RUN: TestOllamaOneAgent
           OTEL_SERVICE_NAME: ollama/oneagent
-          DT_APPLICATIONID: ollama-oneagent
           MODEL: tinyllama
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
@@ -263,7 +259,6 @@ jobs:
         env:
           TEST_RUN: TestGroqOneAgent
           OTEL_SERVICE_NAME: groq/oneagent
-          DT_APPLICATIONID: groq-oneagent
           MODEL: tinyllama
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
@@ -276,7 +271,6 @@ jobs:
         env:
           TEST_RUN: TestCohereOneAgent
           OTEL_SERVICE_NAME: cohere/oneagent
-          DT_APPLICATIONID: cohere-oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 

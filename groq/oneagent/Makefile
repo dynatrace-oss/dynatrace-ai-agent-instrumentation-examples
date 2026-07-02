@@ -3,7 +3,6 @@ SHELL            := /bin/bash
 export
 
 APP_IMAGE        ?=
-DT_APPLICATIONID ?= groq-oneagent
 BUILD_PLATFORM   ?= linux/amd64
 PORT             ?= 8000
 
@@ -16,7 +15,7 @@ install: ## Install Python dependencies
 	uv sync
 
 run: ## Run app locally on port $(PORT)
-	.venv/bin/python -m uvicorn groq_app:app --host 0.0.0.0 --port $(PORT)
+	uv run python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 	docker buildx build --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) .
