@@ -63,7 +63,7 @@ func TestOneAgentEntityIsolation(t *testing.T) {
 	mergeDQL := fmt.Sprintf(`fetch spans, from: now()-2h
 | filter dt.openpipeline.source == "oneagent" and isNotNull(gen_ai.provider.name)
 | filter isNotNull(dt.smartscape.service)
-| filter timestamp >= "%s"
+| filter timestamp >= toTimestamp("%s")
 | summarize services = collectDistinct(service.name), by: {dt.smartscape.service}
 | filter arraySize(services) > 1`, startTimeStr)
 
@@ -90,7 +90,7 @@ func pollUntilAllServicesEnriched(ctx context.Context, t *testing.T, startTimeSt
 	dql := fmt.Sprintf(`fetch spans, from: now()-2h
 | filter dt.openpipeline.source == "oneagent" and isNotNull(gen_ai.provider.name)
 | filter isNotNull(dt.smartscape.service)
-| filter timestamp >= "%s"
+| filter timestamp >= toTimestamp("%s")
 | summarize count = count(), by: {service.name}`, startTimeStr)
 
 	for {
