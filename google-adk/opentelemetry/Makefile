@@ -1,4 +1,5 @@
-SHELL            := /bin/bash
+
+\SHELL            := /bin/bash
 -include .env
 export
 
@@ -12,8 +13,8 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Run the Google ADK agent (web UI on port $(PORT))
-	uv run adk web --port $(PORT)
+run: ## Run app locally on port $(PORT)
+	uv run python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
@@ -21,5 +22,7 @@ build: ## Not applicable — no container defined for this demo
 push: ## Not applicable — no container defined for this demo
 	@echo "push: no Dockerfile for this demo"
 
-request: ## Not applicable — this demo uses ADK web UI; open http://localhost:$(PORT) in a browser
-	@echo "request: open http://localhost:$(PORT) in a browser to interact with the agent"
+request: ## POST /research to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/research \
+	  -H 'Content-Type: application/json' \
+	  -d '{"topic":"Attention is All You Need"}'

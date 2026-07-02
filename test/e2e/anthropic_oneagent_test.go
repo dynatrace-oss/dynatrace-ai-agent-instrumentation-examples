@@ -11,7 +11,7 @@ func TestAnthropicOneAgent(t *testing.T) {
 	auditSpan(t, "anthropic", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "anthropic/oneagent"
-| filter gen_ai.provider.name == "anthropic" and dt.openpipeline.source == "oneagent"
+| filter (gen_ai.provider.name == "anthropic" or gen_ai.system == "anthropic") and dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | filter isNotNull(dt.smartscape.service)
 | sort timestamp desc
