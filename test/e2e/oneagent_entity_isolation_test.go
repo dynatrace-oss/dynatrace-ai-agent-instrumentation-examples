@@ -62,7 +62,9 @@ func TestOneAgentEntityIsolation(t *testing.T) {
 	defer assertCancel()
 
 	mergeDQL := `fetch spans, from: now()-40m
-| filter dt.openpipeline.source == "oneagent" and isNotNull(dt.smartscape.service)
+| filter dt.openpipeline.source == "oneagent"
+| filter isNotNull(dt.smartscape.service)
+| filter service.name in ("aws-bedrock/oneagent", "anthropic/oneagent", "openai/oneagent", "ollama/oneagent", "groq/oneagent", "cohere/oneagent")
 | summarize services = collectDistinct(service.name), by: {dt.smartscape.service}
 | filter arraySize(services) > 1`
 
@@ -87,7 +89,8 @@ func pollUntilAllServicesEnriched(ctx context.Context, t *testing.T) error {
 	t.Helper()
 
 	dql := `fetch spans, from: now()-40m
-| filter dt.openpipeline.source == "oneagent" and isNotNull(dt.smartscape.service)
+| filter dt.openpipeline.source == "oneagent"
+| filter service.name in ("aws-bedrock/oneagent", "anthropic/oneagent", "openai/oneagent", "ollama/oneagent", "groq/oneagent", "cohere/oneagent")
 | summarize count = count(), by: {service.name}`
 
 	for {
