@@ -36,7 +36,6 @@ func TestOneAgentEntityIsolation(t *testing.T) {
 	mergeDQL := `fetch spans, from: now()-40m
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(dt.smartscape.service)
-| filter service.name in ("aws-bedrock/oneagent", "anthropic/oneagent", "openai/oneagent", "ollama/oneagent", "groq/oneagent", "cohere/oneagent")
 | summarize services = collectDistinct(service.name), by: {dt.smartscape.service}
 | filter arraySize(services) > 1`
 
