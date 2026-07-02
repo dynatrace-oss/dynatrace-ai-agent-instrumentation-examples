@@ -293,6 +293,61 @@ func statusIcon(status string) string {
 	}
 }
 
+// assertNotErrorSpan fails the test if the span carries span.status_code == "error".
+// The DQL filter already excludes error spans, but this catches any that slip through.
+func assertNotErrorSpan(t *testing.T, span map[string]interface{}) {
+	t.Helper()
+	if v, ok := span["span.status_code"]; ok && fmt.Sprint(v) == "error" {
+		t.Fatalf("matched an error span (span.status_code=error); check the app for failures: %v", span)
+	}
+}
+
+// scopedDQL inserts a run-isolation filter immediately after the fetch statement
+// (before any sort/limit) to prevent DQL from matching spans from concurrent or
+// recent pipeline runs.
+//
+// # Isolation strategy
+//
+// Two branches handle the two instrumentation types in this repo:
+//
+//  1. OTel SDK apps (Python, Node.js, …)
+//     testRunID is set once in TestMain and exported to every child process via
+//     OTEL_RESOURCE_ATTRIBUTES="test.run.id=<id>". The OTel SDK merges that env
+//     var into the resource automatically (Resource.create() in Python,
+//     NodeSDK auto-detection in Node.js), so every span carries test.run.id as
+//     a resource attribute. DQL matches on the exact value → zero cross-run
+//     interference even when two pipelines run simultaneously.
+//
+//  2. OneAgent apps (anthropic/oneagent, openai/oneagent, aws-bedrock/oneagent)
+//     OneAgent replaces the OTel TracerProvider with its own passive runtime
+//     instrumentation. It does NOT read OTEL_RESOURCE_ATTRIBUTES, so test.run.id
+//     is absent from those spans. The fallback branch (isNull(test.run.id) AND
+//     timestamp >= suiteStartTime) provides time-based isolation instead.
+//
+//     Time-based isolation is sufficient here because the OneAgent DQL queries
+//     already carry two narrow filters — service.name (unique per app) and
+//     dt.openpipeline.source == "oneagent" — making it practically impossible
+//     for a span from a different concurrent run to satisfy all filters within
+//     the same time window. The CI matrix also only triggers OneAgent tests when
+//     the relevant app directory changes, further reducing the chance of two
+//     pipelines running the identical test at the same time.
+//
+// The filter is inserted after the first line (the fetch statement) so it
+// evaluates before any sort or limit that the caller may have written.
+func scopedDQL(dql string) string {
+	filter := fmt.Sprintf(
+		"| filter test.run.id == %q or (isNull(test.run.id) and timestamp >= \"%s\")\n",
+		testRunID,
+		suiteStartTime.UTC().Format(time.RFC3339),
+	)
+	// Insert after the first line (fetch statement) so the filter evaluates
+	// before sort/limit, not after.
+	if idx := strings.Index(dql, "\n"); idx >= 0 {
+		return dql[:idx+1] + filter + dql[idx+1:]
+	}
+	return dql + "\n" + filter
+}
+
 // auditSpan polls DT until a span matching dql is found (5-minute timeout),
 // then fetches all spans in the same trace to build a complete attribute picture.
 // Writes JSON + markdown reports to test/e2e/reports/. Logs (but does NOT fail)
@@ -303,13 +358,14 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
 	if err != nil {
 		t.Fatalf("poll DT spans: %v", err)
 	}
 	if len(records) == 0 {
 		t.Fatalf("no spans returned from DT")
 	}
+	assertNotErrorSpan(t, records[0])
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
@@ -336,11 +392,12 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
 	if err != nil || len(records) == 0 {
 		t.Skipf("no %s/%s spans found — provider likely not selected this run", sdk, instrumentation)
 		return
 	}
+	assertNotErrorSpan(t, records[0])
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))

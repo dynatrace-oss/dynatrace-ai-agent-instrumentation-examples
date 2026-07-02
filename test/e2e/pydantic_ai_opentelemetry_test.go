@@ -17,6 +17,7 @@ func TestPydanticAIOpenTelemetry(t *testing.T) {
 | filter service.name == "pydantic-ai-music-agent"
 | filter gen_ai.provider.name == "AWS Bedrock"
 | filter isNotNull(gen_ai.request.model)
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 	})
 	t.Run("azure", func(t *testing.T) {
@@ -25,6 +26,7 @@ func TestPydanticAIOpenTelemetry(t *testing.T) {
 | filter service.name == "pydantic-ai-music-agent"
 | filter gen_ai.provider.name == "Azure OpenAI"
 | filter isNotNull(gen_ai.request.model)
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 	})
 }

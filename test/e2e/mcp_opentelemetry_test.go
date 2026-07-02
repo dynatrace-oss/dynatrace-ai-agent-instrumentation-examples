@@ -12,5 +12,6 @@ func TestMCPOpenTelemetry(t *testing.T) {
 		`fetch spans, from: now()-10m
 | filter service.name == "mcp-agent-demo"
 | filter isNotNull(gen_ai.request.model)
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 }

@@ -16,9 +16,9 @@ permissions:
 
 jobs:
   # Computes which matrix entries should run based on the trigger:
-  #   schedule           → all entries (consolidated nightly job handles oneagent separately)
+  #   schedule           → all entries
   #   workflow_dispatch  → selected suite only; all entries if no suite input given
-  #   pull_request       → entries whose suite name was matched by paths-filter
+  #   pull_request       → all entries (full validation on every PR)
   filter:
     runs-on: ubuntu-latest
     outputs:
@@ -28,40 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Detect changed paths
-        id: paths-filter
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
-        with:
-          filters: |
-            aws-bedrock-oneagent: 'aws-bedrock/oneagent/**'
-            anthropic-oneagent: 'anthropic/oneagent/**'
-            openai-oneagent: 'openai/oneagent/**'
-            ollama-oneagent: 'ollama/oneagent/**'
-            groq-oneagent: 'groq/oneagent/**'
-            cohere-oneagent: 'cohere/oneagent/**'
-            aws-strands-oneagent: 'aws-strands/oneagent/**'
-            aws-bedrock-opentelemetry: 'aws-bedrock/opentelemetry/**'
-            aws-bedrock-openinference: 'aws-bedrock/openinference/**'
-            openai-openinference: 'openai/openinference/**'
-            langfuse-opentelemetry: 'langfuse/opentelemetry/**'
-            langfuse-opentelemetry-node: 'langfuse/opentelemetry-node/**'
-            langfuse-opentelemetry-openpipeline: 'langfuse/opentelemetry/**'
-            pydantic-ai-opentelemetry: 'pydantic-ai/opentelemetry/**'
-            openai-agents-opentelemetry: 'openai-agents/opentelemetry/**'
-            mcp-opentelemetry: 'mcp/opentelemetry/**'
-            litellm-opentelemetry: 'litellm/opentelemetry/**'
-            microsoft-agent-framework-opentelemetry: 'microsoft-agent-framework/opentelemetry/**'
-            crewai-opentelemetry: 'crewai/opentelemetry/**'
-            aws-strands-opentelemetry: 'aws-strands/opentelemetry/**'
-            aws-strands-opentelemetry-openpipeline: 'aws-strands/opentelemetry/**'
-
       - name: Compute matrices
         id: compute
         env:
           EVENT: ${{ github.event_name }}
           SUITE_INPUT: ${{ inputs.suite }}
-          CHANGED_SUITES: ${{ steps.paths-filter.outputs.changes || '[]' }}
+          BASE_REF: ${{ github.base_ref }}
         run: bash .github/scripts/compute-e2e-matrix.sh
 
   # Per-suite oneagent job for PR and workflow_dispatch triggers.
@@ -111,7 +83,8 @@ jobs:
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull ${{ matrix.ollama_model }}
 
-      - name: Install Dynatrace OneAgent
+      - name: Resolve OneAgent installer version
+        id: oneagent-version
         env:
           DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
           DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
@@ -121,12 +94,38 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
-          INSTALLER_DIR=$(mktemp -d)
-          trap 'rm -rf "$INSTALLER_DIR"' EXIT
-          wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+          VERSION=$(curl -sS --fail \
+            --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
+            | jq -r '.latestAgentVersion')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Error: could not resolve latest OneAgent version from metainfo endpoint"; exit 1
+          fi
+          echo "resolved OneAgent version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OneAgent installer
+        id: oneagent-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/oneagent/oneagent.sh
+          key: oneagent-installer-${{ steps.oneagent-version.outputs.version }}-x86
+
+      - name: Download Dynatrace OneAgent installer
+        if: steps.oneagent-cache.outputs.cache-hit != 'true'
+        env:
+          DT_ENDPOINT: ${{ secrets.DT_ENDPOINT }}
+          DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
+          VERSION: ${{ steps.oneagent-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.cache/oneagent
+          wget --timeout=60 -O ~/.cache/oneagent/oneagent.sh \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/version/${VERSION}?arch=x86" \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
-          sudo sh "$INSTALLER_DIR/oneagent.sh"
+
+      - name: Install Dynatrace OneAgent
+        run: sudo sh ~/.cache/oneagent/oneagent.sh
 
       - name: Run e2e test
         working-directory: test/e2e
@@ -196,6 +195,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
+      - name: Record job start time
+        run: echo "NIGHTLY_START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
@@ -224,7 +226,8 @@ jobs:
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull tinyllama
 
-      - name: Install Dynatrace OneAgent
+      - name: Resolve OneAgent installer version
+        id: oneagent-version
         env:
           DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
         run: |
@@ -233,12 +236,37 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
-          INSTALLER_DIR=$(mktemp -d)
-          trap 'rm -rf "$INSTALLER_DIR"' EXIT
-          wget --timeout=60 -O "$INSTALLER_DIR/oneagent.sh" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest?arch=x86" \
+          VERSION=$(curl -sS --fail \
+            --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
+            | jq -r '.latestAgentVersion')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Error: could not resolve latest OneAgent version from metainfo endpoint"; exit 1
+          fi
+          echo "resolved OneAgent version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OneAgent installer
+        id: oneagent-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/oneagent/oneagent.sh
+          key: oneagent-installer-${{ steps.oneagent-version.outputs.version }}-x86
+
+      - name: Download Dynatrace OneAgent installer
+        if: steps.oneagent-cache.outputs.cache-hit != 'true'
+        env:
+          DT_INSTALLER_TOKEN: ${{ secrets.DT_INSTALLER_TOKEN }}
+          VERSION: ${{ steps.oneagent-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.cache/oneagent
+          wget --timeout=60 -O ~/.cache/oneagent/oneagent.sh \
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/version/${VERSION}?arch=x86" \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}"
-          sudo sh "$INSTALLER_DIR/oneagent.sh"
+
+      - name: Install Dynatrace OneAgent
+        run: sudo sh ~/.cache/oneagent/oneagent.sh
 
       - name: Run aws-strands-oneagent
         working-directory: test/e2e
@@ -306,6 +334,16 @@ jobs:
           OTEL_SERVICE_NAME: cohere/oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      # Runs after all six per-service steps to detect entity merging: if OneAgent
+      # assigned spans from multiple service.name values to the same SERVICE entity
+      # (AI-167), this step fails and logs the offending entity IDs.
+      - name: Assert entity isolation
+        if: always()
+        working-directory: test/e2e
+        env:
+          NIGHTLY_START_TIME: ${{ env.NIGHTLY_START_TIME }}
+        run: go test ./... -run "TestOneAgentEntityIsolation" -v -timeout 15m
 
       - name: Write job summary
         if: always()

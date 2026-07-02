@@ -13,5 +13,6 @@ func TestOpenAIAgentsOpenTelemetry(t *testing.T) {
 | filter service.name == "openai-cs-agents"
 | filter gen_ai.provider.name == "azure.ai.openai"
 | filter isNotNull(gen_ai.request.model)
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 }
