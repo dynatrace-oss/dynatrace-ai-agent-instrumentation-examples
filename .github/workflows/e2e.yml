@@ -195,6 +195,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
+      - name: Record job start time
+        run: echo "NIGHTLY_START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
@@ -323,6 +326,16 @@ jobs:
           OTEL_SERVICE_NAME: cohere/oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      # Runs after all six per-service steps to detect entity merging: if OneAgent
+      # assigned spans from multiple service.name values to the same SERVICE entity
+      # (AI-167), this step fails and logs the offending entity IDs.
+      - name: Assert entity isolation
+        if: always()
+        working-directory: test/e2e
+        env:
+          NIGHTLY_START_TIME: ${{ env.NIGHTLY_START_TIME }}
+        run: go test ./... -run "TestOneAgentEntityIsolation" -v -timeout 15m
 
       - name: Write job summary
         if: always()
