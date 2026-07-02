@@ -22,7 +22,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 ## What you'll build
 
 - Calls an LLM to generate a haiku using the Langfuse instrumentation library.
-- Produces OpenTelemetry traces with Langfuse semantic conventions (`langfuse.*` attributes).
+- Produces OpenTelemetry traces with Langfuse SDK 4.x semantic conventions (`langfuse.observation.*` attributes).
 - Normalizes Langfuse attributes to Dynatrace `gen_ai.*` format -- either via a local OTel Collector or via Dynatrace OpenPipeline.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, conversation grouping, and message content.
 
@@ -73,8 +73,14 @@ DT_ENDPOINT=https://abc12345.live.dynatrace.com
 DT_API_TOKEN=dt0c01.****.*****
 
 OPENAI_API_KEY=**********************
-MODEL=gpt-4o-mini                        # optional, defaults to gpt-4o-mini
+MODEL=gpt-5.4-mini                       # optional, defaults to gpt-5.4-mini
 TOPIC=observability                      # optional, haiku topic
+LANGFUSE_SESSION_ID=demo-session         # optional, maps to gen_ai.conversation.id
+
+# Agent name shown in the Dynatrace AI Observability smartscape topology.
+# Change this to any name that describes what this Langfuse app does.
+# Works for both the OTel Collector path and the OpenPipeline path.
+OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=langfuse-demo
 
 # Azure OpenAI (optional)
 OPENAI_API_BASE=https://your-endpoint.openai.azure.com/
@@ -103,7 +109,7 @@ App  →  Langfuse SDK (OTLP export)  →  OTel Collector (transform processor) 
 make run
 ```
 
-The collector listens on port `4318`. The `transform/langfuse` processor renames `langfuse.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
+The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
 
 **Useful commands:**
 
@@ -154,6 +160,8 @@ make run-openpipeline
 
 ## Attribute mapping reference
 
+These mappings are applied by both the OTel Collector (`transform/langfuse` processor) and Dynatrace OpenPipeline. Langfuse SDK 4.x attribute names are used.
+
 | Langfuse source | Dynatrace target | Notes |
 |---|---|---|
 | `langfuse.observation.type` | `gen_ai.operation.name` | `"generation"` → `"chat"`, `"embedding"` → `"embeddings"`, others pass through |
@@ -161,14 +169,16 @@ make run-openpipeline
 | _(derived from model name)_ | `gen_ai.provider.name` | inferred from model prefix (openai, anthropic, google, meta, mistral, cohere) |
 | _(mirrored)_ | `gen_ai.response.model` | copied from `gen_ai.request.model` on generation spans |
 | _(hardcoded)_ | `llm.request.type = "chat"` | set on generation spans for Prompts view filter |
-| `langfuse.observation.usage_details` | `gen_ai.usage.input_tokens` | JSON field `prompt_tokens` |
-| `langfuse.observation.usage_details` | `gen_ai.usage.output_tokens` | JSON field `completion_tokens` |
-| `langfuse.observation.input` | `gen_ai.input.messages` | generation spans only; prompt content |
+| `langfuse.observation.usage_details` (JSON) | `gen_ai.usage.input_tokens` | extracted from `prompt_tokens` key |
+| `langfuse.observation.usage_details` (JSON) | `gen_ai.usage.output_tokens` | extracted from `completion_tokens` key |
+| `langfuse.observation.input` | `gen_ai.input.messages` | generation spans only; prompt messages |
 | `langfuse.observation.output` | `gen_ai.output.messages` | generation spans only; completion content |
-| `langfuse.session_id` / `langfuse.sessionId` | `gen_ai.conversation.id` + `session.id` | enables conversation thread grouping |
+| `langfuse.observation.model.parameters` (JSON) | `gen_ai.request.temperature` | extracted from `temperature` key |
+| `langfuse.session_id` / `langfuse.sessionId` / `session.id` | `gen_ai.conversation.id` + `session.id` | enables conversation thread grouping; Python SDK sets `session.id` directly |
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
-| `langfuse.observation.model.parameters` | `gen_ai.request.temperature` | JSON field `temperature` |
+| `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
+| `OTEL_RESOURCE_ATTRIBUTES` (env) | `gen_ai.agent.name` | set in `.env` as `gen_ai.agent.name=<value>`; used to create GENAI_AGENT entity and smartscape topology connections; falls back to `"langfuse-demo"` if not set |
 
 ---
 

@@ -48,9 +48,16 @@ processors:
 
           # ── 6. TOKEN USAGE ────────────────────────────────────────────────────
           # langfuse 4.x emits token counts as a JSON string in langfuse.observation.usage_details.
-          # ParseJSON extracts the values; Int() converts float64 JSON numbers to int64.
+          # Key names vary by model: prompt_tokens/completion_tokens (gpt-4o-mini),
+          # input/output_reasoning_tokens (gpt-5 reasoning models).
+          # Fallback chain: error_mode:ignore causes Int(nil) to throw, skipping the
+          # statement and leaving the attribute nil so the next fallback fires.
           - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["prompt_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
+          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["input_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
+          - set(attributes["gen_ai.usage.input_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["input"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
           - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["completion_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_reasoning_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
 
           # ── 7. INPUT MESSAGES (P3) ───────────────────────────────────────────
           - set(attributes["gen_ai.input.messages"], attributes["langfuse.observation.input"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.input"] != nil
@@ -59,8 +66,11 @@ processors:
           - set(attributes["gen_ai.output.messages"], attributes["langfuse.observation.output"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.output"] != nil
 
           # ── 9. CONVERSATION ID (P5) ─────────────────────────────────────────
+          # Node/manual path: langfuse.session_id attribute on the span.
           - set(attributes["gen_ai.conversation.id"], attributes["langfuse.session_id"]) where attributes["langfuse.session_id"] != nil
           - set(attributes["gen_ai.conversation.id"], attributes["langfuse.sessionId"]) where attributes["langfuse.sessionId"] != nil and attributes["gen_ai.conversation.id"] == nil
+          # Python SDK path: sets session.id using the standard OTel attribute name.
+          - set(attributes["gen_ai.conversation.id"], attributes["session.id"]) where attributes["session.id"] != nil and attributes["gen_ai.conversation.id"] == nil
 
           # ── 10. SESSION & USER IDS ───────────────────────────────────────────
           - set(attributes["session.id"], attributes["langfuse.session_id"]) where attributes["langfuse.session_id"] != nil
@@ -77,7 +87,23 @@ processors:
           # langfuse 4.x emits model parameters as a JSON string in langfuse.observation.model.parameters.
           - set(attributes["gen_ai.request.temperature"], Double(ParseJSON(attributes["langfuse.observation.model.parameters"])["temperature"])) where attributes["langfuse.observation.model.parameters"] != nil
 
-          # ── 12. CLEANUP ───────────────────────────────────────────────────────
+          # ── 12. SPAN STATUS ───────────────────────────────────────────────────
+          # The Langfuse Python SDK does not set OTel span status on success, leaving it UNSET.
+          # Set OK for generation spans so the service health tile in Dynatrace reflects success.
+          # ERROR level observations map to ERROR status.
+          - set(status.code, STATUS_CODE_ERROR) where attributes["langfuse.observation.level"] == "ERROR" and status.code == STATUS_CODE_UNSET
+          - set(status.code, STATUS_CODE_OK) where attributes["langfuse.observation.type"] == "generation" and status.code == STATUS_CODE_UNSET
+
+          # ── 13. AGENT NAME ───────────────────────────────────────────────────
+          # gen_ai.agent.name is required by Dynatrace to create a GENAI_AGENT entity and
+          # connect the service in the smartscape topology. Set OTEL_RESOURCE_ATTRIBUTES
+          # in your environment (e.g. OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=my-agent)
+          # to control this value — Dynatrace merges OTel resource attributes into the span
+          # record before entity extraction. The rule below is a fallback for spans that
+          # arrive without gen_ai.agent.name already set.
+          - set(attributes["gen_ai.agent.name"], "langfuse-demo") where attributes["langfuse.observation.type"] == "generation" and attributes["gen_ai.agent.name"] == nil
+
+          # ── 14. CLEANUP ───────────────────────────────────────────────────────
           # Remove the routing discriminator after transformation. OpenPipeline routes
           # on isNotNull(langfuse.observation.type), so deleting it here prevents
           # collector-transformed spans from being re-processed by OpenPipeline.
