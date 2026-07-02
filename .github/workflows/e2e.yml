@@ -83,10 +83,6 @@ jobs:
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull ${{ matrix.ollama_model }}
 
-      - name: Set up Google credentials
-        if: matrix.needs_google
-        run: echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> $GITHUB_ENV
-
       - name: Resolve OneAgent installer version
         id: oneagent-version
         env:
@@ -144,7 +140,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ matrix.model != '' && matrix.model || matrix.ollama_model != '' && matrix.ollama_model || secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: |
           set -euo pipefail
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
