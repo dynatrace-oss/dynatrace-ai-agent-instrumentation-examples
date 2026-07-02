@@ -13,7 +13,8 @@ OA_ALL='[
   {"name":"openai-oneagent","app_dir":"openai/oneagent","test_file":"test/e2e/openai_oneagent_test.go","test_run":"TestOpenAIOneAgent","otel_service_name":"openai/oneagent"},
   {"name":"ollama-oneagent","app_dir":"ollama/oneagent","test_file":"test/e2e/ollama_test.go","test_run":"TestOllamaOneAgent","otel_service_name":"ollama/oneagent","ollama_model":"tinyllama"},
   {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
-  {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"}
+  {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
+  {"name":"google-adk-oneagent","app_dir":"google-adk/oneagent","test_file":"test/e2e/google_adk_oneagent_test.go","test_run":"TestGoogleADKOneAgent","otel_service_name":"google-adk/oneagent","model":"gemini-3.1-flash-lite","needs_google":true}
 ]'
 
 OC_ALL='[
