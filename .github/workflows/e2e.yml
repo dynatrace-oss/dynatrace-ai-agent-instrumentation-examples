@@ -268,7 +268,15 @@ jobs:
       - name: Install Dynatrace OneAgent
         run: sudo sh ~/.cache/oneagent/oneagent.sh
 
+      - name: Run aws-strands-oneagent
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestAWSStrandsOneAgent
+          OTEL_SERVICE_NAME: aws-strands/oneagent
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
       - name: Run aws-bedrock-oneagent
+        if: always()
         working-directory: test/e2e
         env:
           TEST_RUN: TestAWSBedrockOneAgent
