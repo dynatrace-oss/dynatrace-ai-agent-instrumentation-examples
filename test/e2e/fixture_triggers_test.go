@@ -72,6 +72,30 @@ func triggerAgent(t *testing.T) {
 	}
 }
 
+// triggerResearch POSTs to /research on localhost:8000 with a paper topic.
+func triggerResearch(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/research"
+
+	b, _ := json.Marshal(map[string]string{"topic": "Attention is All You Need"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /research: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /research returned %d: %s", resp.StatusCode, rb)
+	}
+}
+
 // triggerMusicAgent POSTs a question to /api/ask on localhost:8000.
 func triggerMusicAgent(t *testing.T) {
 	t.Helper()

@@ -10,7 +10,7 @@ func TestMicrosoftAgentFrameworkOpenTelemetry(t *testing.T) {
 	auditSpan(t, "microsoft-agent-framework", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "microsoft-agent-framework"
-| filter gen_ai.provider.name == "microsoft.agent_framework"
+| filter gen_ai.provider.name == "microsoft.agent_framework" or gen_ai.system == "microsoft.agent_framework"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"

@@ -404,6 +404,10 @@ jobs:
         with:
           node-version: ${{ matrix.node_version || '22' }}
 
+      - name: Set up Google credentials
+        if: matrix.needs_google
+        run: echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> $GITHUB_ENV
+
       - name: Run e2e test
         working-directory: test/e2e
         env:
@@ -418,7 +422,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}

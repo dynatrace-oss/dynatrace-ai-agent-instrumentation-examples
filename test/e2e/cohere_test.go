@@ -12,7 +12,7 @@ func TestCohereOneAgent(t *testing.T) {
 	auditSpan(t, "cohere", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "cohere/oneagent"
-| filter gen_ai.provider.name == "cohere"
+| filter gen_ai.provider.name == "cohere" or gen_ai.system == "cohere"
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | filter isNotNull(dt.smartscape.service)

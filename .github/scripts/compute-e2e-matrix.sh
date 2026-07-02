@@ -31,7 +31,8 @@ OC_ALL='[
   {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetry","otel_service_name":"microsoft-agent-framework"},
   {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_test.go","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"},
   {"name":"aws-strands-opentelemetry","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_test.go","test_run":"TestAWSStrandsOpenTelemetry","otel_service_name":"aws-strands/opentelemetry"},
-  {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_openpipeline_test.go","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"}
+  {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_openpipeline_test.go","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"},
+  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"TestGoogleADKOpenTelemetry","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then
@@ -44,8 +45,7 @@ if [[ "$EVENT" == "pull_request" ]]; then
   #   test/e2e/internal/   - DQL client and process manager used by every test
   #   test/e2e/fixture_*   - shared test helpers (suite setup, audit, triggers, …)
   #   test/e2e/go.mod|sum  - dependency changes affect every suite
-  #   .github/ CI files    - changes to this script or the workflow itself
-  INFRA_RE='^(test/e2e/internal/|test/e2e/fixture_|test/e2e/go\.(mod|sum)$|\.github/workflows/e2e\.yml$|\.github/scripts/compute-e2e-matrix\.sh$)'
+  INFRA_RE='^(test/e2e/internal/|test/e2e/fixture_|test/e2e/go\.(mod|sum)$)'
   if echo "$CHANGED" | grep -qE "$INFRA_RE"; then
     OA_MATRIX=$(echo "$OA_ALL" | jq -c .)
     OC_MATRIX=$(echo "$OC_ALL" | jq -c .)
