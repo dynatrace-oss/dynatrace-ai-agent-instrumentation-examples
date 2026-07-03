@@ -35,3 +35,16 @@ Demonstrates tracing Haystack framework (Azure OpenAI backend) API calls with Dy
 | `make push` | Build and push image to registry |
 | `make request` | POST /haiku to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Dynatrace AI Observability views
+
+Press `Ctrl+K` in Dynatrace and search for **AI Observability** to explore the traces produced by this demo.
+
+| View | What to look for |
+|------|-----------------|
+| **Explorer** | `haystack/oneagent` service with LLM request count, token usage, and prompt latency chart |
+| **Prompts** | Full prompt input ("Write a haiku about nature.") and completion text captured from the `openai.chat` span |
+
+![AI Observability — Explorer showing haystack/oneagent service](assets/explorer.png)
+
+![AI Observability — Prompts detail with agentic trace and captured prompt/completion](assets/prompt.png)
