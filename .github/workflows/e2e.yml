@@ -141,6 +141,10 @@ jobs:
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
         run: |
           set -euo pipefail
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
@@ -335,7 +339,22 @@ jobs:
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
-      # Runs after all six per-service steps to detect entity merging: if OneAgent
+      # Uses real Azure OpenAI credentials via AzureOpenAIGenerator in Haystack.
+      # Haystack disables its own tracing; OneAgent instruments the underlying openai SDK.
+      # gen_ai.system value (expected: az.ai.openai) to be confirmed via ICP-6026.
+      - name: Run haystack-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestHaystackOneAgent
+          OTEL_SERVICE_NAME: haystack/oneagent
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      # Runs after all per-service steps to detect entity merging: if OneAgent
       # assigned spans from multiple service.name values to the same SERVICE entity
       # (AI-167), this step fails and logs the offending entity IDs.
       - name: Assert entity isolation
