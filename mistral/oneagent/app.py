@@ -1,5 +1,5 @@
 import os
-from mistralai import Mistral
+from mistralai.client import Mistral
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
