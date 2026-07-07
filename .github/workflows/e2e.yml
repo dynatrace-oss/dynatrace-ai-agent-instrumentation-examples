@@ -401,11 +401,6 @@ jobs:
             sudo /opt/dynatrace/oneagent/agent/uninstall.sh
           fi
 
-      # TEMP: force job failure to test notify logic — remove before merging
-      - name: Force failure for notify test
-        if: always()
-        run: exit 1
-
   otelcol:
     name: E2E / ${{ matrix.name }}
     needs: filter
@@ -492,7 +487,7 @@ jobs:
   notify:
     name: Notify on regression or recovery
     needs: [oneagent-nightly, otelcol]
-    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') # TEMP: remove workflow_dispatch before merging
+    if: always() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
       issues: write
