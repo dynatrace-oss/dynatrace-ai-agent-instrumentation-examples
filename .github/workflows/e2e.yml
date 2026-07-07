@@ -272,6 +272,9 @@ jobs:
       - name: Install Dynatrace OneAgent
         run: sudo sh ~/.cache/oneagent/oneagent.sh
 
+      - name: Wait for OneAgent to settle before first instrumented process launch
+        run: sleep 30
+
       - name: Run aws-strands-oneagent
         working-directory: test/e2e
         env:
