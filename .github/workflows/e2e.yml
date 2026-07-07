@@ -471,3 +471,20 @@ jobs:
           name: span-audit-reports-${{ matrix.name }}
           path: test/e2e/reports/
           retention-days: 30
+
+  notify:
+    name: Notify on regression or recovery
+    needs: [oneagent-nightly, otelcol]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+      contents: read
+    steps:
+      - name: Create issue on regression or recovery
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_ONEAGENT: ${{ needs.oneagent-nightly.result }}
+          CURRENT_OTELCOL: ${{ needs.otelcol.result }}
+        run: bash .github/scripts/notify-nightly.sh
