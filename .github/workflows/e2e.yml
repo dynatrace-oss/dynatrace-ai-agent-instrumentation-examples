@@ -127,6 +127,10 @@ jobs:
       - name: Install Dynatrace OneAgent
         run: sudo sh ~/.cache/oneagent/oneagent.sh
 
+      - name: Wait for OneAgent to settle
+        if: matrix.oneagent_warmup_seconds != ''
+        run: sleep ${{ matrix.oneagent_warmup_seconds }}
+
       - name: Run e2e test
         working-directory: test/e2e
         env:
@@ -272,12 +276,8 @@ jobs:
       - name: Install Dynatrace OneAgent
         run: sudo sh ~/.cache/oneagent/oneagent.sh
 
-      - name: Run aws-strands-oneagent
-        working-directory: test/e2e
-        env:
-          TEST_RUN: TestAWSStrandsOneAgent
-          OTEL_SERVICE_NAME: aws-strands/oneagent
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+      - name: Wait for OneAgent to settle before first instrumented process launch
+        run: sleep 30
 
       - name: Run aws-bedrock-oneagent
         if: always()
@@ -352,6 +352,18 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+
+      # aws-strands-oneagent runs last: it appears to need more OneAgent sensor warm-up time than
+      # other suites (likely due to threading instrumentation via ThreadingInstrumentor). Running
+      # last means an estimated ~15min of prior suite wall-clock time has elapsed since OneAgent
+      # install, which empirically makes injection more reliable than a fixed sleep alone.
+      - name: Run aws-strands-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestAWSStrandsOneAgent
+          OTEL_SERVICE_NAME: aws-strands/oneagent
         run: go test ./... -run "$TEST_RUN" -v -timeout 20m
 
       # Runs after all per-service steps to detect entity merging: if OneAgent
