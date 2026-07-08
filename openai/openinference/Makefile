@@ -12,9 +12,7 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-PYTHON              := $(shell [ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)
-
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.50.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
@@ -23,7 +21,7 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies
-	$(PYTHON) -m pip install -r requirements.txt
+	uv sync
 
 # ---------------------------------------------------------------------------
 # run: collector applies OpenInference → gen_ai.* transforms locally
@@ -38,7 +36,7 @@ run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
 	@echo "Collector port is responding"
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
-	  $(PYTHON) app.py
+	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------
 # run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
@@ -48,7 +46,7 @@ run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
 run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
 	@OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
 	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
-	  $(PYTHON) app.py
+	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------
 # Internal targets
@@ -89,7 +87,7 @@ push: ## Build and push container image to registry
 request: ## Run a haiku request through the running collector
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
-	  $(PYTHON) app.py
+	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------
 # Utility

@@ -14,7 +14,7 @@ BUILD_PLATFORM      ?= linux/amd64
 
 NODE                := node
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.50.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
 override COLLECTOR_CONTAINER := otel-collector
 override COLLECTOR_CONFIG    := $(abspath ../opentelemetry/otel-collector-config.yaml)
 

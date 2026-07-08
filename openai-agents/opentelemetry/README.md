@@ -41,6 +41,7 @@ The token is read from the `DT_API_TOKEN` environment variable first, falling ba
 ### Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Azure OpenAI resource with a `gpt-4o` deployment
 - A Dynatrace environment with an API token scoped to `openTelemetryTrace.ingest` and `metrics.ingest`
 

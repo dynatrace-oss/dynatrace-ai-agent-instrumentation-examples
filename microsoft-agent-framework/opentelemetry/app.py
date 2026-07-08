@@ -57,7 +57,7 @@ async def main() -> None:
     openai_base = _require_env("OPENAI_API_BASE")
     openai_key = _require_env("OPENAI_API_KEY")
     api_version = os.getenv("OPENAI_API_VERSION", "2025-04-01-preview")
-    temperature = float(os.getenv("TEMPERATURE", "0.7"))
+    temperature = float(os.getenv("TEMPERATURE", "1"))
 
     client = OpenAIChatCompletionClient(
         model=model,
