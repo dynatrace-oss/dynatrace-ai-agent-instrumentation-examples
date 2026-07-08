@@ -131,6 +131,23 @@ jobs:
         if: matrix.oneagent_warmup_seconds != ''
         run: sleep ${{ matrix.oneagent_warmup_seconds }}
 
+      - name: Diagnose OneAgent injection (temporary)
+        if: matrix.oneagent_warmup_seconds != ''
+        working-directory: ${{ matrix.app_dir }}
+        run: |
+          echo "=== system python ==="
+          python3 --version
+          echo "=== uv python ==="
+          uv run python3 --version
+          echo "=== oneagent visible in uv venv ==="
+          uv run python3 -c "import oneagent; print('oneagent ok:', oneagent.__file__)" 2>&1 || echo "oneagent NOT importable in venv"
+          echo "=== sitecustomize ==="
+          uv run python3 -c "import sys; sc=[p for p in sys.path if 'site' in p]; print('sitepath:', sc)"
+          echo "=== ld.so.preload ==="
+          cat /etc/ld.so.preload 2>/dev/null || echo "no /etc/ld.so.preload"
+          echo "=== oneagent in sys.modules ==="
+          uv run python3 -c "import sys; [print(k) for k in sys.modules if 'oneagent' in k or 'dynatrace' in k.lower()]" 2>&1 || true
+
       - name: Run e2e test
         working-directory: test/e2e
         env:
