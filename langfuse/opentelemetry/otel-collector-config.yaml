@@ -58,6 +58,7 @@ processors:
           - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["completion_tokens"])) where attributes["langfuse.observation.usage_details"] != nil
           - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
           - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output_reasoning_tokens"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(ParseJSON(attributes["langfuse.observation.usage_details"])["output"])) where attributes["langfuse.observation.usage_details"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
 
           # ── 7. INPUT MESSAGES (P3) ───────────────────────────────────────────
           - set(attributes["gen_ai.input.messages"], attributes["langfuse.observation.input"]) where attributes["langfuse.observation.type"] == "generation" and attributes["langfuse.observation.input"] != nil
@@ -94,16 +95,7 @@ processors:
           - set(status.code, STATUS_CODE_ERROR) where attributes["langfuse.observation.level"] == "ERROR" and status.code == STATUS_CODE_UNSET
           - set(status.code, STATUS_CODE_OK) where attributes["langfuse.observation.type"] == "generation" and status.code == STATUS_CODE_UNSET
 
-          # ── 13. AGENT NAME ───────────────────────────────────────────────────
-          # gen_ai.agent.name is required by Dynatrace to create a GENAI_AGENT entity and
-          # connect the service in the smartscape topology. Set OTEL_RESOURCE_ATTRIBUTES
-          # in your environment (e.g. OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=my-agent)
-          # to control this value — Dynatrace merges OTel resource attributes into the span
-          # record before entity extraction. The rule below is a fallback for spans that
-          # arrive without gen_ai.agent.name already set.
-          - set(attributes["gen_ai.agent.name"], "langfuse-demo") where attributes["langfuse.observation.type"] == "generation" and attributes["gen_ai.agent.name"] == nil
-
-          # ── 14. CLEANUP ───────────────────────────────────────────────────────
+          # ── 13. CLEANUP ───────────────────────────────────────────────────────
           # Remove the routing discriminator after transformation. OpenPipeline routes
           # on isNotNull(langfuse.observation.type), so deleting it here prevents
           # collector-transformed spans from being re-processed by OpenPipeline.

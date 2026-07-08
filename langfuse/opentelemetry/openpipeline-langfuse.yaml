@@ -114,7 +114,7 @@ processing:
         script: |
           parse langfuse.observation.usage_details, "JSON_OBJECT:usage"
           | fieldsAdd gen_ai.usage.input_tokens = coalesce(toLong(usage[prompt_tokens]), toLong(usage[input_tokens]), toLong(usage[input])),
-                      gen_ai.usage.output_tokens = coalesce(toLong(usage[completion_tokens]), toLong(usage[output_tokens]), toLong(usage[output_reasoning_tokens]))
+                      gen_ai.usage.output_tokens = coalesce(toLong(usage[completion_tokens]), toLong(usage[output_tokens]), toLong(usage[output_reasoning_tokens]), toLong(usage[output]))
           | fieldsRemove usage, langfuse.observation.usage_details
 
     # ============================================================================
@@ -214,26 +214,7 @@ processing:
           fieldsAdd span.status_code = if(langfuse.observation.level == "ERROR", "error", else: "ok")
 
     # ============================================================================
-    # 13. AGENT NAME
-    # ============================================================================
-    # gen_ai.agent.name is required by Dynatrace to create a GENAI_AGENT entity and
-    # connect the service in the smartscape topology. The recommended approach is to
-    # set OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=<your-agent> in the app
-    # environment — Dynatrace merges OTel resource attributes into the span record
-    # before OpenPipeline processing, so the value arrives here automatically.
-    # The processor below is a fallback for spans that arrive without it already set.
-    # ============================================================================
-    - id: "langfuse-agent-name"
-      enabled: true
-      matcher: 'langfuse.observation.type == "generation" AND isNull(gen_ai.agent.name)'
-      type: "dql"
-      description: "Fallback: set gen_ai.agent.name for spans missing it (prefer OTEL_RESOURCE_ATTRIBUTES)"
-      dql:
-        script: |
-          fieldsAdd gen_ai.agent.name = "langfuse-demo"
-
-    # ============================================================================
-    # 14. SOURCE METADATA
+    # 13. SOURCE METADATA
     # ============================================================================
     - id: "langfuse-source-metadata"
       enabled: true

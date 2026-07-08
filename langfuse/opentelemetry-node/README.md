@@ -56,7 +56,8 @@ Requires the processors from `../opentelemetry/openpipeline-langfuse.yaml` to be
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
 2. Your haiku request appears in the Explorer tab with model name, token usage, and message content.
    ![AI Observability — Langfuse Node.js span explorer](assets/explorer.png)
-3. Open a span to inspect the full `gen_ai.*` attributes.
+3. Open a span to inspect the full `gen_ai.*` attributes and the Agents Topology showing the model and provider connected to the `langfuse-node` service.
+   ![AI Observability — Langfuse Node.js prompts and agents topology](assets/prompts-topology.png)
 
 ---
 
@@ -72,4 +73,4 @@ Requires the processors from `../opentelemetry/openpipeline-langfuse.yaml` to be
 | `MODEL` | no | Model/deployment name (default: `gpt-5.4-mini`) |
 | `TOPIC` | no | Haiku topic (default: `observability`) |
 | `LANGFUSE_SESSION_ID` | no | Session ID mapped to `gen_ai.conversation.id` (default: `demo-session`) |
-| `OTEL_RESOURCE_ATTRIBUTES` | no | Set to `gen_ai.agent.name=<value>` to control the agent name shown in the Dynatrace AI Observability smartscape topology; works for both collector and OpenPipeline paths; falls back to `"langfuse-demo"` if not set |
+| `TEMPERATURE` | no | Sampling temperature (default: 1) |

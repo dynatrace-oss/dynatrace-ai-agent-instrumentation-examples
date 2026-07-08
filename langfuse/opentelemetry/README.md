@@ -49,7 +49,7 @@ Langfuse uses its own semantic conventions that the Dynatrace AI Observability a
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
 | **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
-Both paths produce identical results in the AI Observability app.
+Both paths produce the same `gen_ai.*` span attributes. The OTel Collector path also emits `gen_ai.client.operation.duration` metrics; the OpenPipeline path does not.
 
 ---
 
@@ -75,11 +75,6 @@ OPENAI_API_KEY=**********************
 MODEL=gpt-5.4-mini                       # optional, defaults to gpt-5.4-mini
 TOPIC=observability                      # optional, haiku topic
 LANGFUSE_SESSION_ID=demo-session         # optional, maps to gen_ai.conversation.id
-
-# Agent name shown in the Dynatrace AI Observability smartscape topology.
-# Change this to any name that describes what this Langfuse app does.
-# Works for both the OTel Collector path and the OpenPipeline path.
-OTEL_RESOURCE_ATTRIBUTES=gen_ai.agent.name=langfuse-demo
 
 # Azure OpenAI (optional)
 OPENAI_API_BASE=https://your-endpoint.openai.azure.com/
@@ -152,7 +147,8 @@ make run-openpipeline
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
 2. Your haiku request appears in the Explorer tab with model name, token usage, and message content.
    ![AI Observability — Langfuse span explorer](assets/explorer.png)
-3. Open a span to inspect the full conversation and `gen_ai.*` attributes.
+3. Open a span to inspect the full conversation, `gen_ai.*` attributes, and the Agents Topology showing the model and provider connected to the `langfuse` service.
+   ![AI Observability — Langfuse prompts and agents topology](assets/prompts-topology.png)
 4. Spans with the same `session_id` are grouped under the same conversation thread.
 
 ---
@@ -177,7 +173,6 @@ These mappings are applied by both the OTel Collector (`transform/langfuse` proc
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
 | `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
-| `OTEL_RESOURCE_ATTRIBUTES` (env) | `gen_ai.agent.name` | set in `.env` as `gen_ai.agent.name=<value>`; used to create GENAI_AGENT entity and smartscape topology connections; falls back to `"langfuse-demo"` if not set |
 
 ---
 

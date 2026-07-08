@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -165,6 +167,55 @@ func triggerLiteLLMChat(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		t.Fatalf("POST /chat/completions returned %d: %s", resp.StatusCode, b)
 	}
+}
+
+// startMockOpenAIServer starts an in-process HTTP server that returns a fixed
+// chat completion response, then sets OPENAI_API_BASE to point at it so that
+// CLI apps spawned by startCLIApp hit the mock instead of the real API.
+func startMockOpenAIServer(t *testing.T) {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		model := os.Getenv("MODEL")
+		if model == "" {
+			model = "gpt-5.4-mini"
+		}
+		resp := fmt.Sprintf(`{
+  "id": "mock-chatcmpl-001",
+  "object": "chat.completion",
+  "created": 1700000000,
+  "model": %q,
+  "choices": [{
+    "index": 0,
+    "message": {"role": "assistant", "content": "Metrics flow like streams,\nTraces map each fleeting call,\nObservability."},
+    "finish_reason": "stop"
+  }],
+  "usage": {"prompt_tokens": 14, "completion_tokens": 20, "total_tokens": 34}
+}`, model)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, resp)
+	})
+	srv := httptest.NewServer(mux)
+	prevBase := os.Getenv("OPENAI_API_BASE")
+	prevVersion := os.Getenv("OPENAI_API_VERSION")
+	os.Setenv("OPENAI_API_BASE", srv.URL)
+	os.Unsetenv("OPENAI_API_VERSION")
+	t.Cleanup(func() {
+		srv.Close()
+		if prevBase != "" {
+			os.Setenv("OPENAI_API_BASE", prevBase)
+		} else {
+			os.Unsetenv("OPENAI_API_BASE")
+		}
+		if prevVersion != "" {
+			os.Setenv("OPENAI_API_VERSION", prevVersion)
+		}
+	})
 }
 
 // startApp runs make install then starts make run in <repoRoot>/<appDir>.
