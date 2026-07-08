@@ -8,7 +8,7 @@ COLLECTOR_BASE_URL   ?= localhost:4317
 DT_ENDPOINT          ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN         ?= dt0c01.*****
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.50.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: install run build push request stop logs help
