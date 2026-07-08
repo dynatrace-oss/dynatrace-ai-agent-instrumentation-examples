@@ -127,6 +127,10 @@ jobs:
       - name: Install Dynatrace OneAgent
         run: sudo sh ~/.cache/oneagent/oneagent.sh
 
+      - name: Wait for OneAgent to settle
+        if: matrix.oneagent_warmup_seconds != ''
+        run: sleep ${{ matrix.oneagent_warmup_seconds }}
+
       - name: Run e2e test
         working-directory: test/e2e
         env:
