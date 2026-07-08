@@ -55,6 +55,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "boto3" },
     { name = "fastapi" },
+    { name = "oneagent-sdk" },
     { name = "strands-agents" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -63,6 +64,7 @@ dependencies = [
 requires-dist = [
     { name = "boto3" },
     { name = "fastapi" },
+    { name = "oneagent-sdk" },
     { name = "strands-agents" },
     { name = "uvicorn", extras = ["standard"] },
 ]
@@ -407,6 +409,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6e/77/9450b8f251a13affb6281997d0523c4615f8a8b35d0b21ff30db3a5aac9d/mcp-1.28.1.tar.gz", hash = "sha256:d51e36a5f5644faea4f85ea649bfffa6bc6c26770d42798ad6a3de3d2ba69683", size = 638501, upload-time = "2026-06-26T12:57:29.093Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e2/5e/d118fce19f87a2e7d8101c35c8ae0ec289098a4df0ff244cec23e415aca0/mcp-1.28.1-py3-none-any.whl", hash = "sha256:2726bca5e7193f61c5dde8b12500a6de2d9acf6d1a1c0be9e8c2e706437991df", size = 222620, upload-time = "2026-06-26T12:57:27.218Z" },
+]
+
+[[package]]
+name = "oneagent-sdk"
+version = "1.5.2.20260107.153442"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/1e/fe86ee1f42b0a97576e12ba447cb50fb2088c7f1d28d96c176b198ce4a68/oneagent_sdk-1.5.2.20260107.153442.tar.gz", hash = "sha256:6442ac5c1ec395f0e897516f8a25a012d85744d8f33bd9f7e2db9eac411b9179", size = 86340, upload-time = "2026-01-07T14:44:55.339Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/bb/34acae65e81f239e04ec3c9bbc4a560fc0e60bcd23b065e969466cd01235/oneagent_sdk-1.5.2.20260107.153442-py2.py3-none-manylinux1_i686.whl", hash = "sha256:b0e7aa9dc5dcb684e0f63adbf44521bb6082f3e445ab39ecb507f23e4cb44afd", size = 135690, upload-time = "2026-01-07T14:44:47.868Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/74/d40f29c5b1683dbf6fc5b322912ec07d54e1e5ddb74b05a8bd21fe7e693f/oneagent_sdk-1.5.2.20260107.153442-py2.py3-none-manylinux1_x86_64.whl", hash = "sha256:6c88204ca2ccb849bb2359a66a5b60af0b3eaede1b943111f99ef80138261d94", size = 138714, upload-time = "2026-01-07T14:44:49.68Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/88/44ae3b897b3035c36fbdd8f3b2267dc51e65bb1846ef659b5c61c55a6a72/oneagent_sdk-1.5.2.20260107.153442-py2.py3-none-win32.whl", hash = "sha256:2affdcc3278b2e9814d712222696eb44c6cd02c2bc03aadca33bba422efc65fd", size = 217376, upload-time = "2026-01-07T14:44:50.936Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/cc/007099186dc324aca7bb19bd45188f79182987926363a30638bb2309867a/oneagent_sdk-1.5.2.20260107.153442-py2.py3-none-win_amd64.whl", hash = "sha256:4a5efd48cde1295086822a00a1aa8769cdbd744b7e2776135ebf106ffe5b10f3", size = 254633, upload-time = "2026-01-07T14:44:54.199Z" },
 ]
 
 [[package]]

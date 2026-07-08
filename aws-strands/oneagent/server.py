@@ -1,7 +1,10 @@
+import oneagent
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from main import run_agent
+
+oneagent.initialize()
 
 app = FastAPI(title="Strands Personal Assistant")
 

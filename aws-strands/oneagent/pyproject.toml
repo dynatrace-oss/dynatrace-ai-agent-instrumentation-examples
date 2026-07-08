@@ -7,4 +7,5 @@ dependencies = [
     "boto3",
     "fastapi",
     "uvicorn[standard]",
+    "oneagent-sdk",
 ]
