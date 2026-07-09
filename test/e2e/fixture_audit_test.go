@@ -34,7 +34,7 @@ type SpanReport struct {
 	SDK             string            `json:"sdk"`
 	Instrumentation string            `json:"instrumentation"`
 	Profile         string            `json:"profile"`
-	Verdict         string            `json:"verdict"` // "PASS"|"PARTIAL"|"FAIL"
+	Verdict         string            `json:"verdict"` // "FULL"|"PASS"|"FAIL"
 	Note            string            `json:"note,omitempty"`
 	Required        []AttributeResult `json:"required"`
 	Optional        []AttributeResult `json:"optional"`
@@ -203,11 +203,15 @@ func buildReport(sdk, instrumentation string, p Profile, span map[string]interfa
 		}
 	}
 	if verdict == "PASS" {
+		allOptPresent := true
 		for _, r := range optional {
 			if r.Status == "absent" {
-				verdict = "PARTIAL"
+				allOptPresent = false
 				break
 			}
+		}
+		if allOptPresent {
+			verdict = "FULL"
 		}
 	}
 
@@ -246,7 +250,7 @@ func writeReport(t *testing.T, r SpanReport) {
 }
 
 func buildMarkdown(r SpanReport) string {
-	verdictIcons := map[string]string{"PASS": "✅", "PARTIAL": "⚠️", "FAIL": "❌"}
+	verdictIcons := map[string]string{"FULL": "🌟", "PASS": "✅", "FAIL": "❌"}
 	icon := verdictIcons[r.Verdict]
 
 	var sb strings.Builder
