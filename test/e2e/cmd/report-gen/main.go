@@ -35,12 +35,12 @@ type SpanReport struct {
 
 // RunSummary is one entry in history.json.
 type RunSummary struct {
-	Date    string `json:"date"`
-	RunURL  string `json:"run_url"`
-	Pass    int    `json:"pass"`
-	Partial int    `json:"partial"`
-	Fail    int    `json:"fail"`
-	Total   int    `json:"total"`
+	Date   string `json:"date"`
+	RunURL string `json:"run_url"`
+	Full   int    `json:"full"`
+	Pass   int    `json:"pass"`
+	Fail   int    `json:"fail"`
+	Total  int    `json:"total"`
 }
 
 // viewReport adds computed display fields to SpanReport.
@@ -58,8 +58,8 @@ type pageData struct {
 	RunURL  string
 	Reports []viewReport
 	History []RunSummary // most-recent first
+	Full    int
 	Pass    int
-	Partial int
 	Fail    int
 	Total   int
 }
@@ -135,7 +135,7 @@ func loadHistory(path string) []RunSummary {
 
 func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pageData {
 	views := make([]viewReport, len(reports))
-	var pass, partial, fail int
+	var full, pass, fail int
 
 	for i, r := range reports {
 		v := viewReport{SpanReport: r, Index: i}
@@ -152,10 +152,10 @@ func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pa
 			}
 		}
 		switch r.Verdict {
+		case "FULL":
+			full++
 		case "PASS":
 			pass++
-		case "PARTIAL":
-			partial++
 		default:
 			fail++
 		}
@@ -173,8 +173,8 @@ func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pa
 		RunURL:  runURL,
 		Reports: views,
 		History: reversed,
+		Full:    full,
 		Pass:    pass,
-		Partial: partial,
 		Fail:    fail,
 		Total:   len(reports),
 	}
@@ -182,12 +182,12 @@ func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pa
 
 func appendHistory(existing []RunSummary, data pageData) []RunSummary {
 	entry := RunSummary{
-		Date:    time.Now().UTC().Format("2006-01-02"),
-		RunURL:  data.RunURL,
-		Pass:    data.Pass,
-		Partial: data.Partial,
-		Fail:    data.Fail,
-		Total:   data.Total,
+		Date:   time.Now().UTC().Format("2006-01-02"),
+		RunURL: data.RunURL,
+		Full:   data.Full,
+		Pass:   data.Pass,
+		Fail:   data.Fail,
+		Total:  data.Total,
 	}
 	updated := append(existing, entry)
 	if len(updated) > 30 {
@@ -288,8 +288,8 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
   padding: 3px 12px; border-radius: 9999px;
   font-size: 13px; font-weight: 600;
 }
+.badge.full    { background: rgba(139,92,246,0.12);  color: #c084fc; border: 1px solid rgba(139,92,246,0.25); }
 .badge.pass    { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
-.badge.partial { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
 .badge.fail    { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
 .badge.total   { background: rgba(148,163,184,0.08); color: #94a3b8; border: 1px solid rgba(148,163,184,0.15); }
 
@@ -331,8 +331,8 @@ tbody td { padding: 10px 14px; vertical-align: middle; }
   padding: 2px 9px; border-radius: 9999px;
   font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
 }
+.verdict-full    { background: rgba(139,92,246,0.12);  color: #c084fc; }
 .verdict-pass    { background: rgba(34,197,94,0.12);  color: #4ade80; }
-.verdict-partial { background: rgba(245,158,11,0.12); color: #fbbf24; }
 .verdict-fail    { background: rgba(239,68,68,0.12);  color: #f87171; }
 
 .sdk    { font-weight: 600; }
@@ -392,8 +392,8 @@ footer {
     Run: {{.RunDate}}{{if .RunURL}} &middot; <a href="{{.RunURL}}" target="_blank" rel="noopener">CI run &#8599;</a>{{end}}
   </p>
   <div class="stats">
+    <span class="badge full">&#x1F31F; {{.Full}} FULL</span>
     <span class="badge pass">&#x2705; {{.Pass}} PASS</span>
-    <span class="badge partial">&#x26A0;&#xFE0F; {{.Partial}} PARTIAL</span>
     <span class="badge fail">&#x274C; {{.Fail}} FAIL</span>
     <span class="badge total">{{.Total}} total</span>
   </div>
@@ -488,8 +488,8 @@ footer {
   <thead>
     <tr>
       <th>Date</th>
+      <th>FULL</th>
       <th>PASS</th>
-      <th>PARTIAL</th>
       <th>FAIL</th>
       <th>Total</th>
       <th>CI Run</th>
@@ -499,8 +499,8 @@ footer {
   {{range .History}}
     <tr>
       <td>{{.Date}}</td>
+      <td class="count note">{{.Full}}</td>
       <td class="count ok">{{.Pass}}</td>
-      <td class="count warn">{{.Partial}}</td>
       <td class="count err">{{.Fail}}</td>
       <td class="count">{{.Total}}</td>
       <td>{{if .RunURL}}<a href="{{.RunURL}}" target="_blank" rel="noopener">&#8599;</a>{{end}}</td>
