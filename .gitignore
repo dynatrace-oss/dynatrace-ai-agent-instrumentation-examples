@@ -137,4 +137,4 @@ next-env.d.ts
 
 # Generated e2e span audit reports (uploaded as CI artifacts; not committed)
 test/e2e/reports/*.json
-test/e2e/reports/*.md
+test/e2e/reports/*.mdtest/e2e/report-gen
