@@ -11,6 +11,7 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
 - [How the data flows](#how-the-data-flows)
 - [Why does the frontend already know the trace ID?](#why-does-the-frontend-already-know-the-trace-id)
 - [Conversation ID — a separate concept](#conversation-id--a-separate-concept)
+- [Agentic session stitching — tracking across multiple traces](#agentic-session-stitching--tracking-across-multiple-traces)
 - [What gets captured](#what-gets-captured)
 - [Setup](#setup)
   * [Prerequisites](#prerequisites)
@@ -116,6 +117,52 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 
 ---
 
+## Agentic session stitching — tracking across multiple traces
+
+In a typical agentic flow the user sends several follow-up questions within one browser session. Each question creates a **new traceID** (the RUM JS generates a fresh `traceparent` for every fetch), so the spans cannot be stitched by `traceId` alone.
+
+`gen_ai.conversation.id` (equivalent to `session.id` in Dynatrace AI Observability) solves this. It is a UUID generated once per browser session, stored in `sessionStorage`, and sent in every request body:
+
+```js
+const CONV_ID = sessionStorage.getItem('conversationId') || crypto.randomUUID();
+sessionStorage.setItem('conversationId', CONV_ID);
+```
+
+The backend stamps it on every span it creates — including all child LLM spans — via the `ConversationIdSpanProcessor`:
+
+```python
+class ConversationIdSpanProcessor(SpanProcessor):
+    def on_start(self, span, parent_context=None):
+        if conversation_id := _current_conversation_id.get():
+            span.set_attribute("gen_ai.conversation.id", conversation_id)
+```
+
+With this in place you can reconstruct the full agent trajectory across any number of separate traces with a single DQL query:
+
+```
+fetch spans
+| filter gen_ai.conversation.id == "<paste-from-UI>"
+| fields timestamp, span.name, gen_ai.request.model, gen_ai.usage.input_tokens, gen_ai.usage.output_tokens, feedback.rating
+| sort timestamp asc
+```
+
+The **Copy for DQL** button in the UI writes this query directly to the clipboard.
+
+![Filter by session ID in Dynatrace AI Observability](./images/filter-session-id.png)
+
+### session.id vs gen_ai.conversation.id
+
+Dynatrace AI Observability exposes both names — they refer to the same value in this pattern:
+
+| Attribute | Set by | Meaning |
+|---|---|---|
+| `gen_ai.conversation.id` | Backend span processor | Propagated from request body; present on every LLM span |
+| `session.id` | Dynatrace RUM | Browser session identifier; correlated automatically when RUM JS is active |
+
+Use either attribute as the filter key in DQL — they resolve to the same session.
+
+---
+
 ## What gets captured
 
 | Signal | Source | DQL attribute |
@@ -137,7 +184,7 @@ The "Copy for DQL" buttons in the UI write this query directly to your clipboard
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Node.js 18+
 - A Dynatrace environment with RUM enabled
-- AWS Bedrock access (or Azure OpenAI)
+- AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) with Bedrock model access enabled, or an Azure OpenAI resource (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`)
 
 
 ### Configure RUM in your Dynatrace environment
@@ -159,13 +206,13 @@ Create a `.env` file at the repo root:
 
 ```bash
 DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com # Link to your environment, e.g. https://abc12345.live.dynatrace.com/
-DT_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
+DT_API_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
 
-BEDROCK_USERNAME=<aws-access-key-id>
-BEDROCK_KEY=<aws-secret-access-key>
+AWS_ACCESS_KEY_ID=<aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<aws-secret-access-key>
 
 AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
-AZURE_OPENAI_KEY=<your-key>
+AZURE_OPENAI_API_KEY=<your-key>
 AZURE_OPENAI_DEPLOYMENT=<deployment-name>
 ```
 

@@ -21,5 +21,7 @@ build: ## Not applicable — no container defined for this demo
 push: ## Not applicable — no container defined for this demo
 	@echo "push: no Dockerfile for this demo"
 
-request: ## GET /health from localhost:$(PORT)
-	curl -s http://localhost:$(PORT)/health | python3 -m json.tool
+request: ## POST /api/ask to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/api/ask \
+	  -H 'Content-Type: application/json' \
+	  -d '{"question":"Who invented jazz?"}' | python3 -m json.tool

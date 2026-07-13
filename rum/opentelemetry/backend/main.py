@@ -72,8 +72,8 @@ if _tracer_provider:
 
 def _bedrock_provider() -> BedrockProvider:
     return BedrockProvider(
-        aws_access_key_id=os.environ["BEDROCK_USERNAME"],
-        aws_secret_access_key=os.environ["BEDROCK_KEY"],
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         region_name="us-east-1",
     )
 
@@ -81,7 +81,7 @@ def _bedrock_provider() -> BedrockProvider:
 def build_azure_model() -> tuple[OpenAIModel, str, str]:
     provider = AzureProvider(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
+        api_key=os.environ["AZURE_OPENAI_API_KEY"],
         api_version="2024-02-01",
     )
     deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
@@ -117,7 +117,7 @@ app.add_middleware(
 
 class QuestionRequest(BaseModel):
     question: str
-    conversation_id: str  # generated client-side, propagated through every exchange
+    conversation_id: str  # generated client-side (browser sessionStorage) and sent on every request
 
 
 class AnswerResponse(BaseModel):

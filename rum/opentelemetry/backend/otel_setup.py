@@ -11,10 +11,10 @@ def setup_otel(service_name: str = "rum-music-agent"):
     Returns (tracer_provider, meter_provider).
     """
     dt_endpoint = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-    dt_api_token = os.environ.get("DT_TOKEN", "")
+    dt_api_token = os.environ.get("DT_API_TOKEN", "")
 
     if not dt_endpoint or not dt_api_token:
-        print("[otel] DT_ENDPOINT or DT_TOKEN not set — OTel export disabled")
+        print("[otel] DT_ENDPOINT or DT_API_TOKEN not set — OTel export disabled")
         return None, None
 
     parsed = urlparse(dt_endpoint)
