@@ -33,7 +33,8 @@ OC_ALL='[
   {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_test.go","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"},
   {"name":"aws-strands-opentelemetry","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_test.go","test_run":"TestAWSStrandsOpenTelemetry","otel_service_name":"aws-strands/opentelemetry"},
   {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_openpipeline_test.go","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"},
-  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"TestGoogleADKOpenTelemetry","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true}
+  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"TestGoogleADKOpenTelemetry","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry"}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then

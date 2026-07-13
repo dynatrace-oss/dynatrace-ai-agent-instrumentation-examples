@@ -96,6 +96,35 @@ func triggerResearch(t *testing.T) {
 	}
 }
 
+// triggerRUMMusicAgent POSTs to /api/ask with an explicit conversationID.
+// Call it repeatedly with the same ID to simulate an agentic session that
+// spans multiple traces — the browser does the same via sessionStorage.
+func triggerRUMMusicAgent(t *testing.T, conversationID string) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/api/ask"
+
+	b, _ := json.Marshal(map[string]string{
+		"question":        "Tell me about the history of jazz music",
+		"conversation_id": conversationID,
+	})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/ask: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /api/ask returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // triggerMusicAgent POSTs a question to /api/ask on localhost:8000.
 func triggerMusicAgent(t *testing.T) {
 	t.Helper()
