@@ -10,7 +10,6 @@ from ddgs import DDGS
 
 
 
-os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
 
 @tool("web_search")
 def web_search(query: str) -> str:
