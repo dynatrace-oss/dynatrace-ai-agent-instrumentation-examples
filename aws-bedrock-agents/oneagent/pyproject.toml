@@ -1,16 +1,14 @@
 [project]
 name = "aws-bedrock-agents-oneagent"
 version = "0.1.0"
-description = "LangGraph travel agent demo auto-instrumented by Dynatrace OneAgent"
+description = "Personal Assistant Agent built on top of Bedrock AgentCore, auto-instrumented by Dynatrace OneAgent"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "bedrock-agentcore",
     "boto3",
-    "langchain",
     "langchain-aws",
     "langgraph",
     "ddgs",
     "oneagent-sdk",
-    "fastapi",
-    "uvicorn[standard]",
 ]
