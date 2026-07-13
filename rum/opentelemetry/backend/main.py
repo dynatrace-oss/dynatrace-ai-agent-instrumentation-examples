@@ -45,6 +45,8 @@ _instrumentation = InstrumentationSettings(
     include_content=True,
 )
 
+Agent.instrument_all(_instrumentation)
+
 tracer = trace.get_tracer("rum-music-agent-api")
 GEN_AI_CONVERSATION_ID_ATTR = "gen_ai.conversation.id"
 _current_conversation_id: ContextVar[str | None] = ContextVar("current_conversation_id", default=None)
@@ -202,12 +204,11 @@ async def ask_question(http_request: Request, body: QuestionRequest):
                     agent = Agent(
                         model=model,
                         system_prompt=MUSIC_SYSTEM_PROMPT,
-                        instrument=_instrumentation,
                     )
                     result = await agent.run(body.question)
                     answer = result.output if hasattr(result, "output") else result.data
 
-                    usage = result.usage()
+                    usage = result.usage
                     if usage:
                         span.set_attribute("gen_ai.usage.input_tokens", usage.input_tokens or 0)
                         span.set_attribute("gen_ai.usage.output_tokens", usage.output_tokens or 0)
