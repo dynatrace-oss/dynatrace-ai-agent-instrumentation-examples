@@ -13,5 +13,6 @@ func TestAWSBedrockAgentsOneAgent(t *testing.T) {
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock-agents/oneagent"
 | filter isNotNull(gen_ai.provider.name) or isNotNull(gen_ai.system)
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 }
