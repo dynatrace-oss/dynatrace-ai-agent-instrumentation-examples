@@ -63,13 +63,6 @@
           "additional_required_attributes": [],
           "additional_optional_attributes": [],
           "provider_metrics": ["KO-001", "KO-002", "KO-003", "KO-004"]
-        },
-        "mistral": {
-          "dashboard": "abmodelversioning.dashboard.json",
-          "description": "Mistral AI provider profile. The mistralai SDK is auto-instrumented by Dynatrace OneAgent's experimental Mistral AI sensor (no application-level OTel). Uses the generic provider-agnostic dashboard; Mistral exposes no provider-specific guardrail or caching attributes, so nothing is added on top of generic (mirrors the google profile).",
-          "extends": "generic",
-          "additional_required_attributes": [],
-          "additional_optional_attributes": []
         }
       },
       "scenario_overrides": {
