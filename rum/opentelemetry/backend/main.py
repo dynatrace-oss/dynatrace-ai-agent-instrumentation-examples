@@ -57,6 +57,9 @@ class ConversationIdSpanProcessor(SpanProcessor):
         conversation_id = _current_conversation_id.get()
         if conversation_id:
             span.set_attribute(GEN_AI_CONVERSATION_ID_ATTR, conversation_id)
+            # pydantic-ai uses traceloop session tracking internally; override
+            # the default "default_session" value with the actual conversation ID.
+            span.set_attribute("traceloop.association.properties.session_id", conversation_id)
 
     def on_end(self, span: ReadableSpan) -> None:
         pass
