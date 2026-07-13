@@ -7,19 +7,82 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
-# OTel must be initialised before pydantic-ai imports
+# Define the span exporter wrapper BEFORE calling setup_otel so we can pass it
+# as exporter_wrapper. This lets us override gen_ai.conversation.id after
+# pydantic-ai sets it (it runs after on_start, overwriting whatever we staged).
+from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
+GEN_AI_CONVERSATION_ID_ATTR = "gen_ai.conversation.id"
+_current_conversation_id: ContextVar[str | None] = ContextVar("current_conversation_id", default=None)
+
+# Private staging attribute — pydantic-ai doesn't know about it so it won't
+# overwrite it. SessionIdExporter reads it and copies the value to
+# gen_ai.conversation.id just before spans leave the process.
+_STAGING_ATTR = "_rum_session_id"
+
+
+class ConversationIdSpanProcessor(SpanProcessor):
+    def on_start(self, span: Span, parent_context=None) -> None:
+        conversation_id = _current_conversation_id.get()
+        if conversation_id:
+            span.set_attribute(_STAGING_ATTR, conversation_id)
+
+    def on_end(self, span: ReadableSpan) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return True
+
+
+class SessionIdExporter(SpanExporter):
+    """Wraps the real exporter and forces gen_ai.conversation.id to the browser
+    session UUID staged by ConversationIdSpanProcessor, overriding whatever
+    pydantic-ai set after on_start ran."""
+
+    def __init__(self, inner: SpanExporter) -> None:
+        self._inner = inner
+
+    def export(self, spans: list[ReadableSpan]) -> SpanExportResult:
+        for span in spans:
+            if not span.attributes:
+                continue
+            session_id = span.attributes.get(_STAGING_ATTR)
+            if session_id:
+                span.attributes[GEN_AI_CONVERSATION_ID_ATTR] = session_id
+                span.attributes["traceloop.association.properties.session_id"] = session_id
+                del span.attributes[_STAGING_ATTR]
+        return self._inner.export(spans)
+
+    def shutdown(self) -> None:
+        self._inner.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return self._inner.force_flush(timeout_millis)
+
+
+# OTel must be initialised before pydantic-ai imports.
+# Pass SessionIdExporter so the single BatchSpanProcessor wraps it — avoiding
+# double-export while still overriding gen_ai.conversation.id at flush time.
 from otel_setup import setup_otel
 
-_tracer_provider, _meter_provider = setup_otel("rum/opentelemetry")
+_tracer_provider, _meter_provider = setup_otel("rum/opentelemetry", exporter_wrapper=SessionIdExporter)
+
+# Register our staging processor so on_start can note the browser session UUID
+# before pydantic-ai gets a chance to overwrite gen_ai.conversation.id.
+if _tracer_provider:
+    _tracer_provider.add_span_processor(ConversationIdSpanProcessor())
 
 from opentelemetry import trace
 from opentelemetry.propagate import extract  # extracts W3C traceparent from RUM headers
-from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel
@@ -48,31 +111,6 @@ _instrumentation = InstrumentationSettings(
 Agent.instrument_all(_instrumentation)
 
 tracer = trace.get_tracer("rum-music-agent-api")
-GEN_AI_CONVERSATION_ID_ATTR = "gen_ai.conversation.id"
-_current_conversation_id: ContextVar[str | None] = ContextVar("current_conversation_id", default=None)
-
-
-class ConversationIdSpanProcessor(SpanProcessor):
-    def on_start(self, span: Span, parent_context=None) -> None:
-        conversation_id = _current_conversation_id.get()
-        if conversation_id:
-            span.set_attribute(GEN_AI_CONVERSATION_ID_ATTR, conversation_id)
-            # pydantic-ai uses traceloop session tracking internally; override
-            # the default "default_session" value with the actual conversation ID.
-            span.set_attribute("traceloop.association.properties.session_id", conversation_id)
-
-    def on_end(self, span: ReadableSpan) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def force_flush(self, timeout_millis: int = 30000) -> bool:
-        return True
-
-
-if _tracer_provider:
-    _tracer_provider.add_span_processor(ConversationIdSpanProcessor())
 
 
 def _bedrock_provider() -> BedrockProvider:
@@ -139,7 +177,7 @@ app.add_middleware(
 
 class QuestionRequest(BaseModel):
     question: str
-    conversation_id: str = ""  # browser sends its sessionStorage UUID; server generates one if absent
+    conversation_id: str = ""
 
 
 class AnswerResponse(BaseModel):
