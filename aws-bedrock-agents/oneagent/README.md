@@ -32,7 +32,7 @@ export AWS_SECRET_ACCESS_KEY==your_secret_key
 export AWS_REGION=your_region
 ```
 
-Ensure your account has access to the model `eu.anthropic.claude-3-7-sonnet-20250219-v1:0` used in this example. Please refer to the
+Ensure your account has access to the model `us.anthropic.claude-haiku-4-5-20251001-v1:0` used in this example. Please refer to the
 [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-permissions.html) to see how to enable access to the model.
 You can change the model used by configuring the environment variable `BEDROCK_MODEL_ID`.
 
