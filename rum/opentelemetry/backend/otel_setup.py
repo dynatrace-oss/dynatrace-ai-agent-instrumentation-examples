@@ -4,7 +4,7 @@ import os
 from urllib.parse import urlparse
 
 
-def setup_otel(service_name: str = "rum-music-agent"):
+def setup_otel(service_name: str = "rum-music-agent", exporter_wrapper=None):
     """
     Initialise OpenTelemetry traces + metrics and export to Dynatrace.
     Uses DT_ENDPOINT and DT_TOKEN from the environment (set via .env).
@@ -45,11 +45,9 @@ def setup_otel(service_name: str = "rum-music-agent"):
     )
 
     tracer_provider = TracerProvider(resource=resource)
-    tracer_provider.add_span_processor(
-        BatchSpanProcessor(
-            OTLPSpanExporter(endpoint=f"{otlp_base}/v1/traces", headers=headers)
-        )
-    )
+    raw_exporter = OTLPSpanExporter(endpoint=f"{otlp_base}/v1/traces", headers=headers)
+    exporter = exporter_wrapper(raw_exporter) if exporter_wrapper else raw_exporter
+    tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(tracer_provider)
 
     meter_provider = MeterProvider(
