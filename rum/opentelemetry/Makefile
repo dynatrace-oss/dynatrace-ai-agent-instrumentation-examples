@@ -4,7 +4,7 @@ export
 
 PORT             ?= 8000
 
-.PHONY: install run stop build push request demo trigger help
+.PHONY: install run stop build push request demo help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -29,12 +29,7 @@ request: ## POST /api/ask to localhost:$(PORT)
 	  -H 'Content-Type: application/json' \
 	  -d '{"question":"Who invented jazz?","conversation_id":"$(shell python3 -c \"import uuid; print(uuid.uuid4())\")"}' | python3 -m json.tool
 
-demo: ## Open a browser session via Playwright — appears in Experience Vitals (backend must be running)
-	uv sync --extra demo
-	uv run playwright install chromium
-	uv run python3 scripts/browser_demo.py
-
-trigger: ## Run a headless browser session — used by the e2e test runner
+demo: ## Run a browser session via Playwright — headed locally, headless in CI (backend must be running)
 	uv sync --extra demo
 	uv run playwright install chromium
 	uv run python3 scripts/browser_demo.py

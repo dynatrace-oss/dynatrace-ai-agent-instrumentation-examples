@@ -13,7 +13,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 	// Drive a real browser via Playwright so the Dynatrace RUM JS fires, injects
 	// W3C traceparent headers, and generates session data visible in Experience Vitals.
 	// The script asks 6 questions across providers; CI env triggers headless mode.
-	cmd := exec.Command("make", "trigger")
+	cmd := exec.Command("make", "demo")
 	cmd.Dir = filepath.Join(repoRoot(), "rum/opentelemetry")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
