@@ -16,10 +16,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
-        {/* Dynatrace Real User Monitoring — set NEXT_PUBLIC_DT_RUM_SCRIPT to your JS tag URL */}
-        {process.env.NEXT_PUBLIC_DT_RUM_SCRIPT && (
+        {/* Dynatrace Real User Monitoring — set DT_RUM_SCRIPT to your JS tag URL */}
+        {process.env.DT_RUM_SCRIPT && (
           <Script
-            src={process.env.NEXT_PUBLIC_DT_RUM_SCRIPT}
+            src={process.env.DT_RUM_SCRIPT}
             strategy="afterInteractive"
             crossOrigin="anonymous"
           />
