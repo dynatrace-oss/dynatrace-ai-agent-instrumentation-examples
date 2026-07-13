@@ -27,4 +27,4 @@ push: ## Not applicable — no container defined for this demo
 request: ## POST /api/ask to localhost:$(PORT)
 	curl -s -X POST http://localhost:$(PORT)/api/ask \
 	  -H 'Content-Type: application/json' \
-	  -d '{"question":"Who invented jazz?"}' | python3 -m json.tool
+	  -d '{"question":"Who invented jazz?","conversation_id":"$(shell python3 -c \"import uuid; print(uuid.uuid4())\")"}' | python3 -m json.tool

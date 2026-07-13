@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.azure import AzureProvider
 from pydantic_ai.providers.bedrock import BedrockProvider
 
@@ -78,14 +78,14 @@ def _bedrock_provider() -> BedrockProvider:
     )
 
 
-def build_azure_model() -> tuple[OpenAIModel, str, str]:
+def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     provider = AzureProvider(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
         api_version="2024-02-01",
     )
     deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
-    return OpenAIModel(deployment, provider=provider), "Azure OpenAI", deployment
+    return OpenAIChatModel(deployment, provider=provider), "Azure OpenAI", deployment
 
 
 def build_bedrock_sonnet() -> tuple[BedrockConverseModel, str, str]:
@@ -117,7 +117,7 @@ app.add_middleware(
 
 class QuestionRequest(BaseModel):
     question: str
-    conversation_id: str  # generated client-side (browser sessionStorage) and sent on every request
+    conversation_id: str = ""  # browser sends its sessionStorage UUID; server generates one if absent
 
 
 class AnswerResponse(BaseModel):

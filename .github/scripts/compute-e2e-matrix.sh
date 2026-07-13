@@ -44,10 +44,16 @@ if [[ "$EVENT" == "pull_request" ]]; then
   CHANGED_JSON=$(echo "$CHANGED" | jq -Rs 'split("\n") | map(select(length > 0))')
 
   # Changes to shared infrastructure trigger a full run:
-  #   test/e2e/internal/   - DQL client and process manager used by every test
-  #   test/e2e/fixture_*   - shared test helpers (suite setup, audit, triggers, …)
-  #   test/e2e/go.mod|sum  - dependency changes affect every suite
-  INFRA_RE='^(test/e2e/internal/|test/e2e/fixture_|test/e2e/go\.(mod|sum)$)'
+  #   test/e2e/internal/          - DQL client and process manager used by every test
+  #   test/e2e/fixture_suite_*    - TestMain, run-ID isolation, env helpers
+  #   test/e2e/fixture_audit_*    - profiles, auditSpan — changes affect every report
+  #   test/e2e/fixture_assert_*   - assertSpan helpers used across suites
+  #   test/e2e/fixture_apps_*     - startApp / startCLIApp lifecycle
+  #   test/e2e/go.mod|sum         - dependency changes affect every suite
+  #
+  # fixture_triggers_* and fixture_mocks_* are intentionally excluded: adding a
+  # new trigger or mock is additive and only affects the test that uses it.
+  INFRA_RE='^(test/e2e/internal/|test/e2e/fixture_(suite|audit|assert|apps)[^/]*|test/e2e/go\.(mod|sum)$)'
   if echo "$CHANGED" | grep -qE "$INFRA_RE"; then
     OA_MATRIX=$(echo "$OA_ALL" | jq -c .)
     OC_MATRIX=$(echo "$OC_ALL" | jq -c .)
