@@ -32,35 +32,36 @@ def web_search(query: str) -> str:
     except Exception as e:
         return f"Search error: {str(e)}"
 
-def get_llm():
-    model_id = os.getenv("BEDROCK_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0")
-    
-    try:
+_llm_with_tools = None
+
+def _get_llm_with_tools():
+    global _llm_with_tools
+    if _llm_with_tools is None:
+        model_id = os.getenv("BEDROCK_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
         llm = init_chat_model(
             model_id,
             model_provider="bedrock_converse",
             temperature=0.0,
             max_tokens=512,
+            region_name=region,
         )
-        return llm
-    except Exception as e:
-        raise
-
-llm = get_llm()
-tools = [web_search]
-llm_with_tools = llm.bind_tools(tools)
+        _llm_with_tools = llm.bind_tools([web_search])
+    return _llm_with_tools
 
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 def chatbot(state: State):
     try:
-        response = llm_with_tools.invoke(state["messages"])
+        response = _get_llm_with_tools().invoke(state["messages"])
         return {"messages": [response]}
     except Exception as e:
         from langchain_core.messages import AIMessage
         error_response = AIMessage(content=f"I apologize, but I encountered an error: {str(e)}")
         return {"messages": [error_response]}
+
+tools = [web_search]
 
 graph_builder = StateGraph(State)
 
@@ -76,7 +77,6 @@ graph_builder.add_edge("tools", "chatbot")
 graph_builder.add_edge(START, "chatbot")
 
 graph = graph_builder.compile()
-graph_configured = True
 
 def agent_invocation(payload: str, session_id: str = "default_session"):
     try:

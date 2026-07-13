@@ -12,14 +12,12 @@ def read_secret(secret: str):
 def init():
     os.environ['TRACELOOP_TELEMETRY'] = "false"
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
-    token = read_secret("dynatrace_otel")
+    token = os.environ.get("DT_API_TOKEN") or read_secret("dynatrace_otel")
     headers = {"Authorization": f"Api-Token {token}"}
     OTEL_ENDPOINT = os.environ.get(
         "OTEL_ENDPOINT", "https://wkf10640.live.dynatrace.com/api/v2/otlp" #manually configure your DT tenant here or a OTel collector endpoint
     )
     from traceloop.sdk import Traceloop
-    token = read_secret("dynatrace_otel")
-    headers = {"Authorization": f"Api-Token {token}"}
     app_name = os.environ.get("OTEL_SERVICE_NAME", "agent-core-samples")
     Traceloop.init(
         app_name=app_name,
