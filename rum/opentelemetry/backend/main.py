@@ -19,7 +19,7 @@ from opentelemetry.propagate import extract  # extracts W3C traceparent from RUM
 from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel
@@ -142,7 +142,14 @@ def health():
 
 @app.get("/")
 async def serve_index():
-    return FileResponse(FRONTEND_DIR / "index.html")
+    html = (FRONTEND_DIR / "index.html").read_text()
+    rum_script = os.getenv("DT_RUM_SCRIPT", "")
+    if rum_script:
+        html = html.replace(
+            "https://js-cdn.dynatrace.com/jstag/<follow-the-instructions-in-the-README>.js",
+            rum_script,
+        )
+    return HTMLResponse(content=html)
 
 
 @app.post("/api/feedback", status_code=204)

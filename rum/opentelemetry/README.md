@@ -148,7 +148,7 @@ fetch spans
 
 The **Copy for DQL** button in the UI writes this query directly to the clipboard.
 
-![Filter by session ID in Dynatrace AI Observability](./images/filter-session-id.png)
+![Filter by session ID in Dynatrace AI Observability](./images/filter-conversation-id.png)
 
 ### session.id vs gen_ai.conversation.id
 
@@ -185,6 +185,7 @@ Use either attribute as the filter key in DQL — they resolve to the same sessi
 - Node.js 18+
 - A Dynatrace environment with RUM enabled
 - AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) with Bedrock model access enabled, or an Azure OpenAI resource (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`)
+- Dynatrace RUM JS tag URL (`DT_RUM_SCRIPT`) — obtained from Experience Vitals setup (see below)
 
 
 ### Configure RUM in your Dynatrace environment
@@ -194,10 +195,10 @@ Go to Experience Vitals and click `+ Frontend`, select Web and provide a fronten
 
 ![](./images/experience-vital-setup.png)
 
-In the Select instrumentation method step, select Agentless and press `Create`
-In the Setup step, check under Select capability and settings if RUM is enabled. 
-If it isn’t enabled, select `Override` and turn it on. 
-Press `Next` to copy the JavaScript tag and replace the `<Script src="...">` in [nextjs-frontend/app/layout.tsx](./nextjs-frontend/app/layout.tsx) or the `<script>` tag in [frontend/index.html](./frontend/index.html).
+In the Select instrumentation method step, select Agentless and press `Create`.
+In the Setup step, check under Select capability and settings if RUM is enabled.
+If it isn’t enabled, select `Override` and turn it on.
+Press `Next` to copy the JavaScript tag URL and set it as `DT_RUM_SCRIPT` in your `.env` file — the backend and Next.js frontend inject it automatically at runtime. No manual file editing required.
 
 
 ### Environment variables
@@ -207,6 +208,7 @@ Create a `.env` file at the repo root:
 ```bash
 DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com # Link to your environment, e.g. https://abc12345.live.dynatrace.com/
 DT_API_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
+DT_RUM_SCRIPT=https://js-cdn.dynatrace.com/jstag/<your-tag>.js  # RUM JS tag URL from Experience Vitals setup
 
 AWS_ACCESS_KEY_ID=<aws-access-key-id>
 AWS_SECRET_ACCESS_KEY=<aws-secret-access-key>
