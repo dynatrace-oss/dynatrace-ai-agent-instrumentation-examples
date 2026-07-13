@@ -135,6 +135,11 @@ class FeedbackRequest(BaseModel):
     model: str
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 async def serve_index():
     return FileResponse(FRONTEND_DIR / "index.html")

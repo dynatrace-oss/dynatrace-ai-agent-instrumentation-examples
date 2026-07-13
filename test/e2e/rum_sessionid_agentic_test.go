@@ -7,7 +7,7 @@ import (
 )
 
 func TestRUMOpenTelemetry(t *testing.T) {
-	startCLIApp(t, "rum/opentelemetry")
+	startApp(t, "rum/opentelemetry")
 
 	// One UUID for the whole test — mirrors what the browser does with sessionStorage.
 	// All three requests share it so gen_ai.conversation.id is consistent across
