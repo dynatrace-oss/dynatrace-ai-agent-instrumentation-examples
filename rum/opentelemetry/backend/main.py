@@ -12,7 +12,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 # OTel must be initialised before pydantic-ai imports
 from otel_setup import setup_otel
 
-_tracer_provider, _meter_provider = setup_otel("rum-music-agent")
+_tracer_provider, _meter_provider = setup_otel("rum/opentelemetry")
 
 from opentelemetry import trace
 from opentelemetry.propagate import extract  # extracts W3C traceparent from RUM headers
