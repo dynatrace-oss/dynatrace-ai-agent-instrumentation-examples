@@ -10,8 +10,7 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
 
 - [How the data flows](#how-the-data-flows)
 - [Why does the frontend already know the trace ID?](#why-does-the-frontend-already-know-the-trace-id)
-- [Conversation ID — a separate concept](#conversation-id--a-separate-concept)
-- [Agentic session stitching — tracking across multiple traces](#agentic-session-stitching--tracking-across-multiple-traces)
+- [Conversation ID and agentic session stitching](#conversation-id-and-agentic-session-stitching)
 - [What gets captured](#what-gets-captured)
 - [Setup](#setup)
   * [Prerequisites](#prerequisites)
@@ -91,37 +90,11 @@ This makes the backend span a **child** of the browser user-action span. Both sh
 
 ---
 
-## Conversation ID — a separate concept
+## Conversation ID and agentic session stitching
 
-The `gen_ai.conversation.id` is **not** a trace ID. It is a UUID generated once per browser session by the frontend:
+In a typical agentic flow the user sends several follow-up questions within one browser session. Each question creates a **new traceID** (the RUM JS generates a fresh `traceparent` for every fetch), so the spans cannot be linked by `traceId` alone.
 
-```js
-const CONV_ID = sessionStorage.getItem('conversationId') || crypto.randomUUID();
-```
-
-It is sent in every request body and stamped as a span attribute on the backend request span and any child spans created while the request is running:
-
-```python
-span.set_attribute("gen_ai.conversation.id", body.conversation_id)
-```
-
-This lets you filter **all exchanges in a session** with a single DQL query — even across multiple traces:
-
-```
-fetch spans
-| filter gen_ai.conversation.id == "8f3a…"
-| fields timestamp, span.name, feedback.rating, gen_ai.usage.input_tokens
-```
-
-The "Copy for DQL" buttons in the UI write this query directly to your clipboard so you can paste it into a Dynatrace Notebook.
-
----
-
-## Agentic session stitching — tracking across multiple traces
-
-In a typical agentic flow the user sends several follow-up questions within one browser session. Each question creates a **new traceID** (the RUM JS generates a fresh `traceparent` for every fetch), so the spans cannot be stitched by `traceId` alone.
-
-`gen_ai.conversation.id` (equivalent to `session.id` in Dynatrace AI Observability) solves this. It is a UUID generated once per browser session, stored in `sessionStorage`, and sent in every request body:
+`gen_ai.conversation.id` (equivalent to `session.id` in Dynatrace AI Observability) solves this. It is **not** a trace ID — it is a UUID generated once per browser session by the frontend, stored in `sessionStorage`, and sent in every request body:
 
 ```js
 const CONV_ID = sessionStorage.getItem('conversationId') || crypto.randomUUID();
