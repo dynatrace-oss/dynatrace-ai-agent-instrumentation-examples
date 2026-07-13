@@ -50,13 +50,14 @@ class SessionIdExporter(SpanExporter):
 
     def export(self, spans: list[ReadableSpan]) -> SpanExportResult:
         for span in spans:
-            if not span.attributes:
+            attrs = getattr(span, "_attributes", None)
+            if not attrs:
                 continue
-            session_id = span.attributes.get(_STAGING_ATTR)
+            session_id = attrs.get(_STAGING_ATTR)
             if session_id:
-                span.attributes[GEN_AI_CONVERSATION_ID_ATTR] = session_id
-                span.attributes["traceloop.association.properties.session_id"] = session_id
-                del span.attributes[_STAGING_ATTR]
+                attrs[GEN_AI_CONVERSATION_ID_ATTR] = session_id
+                attrs["traceloop.association.properties.session_id"] = session_id
+                del attrs[_STAGING_ATTR]
         return self._inner.export(spans)
 
     def shutdown(self) -> None:
