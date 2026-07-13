@@ -16,12 +16,14 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
-        {/* Dynatrace Real User Monitoring — Change this Script following the instructions in the README */}
-        <Script
-          src="https://js-cdn.dynatrace.com/jstag/<follow-the-instructions-in-the-README>.js"
-          strategy="afterInteractive"
-          crossOrigin="anonymous"
-        />
+        {/* Dynatrace Real User Monitoring — set NEXT_PUBLIC_DT_RUM_SCRIPT to your JS tag URL */}
+        {process.env.NEXT_PUBLIC_DT_RUM_SCRIPT && (
+          <Script
+            src={process.env.NEXT_PUBLIC_DT_RUM_SCRIPT}
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+          />
+        )}
       </body>
     </html>
   );
