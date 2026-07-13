@@ -39,7 +39,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 		auditSpanOptional(t, "rum", "opentelemetry-azure", GenericProfile,
 			`fetch spans, from: now()-10m
 | filter service.name == "rum/opentelemetry"
-| filter gen_ai.system == "openai"
+| filter gen_ai.system == "azure"
 | filter isNotNull(gen_ai.conversation.id)
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
