@@ -470,7 +470,7 @@ func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interfac
 				return lastSpans
 			}
 			return []map[string]interface{}{anchor}
-		case <-time.After(15 * time.Second):
+		case <-time.After(5 * time.Second):
 		}
 	}
 }
