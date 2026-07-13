@@ -439,6 +439,13 @@ jobs:
         if: matrix.needs_google
         run: echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> $GITHUB_ENV
 
+      - name: Install Playwright Chromium
+        if: matrix.needs_playwright
+        run: |
+          cd ${{ matrix.app_dir }}
+          uv sync --extra demo
+          uv run playwright install chromium --with-deps
+
       - name: Run e2e test
         working-directory: test/e2e
         env:
