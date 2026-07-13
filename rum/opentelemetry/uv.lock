@@ -2316,10 +2316,14 @@ dependencies = [
     { name = "openai" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
-    { name = "playwright" },
     { name = "pydantic-ai" },
     { name = "python-dotenv" },
     { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+demo = [
+    { name = "playwright" },
 ]
 
 [package.metadata]
@@ -2329,11 +2333,12 @@ requires-dist = [
     { name = "openai", specifier = ">=1.58.0" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
-    { name = "playwright", specifier = ">=1.40.0" },
+    { name = "playwright", marker = "extra == 'demo'", specifier = ">=1.40.0" },
     { name = "pydantic-ai", specifier = ">=1.0.0" },
     { name = "python-dotenv" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
 ]
+provides-extras = ["demo"]
 
 [[package]]
 name = "s3transfer"
