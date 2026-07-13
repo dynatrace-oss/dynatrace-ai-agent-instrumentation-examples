@@ -12,3 +12,6 @@ dependencies = [
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
 ]
+
+[project.optional-dependencies]
+demo = ["playwright>=1.40.0"]

@@ -1,20 +1,24 @@
 package e2e
 
 import (
-	"crypto/rand"
-	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
 func TestRUMOpenTelemetry(t *testing.T) {
 	startApp(t, "rum/opentelemetry")
 
-	// One UUID for the whole test — mirrors what the browser does with sessionStorage.
-	// All three requests share it so gen_ai.conversation.id is consistent across
-	// multiple traceIDs, which is the agentic session-stitching pattern.
-	conversationID := newUUID(t)
-	for range 3 {
-		triggerRUMMusicAgent(t, conversationID)
+	// Drive a real browser via Playwright so the Dynatrace RUM JS fires, injects
+	// W3C traceparent headers, and generates session data visible in Experience Vitals.
+	// The script asks 6 questions across providers; CI env triggers headless mode.
+	cmd := exec.Command("make", "trigger")
+	cmd.Dir = filepath.Join(repoRoot(), "rum/opentelemetry")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("make trigger: %v", err)
 	}
 
 	auditSpan(t, "rum", "opentelemetry", GenericProfile,
@@ -45,16 +49,4 @@ func TestRUMOpenTelemetry(t *testing.T) {
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 	})
-}
-
-// newUUID returns a random UUID v4, matching the format crypto.randomUUID() produces in the browser.
-func newUUID(t *testing.T) string {
-	t.Helper()
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		t.Fatalf("generate UUID: %v", err)
-	}
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }

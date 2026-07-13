@@ -80,11 +80,19 @@ def _bedrock_provider() -> BedrockProvider:
     )
 
 
+def _azure_available() -> bool:
+    return all(os.getenv(k) for k in ("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_DEPLOYMENT"))
+
+
+def _bedrock_available() -> bool:
+    return all(os.getenv(k) for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"))
+
+
 def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     provider = AzureProvider(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_version="2024-02-01",
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
     )
     deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
     return OpenAIChatModel(deployment, provider=provider), "Azure OpenAI", deployment
@@ -104,6 +112,15 @@ def build_bedrock_haiku() -> tuple[BedrockConverseModel, str, str]:
         "AWS Bedrock",
         BEDROCK_MODEL_HAIKU,
     )
+
+
+def _available_builders() -> list:
+    builders = []
+    if _azure_available():
+        builders.append(build_azure_model)
+    if _bedrock_available():
+        builders.extend([build_bedrock_sonnet, build_bedrock_haiku])
+    return builders
 
 
 app = FastAPI(title="RUM Music Agent")
@@ -181,7 +198,9 @@ async def ask_question(http_request: Request, body: QuestionRequest):
     incoming_ctx = extract(dict(http_request.headers))
 
     try:
-        builders = [build_azure_model, build_bedrock_sonnet, build_bedrock_haiku]
+        builders = _available_builders()
+        if not builders:
+            raise HTTPException(status_code=503, detail="No AI providers configured")
         random.shuffle(builders)
 
         last_error: Exception | None = None
