@@ -20,8 +20,9 @@ def init():
     from traceloop.sdk import Traceloop
     token = read_secret("dynatrace_otel")
     headers = {"Authorization": f"Api-Token {token}"}
+    app_name = os.environ.get("OTEL_SERVICE_NAME", "agent-core-samples")
     Traceloop.init(
-        app_name="agent-core-samples",
+        app_name=app_name,
         api_endpoint=OTEL_ENDPOINT,
         disable_batch=True,
         headers=headers,
