@@ -15,11 +15,11 @@ OA_ALL='[
   {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
   {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
   {"name":"aws-strands-oneagent","app_dir":"aws-strands/oneagent","test_file":"test/e2e/aws_strands_oneagent_test.go","test_run":"TestAWSStrandsOneAgent","otel_service_name":"aws-strands/oneagent","oneagent_warmup_seconds":"60"},
-  {"name":"haystack-oneagent","app_dir":"haystack/oneagent","test_file":"test/e2e/haystack_test.go","test_run":"TestHaystackOneAgent","otel_service_name":"haystack/oneagent"}
+  {"name":"haystack-oneagent","app_dir":"haystack/oneagent","test_file":"test/e2e/haystack_test.go","test_run":"TestHaystackOneAgent","otel_service_name":"haystack/oneagent"},
+  {"name":"aws-bedrock-agents-oneagent","app_dir":"aws-bedrock-agents/oneagent","test_file":"test/e2e/aws_bedrock_agents_oneagent_test.go","test_run":"TestAWSBedrockAgentsOneAgent","otel_service_name":"aws-bedrock-agents/oneagent"}
 ]'
 
 OC_ALL='[
-  {"name":"aws-bedrock-agents-oneagent","app_dir":"aws-bedrock-agents/oneagent","test_file":"test/e2e/aws_bedrock_agents_oneagent_test.go","test_run":"TestAWSBedrockAgentsOneAgent","otel_service_name":"aws-bedrock-agents/oneagent"},
   {"name":"aws-bedrock-opentelemetry","app_dir":"aws-bedrock/opentelemetry","test_file":"test/e2e/aws_bedrock_opentelemetry_test.go","test_run":"TestAWSBedrockOpenTelemetry","otel_service_name":"aws-bedrock/opentelemetry"},
   {"name":"aws-bedrock-openinference","app_dir":"aws-bedrock/openinference","test_file":"test/e2e/aws_bedrock_openinference_test.go","test_run":"TestAWSBedrockOpenInference","otel_service_name":"aws-bedrock/openinference"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
