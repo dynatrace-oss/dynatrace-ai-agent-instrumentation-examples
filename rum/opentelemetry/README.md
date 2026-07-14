@@ -200,6 +200,10 @@ Once sessions start arriving you will see active users and user actions in the E
 
 <img src="./assets/rum-experience-vitals-frontends.png" width="800" alt="Experience Vitals frontends list showing active users, sessions, and user action count">
 
+Clicking on your frontend reveals the full RUM overview — user action duration, active sessions, and availability at a glance:
+
+<img src="./assets/rum-experience-zoomin.png" width="800" alt="Experience Vitals detail panel for rum-music-agent showing user action duration chart and active sessions">
+
 ### Environment variables
 
 Create a `.env` file in `rum/opentelemetry/`:
