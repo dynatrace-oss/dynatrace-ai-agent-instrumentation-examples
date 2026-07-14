@@ -56,7 +56,6 @@ class SessionIdExporter(SpanExporter):
             session_id = attrs.get(_STAGING_ATTR)
             if session_id:
                 attrs[GEN_AI_CONVERSATION_ID_ATTR] = session_id
-                attrs["traceloop.association.properties.session_id"] = session_id
                 del attrs[_STAGING_ATTR]
         return self._inner.export(spans)
 
