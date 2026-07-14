@@ -143,24 +143,32 @@ Clicking into any prompt shows the full agentic trace — system prompt, input, 
 
 ### session.id vs gen_ai.conversation.id
 
-The frontend reads the live RUM session ID via the `dtrum` JavaScript API and uses it as the conversation ID:
+The frontend seeds the conversation ID from `sessionStorage` (so it survives page refreshes) and then polls until the `dtrum` object is available. Once ready, it tries to align the conversation ID with the actual RUM session ID:
 
 ```js
-const CONV_ID = window.dtrum?.getSessionId?.()
-  || sessionStorage.getItem('conversationId')
-  || crypto.randomUUID();
+// Seed from sessionStorage so the badge is never blank on load
+let CONV_ID = sessionStorage.getItem('conversationId') || uuidv4();
 sessionStorage.setItem('conversationId', CONV_ID);
+
+// Once dtrum is ready, replace with the real RUM session ID if available
+const rumPoll = setInterval(() => {
+  if (typeof window.dtrum === 'undefined') return;
+  clearInterval(rumPoll);
+  const rumId = window.dtrum.getSessionId?.();
+  if (rumId) { CONV_ID = rumId; sessionStorage.setItem('conversationId', rumId); }
+  window.dtrum.sendSessionProperties?.(undefined, undefined, { conversationId: CONV_ID });
+}, 200);
 ```
 
-This means `gen_ai.conversation.id` equals `dt.rum.session.id` on every backend span — the same identifier that powers Dynatrace's **`frontend.link`** feature. When Dynatrace sees `dt.rum.session.id` on an OTLP span it automatically creates a link from the distributed trace view directly to the corresponding RUM session in Experience Vitals, so you can navigate from an AI Observability prompt straight to the browser session that triggered it.
+When `getSessionId()` is available `gen_ai.conversation.id` equals `dt.rum.session.id`, making both the AI Observability session filter and the Experience Vitals session the same identifier.
+
+Independently of `getSessionId()`, Dynatrace always propagates `dt.rum.session.id` from the RUM JS `tracestate` header to every backend OTLP span. This powers the **`frontend.link`** feature — when Dynatrace sees `dt.rum.session.id` on a span it creates a link from the distributed trace view directly to the corresponding RUM session in Experience Vitals.
 
 | Attribute | Set by | Meaning |
 |---|---|---|
-| `gen_ai.conversation.id` | Frontend → request body → backend span processor | Equals the RUM session ID; present on every LLM span |
-| `dt.rum.session.id` | Dynatrace RUM JS via `tracestate` → OTLP ingest | Powers `frontend.link` — links backend span to the RUM session |
+| `gen_ai.conversation.id` | Frontend → request body → backend span processor | Session UUID sent on every request; present on every LLM span |
+| `dt.rum.session.id` | Dynatrace RUM JS via `tracestate` → OTLP ingest | Powers `frontend.link` — always present when RUM JS is active |
 | `session.id` | Dynatrace AI Observability | Alias for `gen_ai.conversation.id` in the AI Observability UI |
-
-Use any of these as the filter key in DQL — they all resolve to the same session.
 
 ---
 
