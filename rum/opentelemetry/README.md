@@ -101,14 +101,27 @@ const CONV_ID = sessionStorage.getItem('conversationId') || crypto.randomUUID();
 sessionStorage.setItem('conversationId', CONV_ID);
 ```
 
-The backend stamps it on every span it creates — including all child LLM spans — via the `ConversationIdSpanProcessor`:
+The backend stamps the session UUID on every span — including all child LLM spans — using a two-stage approach. A `ConversationIdSpanProcessor` stages the value under a private attribute on every span as it starts, and a `SessionIdExporter` wrapper copies it to `gen_ai.conversation.id` just before the span leaves the process:
 
 ```python
+_STAGING_ATTR = "_rum_session_id"  # pydantic-ai doesn't know this name so it won't overwrite it
+
 class ConversationIdSpanProcessor(SpanProcessor):
     def on_start(self, span, parent_context=None):
         if conversation_id := _current_conversation_id.get():
-            span.set_attribute("gen_ai.conversation.id", conversation_id)
+            span.set_attribute(_STAGING_ATTR, conversation_id)  # stage, don't set final attr yet
+
+class SessionIdExporter(SpanExporter):
+    def export(self, spans):
+        for span in spans:
+            attrs = getattr(span, "_attributes", None)
+            if attrs and (session_id := attrs.get(_STAGING_ATTR)):
+                attrs["gen_ai.conversation.id"] = session_id   # override pydantic-ai's per-run value
+                del attrs[_STAGING_ATTR]
+        return self._inner.export(spans)
 ```
+
+The two-stage design is necessary because pydantic-ai sets `gen_ai.conversation.id` on its own spans *after* `on_start` runs, which would overwrite a value set directly there. Staging in a private attribute and overriding at export time wins the race.
 
 With this in place you can reconstruct the full agent trajectory across any number of separate traces with a single DQL query:
 
