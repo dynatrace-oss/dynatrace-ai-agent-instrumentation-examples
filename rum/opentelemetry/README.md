@@ -21,8 +21,8 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
 
 <!-- tocstop -->
 
-![Dynatrace AI Observability Prompt Page Filter](./images/filter-conversation-id.png)
-![Dynatrace AI Observability Prompt Page](./images/prompt_detail.png)
+![Music History Explorer app showing conversation ID badge and RUM active indicator](./assets/app-conversation-id-badge.png)
+![AI Observability prompt detail with agentic trace for rum/opentelemetry](./assets/ai-observability-prompt-detail.png)
 
 ---
 
@@ -134,7 +134,7 @@ fetch spans
 
 The **Copy for DQL** button in the UI writes this query directly to the clipboard.
 
-![Filter by session ID in Dynatrace AI Observability](./images/filter-conversation-id.png)
+![AI Observability Prompts filtered by Conversation ID](./assets/ai-observability-conversation-id-filter.png)
 
 ### session.id vs gen_ai.conversation.id
 
@@ -146,6 +146,9 @@ Dynatrace AI Observability exposes both names — they refer to the same value i
 | `session.id` | Dynatrace RUM | Browser session identifier; correlated automatically when RUM JS is active |
 
 Use either attribute as the filter key in DQL — they resolve to the same session.
+
+![AI Observability prompt trace list for rum/opentelemetry service](./assets/ai-observability-prompt-trace-list.png)
+![AI Observability agents topology showing rum/opentelemetry connected to Azure OpenAI](./assets/ai-observability-agents-topology.png)
 
 ---
 
@@ -176,16 +179,16 @@ Use either attribute as the filter key in DQL — they resolve to the same sessi
 
 ### Configure RUM in your Dynatrace environment
 
-
 Go to Experience Vitals and click `+ Frontend`, select Web and provide a frontend name.
 
-![](./images/experience-vital-setup.png)
+![Experience Vitals frontend creation wizard](./assets/rum-frontend-creation.png)
 
 In the Select instrumentation method step, select Agentless and press `Create`.
 In the Setup step, check under Select capability and settings if RUM is enabled.
-If it isn’t enabled, select `Override` and turn it on.
+If it isn't enabled, select `Override` and turn it on.
 Press `Next` to copy the JavaScript tag URL and set it as `DT_RUM_SCRIPT` in your `.env` file — the backend and Next.js frontend inject it automatically at runtime. No manual file editing required.
 
+![Experience Vitals frontends list showing active users and sessions](./assets/rum-experience-vitals-frontends.png)
 
 ### Environment variables
 
