@@ -133,6 +133,8 @@ fetch spans
 
 The **Copy for DQL** button in the UI writes this query directly to the clipboard.
 
+Alternatively you can filter by conversation.id in the AI Observability App, like shown here:
+
 <img src="./assets/ai-observability-conversation-id-filter.png" width="800" alt="AI Observability Prompts page filtered by Conversation ID showing all interactions in a session">
 
 Clicking into any prompt shows the full agentic trace — system prompt, input, model output, token usage, and the agent topology:
@@ -163,8 +165,10 @@ Use either attribute as the filter key in DQL — they resolve to the same sessi
 | Token usage | pydantic-ai + backend span | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
 | User feedback | `/api/feedback` OTel span | `feedback.rating`, `feedback.question` |
 
+Here is the AI Observability Explorer tab showing rum/opentelemetry service with 24 LLM requests and prompt trace list.
 <img src="./assets/ai-observability-prompt-trace-list.png" width="800" alt="AI Observability Explorer showing rum/opentelemetry service with 24 LLM requests and prompt trace list">
 
+And the AI Observability Agents Topology:
 <img src="./assets/ai-observability-agents-topology.png" width="700" alt="AI Observability Agents Topology showing rum/opentelemetry connected to azure and Azure OpenAI via gpt-4o-mini">
 
 ---
