@@ -143,14 +143,24 @@ Clicking into any prompt shows the full agentic trace — system prompt, input, 
 
 ### session.id vs gen_ai.conversation.id
 
-Dynatrace AI Observability exposes both names — they refer to the same value in this pattern:
+The frontend reads the live RUM session ID via the `dtrum` JavaScript API and uses it as the conversation ID:
+
+```js
+const CONV_ID = window.dtrum?.getSessionId?.()
+  || sessionStorage.getItem('conversationId')
+  || crypto.randomUUID();
+sessionStorage.setItem('conversationId', CONV_ID);
+```
+
+This means `gen_ai.conversation.id` equals `dt.rum.session.id` on every backend span — the same identifier that powers Dynatrace's **`frontend.link`** feature. When Dynatrace sees `dt.rum.session.id` on an OTLP span it automatically creates a link from the distributed trace view directly to the corresponding RUM session in Experience Vitals, so you can navigate from an AI Observability prompt straight to the browser session that triggered it.
 
 | Attribute | Set by | Meaning |
 |---|---|---|
-| `gen_ai.conversation.id` | Backend span processor | Propagated from request body; present on every LLM span |
-| `session.id` | Dynatrace RUM | Browser session identifier; correlated automatically when RUM JS is active |
+| `gen_ai.conversation.id` | Frontend → request body → backend span processor | Equals the RUM session ID; present on every LLM span |
+| `dt.rum.session.id` | Dynatrace RUM JS via `tracestate` → OTLP ingest | Powers `frontend.link` — links backend span to the RUM session |
+| `session.id` | Dynatrace AI Observability | Alias for `gen_ai.conversation.id` in the AI Observability UI |
 
-Use either attribute as the filter key in DQL — they resolve to the same session.
+Use any of these as the filter key in DQL — they all resolve to the same session.
 
 ---
 

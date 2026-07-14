@@ -465,13 +465,30 @@
     );
   }
 
-  const CONV_ID = sessionStorage.getItem('conversationId') || (() => {
-    const id = uuidv4();
-    sessionStorage.setItem('conversationId', id);
-    return id;
-  })();
+  // Prefer the Dynatrace RUM session ID so gen_ai.conversation.id == dt.rum.session.id,
+  // enabling frontend.link to cross-navigate from AI Observability to the RUM session.
+  // dtrum loads asynchronously — seed from sessionStorage first so the UI is never blank,
+  // then update once dtrum signals it is ready.
+  function getRumSessionId() {
+    return window.dtrum?.getSessionId?.() || null;
+  }
 
-  document.getElementById('convIdDisplay').textContent = CONV_ID;
+  let CONV_ID = sessionStorage.getItem('conversationId')
+    || getRumSessionId()
+    || (() => {
+      const id = uuidv4();
+      sessionStorage.setItem('conversationId', id);
+      return id;
+    })();
+  sessionStorage.setItem('conversationId', CONV_ID);
+
+  function updateConvId(id) {
+    CONV_ID = id;
+    sessionStorage.setItem('conversationId', id);
+    document.getElementById('convIdDisplay').textContent = id;
+  }
+  updateConvId(CONV_ID);
+
 
   // Copy full DQL query to clipboard — paste directly into a Dynatrace Notebook
   document.getElementById('copyBtn').addEventListener('click', () => {
@@ -484,26 +501,33 @@
   });
 
   // ── Dynatrace RUM integration ────────────────────────────────────────────────
-  // If the DT RUM JS tag is loaded (see <head>), register the conversation ID as
-  // a session-level custom property. This links the RUM session to the backend
-  // OTel spans in Dynatrace — you can drill from a RUM user session directly into
-  // the distributed trace for any conversation.
-  function initRum() {
-    if (typeof dtrum !== 'undefined') {
-      // Set conversation ID as a session property visible in DT User Sessions
-      dtrum.sendSessionProperties(
-        undefined,           // custom number properties
-        undefined,           // custom date properties
-        { conversationId: CONV_ID }   // custom string properties
-      );
-      document.getElementById('rumStatus').textContent = 'RUM active';
-      document.getElementById('rumStatus').className = 'rum-status active';
-    }
+  // dtrum loads asynchronously — use onReady which fires once the RUM JS is fully
+  // initialised, regardless of whether that happens before or after this script.
+  function onDtRumReady() {
+    const rumId = getRumSessionId();
+    if (rumId) updateConvId(rumId);
+    dtrum.sendSessionProperties(
+      undefined,
+      undefined,
+      { conversationId: CONV_ID }
+    );
+    document.getElementById('rumStatus').textContent = 'RUM active';
+    document.getElementById('rumStatus').className = 'rum-status active';
   }
 
-  // dtrum may load asynchronously — try immediately and again after load
-  initRum();
-  window.addEventListener('load', initRum);
+  if (typeof dtrum !== 'undefined') {
+    dtrum.onReady(onDtRumReady);
+  } else {
+    // dtrum not yet available — wait for it to be defined then register onReady
+    const rumPoll = setInterval(() => {
+      if (typeof dtrum !== 'undefined') {
+        clearInterval(rumPoll);
+        dtrum.onReady(onDtRumReady);
+      }
+    }, 200);
+    // Give up after 10 s if RUM never loads (e.g. DT_RUM_SCRIPT not set)
+    setTimeout(() => clearInterval(rumPoll), 10000);
+  }
 
   // ── Category filter ──────────────────────────────────────────────────────────
   document.querySelectorAll('.cat-btn').forEach(btn => {
