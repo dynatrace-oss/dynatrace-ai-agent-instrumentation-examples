@@ -465,22 +465,11 @@
     );
   }
 
-  // Prefer the Dynatrace RUM session ID so gen_ai.conversation.id == dt.rum.session.id,
-  // enabling frontend.link to cross-navigate from AI Observability to the RUM session.
-  // dtrum loads asynchronously — seed from sessionStorage first so the UI is never blank,
-  // then update once dtrum signals it is ready.
-  function getRumSessionId() {
-    return window.dtrum?.getSessionId?.() || null;
-  }
-
-  let CONV_ID = sessionStorage.getItem('conversationId')
-    || getRumSessionId()
-    || (() => {
-      const id = uuidv4();
-      sessionStorage.setItem('conversationId', id);
-      return id;
-    })();
-  sessionStorage.setItem('conversationId', CONV_ID);
+  let CONV_ID = sessionStorage.getItem('conversationId') || (() => {
+    const id = uuidv4();
+    sessionStorage.setItem('conversationId', id);
+    return id;
+  })();
 
   function updateConvId(id) {
     CONV_ID = id;
@@ -501,33 +490,24 @@
   });
 
   // ── Dynatrace RUM integration ────────────────────────────────────────────────
-  // dtrum loads asynchronously — use onReady which fires once the RUM JS is fully
-  // initialised, regardless of whether that happens before or after this script.
-  function onDtRumReady() {
-    const rumId = getRumSessionId();
+  // Poll until window.dtrum is defined — the RUM JS loads asynchronously so it
+  // may not be present when this script first runs.
+  const rumPoll = setInterval(() => {
+    if (typeof window.dtrum === 'undefined') return;
+    clearInterval(rumPoll);
+
+    // Try to align conversation ID with the RUM session ID if the API is available.
+    const rumId = window.dtrum.getSessionId?.();
     if (rumId) updateConvId(rumId);
-    dtrum.sendSessionProperties(
-      undefined,
-      undefined,
-      { conversationId: CONV_ID }
-    );
+
+    // Register conversation ID as a session-level custom property visible in
+    // Experience Vitals user sessions.
+    window.dtrum.sendSessionProperties?.(undefined, undefined, { conversationId: CONV_ID });
+
     document.getElementById('rumStatus').textContent = 'RUM active';
     document.getElementById('rumStatus').className = 'rum-status active';
-  }
-
-  if (typeof dtrum !== 'undefined') {
-    dtrum.onReady(onDtRumReady);
-  } else {
-    // dtrum not yet available — wait for it to be defined then register onReady
-    const rumPoll = setInterval(() => {
-      if (typeof dtrum !== 'undefined') {
-        clearInterval(rumPoll);
-        dtrum.onReady(onDtRumReady);
-      }
-    }, 200);
-    // Give up after 10 s if RUM never loads (e.g. DT_RUM_SCRIPT not set)
-    setTimeout(() => clearInterval(rumPoll), 10000);
-  }
+  }, 200);
+  setTimeout(() => clearInterval(rumPoll), 10000);
 
   // ── Category filter ──────────────────────────────────────────────────────────
   document.querySelectorAll('.cat-btn').forEach(btn => {
