@@ -1,3 +1,4 @@
+import os
 from dynatrace import init
 init()
 
@@ -12,6 +13,11 @@ def main():
     task_description = "Research and recommend suitable travel destinations for someone looking for cowboy vibes, rodeos, and museums in New York city. Use web search to find current information about venues, events, and attractions."
     task_result = run_agent_with_task(task_description)
     print("Task-based Query Result:\n", task_result['result'])
+
+    if os.environ.get("BEDROCK_GUARDRAIL_ID"):
+        print("=================")
+        guardrail_result = agent_invocation("What are the best football strategies for the World Cup?")
+        print("Guardrail trigger result:\n", guardrail_result['result'])
 
 
 if __name__ == "__main__":
