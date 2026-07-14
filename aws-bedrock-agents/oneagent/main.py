@@ -1,5 +1,4 @@
 import os
-import asyncio
 from typing import Annotated
 from langchain_aws import ChatBedrockConverse
 from langchain_core.tools import tool
@@ -7,14 +6,13 @@ from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
-from pydantic import BaseModel
 
 from bedrock_agentcore import BedrockAgentCoreApp
 
 import oneagent
 oneagent.initialize()
 
-app = BedrockAgentCoreApp()
+agentcore = BedrockAgentCoreApp()
 
 
 @tool("web_search")
@@ -22,12 +20,11 @@ def web_search(query: str) -> str:
     """Search the web for current information about destinations, attractions, events, and general topics."""
     try:
         from ddgs import DDGS
-        ddgs = DDGS()
-        results = ddgs.text(query, max_results=3)
-        formatted = []
-        for i, r in enumerate(results, 1):
-            formatted.append(f"{i}. {r.get('title', '')}\n   {r.get('body', '')}")
-        return "\n".join(formatted) if formatted else "No results found."
+        results = DDGS().text(query, max_results=3)
+        return "\n".join(
+            f"{i}. {r.get('title', '')}\n   {r.get('body', '')}"
+            for i, r in enumerate(results, 1)
+        ) or "No results found."
     except Exception as e:
         return f"Search error: {str(e)}"
 
@@ -38,11 +35,9 @@ _llm_with_tools = None
 def _get_llm_with_tools():
     global _llm_with_tools
     if _llm_with_tools is None:
-        model_id = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
-        region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
         llm = ChatBedrockConverse(
-            model=model_id,
-            region_name=region,
+            model=os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+            region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
             temperature=0.0,
             max_tokens=512,
         )
@@ -55,8 +50,7 @@ class State(TypedDict):
 
 
 def chatbot(state: State):
-    response = _get_llm_with_tools().invoke(state["messages"])
-    return {"messages": [response]}
+    return {"messages": [_get_llm_with_tools().invoke(state["messages"])]}
 
 
 graph_builder = StateGraph(State)
@@ -73,33 +67,13 @@ def run_agent(task: str) -> str:
     return output["messages"][-1].content
 
 
-# Health endpoint for test infrastructure
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
-class AgentRequest(BaseModel):
-    task: str
-
-
-class AgentResponse(BaseModel):
-    task: str
-    result: str
-
-
-@app.post("/agent", response_model=AgentResponse)
-async def agent_endpoint(req: AgentRequest):
-    result = await asyncio.to_thread(run_agent, req.task)
-    return AgentResponse(task=req.task, result=result)
-
-
-@app.entrypoint
+@agentcore.entrypoint
 async def invoke(payload):
     task = payload.get("prompt", "")
+    import asyncio
     result = await asyncio.to_thread(run_agent, task)
     yield result
 
 
 if __name__ == "__main__":
-    app.run(port=int(os.getenv("PORT", "8000")))
+    agentcore.run(port=int(os.getenv("PORT", "8000")))

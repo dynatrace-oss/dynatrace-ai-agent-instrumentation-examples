@@ -13,7 +13,7 @@ install: ## Install Python dependencies
 	uv sync
 
 run: ## Run app locally on port $(PORT)
-	uv run python3 main.py
+	uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"

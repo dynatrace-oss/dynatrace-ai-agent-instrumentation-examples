@@ -11,4 +11,6 @@ dependencies = [
     "langgraph",
     "ddgs",
     "oneagent-sdk",
+    "fastapi",
+    "uvicorn[standard]",
 ]
