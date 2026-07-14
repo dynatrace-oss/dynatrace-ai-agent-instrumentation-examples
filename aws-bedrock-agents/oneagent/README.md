@@ -2,7 +2,9 @@
 
 Demonstrates tracing a [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html) Personal Assistant Agent with Dynatrace via OneAgent auto-instrumentation.
 
-![Trace View](../../assets/trace-view.png)
+![Prompts View](assets/prompts.png)
+
+![Evaluations View](assets/evaluations.png)
 
 ## How It Works
 
