@@ -33,7 +33,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 		auditSpanOptional(t, "rum", "opentelemetry-bedrock", GenericProfile,
 			`fetch spans, from: now()-10m
 | filter service.name == "rum/opentelemetry"
-| filter gen_ai.system == "bedrock"
+| filter gen_ai.provider.name == "bedrock"
 | filter isNotNull(gen_ai.conversation.id)
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
@@ -43,7 +43,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 		auditSpanOptional(t, "rum", "opentelemetry-azure", GenericProfile,
 			`fetch spans, from: now()-10m
 | filter service.name == "rum/opentelemetry"
-| filter gen_ai.system == "azure"
+| filter gen_ai.provider.name == "azure"
 | filter isNotNull(gen_ai.conversation.id)
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
