@@ -4,6 +4,8 @@ This example shows how to connect **Dynatrace Real User Monitoring (RUM)** with 
 
 The app is a music history chatbot that randomly routes requests across AWS Bedrock (Claude Sonnet / Haiku) and Azure OpenAI, instrumented with pydantic-ai's native OpenTelemetry support.
 
+<img src="./assets/app-conversation-id-badge.png" width="800" alt="Music History Explorer app showing conversation ID badge and RUM active indicator">
+
 <!-- Re-generate TOC with `markdown-toc --no-first-h1 -i` -->
 
 <!-- toc -->
@@ -20,9 +22,6 @@ The app is a music history chatbot that randomly routes requests across AWS Bedr
   * [Option B — Next.js frontend](#option-b--nextjs-frontend)
 
 <!-- tocstop -->
-
-![Music History Explorer app showing conversation ID badge and RUM active indicator](./assets/app-conversation-id-badge.png)
-![AI Observability prompt detail with agentic trace for rum/opentelemetry](./assets/ai-observability-prompt-detail.png)
 
 ---
 
@@ -134,7 +133,11 @@ fetch spans
 
 The **Copy for DQL** button in the UI writes this query directly to the clipboard.
 
-![AI Observability Prompts filtered by Conversation ID](./assets/ai-observability-conversation-id-filter.png)
+<img src="./assets/ai-observability-conversation-id-filter.png" width="800" alt="AI Observability Prompts page filtered by Conversation ID showing all interactions in a session">
+
+Clicking into any prompt shows the full agentic trace — system prompt, input, model output, token usage, and the agent topology:
+
+<img src="./assets/ai-observability-prompt-detail.png" width="800" alt="AI Observability prompt detail showing agentic trace with music_agent.ask span and agent topology">
 
 ### session.id vs gen_ai.conversation.id
 
@@ -146,9 +149,6 @@ Dynatrace AI Observability exposes both names — they refer to the same value i
 | `session.id` | Dynatrace RUM | Browser session identifier; correlated automatically when RUM JS is active |
 
 Use either attribute as the filter key in DQL — they resolve to the same session.
-
-![AI Observability prompt trace list for rum/opentelemetry service](./assets/ai-observability-prompt-trace-list.png)
-![AI Observability agents topology showing rum/opentelemetry connected to Azure OpenAI](./assets/ai-observability-agents-topology.png)
 
 ---
 
@@ -162,6 +162,10 @@ Use either attribute as the filter key in DQL — they resolve to the same sessi
 | LLM provider + model | pydantic-ai span attributes | `gen_ai.provider.name`, `gen_ai.request.model` |
 | Token usage | pydantic-ai + backend span | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
 | User feedback | `/api/feedback` OTel span | `feedback.rating`, `feedback.question` |
+
+<img src="./assets/ai-observability-prompt-trace-list.png" width="800" alt="AI Observability Explorer showing rum/opentelemetry service with 24 LLM requests and prompt trace list">
+
+<img src="./assets/ai-observability-agents-topology.png" width="700" alt="AI Observability Agents Topology showing rum/opentelemetry connected to azure and Azure OpenAI via gpt-4o-mini">
 
 ---
 
@@ -179,25 +183,27 @@ Use either attribute as the filter key in DQL — they resolve to the same sessi
 
 ### Configure RUM in your Dynatrace environment
 
-Go to Experience Vitals and click `+ Frontend`, select Web and provide a frontend name.
+Go to **Digital Experience → Experience Vitals** and click **+ New frontend**, select **Web** and provide a frontend name.
 
-![Experience Vitals frontend creation wizard](./assets/rum-frontend-creation.png)
+<img src="./assets/rum-frontend-creation.png" width="700" alt="Experience Vitals frontend creation wizard — select Web and provide a name">
 
-In the Select instrumentation method step, select Agentless and press `Create`.
-In the Setup step, check under Select capability and settings if RUM is enabled.
-If it isn't enabled, select `Override` and turn it on.
-Press `Next` to copy the JavaScript tag URL and set it as `DT_RUM_SCRIPT` in your `.env` file — the backend and Next.js frontend inject it automatically at runtime. No manual file editing required.
+In the **Select instrumentation method** step, select **Agentless** and press **Create**.
+In the **Setup** step, check under **Select capability and settings** if RUM is enabled.
+If it isn't enabled, select **Override** and turn it on.
+Press **Next** to copy the JavaScript tag URL and set it as `DT_RUM_SCRIPT` in your `.env` file — the backend injects it automatically at runtime.
 
-![Experience Vitals frontends list showing active users and sessions](./assets/rum-experience-vitals-frontends.png)
+Once sessions start arriving you will see active users and user actions in the Experience Vitals explorer:
+
+<img src="./assets/rum-experience-vitals-frontends.png" width="800" alt="Experience Vitals frontends list showing active users, sessions, and user action count">
 
 ### Environment variables
 
-Create a `.env` file at the repo root:
+Create a `.env` file in `rum/opentelemetry/`:
 
 ```bash
-DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com # Link to your environment, e.g. https://abc12345.live.dynatrace.com/
+DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com
 DT_API_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
-DT_RUM_SCRIPT=https://js-cdn.dynatrace.com/jstag/<your-tag>.js  # RUM JS tag URL from Experience Vitals setup
+DT_RUM_SCRIPT=https://js-cdn.dynatrace.com/jstag/<your-tag>.js
 
 AWS_ACCESS_KEY_ID=<aws-access-key-id>
 AWS_SECRET_ACCESS_KEY=<aws-secret-access-key>
@@ -208,8 +214,6 @@ AZURE_OPENAI_DEPLOYMENT=<deployment-name>
 ```
 
 You can find your Dynatrace OTLP endpoint following [this guide](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#base-url) and generate a token with the required scopes in the Dynatrace UI under Access Tokens > Generate new token.
-
-All paths below are relative to the repo root.
 
 ### Option A — Vanilla HTML frontend (simplest)
 
@@ -234,7 +238,7 @@ make run   # stays on :8000
 In a second terminal, start the Next.js dev server:
 
 ```bash
-cd real-user-monitoring-frontends/nextjs-frontend
+cd rum/opentelemetry/nextjs-frontend
 npm install
 npm run dev             # starts on :3000
 ```
