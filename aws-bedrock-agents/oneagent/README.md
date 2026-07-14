@@ -1,43 +1,50 @@
-## Amazon Bedrock AgentCore
+# Amazon Bedrock AgentCore + OneAgent Demo
 
-This example contains a demo of a Personal Assistant Agent built on top of [Bedrock AgentCore Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html).
+Demonstrates tracing a [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html) Personal Assistant Agent with Dynatrace via OneAgent auto-instrumentation.
 
 ![Trace View](../../assets/trace-view.png)
 
-## Dynatrace Instrumentation
+## How It Works
+
+The app exposes a FastAPI HTTP server. A POST to `/agent` invokes a LangGraph travel-assistant agent built on `BedrockAgentCoreApp`. The agent can call a `web_search` tool and answers questions about destinations, events, and activities. OneAgent auto-instruments the underlying AWS Bedrock HTTPS calls and forwards `gen_ai.*` spans to Dynatrace without any manual SDK setup.
+
+Bedrock AgentCore comes with [Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) support out-of-the-box. Dynatrace OneAgent picks up those spans automatically.
 
 > [!TIP]
-> For detailed setup instructions, configuration options, and advanced use cases, please refer to the [Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
+> For detailed setup instructions, configuration options, and advanced use cases, see the [Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
 
-Bedrock AgentCore comes with [Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) support out-of-the-box.
-Dynatrace OneAgent automatically instruments the underlying AWS Bedrock API calls without any code changes required.
+## Prerequisites
 
-## How to use
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) package manager
+- AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`)
+- Bedrock model access enabled for `us.anthropic.claude-haiku-4-5-20251001-v1:0`
+- Dynatrace OneAgent installed on the host
 
-### Setting your AWS keys
+## Quick Start
 
-Follow the [Amazon Bedrock AgentCore documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html) to configure your AWS Role with the correct policies.
-Afterwards, set your AWS credentials in environment variables:
+1. `make install` — install dependencies
+2. `make run` — start the app on port 8000
+3. `make request` — send a test agent request (in a second terminal)
 
-```bash
-export AWS_ACCESS_KEY_ID=your_api_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_DEFAULT_REGION=us-east-1
-```
+## Environment Variables
 
-Ensure your account has access to the model `us.anthropic.claude-haiku-4-5-20251001-v1:0` used in this example. Refer to the
-[Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-permissions.html) to enable model access.
-You can change the model by setting the `BEDROCK_MODEL_ID` environment variable.
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `AWS_ACCESS_KEY_ID` | Yes | --- | AWS access key ID |
+| `AWS_SECRET_ACCESS_KEY` | Yes | --- | AWS secret access key |
+| `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
+| `BEDROCK_MODEL_ID` | No | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model ID |
 
-### Run the app
+## Makefile Targets
 
-```bash
-make install
-make run
-```
+| Target | Description |
+|--------|-------------|
+| `make install` | Install Python dependencies |
+| `make run` | Run app locally on port 8000 |
+| `make request` | POST /agent to localhost:8000 |
+| `make help` | Show all available targets |
 
-The agent is available at `http://localhost:8000/agent`. Send a POST request with a `task` field:
+## Smartscape service entity
 
-```bash
-make request
-```
+OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape topology.
