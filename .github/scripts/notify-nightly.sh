@@ -52,7 +52,7 @@ if [ -n "${PREV_RUN_ID:-}" ]; then
       "| `\($curr.sdk)/\($curr.instrumentation)` | `\(.attribute)` | \($p.status) | \($c.status) |"
     ' "$curr_file" "$prev_file" 2>/dev/null || true)
 
-    DIFF_ROWS="${DIFF_ROWS}${ROWS}"$'\n'
+    [ -n "$ROWS" ] && DIFF_ROWS="${DIFF_ROWS}${ROWS}"$'\n'
   done < <(find curr-reports -name "*.json")
 fi
 
@@ -60,7 +60,7 @@ HAS_JOB_FAILURE=false
 [ -n "${FAILING_JOBS:-}" ] && HAS_JOB_FAILURE=true
 
 HAS_ATTR_REGRESSION=false
-[ -n "${DIFF_ROWS// /}" ] && HAS_ATTR_REGRESSION=true
+[ -n "$DIFF_ROWS" ] && HAS_ATTR_REGRESSION=true
 
 echo "Job failure: ${HAS_JOB_FAILURE} | Attribute regression: ${HAS_ATTR_REGRESSION}"
 
