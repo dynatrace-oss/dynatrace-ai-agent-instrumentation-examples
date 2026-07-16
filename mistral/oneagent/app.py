@@ -5,7 +5,7 @@ from fastapi.responses import PlainTextResponse
 
 MODEL: str = os.environ.get("MODEL", "mistral-small-latest")
 
-app = FastAPI()
+app = FastAPI(title="mistral-oneagent")
 
 
 @app.get("/health")
@@ -16,7 +16,14 @@ def health():
 @app.post("/haiku", response_class=PlainTextResponse)
 async def haiku() -> str:
     import asyncio
-    client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
+    kwargs = {"api_key": os.getenv("MISTRAL_API_KEY")}
+    # MISTRAL_BASE_URL is used for internal testing only
+    # real MISTRAL_API_KEY is available; unset in normal use (defaults to the
+    # public Mistral API).
+    base_url = os.getenv("MISTRAL_BASE_URL")
+    if base_url:
+        kwargs["server_url"] = base_url
+    client = Mistral(**kwargs)
 
     def _call() -> str:
         response = client.chat.complete(

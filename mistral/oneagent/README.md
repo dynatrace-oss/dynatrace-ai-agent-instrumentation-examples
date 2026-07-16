@@ -2,6 +2,8 @@
 
 Demonstrates tracing Mistral AI SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
+> **Experimental sensor** — Enables monitoring of MistralAI SDK calls in Python applications. Prompt input and output capture is not supported yet; the Prompts tab in AI Observability shows no data for this service.
+
 ## Prerequisites
 
 - Python 3.11+
@@ -33,3 +35,13 @@ Demonstrates tracing Mistral AI SDK API calls with Dynatrace via OneAgent auto-i
 | `make push` | Build and push image to registry |
 | `make request` | POST /haiku to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Screenshots
+
+![AI Observability — Explorer showing mistral/oneagent service](assets/explorer.png)
+
+![AI Observability — Distributed Tracing showing mistralai.chat span with gen_ai attributes](assets/trace.png)
+
+## Smartscape service entity
+
+OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.

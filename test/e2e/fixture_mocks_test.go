@@ -89,3 +89,46 @@ func startCohereCompatibleMock(t *testing.T) {
 	t.Setenv("COHERE_API_KEY", "mock-key-for-e2e")
 	t.Setenv("MODEL", "command-r-08-2024")
 }
+
+// startMistralCompatibleMock starts a local Mistral API stub and wires it into
+// the test environment. Only active when MISTRAL_API_KEY is not already set —
+// real-key CI runs pass through unmodified. The mistralai SDK posts to
+// {server_url}/v1/chat/completions and returns an OpenAI-shaped body; the demo
+// app reads MISTRAL_BASE_URL to override the base URL.
+func startMistralCompatibleMock(t *testing.T) {
+	t.Helper()
+	if os.Getenv("MISTRAL_API_KEY") != "" {
+		return
+	}
+	handler := func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":      "chatcmpl-mock",
+			"object":  "chat.completion",
+			"created": 1700000000,
+			"model":   os.Getenv("MODEL"),
+			"choices": []map[string]interface{}{
+				{
+					"index": 0,
+					"message": map[string]string{
+						"role":    "assistant",
+						"content": "Code flows like water\nBugs surface in morning light\nLogs reveal the truth",
+					},
+					"finish_reason": "stop",
+				},
+			},
+			"usage": map[string]int{
+				"prompt_tokens":     10,
+				"completion_tokens": 20,
+				"total_tokens":      30,
+			},
+		})
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/chat/completions", handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("MISTRAL_BASE_URL", srv.URL)
+	t.Setenv("MISTRAL_API_KEY", "mock-key-for-e2e")
+	t.Setenv("MODEL", "mistral-small-latest")
+}
