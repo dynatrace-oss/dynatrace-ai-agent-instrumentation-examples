@@ -5,7 +5,7 @@ from fastapi.responses import PlainTextResponse
 
 MODEL: str = os.environ.get("MODEL", "mistral-small-latest")
 
-app = FastAPI()
+app = FastAPI(title="mistral-oneagent")
 
 
 @app.get("/health")
