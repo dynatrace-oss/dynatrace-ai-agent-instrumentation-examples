@@ -2,6 +2,8 @@
 
 Demonstrates tracing Ollama SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
+> **Experimental sensor** — Enables monitoring of Ollama SDK calls in Python applications. Prompt input and output capture is not supported yet.
+
 ## Prerequisites
 
 - Python 3.11+
