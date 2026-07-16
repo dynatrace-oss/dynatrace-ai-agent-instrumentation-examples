@@ -2,6 +2,8 @@
 
 Demonstrates tracing Mistral AI SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
+> **Preview sensor** — The Mistral AI sensor is experimental. Request and response content (prompt input and completion text) are not captured; only metadata attributes (`gen_ai.provider.name`, `gen_ai.request.model`, token counts, duration) are emitted. The Prompts tab in AI Observability therefore shows no data for this service.
+
 ## Prerequisites
 
 - Python 3.11+
