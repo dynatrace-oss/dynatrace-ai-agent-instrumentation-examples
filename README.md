@@ -65,11 +65,13 @@ Monitor specific AI provider SDKs with Dynatrace.
 |----------|----------|---------------|---------------|
 | [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) |
 | [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
-| [Cohere](./cohere/oneagent/) | [✓](./cohere/oneagent/) | — | — |
-| [Groq](./groq/oneagent/) | [✓](./groq/oneagent/) | — | — |
-| [Mistral](./mistral/oneagent/) | [✓](./mistral/oneagent/) | — | — |
-| [Ollama](./ollama/oneagent/) | [✓](./ollama/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | — | — |
+| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
+| [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
+| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
 | [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) | — |
+
+\* Experimental sensor — prompt input and output capture not yet supported.
 
 ### Agent Framework Demos
 
