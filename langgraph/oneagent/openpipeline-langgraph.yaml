@@ -16,12 +16,12 @@
 #
 # Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
 # then add a routing entry:
-#   Matcher:  dt.service.name == "langgraph"
+#   Matcher:  matchesPhrase(dt.service.name, "langgraph")
 #   Pipeline: langgraph-redact-secrets
 #
 # The matcher uses dt.service.name (the OneAgent-detected service) rather than
-# the OTLP service.name, so it applies to any OneAgent-monitored app that uses
-# LangGraph -- not just this demo.
+# the OTLP service.name, so it applies to any OneAgent-monitored app whose
+# service name references LangGraph -- not just this demo.
 
 customId: "langgraph-redact-secrets"
 displayName: "LangGraph AI Observability - Redact secrets"
