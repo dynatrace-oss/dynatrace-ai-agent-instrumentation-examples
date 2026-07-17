@@ -31,7 +31,7 @@ processing:
 
     - id: "langgraph-redact-input-messages"
       enabled: true
-      matcher: "isNotNull(gen_ai.input.messages) AND contains(toLower(gen_ai.input.messages), \"secret\")"
+      matcher: "isNotNull(gen_ai.input.messages) AND matches(gen_ai.input.messages, \".*secret.*\")"
       type: "dql"
       description: "Redact input messages that mention a secret"
       dql:
@@ -40,7 +40,7 @@ processing:
 
     - id: "langgraph-redact-output-messages"
       enabled: true
-      matcher: "isNotNull(gen_ai.output.messages) AND contains(toLower(gen_ai.output.messages), \"secret\")"
+      matcher: "isNotNull(gen_ai.output.messages) AND matches(gen_ai.output.messages, \".*secret.*\")"
       type: "dql"
       description: "Redact output messages that mention a secret"
       dql:
@@ -49,7 +49,7 @@ processing:
 
     - id: "langgraph-redact-system-instructions"
       enabled: true
-      matcher: "isNotNull(gen_ai.system_instructions) AND contains(toLower(gen_ai.system_instructions), \"secret\")"
+      matcher: "isNotNull(gen_ai.system_instructions) AND matches(gen_ai.system_instructions, \".*secret.*\")"
       type: "dql"
       description: "Redact system instructions that mention a secret"
       dql:
