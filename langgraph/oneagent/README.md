@@ -15,7 +15,7 @@ For a collector-based variant (which exports via OTLP and can redact secrets bef
 
 Because OneAgent sends spans directly to Dynatrace, there is no customer-side collector to filter in. The equivalent of the collector `transform` processor is a **server-side OpenPipeline** rule that runs on ingest.
 
-`openpipeline-langgraph.yaml` replaces `gen_ai.input.messages` / `gen_ai.output.messages` / `gen_ai.system_instructions` with `***REDACTED***` whenever they mention `secret` (case-insensitive). Deploy it under **Settings > OpenPipeline > Spans** and route `service.name == "langgraph/oneagent"` to the `langgraph-redact-secrets` pipeline.
+`openpipeline-langgraph.yaml` replaces `gen_ai.input.messages` / `gen_ai.output.messages` / `gen_ai.system_instructions` with `***REDACTED***` whenever they mention `secret` (case-insensitive). Deploy it under **Settings > OpenPipeline > Spans** and route `dt.service.name == "langgraph"` to the `langgraph-redact-secrets` pipeline. The matcher uses `dt.service.name` (the OneAgent-detected service), so it applies to any OneAgent-monitored app that uses LangGraph, not just this demo.
 
 > **Trade-off vs. the collector approach:** OpenPipeline redacts *after* the data reaches Dynatrace, so the raw text travels from the host to the cluster before being masked. If secrets must never leave the host, use the collector-based [`langgraph/opentelemetry`](../opentelemetry) demo, which scrubs before egress.
 
