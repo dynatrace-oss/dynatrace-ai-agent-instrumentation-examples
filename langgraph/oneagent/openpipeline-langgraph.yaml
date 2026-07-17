@@ -1,0 +1,53 @@
+---
+# OpenPipeline configuration for the LangGraph + OneAgent demo.
+#
+# This is the OneAgent-path equivalent of the collector `transform` processor
+# used by the langgraph/opentelemetry demo. OneAgent captures gen_ai.* spans and
+# ships them straight to Dynatrace, so there is no customer-side collector to
+# redact in — the redaction is done server-side, on ingest, by OpenPipeline.
+#
+# It anonymizes captured message content: if gen_ai.input.messages,
+# gen_ai.output.messages, or gen_ai.system_instructions mentions "secret"
+# (case-insensitive), the value is replaced with "***REDACTED***".
+#
+# NOTE: unlike the collector approach, the raw text still travels from the host
+# to Dynatrace before being masked here. If secrets must never leave the host,
+# use the collector-based langgraph/opentelemetry demo instead.
+#
+# Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
+# then add a routing entry:
+#   Matcher:  service.name == "langgraph/oneagent"
+#   Pipeline: langgraph-redact-secrets
+
+customId: "langgraph-redact-secrets"
+displayName: "LangGraph AI Observability - Redact secrets"
+
+processing:
+  processors:
+
+    - id: "langgraph-redact-input-messages"
+      enabled: true
+      matcher: "isNotNull(gen_ai.input.messages) AND matchesPhrase(gen_ai.input.messages, \"secret\")"
+      type: "dql"
+      description: "Redact input messages that mention a secret"
+      dql:
+        script: |
+          fieldsAdd gen_ai.input.messages = "***REDACTED***"
+
+    - id: "langgraph-redact-output-messages"
+      enabled: true
+      matcher: "isNotNull(gen_ai.output.messages) AND matchesPhrase(gen_ai.output.messages, \"secret\")"
+      type: "dql"
+      description: "Redact output messages that mention a secret"
+      dql:
+        script: |
+          fieldsAdd gen_ai.output.messages = "***REDACTED***"
+
+    - id: "langgraph-redact-system-instructions"
+      enabled: true
+      matcher: "isNotNull(gen_ai.system_instructions) AND matchesPhrase(gen_ai.system_instructions, \"secret\")"
+      type: "dql"
+      description: "Redact system instructions that mention a secret"
+      dql:
+        script: |
+          fieldsAdd gen_ai.system_instructions = "***REDACTED***"
