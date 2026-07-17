@@ -31,27 +31,27 @@ processing:
 
     - id: "langgraph-redact-input-messages"
       enabled: true
-      matcher: "isNotNull(gen_ai.input.messages) AND matches(gen_ai.input.messages, \".*secret.*\")"
+      matcher: "isNotNull(gen_ai.input.messages)"
       type: "dql"
       description: "Redact input messages that mention a secret"
       dql:
         script: |
-          fieldsAdd gen_ai.input.messages = "***REDACTED***"
+          fieldsAdd gen_ai.input.messages = if(contains(gen_ai.input.messages, "secret"), "***REDACTED***", else: gen_ai.input.messages)
 
     - id: "langgraph-redact-output-messages"
       enabled: true
-      matcher: "isNotNull(gen_ai.output.messages) AND matches(gen_ai.output.messages, \".*secret.*\")"
+      matcher: "isNotNull(gen_ai.output.messages)"
       type: "dql"
       description: "Redact output messages that mention a secret"
       dql:
         script: |
-          fieldsAdd gen_ai.output.messages = "***REDACTED***"
+          fieldsAdd gen_ai.output.messages = if(contains(gen_ai.output.messages, "secret"), "***REDACTED***", else: gen_ai.output.messages)
 
     - id: "langgraph-redact-system-instructions"
       enabled: true
-      matcher: "isNotNull(gen_ai.system_instructions) AND matches(gen_ai.system_instructions, \".*secret.*\")"
+      matcher: "isNotNull(gen_ai.system_instructions)"
       type: "dql"
       description: "Redact system instructions that mention a secret"
       dql:
         script: |
-          fieldsAdd gen_ai.system_instructions = "***REDACTED***"
+          fieldsAdd gen_ai.system_instructions = if(contains(gen_ai.system_instructions, "secret"), "***REDACTED***", else: gen_ai.system_instructions)
