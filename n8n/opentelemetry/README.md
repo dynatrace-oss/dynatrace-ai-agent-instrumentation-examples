@@ -142,9 +142,9 @@ docker compose up
 - Once Imported, the template itself has instructions to get a Free Gemini API Key, and Test the Chat.
 - The default Gemini model set in the template "Connect Gemini" Node will fail as it is not supported anymore, but this is actually a good thing where you can test failed workflows.
 - Change the model to `models/gemini-3.1-flash-lite` in the "Connect Gemini" Node for the Workflow to work.
+- ![n8n Settings Page](assets/n8n-ai-workflow-template-page.png)
 - Publish the Model from the Top right, and open the "Example Chat" node to get the production url of the published workflow to test it from there
 - Execute the Workflow multiple times, one with the correct Gemini Model and one with the old Gemini Model to have proper Data ingested to Dynatrace.
-- ![n8n Settings Page](assets/n8n-ai-workflow-template-page.png)
 
 ### Verify in Dynatrace
 
