@@ -131,6 +131,7 @@ docker compose up
 - Enable `Include node spans`
 - Disable `Track published workflows only`
 - Click on `Verify configuration` to confirm the connectivity to the OTEL Collector
+- ![n8n Settings Page](assets/n8n-OTEL-settings-page.png)
 
 ### n8n import sample workflow
 
