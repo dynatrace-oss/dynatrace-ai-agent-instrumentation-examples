@@ -72,14 +72,14 @@ func TestLangGraphOneAgent(t *testing.T) {
 	// Benign input must pass through unmodified.
 	assertSpanExists(t, scopedDQL(`fetch spans
 `+svc+`
-| filter contains(`+"`gen_ai.input.messages`"+`, "cherry blossoms")
+| filter contains(toString(`+"`gen_ai.input.messages`"+`), "cherry blossoms")
 | sort timestamp desc
 | limit 1`))
 
 	// The secret content must never be stored in any form.
 	assertNoMatchingSpan(t, scopedDQL(`fetch spans
 `+svc+`
-| filter contains(`+"`gen_ai.input.messages`"+`, "launch codes")
+| filter contains(toString(`+"`gen_ai.input.messages`"+`), "launch codes")
 | limit 1`))
 
 	auditSpan(t, "langgraph", "oneagent", GenericProfile,
