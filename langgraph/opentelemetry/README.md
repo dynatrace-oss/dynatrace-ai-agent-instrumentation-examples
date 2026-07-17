@@ -1,19 +1,26 @@
 # LangGraph + Dynatrace
 
-This sample instruments a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with Dynatrace using [OpenLLMetry](https://github.com/traceloop/openllmetry) (Traceloop SDK). No separate OpenTelemetry collector required.
+This sample instruments a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with Dynatrace using [OpenLLMetry](https://github.com/traceloop/openllmetry) (Traceloop SDK), routed through a [Dynatrace OpenTelemetry Collector](https://github.com/Dynatrace/dynatrace-otel-collector) that anonymizes sensitive input messages.
 
 ## What this sample does
 
-- Runs a FastAPI server exposing `POST /haiku`
+- Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body)
 - Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI
-- Exports traces and metrics directly to Dynatrace via OTLP HTTP
+- Exports traces and metrics via OTLP HTTP to a local Dynatrace Collector, which forwards them to Dynatrace
 
 The Traceloop SDK auto-instruments LangChain and LangGraph, so each request produces a distributed trace covering the graph run and the underlying LLM call, with token usage and cost captured as metrics.
+
+### Secret anonymization in the collector
+
+The collector runs a `transform` processor (see `otel-collector-config.yaml`). Message content is captured per the GenAI semantic conventions as the `gen_ai.input.messages` / `gen_ai.output.messages` / `gen_ai.system_instructions` span attributes (this is opt-in — the app sets `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`). Any of these that mentions `secret` (case-insensitive) has its value replaced with `***REDACTED***` before the span leaves the collector, so the sensitive text never reaches Dynatrace. Values that do not match pass through unchanged.
+
+For example, `POST /haiku {"topic": "the secret launch codes"}` is redacted, while `POST /haiku {"topic": "cherry blossoms in spring"}` is stored as-is.
 
 ## Prerequisites
 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (`pip install uv`)
+- Docker (to run the Dynatrace Collector)
 - A Dynatrace API token with `openTelemetryTrace.ingest` and `metrics.ingest`
 - An Azure OpenAI endpoint and key
 
