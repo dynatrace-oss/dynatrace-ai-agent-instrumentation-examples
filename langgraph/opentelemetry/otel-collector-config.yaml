@@ -20,10 +20,6 @@ processors:
           - set(attributes["gen_ai.output.messages"], "***REDACTED***") where attributes["gen_ai.output.messages"] != nil and IsMatch(attributes["gen_ai.output.messages"], "(?i)secret")
           - set(attributes["gen_ai.system_instructions"], "***REDACTED***") where attributes["gen_ai.system_instructions"] != nil and IsMatch(attributes["gen_ai.system_instructions"], "(?i)secret")
 
-  # Dynatrace ingests delta metrics only. Convert any cumulative sums/histograms
-  # emitted by the SDK to delta temporality before export.
-  cumulativetodelta: {}
-
 exporters:
   debug:
     verbosity: detailed
@@ -40,5 +36,5 @@ service:
       exporters: [debug, otlp_http/dynatrace]
     metrics:
       receivers: [otlp]
-      processors: [cumulativetodelta]
+      processors: []
       exporters: [debug, otlp_http/dynatrace]

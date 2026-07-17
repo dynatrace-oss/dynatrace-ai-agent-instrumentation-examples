@@ -4,6 +4,7 @@ from typing import TypedDict
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
 os.environ.setdefault("OTEL_SERVICE_NAME", "langgraph")
+# Dynatrace ingests delta metrics only; export delta temporality from the SDK.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 # Capture message content as gen_ai.input.messages / gen_ai.output.messages
 # (off by default in the GenAI semconv). The collector redacts any that

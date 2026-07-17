@@ -16,7 +16,7 @@ The collector runs a `transform` processor (see `otel-collector-config.yaml`). M
 
 For example, `POST /haiku {"topic": "the secret launch codes"}` is redacted, while `POST /haiku {"topic": "cherry blossoms in spring"}` is stored as-is.
 
-The collector's metrics pipeline also runs a `cumulativetodelta` processor, since Dynatrace ingests delta-temporality metrics only.
+Metrics are exported with delta temporality (Dynatrace ingests delta only), set at the SDK via `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`; the collector forwards them unchanged.
 
 ## Prerequisites
 
