@@ -9,7 +9,7 @@ DT_API_TOKEN        ?= dt0c01.*****
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
 override COLLECTOR_CONTAINER := langgraph-otel-collector
 
-.PHONY: install run build push request stop logs help
+.PHONY: install run build push request request-secret request-all stop logs help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -35,10 +35,20 @@ build: ## Not applicable — no container defined for this demo
 push: ## Not applicable — no container defined for this demo
 	@echo "push: no Dockerfile for this demo"
 
-request: ## POST /haiku with a non-secret topic to localhost:$(PORT)
+request: ## POST /haiku with a non-secret topic (passes through unredacted)
 	curl -s -X POST http://localhost:$(PORT)/haiku \
 	  -H "Content-Type: application/json" \
 	  -d '{"topic": "cherry blossoms in spring"}'
+
+request-secret: ## POST /haiku with a secret topic (collector redacts it)
+	curl -s -X POST http://localhost:$(PORT)/haiku \
+	  -H "Content-Type: application/json" \
+	  -d '{"topic": "the secret launch codes"}'
+
+request-all: ## Exercise both the redacted and non-redacted paths
+	@$(MAKE) request-secret
+	@echo
+	@$(MAKE) request
 
 stop: ## Stop and remove the OTel collector container
 	@docker stop $(COLLECTOR_CONTAINER) >/dev/null 2>&1 && docker rm $(COLLECTOR_CONTAINER) >/dev/null 2>&1 || true

@@ -1,28 +1,24 @@
 package e2e
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
-// triggerHaikuTopic POSTs /haiku on localhost:8000 with a specific topic so the
-// captured input message content is controllable per request.
-func triggerHaikuTopic(t *testing.T, topic string) {
+// makeRequest runs a request target from the demo's Makefile (e.g. "request"
+// or "request-secret"), keeping the secret/non-secret topics defined in one
+// place — the Makefile.
+func makeRequest(t *testing.T, appDir, target string) {
 	t.Helper()
-	b, _ := json.Marshal(map[string]string{"topic": topic})
-	resp, err := http.Post("http://127.0.0.1:8000/haiku", "application/json", bytes.NewReader(b))
-	if err != nil {
-		t.Fatalf("POST /haiku (%q): %v", topic, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("POST /haiku (%q) returned %d: %s", topic, resp.StatusCode, body)
+	cmd := exec.Command("make", "-C", filepath.Join(repoRoot(), appDir), target)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("make %s in %s: %v", target, appDir, err)
 	}
 }
 
@@ -57,8 +53,10 @@ func assertNoSpan(t *testing.T, dql string) {
 func TestLangGraphOpenTelemetry(t *testing.T) {
 	startApp(t, "langgraph/opentelemetry")
 
-	triggerHaikuTopic(t, "the secret launch codes")
-	triggerHaikuTopic(t, "cherry blossoms in spring")
+	// Drive both paths via the Makefile: request-secret sends a "secret" topic
+	// (redacted by the collector); request sends a benign one (passes through).
+	makeRequest(t, "langgraph/opentelemetry", "request-secret")
+	makeRequest(t, "langgraph/opentelemetry", "request")
 
 	// The secret-bearing input message must be redacted by the collector.
 	assertSpanExists(t, scopedDQL(`fetch spans
