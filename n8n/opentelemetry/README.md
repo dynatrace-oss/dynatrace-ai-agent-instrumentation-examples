@@ -3,10 +3,10 @@ This sample instruments n8n workflows with Dynatrace using OpenTelemetry, routed
 
 ## What this sample does
 
-- Installs a `Self hosted n8n` on Docker 
-- Enables n8n OpenTelemetry
-- Runs an `OTEL Collector` on Docker that captures n8n self-hosted instance telemetry
-- Emits `Workflow Traces`, `LLM Usage`, `Instance and Execution Metrics` from n8n directly to Dynatrace via OTLP HTTP
+- Installs a - [Self-Hosted n8n](https://docs.n8n.io/deploy/host-n8n) - (Free Community Edition is fully compatabile) on Docker 
+- Enables OpenTelemetry on n8n
+- Runs an [OpenTelemetry Collector](#opentelemetry-collector) on Docker that captures n8n self-hosted instance telemetry
+- Emits `Workflow Traces`, `LLM Usage`, `Instance and Execution Metrics` from OTEL Collector to Dynatrace via OTLP HTTP
 - Dashboards to visualize Workflows Health and Performance, LLM Usage and Audit Logs
   
 ## How it works
@@ -18,9 +18,8 @@ This sample instruments n8n workflows with Dynatrace using OpenTelemetry, routed
 ## How to use
 
 ### Prerequisites
-- [Self-Hosted n8n](https://docs.n8n.io/deploy/host-n8n) - Free Community Edition is fully compatabile
-- A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
-- A Dynatrace environment with an API token that has the **`openpipeline:traces:ingest`** and **`openpipeline:metrics:ingest`** and **`openpipeline:logs:ingest`** scopes
+- **Docker** and **Docker Compose** installed on your host
+- A **Dynatrace environment** with an **API token** that has the **`openpipeline:traces:ingest`** and **`openpipeline:metrics:ingest`** and **`openpipeline:logs:ingest`** scopes
 
 ### Environment
 Copy `.env.sample` to `.env` and fill in the values at the end:
@@ -63,7 +62,6 @@ DT_ENVIRONMENT_URL=https://abc12345.live.dynatrace.com
 DT_API_TOKEN=dt0c01.******.******
 #The Service Name that will appear in Dynatrace Services (has to be the same service name set in n8n Opentelemtry settings)
 DT_SERVICE_NAME=n8n
-
 ```
 
 ### Observe the OTEL Collector Processor Configuration
@@ -126,6 +124,13 @@ docker compose up
 ```
 
 ### n8n Configuration
+- After Installation go to http://localhost:5678/settings/opentelemetry
+- Set `Enable OpenTelemetry` to **Enabled**
+- Set `OTLP endpoint=http://collector:4318`
+- Set `Service Name=n8n`
+- Enable `Include node spans`
+- Disable `Track published workflows only`
+- Click on `Verify configuration` to confirm the connectivity to the OTEL Collector
 
 ### n8n import sample workflow
 
