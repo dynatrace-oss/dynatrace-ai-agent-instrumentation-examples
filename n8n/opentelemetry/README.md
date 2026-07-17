@@ -126,14 +126,19 @@ docker compose up
 ### n8n Configuration
 - After Installation go to http://localhost:5678/settings/opentelemetry
 - Set `Enable OpenTelemetry` to **Enabled**
-- Set `OTLP endpoint=http://collector:4318`
-- Set `Service Name=n8n`
+- Set `OTLP endpoint` to `http://collector:4318`
+- Set `Service Name` to `n8n`
 - Enable `Include node spans`
 - Disable `Track published workflows only`
 - Click on `Verify configuration` to confirm the connectivity to the OTEL Collector
+- Click on `Save settings`
 - ![n8n Settings Page](assets/n8n-OTEL-settings-page.png)
 
 ### n8n import sample workflow
+We want to import a good sampel that has and AI Node to test the LLM Usage
+Follow the instructions to get a Free Gemeini API Key
+The default model will fail, it says that it is not supported, but this is actually a good thing where you can test failed workflows
+Change the model to 3.1 as that will work
 
 ### Verify in Dynatrace
 
@@ -143,6 +148,8 @@ fetch spans, from:now()-1h
 | sort timestamp desc
 | limit 50
 ```
+
+### Import the Dashboard
 
 ## Dynatrace AI Observability views
 - **Services**
