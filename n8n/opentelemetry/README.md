@@ -22,7 +22,7 @@ This sample instruments n8n workflows with Dynatrace using OpenTelemetry, routed
 - A **Dynatrace environment** with an **API token** that has the **`openpipeline:traces:ingest`** and **`openpipeline:metrics:ingest`** and **`openpipeline:logs:ingest`** scopes
 
 ### Environment
-Copy `.env.sample` to `.env` and fill in the values at the end:
+Copy `.env.sample` to `.env` and fill in **DT_ENVIRONMENT_URL** and **DT_API_TOKEN** environment variables:
 
 ```env
 # WARNING
@@ -55,13 +55,16 @@ N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL=true
 #N8N_METRICS_QUEUE_METRICS_INTERVAL=true
 
 # Scrape logs and metrics to Dynatrace
-# Replace abc12345 below with your environment ID
-# API Token requires these permissions:
-# "ingest metrics" and "ingest logs" and "ingest traces"
-DT_ENVIRONMENT_URL=https://abc12345.live.dynatrace.com
-DT_API_TOKEN=dt0c01.******.******
+
 #The Service Name that will appear in Dynatrace Services (has to be the same service name set in n8n Opentelemtry settings)
 DT_SERVICE_NAME=n8n
+
+# Replace abc12345 below with your environment ID
+DT_ENVIRONMENT_URL=https://abc12345.live.dynatrace.com
+
+# API Token requires these permissions:
+# "ingest metrics" and "ingest logs" and "ingest traces"
+DT_API_TOKEN=dt0c01.******.******
 ```
 
 ### Observe the OTEL Collector Processor Configuration
