@@ -32,13 +32,15 @@ When building OpenPipeline processors for OneAgent-captured `gen_ai.*` spans, ke
 
 **Processor matcher** — the matcher field supports a restricted DQL subset: `isNotNull()`, `isNull()`, equality operators (`==`, `!=`), and `AND`/`OR`/`NOT`. Functions like `matchesPhrase()`, `contains()`, and `matches()` are **not** available here for string content checks.
 
-**DQL script** — the script field also has a restricted command set: `filter` and standalone `contains()` are not enabled. The correct pattern for conditional redaction is a `fieldsAdd` with an `if()` expression, where `contains()` **is** available as an expression function:
+**DQL script** — the script field has a restricted command set: `filter` is not enabled and `contains()` cannot be used as a standalone filter. The correct pattern for conditional redaction is a `fieldsAdd` with an `if()` expression.
+
+`gen_ai.input.messages` is stored as an **array type**, not a plain string, so `contains()` alone does not match against its content. Wrap it with `toString()` first to serialise the array to a string, then apply `contains()`:
 
 ```dql
-fieldsAdd gen_ai.input.messages = if(contains(gen_ai.input.messages, "secret"), "***REDACTED***", else: gen_ai.input.messages)
+fieldsAdd gen_ai.input.messages = if(contains(toString(gen_ai.input.messages), "secret"), "***REDACTED***", else: gen_ai.input.messages)
 ```
 
-Note the required named `else:` parameter — positional third argument is rejected.
+Note the required named `else:` parameter — a positional third argument is rejected. Also note that backtick-quoting field names (`` `gen_ai.input.messages` ``) is **not** valid DQL syntax here and will cause a parse error.
 
 **`gen_ai.input.messages` format** — OneAgent serialises messages using a `parts` array rather than a flat `content` field:
 
@@ -46,7 +48,7 @@ Note the required named `else:` parameter — positional third argument is rejec
 [{"parts":[{"type":"text","content":"Write a haiku about the secret launch codes."}],"role":"user"}]
 ```
 
-`matchesPhrase` does not reliably tokenise through this nested JSON structure. The `contains()` expression function matches against the raw string value and finds the word regardless of nesting depth.
+This is why `contains()` on the raw field returns no results — the field is an array type. `toString()` serialises it to a plain string (without JSON quoting), making substring matching work reliably.
 
 ## Prerequisites
 
