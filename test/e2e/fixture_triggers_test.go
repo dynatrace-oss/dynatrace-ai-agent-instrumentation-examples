@@ -6,8 +6,23 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
+
+// runMakeTarget runs a Makefile target in the given app directory (e.g. "request"
+// or "request-secret"). It is used by tests that drive their app via make rather
+// than a direct HTTP call so that topic strings and curl flags stay in one place.
+func runMakeTarget(t *testing.T, appDir, target string) {
+	t.Helper()
+	cmd := exec.Command("make", "-C", filepath.Join(repoRoot(), appDir), target)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("make %s in %s: %v", target, appDir, err)
+	}
+}
 
 type haiku struct {
 	Topic string `json:"topic,omitempty"`

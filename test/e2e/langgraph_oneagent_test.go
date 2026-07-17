@@ -9,45 +9,12 @@ import (
 	"time"
 )
 
-// runMakeTarget runs a request target from the demo's Makefile (e.g. "request"
-// or "request-secret") so the secret / non-secret topics live in one place.
-func runMakeTarget(t *testing.T, appDir, target string) {
-	t.Helper()
-	cmd := exec.Command("make", "-C", filepath.Join(repoRoot(), appDir), target)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("make %s in %s: %v", target, appDir, err)
-	}
-}
-
-// assertNoMatchingSpan fails if any span matches dql. It re-checks for 45s so a
-// span still in flight cannot slip through after its redacted sibling is visible.
-func assertNoMatchingSpan(t *testing.T, dql string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-	for {
-		records, err := dtClient.Execute(ctx, dql)
-		if err != nil {
-			t.Fatalf("query DT spans: %v", err)
-		}
-		if len(records) > 0 {
-			t.Fatalf("expected no spans for query, got %d: %v", len(records), records[0])
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(15 * time.Second):
-		}
-	}
-}
-
 // TestLangGraphOneAgent verifies OneAgent capture of the LangGraph demo and
 // that the OpenPipeline redaction rule (openpipeline-langgraph.yaml, routed on
-// matchesPhrase(dt.service.name, "langgraph")) anonymizes input messages that
-// mention "secret". It sends one secret and one benign request and asserts the
-// first is redacted server-side while the second passes through.
+// dt.service.name == "langgraph/oneagent (langgraph-oneagent)") anonymizes
+// input messages that mention "secret". It sends one secret and one benign
+// request and asserts the first is redacted server-side while the second
+// passes through.
 //
 // The redaction assertions require the langgraph-redact-secrets pipeline and
 // its routing entry to be deployed in the target tenant (see the demo's
