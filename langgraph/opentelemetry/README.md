@@ -7,6 +7,7 @@ This sample instruments a [LangGraph](https://langchain-ai.github.io/langgraph/)
 - Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body)
 - Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI
 - Exports traces and metrics via OTLP HTTP to a local Dynatrace Collector, which forwards them to Dynatrace
+- Uses a Dynatrace OpenTelemetry Collector `transform` processor to redact input messages that contain secrets before they reach Dynatrace
 
 The Traceloop SDK auto-instruments LangChain and LangGraph, so each request produces a distributed trace covering the graph run and the underlying LLM call, with token usage and cost captured as metrics.
 
