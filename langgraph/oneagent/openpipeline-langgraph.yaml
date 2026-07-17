@@ -35,7 +35,7 @@ processing:
       description: "Redact input messages that mention a secret"
       dql:
         script: |
-          fieldsAdd gen_ai.input.messages = if(contains(gen_ai.input.messages, "secret"), "***REDACTED***", else: gen_ai.input.messages)
+          fieldsAdd gen_ai.input.messages = if(contains(toString(gen_ai.input.messages), "secret"), "***REDACTED***", else: gen_ai.input.messages)
 
     - id: "langgraph-redact-output-messages"
       enabled: true
@@ -44,7 +44,7 @@ processing:
       description: "Redact output messages that mention a secret"
       dql:
         script: |
-          fieldsAdd gen_ai.output.messages = if(contains(gen_ai.output.messages, "secret"), "***REDACTED***", else: gen_ai.output.messages)
+          fieldsAdd gen_ai.output.messages = if(contains(toString(gen_ai.output.messages), "secret"), "***REDACTED***", else: gen_ai.output.messages)
 
     - id: "langgraph-redact-system-instructions"
       enabled: true
@@ -53,4 +53,4 @@ processing:
       description: "Redact system instructions that mention a secret"
       dql:
         script: |
-          fieldsAdd gen_ai.system_instructions = if(contains(gen_ai.system_instructions, "secret"), "***REDACTED***", else: gen_ai.system_instructions)
+          fieldsAdd gen_ai.system_instructions = if(contains(toString(gen_ai.system_instructions), "secret"), "***REDACTED***", else: gen_ai.system_instructions)
