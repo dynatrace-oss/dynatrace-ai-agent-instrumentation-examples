@@ -171,20 +171,27 @@ metrics from: now() - 1h
 ```
 
 ### Import the Dashboard
-Finally Import `n8n Details Dashboard.json" from the dashboards folder
+Finally Import `n8n Details Dashboard.json` from the dashboards folder
 
 ## Dynatrace AI Observability views
-//Draft
-- **Services**
-  - Service Discovered
-  - Associated Logs
+### Dashboard
+  TBC
   - Associated 
-- **Dashboard**
-  - Associated 
-- **Logs**
-  - DQL
-- **Metrics**
-  - Explorer
+### Service Discovery
+- The N8N Service will be discovered showing an Endpoint for each WorkflowId, with associated Logs and Metrics
+  <img src="assets/n8n-service-overview.png" width="300"/>
+  <img src="assets/n8n-service-logs.png" width="300"/>
+  <img src="assets/n8n-service-metrics.png" width="300"/>
+### Metrics
+- Approximatly 65 Metrics captured variying workflow, nodes, instance, node.js process statistics that can be captured in Dashboards, Notebooks or Anomaly detection.
+  <img src="assets/n8n-notebook-metrics-1.png" width="400"/>
+  <img src="assets/n8n-notebook-metrics-2.png.png" width="400"/>
+### Logs
+  TBC
+  - DQL 
 
 ## OTLP signals exported
+TBC
+
+## AI Observability Smartscape (Optional) (Experimentatl)
 
