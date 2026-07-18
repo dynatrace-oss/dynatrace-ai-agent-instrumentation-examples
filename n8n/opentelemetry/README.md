@@ -199,7 +199,103 @@ TBC
   
 ### Logs
   TBC
-  - DQL 
+  - Get AI Nodes Log Entry (Contains Prompts, Model, Tokens Usage, Workflow Details)
+    ```dql
+    fetch logs
+    | search("EventMessageAiNode")
+    ```
+  - Get Token Usage (Total, Prompt, Completion) for each AI Node along with the workflow details
+    ```dql
+    fetch logs, from: now() - 7d
+    | filter contains(content, "n8n.ai.llm.generated")
+    | fieldsAdd
+        ai_response       = jsonPath(content, "$.payload.msg.response.response.generations[0][0].text"),
+        completion_tokens = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.completionTokens")),
+        prompt_tokens     = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.promptTokens")),
+        total_tokens      = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.totalTokens")),
+        messages_raw      = jsonPath(content, "$.payload.msg.messages[0]"),
+        workflow_name     = jsonPath(content, "$.payload.workflowName"),
+        execution_id      = jsonPath(content, "$.payload.executionId"),
+        node_name         = jsonPath(content, "$.payload.nodeName"),
+        model_name        = jsonPath(content, "$.payload.msg.options.model")
+    | filter isNotNull(total_tokens)
+    | fieldsAdd last_human_prompt = arrayLast(splitString(messages_raw, "\nHuman: "))
+    | fieldsAdd last_human_prompt = arrayFirst(splitString(last_human_prompt, "\nAI:"))
+    | filter isNotNull(ai_response) AND stringLength(ai_response) > 0
+    | fields timestamp, execution_id, workflow_name, node_name, model_name,
+             last_human_prompt, ai_response, completion_tokens, content
+    | sort completion_tokens desc
+    ```
+  - Associate Workflow Traces with n8n Logs
+    ```dql
+    fetch logs, from: now() - 24h
+    | filter service.name == "n8n"
+    | parse content, "JSON:json_content"
+    | fieldsAdd executionId = json_content[payload][executionId]
+    | fieldsAdd workflowId  = json_content[payload][workflowId]
+    | fieldsAdd joinKey = concat(toString(executionId), "|", toString(workflowId))
+    | join [
+        fetch spans, from: now() - 24h
+        | filter service.name == "n8n" and isNotNull(n8n.execution.id)
+        | summarize traceId = takeAny(trace.id), workflowName = takeAny(n8n.workflow.name),
+            by: { joinKey = concat(toString(n8n.execution.id), "|", toString(n8n.workflow.id)) }
+      ], on: { joinKey },
+         fields: { traceId, workflowName }
+    | fields timestamp, executionId, workflowId, workflowName, traceId, content
+    ```
+  - Workflow Errors from Logs
+    ```dql
+    fetch logs, from: now() - 7d
+    | filter contains(content, "n8n.workflow.failed")
+    | fieldsAdd
+        errorMessage      = jsonPath(content, "$.payload.errorMessage"),
+        workflowName      = jsonPath(content, "$.payload.workflowName"),
+        workflowId        = jsonPath(content, "$.payload.workflowId"),
+        executionId       = jsonPath(content, "$.payload.executionId"),
+        errorNodeType     = jsonPath(content, "$.payload.errorNodeType"),
+        lastNodeExecuted  = jsonPath(content, "$.payload.lastNodeExecuted")
+    | filter isNotNull(errorMessage) AND errorMessage != ""
+    | fieldsAdd errorNodeType = coalesce(errorNodeType, concat("node: ", lastNodeExecuted))
+    | fields timestamp, executionId, workflowName, workflowId, errorNodeType, errorMessage
+    | sort timestamp desc
+    ```
+  - Get Prompt Conversation history by Wokrflow Execution Id (Replace "161" with your execution ID)
+    ```dql
+    fetch logs, from: now() - 7d
+    | filter contains(content, "EventMessageAiNode")
+    | fieldsAdd executionId = jsonPath(content, "$.payload.executionId")
+    | filter executionId == "161"
+    | fieldsAdd
+        messages_raw  = jsonPath(content, "$.payload.msg.messages[0]"),
+        last_ai_reply = jsonPath(content, "$.payload.msg.response.response.generations[0][0].text"),
+        totalTokens   = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.totalTokens"))
+    | filter isNotNull(totalTokens)
+    | sort totalTokens desc
+    | limit 1
+    
+    // Append the final AI reply as the last turn
+    | fieldsAdd messages_raw = if(
+        isNotNull(last_ai_reply) AND stringLength(last_ai_reply) > 0,
+        concat(messages_raw, "\nAI: ", last_ai_reply),
+        else: messages_raw
+      )
+    
+    // Split into turns
+    | fieldsAdd messages_raw  = replaceString(messages_raw, "\nHuman:", "|||Human:")
+    | fieldsAdd messages_raw  = replaceString(messages_raw, "\nAI:",    "|||AI:")
+    | fieldsAdd turns         = arrayRemoveNulls(splitString(messages_raw, "|||"))
+    | fieldsAdd ones          = iCollectArray(if(isNotNull(turns[]), 1, else: 1))
+    | fieldsAdd indices       = arrayCumulativeSum(ones)
+    | fieldsAdd indexed_turns = iCollectArray(concat(toString(toLong(indices[])), "§", turns[]))
+    | expand indexed_turn = indexed_turns
+    | filter trim(indexed_turn) != ""
+    | parse indexed_turn, "LONG:seq '§' LD:role ':' DATA:message"
+    | fieldsAdd role    = trim(role)
+    | fieldsAdd message = trim(message)
+    | sort seq asc
+    | fields seq, role, message
+    ```
+
 
 ## OTLP signals exported
 TBC
