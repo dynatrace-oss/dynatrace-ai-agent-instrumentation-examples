@@ -130,7 +130,8 @@ docker compose up
 - After Installation go to http://localhost:5678/settings/opentelemetry
 - Set `Enable OpenTelemetry` to **Enabled**
 - Set `OTLP endpoint` to `http://collector:4318`
-- Set `Service Name` to `n8n` (Note: If you use a different Service Name, you'll have to update the .env file and re-run docker compose up, and modify the dashboard DQLs)
+- Set `Service Name` to `n8n`
+  - Note: If you use a different Service Name, you'll have to update the "DT_SERVICE_NAME" in the .env file and re-run "docker compose up", and modify the Dashboard $n8nServiceName variable value)
 - Enable `Include node spans`
 - Disable `Track published workflows only`
 - Click on `Verify configuration` to confirm the connectivity to the OTEL Collector
