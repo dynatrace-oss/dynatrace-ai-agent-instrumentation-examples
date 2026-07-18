@@ -185,6 +185,10 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
   <img src="assets/n8n-service-overview.png" width="300"/>
   <img src="assets/n8n-service-logs.png" width="300"/>
   <img src="assets/n8n-service-metrics.png" width="300"/>
+
+### Traces
+TBC
+- workflow id, node type
   
 ### Metrics
 - Approximatly 65 Metrics captured variying workflow, nodes, instance, node.js process statistics that can be captured in Dashboards, Notebooks or Anomaly detection.
