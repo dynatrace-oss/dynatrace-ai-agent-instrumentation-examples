@@ -135,27 +135,43 @@ docker compose up
 - Disable `Track published workflows only`
 - Click on `Verify configuration` to confirm the connectivity to the OTEL Collector
 - Click on `Save settings`
-- ![n8n Settings Page](assets/n8n-OTEL-settings-page.png)
+  <img src="assets/n8n-OTEL-settings-page.png" width="800"/>
 
 ### import sample workflow in n8n
 - Import this [n8n Workflow Template](https://n8n.io/workflows/6270-build-your-first-ai-agent/) that has an AI Node to test the LLM Usage, or you can copy it from the n8n_workflow_sample folder.
 - Once Imported, the template itself has instructions to get a Free Gemini API Key, and Test the Chat.
-- The default Gemini model set in the template "Connect Gemini" Node will fail as it is not supported anymore, but this is actually a good thing where you can test failed workflows.
-- Change the model to `models/gemini-3.1-flash-lite` in the "Connect Gemini" Node for the Workflow to work.
-- ![n8n Settings Page](assets/n8n-ai-workflow-template-page.png)
+- The default model set in the "Connect Gemini" Node will fail as it is not supported anymore, but this is actually a good thing where you can test failed workflows, so give it a couple of failed runs.
+- Change the model to `models/gemini-3.1-flash-lite` in the "Connect Gemini" Node for the Workflow to complete succesfully.
+  <img src="assets/n8n-ai-workflow-template-page.png" width="800"/>
 - Publish the Model from the Top right, and open the "Example Chat" node to get the production url of the published workflow to test it from there
 - Execute the Workflow multiple times, one with the correct Gemini Model and one with the old Gemini Model to have proper Data ingested to Dynatrace.
 
 ### Verify in Dynatrace
 
+- Verify Traces Ingestion
 ```dql
 fetch spans, from:now()-1h
 | filter service.name == "n8n" //replace with the service name you configured in the n8n settings
 | sort timestamp desc
 | limit 50
 ```
+- Verify Logs Ingestion
+```dql
+fetch logs, from:now()-1h
+| filter service.name == "n8n" //replace with the service name you configured in the n8n settings
+| sort timestamp desc
+| limit 50
+```
+- Verify Metrics Ingestion
+```dql
+metrics from: now() - 1h
+| filter contains(service.name, "n8n")
+| summarize count(), by: {metric.key}
+| sort `count()` desc
+```
 
 ### Import the Dashboard
+Finally Import `n8n Details Dashboard.json" from the dashboards folder
 
 ## Dynatrace AI Observability views
 //Draft
