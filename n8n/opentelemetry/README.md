@@ -220,19 +220,18 @@ The dashboard provides end-to-end visibility into workflow execution, AI consump
 
 ### Traces
 
-#### Workflows
+- **Workflows**
+  - The OpenTelemetry Collector transforms workflow parent spans from the default `/workflow.execute` naming convention to `/workflow.execute/[workflow.id]`.
+  - This enables Dynatrace to discover and analyze each workflow as an individual service endpoint.
+  - Workflow metadata is captured at the parent span level, providing execution context and workflow-specific details for troubleshooting and analysis.
+  
+  <img src="assets/n8n-trace-workflow-span.png" width="800"/>
 
-- The OpenTelemetry Collector transforms workflow parent spans from the default `/workflow.execute` naming convention to `/workflow.execute/[workflow.id]`.
-- This enables Dynatrace to discover and analyze each workflow as an individual service endpoint.
-- Workflow metadata is captured at the parent span level, providing execution context and workflow-specific details for troubleshooting and analysis.
-
-<img src="assets/n8n-trace-workflow-span.png" width="800"/>
-
-#### Nodes
-
-- The OpenTelemetry Collector transforms node spans from the default `/node.execute` naming convention to `/node.execute/[node.type]`.
-- This creates meaningful child span names that clearly identify the type of node executed within a workflow.
-<img src="assets/n8n-trace-node-span.png" width="800"/>
+- **Nodes**
+  - The OpenTelemetry Collector transforms node spans from the default `/node.execute` naming convention to `/node.execute/[node.type]`.
+  - This creates meaningful child span names that clearly identify the type of node executed within a workflow.
+  
+  <img src="assets/n8n-trace-node-span.png" width="800"/>
 
 ### Metrics
 
