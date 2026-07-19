@@ -349,8 +349,33 @@ Below are some useful DQL examples enriches and structures n8n logs to enable ad
     <img src="assets/n8n-dql-5.png" width="800"/>
 
 
-## OTLP signals exported
-TBC
+## OTLP Signals Exported
+
+| Signal | Metrics / Data Exported |
+|----------|----------|
+| **Traces** | `workflow.execute/[workflow.id]`, `node.execute/[node.type]`, workflow metadata, node metadata, execution identifiers, execution status |
+| **Logs** | Workflow events, AI node events, prompts, model details, token usage, audit events, execution context |
+| **Workflow Metrics** | `n8n_workflow_started_total`, `n8n_workflow_success_total`, `n8n_workflow_failed_total`, `n8n_workflow_execution_duration_seconds`, `n8n_workflow_execution_duration_seconds_bucket` |
+| **Node Metrics** | `n8n_node_started_total`, `n8n_node_finished_total` |
+| **AI / LLM Metrics** | `n8n_ai_document_processed_total`, `n8n_ai_llm_error_total`, `n8n_ai_llm_generated_total`, `n8n_ai_vector_store_populated_total`, `n8n_instance_ai_active_runs`, `n8n_instance_ai_cost_usd_total`, `n8n_instance_ai_tokens_total`, `n8n_instance_ai_tool_calls_total`, `n8n_instance_ai_tool_errors_total` |
+| **Audit Metrics** | `n8n_audit_workflow_created_total`, `n8n_audit_workflow_updated_total`, `n8n_audit_workflow_activated_total`, `n8n_audit_workflow_executed_total` |
+| **HTTP Metrics** | `n8n_http_request_duration_seconds`, `n8n_http_request_duration_seconds_bucket` |
+| **Instance Metrics** | `n8n_active_workflow_count`, `n8n_last_activity`, `n8n_instance_role_leader`, `n8n_version_info` |
+| **Node.js Runtime Metrics** | `n8n_nodejs_gc_duration_seconds`, `n8n_nodejs_gc_duration_seconds_bucket`, `n8n_nodejs_active_handles`, `n8n_nodejs_active_handles_total`, `n8n_nodejs_active_requests`, `n8n_nodejs_active_requests_total`, `n8n_nodejs_active_resources`, `n8n_nodejs_active_resources_total`, `n8n_nodejs_external_memory_bytes`, `n8n_nodejs_heap_size_total_bytes`, `n8n_nodejs_heap_size_used_bytes`, `n8n_nodejs_heap_space_size_available_bytes`, `n8n_nodejs_heap_space_size_total_bytes`, `n8n_nodejs_heap_space_size_used_bytes`, `n8n_nodejs_version_info`, `n8n_nodejs_eventloop_lag_seconds`, `n8n_nodejs_eventloop_lag_min_seconds`, `n8n_nodejs_eventloop_lag_max_seconds`, `n8n_nodejs_eventloop_lag_mean_seconds`, `n8n_nodejs_eventloop_lag_stddev_seconds`, `n8n_nodejs_eventloop_lag_p50_seconds`, `n8n_nodejs_eventloop_lag_p90_seconds`, `n8n_nodejs_eventloop_lag_p99_seconds` |
+| **Process Metrics** | `n8n_process_cpu_seconds_total`, `n8n_process_cpu_system_seconds_total`, `n8n_process_cpu_user_seconds_total`, `n8n_process_heap_bytes`, `n8n_process_max_fds`, `n8n_process_open_fds`, `n8n_process_pss_bytes`, `n8n_process_resident_memory_bytes`, `n8n_process_start_time_seconds`, `n8n_process_virtual_memory_bytes` |
+| **Authentication Metrics** | `n8n_token_exchange_requests_total`, `n8n_token_exchange_identity_linked_total`, `n8n_token_exchange_jit_provisioning_total`, `n8n_embed_login_requests_total` |
+| **Collector Metrics** | `up`, `scrape_duration_seconds`, `scrape_samples_scraped`, `scrape_samples_post_metric_relabeling`, `scrape_series_added` |
+
+### Correlation & Enrichment
+
+| Feature | Purpose |
+|----------|----------|
+| `service.name` enrichment | Associates logs and metrics with the discovered n8n service |
+| Workflow span transformation | Creates a distinct Dynatrace endpoint per workflow |
+| Node span transformation | Creates meaningful child spans per node type |
+| Execution ID correlation | Enables linking traces and logs for the same workflow execution |
+| Workflow & Node metadata | Provides rich context for dashboards, notebooks, alerts, troubleshooting, and AI observability |
+
 
 ## AI Observability Smartscape (Optional) (Experimentatl)
 
