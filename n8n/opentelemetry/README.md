@@ -236,7 +236,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     | filter isNotNull(ai_response) AND stringLength(ai_response) > 0
     | fields timestamp, execution_id, workflow_name, node_name, model_name,
              last_human_prompt, ai_response, completion_tokens, content
-    | sort completion_tokens desc
+    | sort timestamp desc
     ```
   - Associate Workflow Traces with n8n Logs
     ```dql
@@ -254,6 +254,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
       ], on: { joinKey },
          fields: { traceId, workflowName }
     | fields timestamp, executionId, workflowId, workflowName, traceId, content
+    | sort timestamp desc
     ```
   - Workflow Errors from Logs
     ```dql
