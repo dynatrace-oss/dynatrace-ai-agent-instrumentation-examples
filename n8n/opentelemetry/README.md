@@ -192,8 +192,16 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
   <img src="assets/n8n-service-metrics.png" width="300"/>
 
 ### Traces
-TBC
-- workflow id, node type
+
+- Workflows:
+  - Workflow Parent Span are configured in the OTEL Collector to be captured as /workflow.execute/[workflow.id] instead of the default capture of /workflow.execute, so Endpoints are discovered per Workflow.
+  - n8n Workflow Metadata is captured at the parent span level.
+    <img src="assets/n8n-trace-workflow-span.png" width="800"/>
+  
+- Nodes:
+  - Nodes child spans are configured in the OTEL Collector to be captured as /node.execute/[nodeType] instead of the default capture of /node.execute, so child spans are more meanifgul for troubleshooting.
+  - n8n Node Metadata is captured at the node child span level.
+    <img src="assets/n8n-trace-node-span.png" width="800"/>
   
 ### Metrics
 - Approximatly 65 Metrics captured variying workflow, nodes, instance, node.js process statistics that can be captured in Dashboards, Notebooks or Anomaly detection.
@@ -202,7 +210,7 @@ TBC
   <img src="assets/n8n-notebook-metrics-2.png.png" width="400"/>
   
 ### Logs
-  TBC
+  Below are some useful DQLs to get you started:
   - Get AI Nodes Log Entry (Contains Prompts, Model, Tokens Usage, Workflow Details)
     ```dql
     fetch logs
