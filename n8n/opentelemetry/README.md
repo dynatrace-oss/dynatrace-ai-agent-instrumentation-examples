@@ -274,12 +274,14 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     | fields timestamp, executionId, workflowName, workflowId, errorNodeType, errorMessage
     | sort timestamp desc
     ```
+    <img src="assets/n8n-dql-4.png" width="800"/>
+    
   - Get Prompt Conversation history by Wokrflow Execution Id (Replace "161" with your execution ID)
     ```dql
     fetch logs, from: now() - 7d
     | filter contains(content, "EventMessageAiNode")
     | fieldsAdd executionId = jsonPath(content, "$.payload.executionId")
-    | filter executionId == "161"
+    | filter executionId == "161" //Replace
     | fieldsAdd
         messages_raw  = jsonPath(content, "$.payload.msg.messages[0]"),
         last_ai_reply = jsonPath(content, "$.payload.msg.response.response.generations[0][0].text"),
@@ -310,6 +312,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     | sort seq asc
     | fields seq, role, message
     ```
+    <img src="assets/n8n-dql-5.png" width="800"/>
 
 
 ## OTLP signals exported
