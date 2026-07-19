@@ -1,28 +1,37 @@
 # n8n + Dynatrace
-This sample instruments n8n workflows with Dynatrace using OpenTelemetry, routed through an OpenTelemetry Collector that captures Metrics, Traces and Logs and do the required tagging on Metrics and Logs, and transformation on Traces for full discovery and granularity in Dynatrace, with Ready made Dashboards for instant value.
+
+This sample demonstrates how to instrument n8n workflows with Dynatrace using OpenTelemetry. Telemetry is routed through an OpenTelemetry Collector that captures metrics, traces, and logs, enriches them with the required metadata, and performs trace transformations to enable full workflow by Id discovery and granular node traces and LLM Usage observability in Dynatrace. The sample also includes ready-made dashboards for immediate visibility and value.
 
 ## What this sample does
 
-- Installs a [Self-Hosted n8n](https://docs.n8n.io/deploy/host-n8n) - (Free Community Edition is fully compatabile) on Docker 
-- Enables OpenTelemetry on n8n
-- Runs an [OpenTelemetry Collector](#opentelemetry-collector) on Docker that captures n8n self-hosted instance telemetry
-- Emits `Workflow Traces`, `LLM Usage`, `Instance and Execution Metrics` from OTEL Collector to Dynatrace via OTLP HTTP
-- Dashboards to visualize Workflows Health and Performance, LLM Usage and Audit Logs
-  
+- Deploys a [Self-Hosted n8n](https://docs.n8n.io/deploy/host-n8n) instance (the free Community Edition is fully supported) using Docker.
+- Enables native OpenTelemetry instrumentation in n8n.
+- Deploys an [OpenTelemetry Collector](#opentelemetry-collector) using Docker to collect telemetry from the self-hosted n8n instance.
+- Exports `Workflow Traces`, `LLM Usage`, and `Instance & Execution Metrics` to Dynatrace using OTLP.
+- Provides dashboards to visualize workflow health, performance, LLM consumption, and audit logs.
+
 ## How it works
 
-- The n8n self-instruments via OTel natively.
-- Telemetry will be routed through a OTEL Collector, that is configured to emit, enrich, associate and retransform the traces, metrics, and logs to be properly ingested by Dynatrace
-- Everything will work out of the box at this point, the guide will provide the necessary logs parsing queries and Dashbaords to get you instant value
+- n8n generates telemetry through its native OpenTelemetry instrumentation.
+- Telemetry is routed through an OpenTelemetry Collector that enriches metrics and logs, associates related telemetry, and transforms traces to optimize ingestion and analysis in Dynatrace.
+- Once deployed, the solution works out of the box with the configuration made in the OTEL Collector. This guide provides the required log parsing rules, dashboards, and configuration to help you gain immediate observability value.
 
 ## How to use
 
 ### Prerequisites
-- **Docker** and **Docker Compose** installed on your host
-- A **Dynatrace environment** with an **API token** that has the **`openpipeline:traces:ingest`** and **`openpipeline:metrics:ingest`** and **`openpipeline:logs:ingest`** scopes
+
+- **Docker** and **Docker Compose** installed on the host.
+- A **Dynatrace environment** with an **API token** that includes the following scopes:
+  - `openpipeline:traces:ingest`
+  - `openpipeline:metrics:ingest`
+  - `openpipeline:logs:ingest`
 
 ### Environment
-Copy `.env.sample` to `.env` and fill in **DT_ENVIRONMENT_URL** and **DT_API_TOKEN** environment variables:
+
+Copy `.env.sample` to `.env` and populate the following environment variables:
+
+- **DT_ENVIRONMENT_URL**
+- **DT_API_TOKEN**
 
 ```env
 # WARNING
@@ -66,18 +75,20 @@ DT_ENVIRONMENT_URL=https://abc12345.live.dynatrace.com
 # "ingest metrics" and "ingest logs" and "ingest traces"
 DT_API_TOKEN=dt0c01.******.******
 ```
-
 ### Observe the OTEL Collector Processor Configuration
 
-Notable observations that make the instrumentation work correctly in Dynatrace:
+The following processor configurations are key to ensuring telemetry is correctly discovered, correlated, and visualized in Dynatrace:
+
 - **resource/n8n_logs**
-  - Sets the `service.name` attribute to associate logs with the corresponding discovered service in Dynatrace.
+  - Sets the `service.name` attribute on log records, enabling automatic association of logs with the corresponding discovered service in Dynatrace.
+
 - **resource/n8n_metrics**
-  - Sets the `service.name` attribute to associate metrics with the corresponding discovered service in Dynatrace.
+  - Sets the `service.name` attribute on metrics, enabling automatic association of metrics with the corresponding discovered service in Dynatrace.
+
 - **transform/n8n**
-  - Sets the `workflow.execute` parent span as the root span and assigns it the `server` span kind, making the n8n service discoverable in Dynatrace.
-  - Renames the default `workflow.execute` parent spans to `workflow.execute/[workflow.id]`, providing granular service endpoints for each workflow.
-  - Renames the default `node.execute` child spans to `node.execute/[node.type]`, creating meaningful inner span names that clearly represent the individual node types executed within a workflow.
+  - Promotes the `workflow.execute` parent span to the root span and assigns it the `server` span kind, allowing the n8n service to be properly discovered and represented within Dynatrace service topology.
+  - Renames default `workflow.execute` parent spans to `workflow.execute/[workflow.id]`, providing workflow-level endpoint visibility and granularity.
+  - Renames default `node.execute` child spans to `node.execute/[node.type]`, creating meaningful child span names that clearly identify the individual node types executed within each workflow.
 
 ```yaml
 processors:
@@ -120,32 +131,44 @@ processors:
             and attributes["n8n.node.type"] != nil
 ```
 
+### Install and Run
 
-### Install and run
- ```bash
+```bash
 docker compose up
 ```
 
 ### n8n Configuration
-- After Installation go to http://localhost:5678/settings/opentelemetry
-- Set `Enable OpenTelemetry` to **Enabled**
-- Set `OTLP endpoint` to `http://collector:4318`
-- Set `Service Name` to `n8n`
-  - Note: If you use a different Service Name, you'll have to update the "DT_SERVICE_NAME" in the .env file and re-run "docker compose up", and modify the Dashboard $n8nServiceName variable value)
-- Enable `Include node spans`
-- Disable `Track published workflows only`
-- Click on `Verify configuration` to confirm the connectivity to the OTEL Collector
-- Click on `Save settings`
-  <img src="assets/n8n-OTEL-settings-page.png" width="800"/>
 
-### import sample workflow in n8n
-- Import this [n8n Workflow Template](https://n8n.io/workflows/6270-build-your-first-ai-agent/) that has an AI Node to test the LLM Usage, or you can copy it from the n8n_workflow_sample folder.
-- Once Imported, the template itself has instructions to get a Free Gemini API Key, and Test the Chat.
-- The default model set in the "Connect Gemini" Node will fail as it is not supported anymore, but this is actually a good thing where you can test failed workflows, so give it a couple of failed runs.
-- Change the model to `models/gemini-3.1-flash-lite` in the "Connect Gemini" Node for the Workflow to complete succesfully.
+After the installation is complete:
+
+- Navigate to `http://localhost:5678/settings/opentelemetry`
+- Set **Enable OpenTelemetry** to **Enabled**
+- Set **OTLP Endpoint** to `http://collector:4318`
+- Set **Service Name** to `n8n`
+  - **Note:** If you choose a different service name, update the `DT_SERVICE_NAME` value in the `.env` file, re-run `docker compose up`, and update the dashboard `$n8nServiceName` variable accordingly.
+- Enable **Include node spans**
+- Disable **Track published workflows only**
+- Click **Verify Configuration** to confirm connectivity to the OTEL Collector
+- Click **Save Settings**
+
+<img src="assets/n8n-OTEL-settings-page.png" width="800"/>
+
+### Import a Sample Workflow in n8n
+
+- Import this [n8n Workflow Template](https://n8n.io/workflows/6270-build-your-first-ai-agent/) which contains AI nodes that generate both workflow execution telemetry and LLM usage data. Alternatively, you can import it from the `n8n_workflow_sample` folder in this repository.
+- The template includes built-in instructions to obtain a Free Gemini API Key, and Test the Chat.
+- The default model configured in the **Connect Gemini** node is no longer supported. Execute the workflow a few times using the default configuration to intentionally generate failed executions, which can be useful for validating error monitoring and troubleshooting workflows in Dynatrace.
+- Update the model in the **Connect Gemini** node to:
+- Change the model to `models/gemini-3.1-flash-lite` in the **Connect Gemini** Node for the Workflow to run succesfully.
+- Execute the workflow again to verify successful end-to-end execution.
   <img src="assets/n8n-ai-workflow-template-page.png" width="800"/>
-- Publish the Model from the Top right, and open the "Example Chat" node to get the production url of the published workflow to test it from there
-- Execute the Workflow multiple times, one with the correct Gemini Model and one with the old Gemini Model to have proper Data ingested to Dynatrace.
+- Publish the workflow using the **Publish** button in the top-right corner.
+- Open the **Example Chat** node to retrieve the production URL of the published workflow.
+- Generate several workflow executions using both:
+  - The unsupported Gemini model (failed executions)
+  - The updated Gemini model (successful executions)
+
+This ensures that Dynatrace receives a representative dataset containing successful and failed workflow executions, traces, metrics, logs, and LLM usage telemetry.
 
 ### Verify in Dynatrace
 
@@ -170,56 +193,68 @@ metrics from: now() - 1h
 | summarize count(), by: {metric.key}
 | sort `count()` desc
 ```
-
 ### Import the Dashboard
-Finally Import `n8n Details Dashboard.json` from the dashboards folder
 
-## Dynatrace AI Observability views
+Import the `n8n Details Dashboard.json` dashboard from the `dashboards` folder.
+
+## Dynatrace AI Observability Views
 
 ### Dashboard
-  - Dashboard for Workflow details, containing three sections:
-    - `n8n Workflows`: Workflows Runs Status, Execution Logs, Error Distrbutions, Nodes Performance and Health
-    - `LLM Usage`: LLM Errors, Token Uusage in general and by Model, Workflow and Node Types and Prompts with highest Completion Tokens
-    - `Audit`: Workflows Created, Updated, Excuted and Activated and Audit Log
 
-    <img src="assets/n8n-details-dashboard-preview.png" width="600"/>
-    
+The dashboard provides end-to-end visibility into workflow execution, AI consumption, and operational activity through three dedicated sections:
+
+- **n8n Workflows**: Workflow execution status, Workflow execution logs, Error distribution and trends, Node performance analysis, Workflow health and reliability metrics
+- **LLM Usage**: LLM error monitoring, Token consumption trends, Token usage by model, Token usage by workflow, Token usage by node type, Prompts generating the highest completion token consumption
+- **Audit**: Workflows created, Workflows updated, Workflows executed, Workflows activated, Complete audit activity log
+
+<img src="assets/n8n-details-dashboard-preview.png" width="600"/>
+
 ### Service Discovery
-- The N8N Service will be discovered showing an Endpoint for each WorkflowId, with associated Logs and Metrics
-  
+
+- The `n8n` service is automatically discovered in Dynatrace.
+- Each workflow is exposed as a dedicated service endpoint using its `workflow.id`, providing workflow-level visibility and analytics.
+
   <img src="assets/n8n-service-overview.png" width="300"/>
   <img src="assets/n8n-service-logs.png" width="300"/>
   <img src="assets/n8n-service-metrics.png" width="300"/>
 
 ### Traces
 
-- Workflows:
-  - Workflow Parent Span are configured in the OTEL Collector to be captured as /workflow.execute/[workflow.id] instead of the default capture of /workflow.execute, so Endpoints are discovered per Workflow.
-  - n8n Workflow Metadata is captured at the parent span level.
-    <img src="assets/n8n-trace-workflow-span.png" width="800"/>
-  
-- Nodes:
-  - Nodes child spans are configured in the OTEL Collector to be captured as /node.execute/[nodeType] instead of the default capture of /node.execute, so child spans are more meanifgul for troubleshooting.
-  - n8n Node Metadata is captured at the node child span level.
-    <img src="assets/n8n-trace-node-span.png" width="800"/>
-  
+#### Workflows
+
+- The OpenTelemetry Collector transforms workflow parent spans from the default `/workflow.execute` naming convention to `/workflow.execute/[workflow.id]`.
+- This enables Dynatrace to discover and analyze each workflow as an individual service endpoint.
+- Workflow metadata is captured at the parent span level, providing execution context and workflow-specific details for troubleshooting and analysis.
+
+<img src="assets/n8n-trace-workflow-span.png" width="800"/>
+
+#### Nodes
+
+- The OpenTelemetry Collector transforms node spans from the default `/node.execute` naming convention to `/node.execute/[node.type]`.
+- This creates meaningful child span names that clearly identify the type of node executed within a workflow.
+<img src="assets/n8n-trace-node-span.png" width="800"/>
+
 ### Metrics
-- Approximatly 65 Metrics captured variying workflow, nodes, instance, node.js process statistics that can be captured in Dashboards, Notebooks or Anomaly detection.
-  
+
+- Approximately **65 metrics** are collected out of the box, covering workflow executions, node performance, instance health, and Node.js runtime statistics.
+- These metrics can be leveraged in **Dynatrace Dashboards**, **Notebooks**, **Alerts**, and **Anomaly Detection** use cases.
+- The telemetry includes workflow-level, node-level, and instance-level metrics, providing comprehensive visibility into the health and performance of your n8n environment.
+
   <img src="assets/n8n-notebook-metrics-1.png" width="400"/>
   <img src="assets/n8n-notebook-metrics-2.png.png" width="400"/>
-  
+
 ### Logs
-  Below are some useful DQLs to get you started:
-  - Get AI Nodes Log Entry (Contains Prompts, Model, Tokens Usage, Workflow Details)
+
+Below are some useful DQL examples enriches and structures n8n logs to enable advanced analysis, troubleshooting, and AI observability use cases in Dynatrace.
+  - AI Node Log Entries: Retrieve AI node execution logs containing prompts, model details, token usage, and workflow context.
     ```dql
     fetch logs
     | search("EventMessageAiNode")
     ```
     <img src="assets/n8n-dql-1.png" width="800"/>
     <img src="assets/n8n-dql-1-preview.png" width="600"/>
-    
-  - Get Token Usage (Total, Prompt, Completion) for each AI Node along with the workflow details
+
+  - AI Token Usage Analysis: Retrieve token consumption details (Total, Prompt, and Completion tokens) for each AI node execution, along with the associated workflow context.   
     ```dql
     fetch logs
     | filter contains(content, "EventMessageAiNode")
@@ -238,7 +273,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     ```
     <img src="assets/n8n-dql-2.png" width="800"/>
     
-  - Associate Workflow Traces with n8n Logs
+  - Associate Workflow Traces with n8n Logs: Correlates n8n logs with workflow traces using the `executionId` and `workflowId`, allowing you to navigate from log entries to the corresponding trace context in Dynatrace.
     ```dql
     fetch logs
     | filter service.name == "n8n"
@@ -258,7 +293,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     ```
     <img src="assets/n8n-dql-3.png" width="800"/>
     
-  - Workflow Errors from Logs
+  - Workflow Errors from Logs: Extracts failed workflow executions from n8n logs and surfaces the related workflow, execution, node, and error details.
     ```dql
     fetch logs, from: now() - 7d
     | filter contains(content, "n8n.workflow.failed")
@@ -276,7 +311,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     ```
     <img src="assets/n8n-dql-4.png" width="800"/>
     
-  - Get Prompt Conversation history by Wokrflow Execution Id (Replace "161" with your execution ID)
+  - Prompt Conversation History by Workflow Execution ID: Retrieves the prompt conversation history for a specific workflow execution, including the final AI response and token usage details.
     ```dql
     fetch logs, from: now() - 7d
     | filter contains(content, "EventMessageAiNode")
