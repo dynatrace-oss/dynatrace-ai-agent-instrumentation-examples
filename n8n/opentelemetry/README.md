@@ -177,9 +177,13 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
 ## Dynatrace AI Observability views
 
 ### Dashboard
-  TBC
-  - Associated
-  - 
+  - Dashboard for Workflow details, containing three sections:
+    - `n8n Workflows`: Workflows Runs Status, Execution Logs, Error Distrbutions, Nodes Performance and Health
+    - `LLM Usage`: LLM Errors, Token Uusage in general and by Model, Workflow and Node Types and Prompts with highest Completion Tokens
+    - `Audit`: Workflows Created, Updated, Excuted and Activated and Audit Log
+
+    <img src="assets/n8n-details-dashboard-preview.png" width="600"/>
+    
 ### Service Discovery
 - The N8N Service will be discovered showing an Endpoint for each WorkflowId, with associated Logs and Metrics
   
