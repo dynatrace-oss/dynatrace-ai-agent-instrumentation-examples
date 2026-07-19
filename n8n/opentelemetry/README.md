@@ -221,26 +221,23 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     
   - Get Token Usage (Total, Prompt, Completion) for each AI Node along with the workflow details
     ```dql
-    fetch logs, from: now() - 7d
-    | filter contains(content, "n8n.ai.llm.generated")
-    | fieldsAdd
-        ai_response       = jsonPath(content, "$.payload.msg.response.response.generations[0][0].text"),
-        completion_tokens = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.completionTokens")),
-        prompt_tokens     = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.promptTokens")),
-        total_tokens      = toLong(jsonPath(content, "$.payload.msg.response.tokenUsage.totalTokens")),
-        messages_raw      = jsonPath(content, "$.payload.msg.messages[0]"),
-        workflow_name     = jsonPath(content, "$.payload.workflowName"),
-        execution_id      = jsonPath(content, "$.payload.executionId"),
-        node_name         = jsonPath(content, "$.payload.nodeName"),
-        model_name        = jsonPath(content, "$.payload.msg.options.model")
-    | filter isNotNull(total_tokens)
-    | fieldsAdd last_human_prompt = arrayLast(splitString(messages_raw, "\nHuman: "))
-    | fieldsAdd last_human_prompt = arrayFirst(splitString(last_human_prompt, "\nAI:"))
-    | filter isNotNull(ai_response) AND stringLength(ai_response) > 0
-    | fields timestamp, execution_id, workflow_name, node_name, model_name,
-             last_human_prompt, ai_response, completion_tokens, content
-    | sort timestamp desc
+    fetch logs
+    | filter contains(content, "EventMessageAiNode")
+    | parse content, "JSON:json_content"
+    | fieldsAdd executionId = json_content[payload][executionId]
+    | fieldsAdd workflowName = json_content[payload][workflowName]
+    | fieldsAdd workflowId = json_content[payload][workflowId]
+    | fieldsAdd nodeType = json_content[payload][nodeType]
+    | fieldsAdd model = json_content[payload][msg][options][model]
+    | fieldsAdd totalTokens = json_content[payload][msg][response][tokenUsage][totalTokens]
+    | fieldsAdd completionTokens = json_content[payload][msg][response][tokenUsage][completionTokens]
+    | fieldsAdd promptTokens = json_content[payload][msg][response][tokenUsage][promptTokens]
+    | filter isNotNull(totalTokens)
+    | fields timestamp,executionId, workflowName, workflowId, nodeType, model,completionTokens, promptTokens, totalTokens
+    | sort totalTokens desc
     ```
+    <img src="assets/n8n-dql-2.png" width="800"/>
+    
   - Associate Workflow Traces with n8n Logs
     ```dql
     fetch logs, from: now() - 24h
