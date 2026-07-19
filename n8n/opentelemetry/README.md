@@ -377,5 +377,47 @@ Below are some useful DQL examples enriches and structures n8n logs to enable ad
 | Workflow & Node metadata | Provides rich context for dashboards, notebooks, alerts, troubleshooting, and AI observability |
 
 
-## AI Observability Smartscape (Optional) (Experimentatl)
+## AI Observability Smartscape (Optional / Experimental)
 
+This sample can be extended using **OpenPipeline** to enrich OpenTelemetry spans with GenAI semantic attributes, enabling the automatic creation of **AI Agents**, **LLM Services**, and their relationships within the **Dynatrace AI Observability topology**.
+
+> **Note:** This configuration is experimental and intended for demonstration purposes. The actual LLM model information is currently available only in logs and not in traces, so the model names shown in the topology are generated dynamically based on the node type rather than the configured model.
+
+<img src="assets/n8n-agent-topology.png" width="600"/>
+
+- Navigate to: **Process and contextualize → OpenPipeline → Spans**
+- Open the **Pipelines** tab. Create a new pipeline named **n8nPipeline**
+- Add the First **DQL** Processor named **Set workflow as GenAI agent**
+  - Matching Condition: ```service.name == "n8n" and matchesValue(span.name, "workflow.execute*")```
+  - DQL processor definition:
+    ```dql
+    fieldsAdd gen_ai.agent.name = n8n.workflow.name
+    | fieldsAdd gen_ai.agent.id = n8n.workflow.id
+    | fieldsAdd gen_ai.operation.name = "invoke_agent"
+    | fieldsAdd span.kind = "client"
+    ```
+    <img src="assets/n8nPipeline-Processor-2.png" width="600"/>
+    
+- Add Second **DQL** Processor named **Set LLM Model and Provider**
+  - Matching Condition: ```service.name == "n8n" and matchesValue(n8n.node.type, "*lmChat*")```
+  - DQL processor definition:
+    ```dql
+    fieldsAdd gen_ai.system = if(
+      contains(n8n.node.type, "lmChat"),
+      arrayLast(splitString(n8n.node.type, "lmChat")),
+      else: "unknown"
+    )
+    | fieldsAdd gen_ai.request.model = concat(gen_ai.system, "/model")
+    | fieldsAdd gen_ai.operation.name = "chat"
+    | fieldsAdd span.kind = "client"
+    ```
+    <img src="assets/n8nPipeline-Processor-2.png" width="600"/>
+    
+- Save and Close, Open the **Dynamic Routing** tab and create a new route named **n8nRoute**
+  - Matching Condition: ```service.name == "n8n"```
+  - Pipeline: **n8nPipeline**
+
+    <img src="assets/n8nRoute.png" width="600"/>
+    
+- Apply New Traffic by executing the Workflows,
+- Open the **AI Observability** application., Navigate to **Agent Topology** to visualize the discovered agents and their AI interactions.
