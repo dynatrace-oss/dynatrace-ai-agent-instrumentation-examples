@@ -82,10 +82,8 @@ The following processor configurations are key to ensuring telemetry is correctl
 
 - **resource/n8n_logs**
   - Sets the `service.name` attribute on log records, enabling automatic association of logs with the corresponding discovered service in Dynatrace.
-
 - **resource/n8n_metrics**
   - Sets the `service.name` attribute on metrics, enabling automatic association of metrics with the corresponding discovered service in Dynatrace.
-
 - **transform/n8n**
   - Promotes the `workflow.execute` parent span to the root span and assigns it the `server` span kind, allowing the n8n service to be properly discovered and represented within Dynatrace service topology.
   - Renames default `workflow.execute` parent spans to `workflow.execute/[workflow.id]`, providing workflow-level endpoint visibility and granularity.
@@ -142,13 +140,14 @@ docker compose up
 
 After the installation is complete:
 
-- Navigate to `http://localhost:5678/settings/opentelemetry`
-- Set **Enable OpenTelemetry** to **Enabled**
+- Open the Browser and open  `http://localhost:5678` 
+- Navigate to: **Settings > OpenTelemetry** 
+- Set **Enable OpenTelemetry** to `Enabled`
 - Set **OTLP Endpoint** to `http://collector:4318`
 - Set **Service Name** to `n8n`
   - **Note:** If you choose a different service name, update the `DT_SERVICE_NAME` value in the `.env` file, re-run `docker compose up`, and update the dashboard `$n8nServiceName` variable accordingly.
-- Enable **Include node spans**
-- Disable **Track published workflows only**
+- Enable `Include node spans`
+- Disable `Track published workflows only`
 - Click **Verify Configuration** to confirm connectivity to the OTEL Collector
 - Click **Save Settings**
 
@@ -174,26 +173,26 @@ This ensures that Dynatrace receives a representative dataset containing success
 ### Verify in Dynatrace
 
 - Verify Traces Ingestion
-```dql
-fetch spans, from:now()-1h
-| filter service.name == "n8n" //replace with the service name you configured in the n8n settings
-| sort timestamp desc
-| limit 50
-```
+  ```dql
+  fetch spans, from:now()-1h
+  | filter service.name == "n8n" //replace with the service name you configured in the n8n settings
+  | sort timestamp desc
+  | limit 50
+  ```
 - Verify Logs Ingestion
-```dql
-fetch logs, from:now()-1h
-| filter service.name == "n8n" //replace with the service name you configured in the n8n settings
-| sort timestamp desc
-| limit 50
-```
+  ```dql
+  fetch logs, from:now()-1h
+  | filter service.name == "n8n" //replace with the service name you configured in the n8n settings
+  | sort timestamp desc
+  | limit 50
+  ```
 - Verify Metrics Ingestion
-```dql
-metrics from: now() - 1h
-| filter contains(service.name, "n8n")
-| summarize count(), by: {metric.key}
-| sort `count()` desc
-```
+  ```dql
+  metrics from: now() - 1h
+  | filter contains(service.name, "n8n")
+  | summarize count(), by: {metric.key}
+  | sort `count()` desc
+  ```
 ### Import the Dashboard
 
 Import the `n8n Details Dashboard.json` dashboard from the `dashboards` folder.
