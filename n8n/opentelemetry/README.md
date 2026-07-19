@@ -217,7 +217,7 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     | search("EventMessageAiNode")
     ```
     <img src="assets/n8n-dql-1.png" width="800"/>
-    <img src="assets/n8n-dql-1-preview.png" width="800"/>
+    <img src="assets/n8n-dql-1-preview.png" width="600"/>
     
   - Get Token Usage (Total, Prompt, Completion) for each AI Node along with the workflow details
     ```dql
