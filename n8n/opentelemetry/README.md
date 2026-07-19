@@ -1,6 +1,7 @@
 # n8n + Dynatrace
 
 This sample demonstrates how to instrument n8n workflows with Dynatrace using OpenTelemetry. Telemetry is routed through an OpenTelemetry Collector that captures metrics, traces, and logs, enriches them with the required metadata, and performs trace transformations to enable full workflow by Id discovery and granular node traces and LLM Usage observability in Dynatrace. The sample also includes ready-made dashboards for immediate visibility and value.
+<img src="assets/n8n-intro-image.png"/>
 
 ## What this sample does
 
