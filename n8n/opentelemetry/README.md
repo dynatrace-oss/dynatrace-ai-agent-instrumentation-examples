@@ -240,14 +240,14 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     
   - Associate Workflow Traces with n8n Logs
     ```dql
-    fetch logs, from: now() - 24h
+    fetch logs
     | filter service.name == "n8n"
     | parse content, "JSON:json_content"
     | fieldsAdd executionId = json_content[payload][executionId]
     | fieldsAdd workflowId  = json_content[payload][workflowId]
     | fieldsAdd joinKey = concat(toString(executionId), "|", toString(workflowId))
     | join [
-        fetch spans, from: now() - 24h
+        fetch spans
         | filter service.name == "n8n" and isNotNull(n8n.execution.id)
         | summarize traceId = takeAny(trace.id), workflowName = takeAny(n8n.workflow.name),
             by: { joinKey = concat(toString(n8n.execution.id), "|", toString(n8n.workflow.id)) }
@@ -256,6 +256,8 @@ Finally Import `n8n Details Dashboard.json` from the dashboards folder
     | fields timestamp, executionId, workflowId, workflowName, traceId, content
     | sort timestamp desc
     ```
+    <img src="assets/n8n-dql-3.png" width="800"/>
+    
   - Workflow Errors from Logs
     ```dql
     fetch logs, from: now() - 7d
