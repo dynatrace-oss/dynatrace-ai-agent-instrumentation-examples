@@ -7,6 +7,7 @@ import (
 func TestLangfuseOpenTelemetry(t *testing.T) {
 	// CLI app: make run starts the OTel Collector (Docker) then runs app.py once.
 	// No triggerHaiku — the haiku request is issued by make run itself.
+	startOpenAICompatibleMock(t, "OPENAI_API_KEY", "OPENAI_API_BASE")
 	startCLIApp(t, "langfuse/opentelemetry")
 
 	auditSpan(t, "langfuse", "opentelemetry", GenericProfile,
