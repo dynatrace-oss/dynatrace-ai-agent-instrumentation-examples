@@ -1,6 +1,6 @@
 # LangGraph + OneAgent
 
-This sample traces a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with Dynatrace using **OneAgent auto-instrumentation** — no manual OpenTelemetry export or collector. OneAgent instruments the underlying Azure OpenAI SDK calls the graph makes and ships `gen_ai.*` spans straight to Dynatrace.
+This sample traces a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with Dynatrace using **OneAgent auto-instrumentation** — no manual OpenTelemetry export or collector. OneAgent instruments the underlying Azure OpenAI SDK calls and ships `gen_ai.*` spans straight to Dynatrace.
 
 For a collector-based variant (which exports via OTLP and can redact secrets before they leave the host), see [`langgraph/opentelemetry`](../opentelemetry).
 
@@ -9,7 +9,7 @@ For a collector-based variant (which exports via OTLP and can redact secrets bef
 - Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body)
 - Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI
 - Relies on OneAgent to capture the agent's LLM calls as `gen_ai.*` spans
-- Ships an OpenPipeline config (`openpipeline-langgraph.yaml`) that redacts captured messages mentioning secrets, server-side on ingest
+- Ships an OpenPipeline config (`openpipeline-langgraph.yaml`) that redacts messages containing secrets on ingest
 
 ## Redacting secrets with OpenPipeline
 
@@ -40,7 +40,7 @@ When building OpenPipeline processors for OneAgent-captured `gen_ai.*` spans, ke
 fieldsAdd gen_ai.input.messages = if(contains(toString(gen_ai.input.messages), "secret"), "***REDACTED***", else: gen_ai.input.messages)
 ```
 
-Note the required named `else:` parameter — a positional third argument is rejected. Also note that backtick-quoting field names (`` `gen_ai.input.messages` ``) is **not** valid DQL syntax here and will cause a parse error.
+Note the required named `else:` parameter — a positional third argument is rejected. Also note that backtick-quoting field names (`gen_ai.input.messages`) is **not** valid DQL syntax here and will cause a parse error.
 
 **`gen_ai.input.messages` format** — OneAgent serialises messages using a `parts` array rather than a flat `content` field:
 
