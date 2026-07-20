@@ -113,8 +113,8 @@ processing:
       dql:
         script: |
           parse langfuse.observation.usage_details, "JSON_OBJECT:usage"
-          | fieldsAdd gen_ai.usage.input_tokens = coalesce(toLong(usage[prompt_tokens]), toLong(usage[input_tokens]), toLong(usage[input])),
-                      gen_ai.usage.output_tokens = coalesce(toLong(usage[completion_tokens]), toLong(usage[output_tokens]), toLong(usage[output_reasoning_tokens]), toLong(usage[output]))
+          | fieldsAdd gen_ai.usage.input_tokens = toLong(usage[prompt_tokens]),
+                      gen_ai.usage.output_tokens = toLong(usage[completion_tokens])
           | fieldsRemove usage, langfuse.observation.usage_details
 
     # ============================================================================
@@ -135,9 +135,6 @@ processing:
     # ============================================================================
     # 8. OUTPUT MESSAGES (P4)
     # ============================================================================
-    # langfuse.observation.output must be a JSON array (e.g. [{"role":"assistant","content":"..."}])
-    # to be recognised as gen_ai.output.messages. The Node demo now emits it in this format.
-    # ============================================================================
     - id: "langfuse-output-messages"
       enabled: true
       matcher: 'langfuse.observation.type == "generation" AND isNotNull(langfuse.observation.output)'
@@ -151,20 +148,15 @@ processing:
     # ============================================================================
     # 9. CONVERSATION ID (P5)
     # ============================================================================
-    # Two source attributes depending on the SDK path:
-    #   langfuse.session_id / langfuse.sessionId — Node/manual spans
-    #   session.id (standard OTel name)           — Python SDK (set by langfuse_context.update_current_trace)
-    # ============================================================================
     - id: "langfuse-conversation-id"
       enabled: true
-      matcher: "isNotNull(langfuse.session_id) OR isNotNull(langfuse.sessionId) OR isNotNull(session.id)"
+      matcher: "isNotNull(langfuse.session_id) OR isNotNull(langfuse.sessionId)"
       type: "dql"
-      description: "Copy session identifier to gen_ai.conversation.id"
+      description: "Copy langfuse.session_id to gen_ai.conversation.id"
       dql:
         script: |
           fieldsAdd gen_ai.conversation.id = if(isNotNull(langfuse.session_id), langfuse.session_id,
-                                            else: if(isNotNull(langfuse.sessionId), langfuse.sessionId,
-                                            else: session.id))
+                                            else: langfuse.sessionId)
 
     # ============================================================================
     # 10. SESSION & USER IDS
@@ -181,40 +173,7 @@ processing:
           | fieldsRemove langfuse.session_id, langfuse.sessionId, langfuse.user_id, langfuse.userId
 
     # ============================================================================
-    # 11. TEMPERATURE
-    # ============================================================================
-    # langfuse 4.x stores model parameters as a JSON string in langfuse.observation.model.parameters.
-    # Extract temperature using DQL JSON parsing.
-    # ============================================================================
-    - id: "langfuse-temperature"
-      enabled: true
-      matcher: "isNotNull(langfuse.observation.model.parameters)"
-      type: "dql"
-      description: "Extract gen_ai.request.temperature from langfuse.observation.model.parameters"
-      dql:
-        script: |
-          parse langfuse.observation.model.parameters, "JSON_OBJECT:params"
-          | fieldsAdd gen_ai.request.temperature = toDouble(params[temperature])
-          | fieldsRemove params
-
-    # ============================================================================
-    # 12. SPAN STATUS
-    # ============================================================================
-    # The Langfuse Python SDK does not set OTel span status on success, so span.status_code
-    # is absent. Set it explicitly so the service health tile in Dynatrace shows correct data.
-    # ERROR level observations take precedence over the generic OK fallback.
-    # ============================================================================
-    - id: "langfuse-span-status"
-      enabled: true
-      matcher: 'isNotNull(langfuse.observation.type) AND isNull(span.status_code)'
-      type: "dql"
-      description: "Set span.status_code for Langfuse spans that did not set it"
-      dql:
-        script: |
-          fieldsAdd span.status_code = if(langfuse.observation.level == "ERROR", "error", else: "ok")
-
-    # ============================================================================
-    # 13. SOURCE METADATA
+    # 11. SOURCE METADATA
     # ============================================================================
     - id: "langfuse-source-metadata"
       enabled: true
