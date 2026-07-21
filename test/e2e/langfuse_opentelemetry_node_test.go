@@ -8,6 +8,7 @@ func TestLangfuseOpenTelemetryNode(t *testing.T) {
 	// CLI app: make run builds TypeScript, starts the OTel Collector (Docker),
 	// then runs dist/index.js once. No triggerHaiku — the haiku request is
 	// issued by make run itself.
+	startOpenAICompatibleMock(t, "OPENAI_API_KEY", "OPENAI_API_BASE")
 	startCLIApp(t, "langfuse/opentelemetry-node")
 
 	auditSpan(t, "langfuse", "opentelemetry-node", GenericProfile,
