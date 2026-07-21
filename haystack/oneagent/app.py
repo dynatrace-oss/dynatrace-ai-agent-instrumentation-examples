@@ -4,6 +4,7 @@ import haystack.tracing
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
@@ -31,7 +32,7 @@ async def haiku() -> str:
 
     def _call() -> str:
         pipeline = Pipeline()
-        pipeline.add_component("prompt", ChatPromptBuilder(template="Write a haiku about nature."))
+        pipeline.add_component("prompt", ChatPromptBuilder(template=[ChatMessage.from_user("Write a haiku about nature.")]))
         pipeline.add_component("llm", generator)
         pipeline.connect("prompt.prompt", "llm.messages")
         result = pipeline.run({})
