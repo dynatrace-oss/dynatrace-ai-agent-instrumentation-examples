@@ -11,7 +11,16 @@ import (
 // (e.g. instrumentation libraries that don't emit gen_ai.system).
 func assertSpanExists(t *testing.T, dql string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	assertSpanExistsWithin(t, dql, 3*time.Minute)
+}
+
+// assertSpanExistsWithin is assertSpanExists with a caller-chosen timeout. Use a
+// longer timeout for OneAgent-captured spans: their fullstack ingestion into
+// Grail lags further behind the request than the OTLP path, so the default
+// 3-minute window is prone to flaking on the first span of a OneAgent run.
+func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	_, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
@@ -57,7 +66,30 @@ func assertSpanWithAttrs(t *testing.T, dql string, required []string, anyOf [][]
 	}
 }
 
-// assertGenAISpan polls DT until a span matching dql is found (3-minute
+// assertNoMatchingSpan fails the test if any span matching dql appears within
+// 45 seconds. It re-polls every 15s so a span still in-flight cannot slip
+// through after its redacted sibling becomes visible.
+func assertNoMatchingSpan(t *testing.T, dql string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	for {
+		records, err := dtClient.Execute(ctx, dql)
+		if err != nil {
+			t.Fatalf("query DT spans: %v", err)
+		}
+		if len(records) > 0 {
+			t.Fatalf("expected no spans for query, got %d: %v", len(records), records[0])
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(15 * time.Second):
+		}
+	}
+}
+
+
 // timeout), then asserts gen_ai.system equals wantSystem.
 func assertGenAISpan(t *testing.T, dql, wantSystem string) {
 	t.Helper()
