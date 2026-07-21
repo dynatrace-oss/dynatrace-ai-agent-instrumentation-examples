@@ -2,8 +2,8 @@ import asyncio
 import os
 import haystack.tracing
 from haystack import Pipeline
-from haystack.components.builders import PromptBuilder
-from haystack.components.generators import AzureOpenAIGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.utils import Secret
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
@@ -22,7 +22,7 @@ def health():
 
 @app.post("/haiku", response_class=PlainTextResponse)
 async def haiku() -> str:
-    generator = AzureOpenAIGenerator(
+    generator = AzureOpenAIChatGenerator(
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT", "genai-demo"),
         api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
@@ -31,11 +31,11 @@ async def haiku() -> str:
 
     def _call() -> str:
         pipeline = Pipeline()
-        pipeline.add_component("prompt", PromptBuilder(template="Write a haiku about nature."))
+        pipeline.add_component("prompt", ChatPromptBuilder(template="Write a haiku about nature."))
         pipeline.add_component("llm", generator)
-        pipeline.connect("prompt", "llm")
+        pipeline.connect("prompt.prompt", "llm.messages")
         result = pipeline.run({})
-        return result["llm"]["replies"][0]
+        return result["llm"]["replies"][0].text
 
     return await asyncio.to_thread(_call)
 
