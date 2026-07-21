@@ -50,7 +50,7 @@ Langfuse uses its own semantic conventions that the Dynatrace AI Observability a
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
 | **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
-Both paths produce the same `gen_ai.*` span attributes. The OTel Collector path also emits `gen_ai.client.operation.duration` metrics; the OpenPipeline path does not.
+Both paths produce the same `gen_ai.*` span attributes. Both also emit the `gen_ai.client.operation.duration` metric charted by the AI Observability app -- the OpenPipeline path extracts it from the generation span's duration via a metric-extraction processor (see [Attribute mapping reference](#attribute-mapping-reference)).
 
 ---
 
@@ -130,7 +130,9 @@ This is a one-time setup per tenant.
 
 1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
 2. Select **Spans**.
-3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`.
+3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`:
+   - **Processing** tab: the `langfuse.* → gen_ai.*` attribute mappings.
+   - **Metric extraction** tab: the `gen_ai.client.operation.duration` histogram processor (extracting metrics from spans requires the DPS **Metrics Ingest and Process** rate card).
 4. Go to the **Routing** tab and add an entry:
    - Matcher: `isNotNull(langfuse.observation.type)`
    - Pipeline: `langfuse-ai-spans`
@@ -174,6 +176,12 @@ These mappings are applied by both the OTel Collector (`transform/langfuse` proc
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
 | `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
+
+### Extracted metric
+
+| Metric | Source | Notes |
+|---|---|---|
+| `gen_ai.client.operation.duration` | generation span duration | Charted by the AI Observability app. The OpenPipeline path extracts it with a `samplingAwareHistogramMetric` processor (`measurement: duration`); the OTel Collector path gets it from the built-in span pipeline. Extracting metrics from spans requires the DPS **Metrics Ingest and Process** rate card. |
 
 ---
 
