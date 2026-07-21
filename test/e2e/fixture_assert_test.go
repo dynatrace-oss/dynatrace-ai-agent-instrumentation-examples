@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -27,6 +28,40 @@ func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
 	if err != nil {
 		t.Fatalf("poll DT spans: %v", err)
 	}
+}
+
+// assertGenAIDurationMetric polls DT until the gen_ai.client.operation.duration
+// metric reports data for the given service (5-minute timeout), failing the test
+// otherwise. This is the metric the AI Observability app charts
+// (timeseries avg(gen_ai.client.operation.duration)); the OTel Collector path
+// gets it from the built-in span pipeline, and the OpenPipeline path from the
+// samplingAwareHistogramMetric processor in openpipeline-langfuse.yaml.
+//
+// Scoping matches the app's service filter — coalesce(service.name,
+// getNodeName(dt.smartscape.service)) — since extracted metrics carry no
+// test.run.id dimension and cannot be run-isolated. The 20-minute lookback and
+// 5-minute poll allow for metric aggregation lag, which is longer than for spans.
+func assertGenAIDurationMetric(t *testing.T, service string) {
+	t.Helper()
+	dql := fmt.Sprintf(
+		`timeseries duration = avg(gen_ai.client.operation.duration), from: now()-20m
+| filter matchesValue(coalesce(service.name, getNodeName(dt.smartscape.service)), %q)
+| fieldsAdd total = arraySum(duration)
+| filter isNotNull(total) and total > 0`,
+		service,
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil {
+		t.Fatalf("poll DT metric gen_ai.client.operation.duration for %q: %v", service, err)
+	}
+	if len(records) == 0 {
+		t.Fatalf("metric gen_ai.client.operation.duration reported no data for service %q", service)
+	}
+	t.Logf("metric gen_ai.client.operation.duration present for service %q", service)
 }
 
 // assertSpanWithAttrs polls DT until a span matching dql is found (3-minute
