@@ -246,6 +246,9 @@ metricExtraction:
       samplingAwareHistogramMetric:
         metricKey: "gen_ai.client.operation.duration"
         measurement: "duration"
+        # Required by the schema when measurement is "duration".
+        aggregation: "enabled"
+        sampling: "enabled"
         dimensions:
           - extractionType: "field"
             sourceFieldName: "service.name"
