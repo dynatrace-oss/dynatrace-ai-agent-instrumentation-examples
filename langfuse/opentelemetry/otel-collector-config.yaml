@@ -101,6 +101,38 @@ processors:
           # collector-transformed spans from being re-processed by OpenPipeline.
           - delete_key(attributes, "langfuse.observation.type")
 
+  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
+  # transform above on generation/embedding spans). Feeds the spanmetrics connector
+  # so gen_ai.client.operation.duration covers LLM calls only, not the Langfuse
+  # parent/tool spans. Used solely on the metrics branch — the export pipeline is
+  # left untouched so all spans still reach Distributed Tracing.
+  filter/genai_only:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.request.model"] == nil
+
+connectors:
+  # Derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds) from the
+  # LLM span durations, so the OTel Collector path emits the same metric the AI
+  # Observability app charts. namespace + the connector's "duration" histogram =>
+  # gen_ai.client.operation.duration. service.name is a default dimension, so the
+  # metric is attributable to the service without a Smartscape lookup.
+  spanmetrics:
+    namespace: gen_ai.client.operation
+    # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
 exporters:
   debug:
     verbosity: detailed
@@ -115,3 +147,13 @@ service:
       receivers: [otlp]
       processors: [attributes/tag_langfuse, transform/langfuse]
       exporters: [debug, otlp_http/dynatrace]
+    # Second branch of the same spans: transform, keep only LLM spans, and feed
+    # the spanmetrics connector. Kept separate from the export pipeline so the
+    # filter here never drops spans from Distributed Tracing.
+    traces/genai_metrics:
+      receivers: [otlp]
+      processors: [attributes/tag_langfuse, transform/langfuse, filter/genai_only]
+      exporters: [spanmetrics]
+    metrics:
+      receivers: [spanmetrics]
+      exporters: [otlp_http/dynatrace]

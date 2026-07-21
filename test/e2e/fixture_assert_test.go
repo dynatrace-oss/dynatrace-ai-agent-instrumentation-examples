@@ -34,20 +34,24 @@ func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
 // metric reports data for the given service (5-minute timeout), failing the test
 // otherwise. This is the metric the AI Observability app charts
 // (timeseries avg(gen_ai.client.operation.duration)); the OTel Collector path
-// gets it from the built-in span pipeline, and the OpenPipeline path from the
-// samplingAwareHistogramMetric processor in openpipeline-langfuse.yaml.
+// emits it via the spanmetrics connector in otel-collector-config.yaml, and the
+// OpenPipeline path via the samplingAwareHistogramMetric processor in
+// openpipeline-langfuse.yaml. Both carry service.name as a dimension.
 //
-// Scoping matches the app's service filter — coalesce(service.name,
-// getNodeName(dt.smartscape.service)) — since extracted metrics carry no
-// test.run.id dimension and cannot be run-isolated. The 20-minute lookback and
-// 5-minute poll allow for metric aggregation lag, which is longer than for spans.
+// Scoping is by service.name — not the app's coalesce(service.name,
+// getNodeName(dt.smartscape.service)), whose Smartscape lookup needs the
+// storage:smartscape:read scope the e2e token lacks. Both producing paths set
+// service.name explicitly, so the fallback is unnecessary here. Metrics carry no
+// test.run.id dimension, so the query cannot be run-isolated. The 20-minute
+// lookback and 5-minute poll allow for metric aggregation and flush lag, which
+// is longer than for spans.
 func assertGenAIDurationMetric(t *testing.T, service string) {
 	t.Helper()
 	// The service filter must be a parameter of the timeseries command (where the
 	// metric's dimensions are in scope), not a downstream pipe stage (where only
 	// duration/timeframe/interval exist). Mirrors the app's toTimeseriesFilterString().
 	dql := fmt.Sprintf(
-		`timeseries duration = avg(gen_ai.client.operation.duration), from: now()-20m, filter: matchesValue(coalesce(service.name, getNodeName(dt.smartscape.service)), %q)
+		`timeseries duration = avg(gen_ai.client.operation.duration), from: now()-20m, filter: matchesValue(service.name, %q)
 | fieldsAdd total = arraySum(duration)
 | filter isNotNull(total) and total > 0`,
 		service,

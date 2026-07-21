@@ -248,6 +248,8 @@ metricExtraction:
         measurement: "duration"
         dimensions:
           - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
             sourceFieldName: "gen_ai.operation.name"
           - extractionType: "field"
             sourceFieldName: "gen_ai.provider.name"
