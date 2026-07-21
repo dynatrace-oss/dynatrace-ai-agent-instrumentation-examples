@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"testing"
+	"time"
 )
 
 // TestLangGraphOneAgent verifies OneAgent capture of the LangGraph demo and
@@ -24,19 +25,22 @@ func TestLangGraphOneAgent(t *testing.T) {
 	const svc = `| filter service.name == "langgraph/oneagent"
 | filter dt.openpipeline.source == "oneagent"`
 
-	// Secret-bearing input must be redacted by the OpenPipeline rule.
-	assertSpanExists(t, scopedDQL(`fetch spans
+	// Secret-bearing input must be redacted by the OpenPipeline rule. Allow a
+	// longer window than the default: OneAgent fullstack ingestion into Grail
+	// lags further behind the request than the OTLP path, and this is the first
+	// span polled after the requests.
+	assertSpanExistsWithin(t, scopedDQL(`fetch spans
 `+svc+`
 | filter `+"`gen_ai.input.messages`"+` == "***REDACTED***"
 | sort timestamp desc
-| limit 1`))
+| limit 1`), 5*time.Minute)
 
 	// Benign input must pass through unmodified.
-	assertSpanExists(t, scopedDQL(`fetch spans
+	assertSpanExistsWithin(t, scopedDQL(`fetch spans
 `+svc+`
 | filter contains(toString(`+"`gen_ai.input.messages`"+`), "cherry blossoms")
 | sort timestamp desc
-| limit 1`))
+| limit 1`), 5*time.Minute)
 
 	// The secret content must never be stored in any form.
 	assertNoMatchingSpan(t, scopedDQL(`fetch spans

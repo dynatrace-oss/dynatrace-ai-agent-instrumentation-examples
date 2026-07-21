@@ -11,7 +11,16 @@ import (
 // (e.g. instrumentation libraries that don't emit gen_ai.system).
 func assertSpanExists(t *testing.T, dql string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	assertSpanExistsWithin(t, dql, 3*time.Minute)
+}
+
+// assertSpanExistsWithin is assertSpanExists with a caller-chosen timeout. Use a
+// longer timeout for OneAgent-captured spans: their fullstack ingestion into
+// Grail lags further behind the request than the OTLP path, so the default
+// 3-minute window is prone to flaking on the first span of a OneAgent run.
+func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	_, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
