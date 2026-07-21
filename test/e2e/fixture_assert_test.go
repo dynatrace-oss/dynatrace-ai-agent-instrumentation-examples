@@ -43,9 +43,11 @@ func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
 // 5-minute poll allow for metric aggregation lag, which is longer than for spans.
 func assertGenAIDurationMetric(t *testing.T, service string) {
 	t.Helper()
+	// The service filter must be a parameter of the timeseries command (where the
+	// metric's dimensions are in scope), not a downstream pipe stage (where only
+	// duration/timeframe/interval exist). Mirrors the app's toTimeseriesFilterString().
 	dql := fmt.Sprintf(
-		`timeseries duration = avg(gen_ai.client.operation.duration), from: now()-20m
-| filter matchesValue(coalesce(service.name, getNodeName(dt.smartscape.service)), %q)
+		`timeseries duration = avg(gen_ai.client.operation.duration), from: now()-20m, filter: matchesValue(coalesce(service.name, getNodeName(dt.smartscape.service)), %q)
 | fieldsAdd total = arraySum(duration)
 | filter isNotNull(total) and total > 0`,
 		service,
@@ -124,7 +126,7 @@ func assertNoMatchingSpan(t *testing.T, dql string) {
 	}
 }
 
-
+// assertGenAISpan polls DT until a span matching dql is found (3-minute
 // timeout), then asserts gen_ai.system equals wantSystem.
 func assertGenAISpan(t *testing.T, dql, wantSystem string) {
 	t.Helper()
