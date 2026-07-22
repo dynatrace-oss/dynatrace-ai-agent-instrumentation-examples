@@ -227,7 +227,7 @@ Clicking on your frontend reveals the full RUM overview — user action duration
 Create a `.env` file in `rum/opentelemetry/`:
 
 ```bash
-DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com
+DT_ENDPOINT=https://<your-env-id>.live.dynatrace.com/api/v2/otlp
 DT_API_TOKEN=dt0c01.<your-token>          # scopes: openTelemetryTrace.ingest, metrics.ingest
 DT_RUM_SCRIPT=https://js-cdn.dynatrace.com/jstag/<your-tag>.js
 

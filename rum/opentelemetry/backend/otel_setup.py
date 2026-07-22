@@ -22,7 +22,9 @@ def setup_otel(service_name: str = "rum-music-agent", exporter_wrapper=None):
     host_l = host.lower()
     if host_l == "apps.dynatrace.com" or host_l.endswith(".apps.dynatrace.com"):
         dt_endpoint = dt_endpoint.replace(".apps.dynatrace.com", ".live.dynatrace.com")
-    otlp_base = f"{dt_endpoint}/api/v2/otlp"
+    # DT_ENDPOINT is expected to include the /api/v2/otlp base path; append it for
+    # backward compatibility if only the bare environment URL is provided.
+    otlp_base = dt_endpoint if dt_endpoint.endswith("/api/v2/otlp") else f"{dt_endpoint}/api/v2/otlp"
     headers = {"Authorization": f"Api-Token {dt_api_token}"}
 
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
