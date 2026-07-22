@@ -12,8 +12,11 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
-override COLLECTOR_CONTAINER := otel-collector
+# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.104.0 tracks OTel
+# contrib v0.156.0 and bundles genainormalizerprocessor. Pinned so a version
+# bump surfaces normalization regressions in the e2e test.
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.104.0
+override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
 
@@ -24,9 +27,9 @@ install: ## Install Python dependencies
 	uv sync
 
 # ---------------------------------------------------------------------------
-# run: collector applies OpenInference → gen_ai.* transforms locally
+# run: Bindplane collector normalizes OpenInference -> gen_ai.* locally
 # ---------------------------------------------------------------------------
-run: ## Start collector (transform mode) + app  [no OpenPipeline needed]
+run: ## Start Bindplane collector (genainormalizer) + app  [no OpenPipeline needed]
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@echo "Waiting for collector port to be ready..."
 	@sleep 3
@@ -60,10 +63,10 @@ _collector:
 	docker run -d \
 	  --name $(COLLECTOR_CONTAINER) \
 	  -p 4318:4318 \
-	  -v $$(pwd)/$(CONFIG):/etc/otelcol/otel-collector-config.yaml:ro \
+	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml && \
+	  $(COLLECTOR_IMAGE) && \
 	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
 	echo "Collector logs -> collector.log" && \
 	for i in $$(seq 1 15); do \

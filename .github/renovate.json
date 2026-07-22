@@ -13,6 +13,15 @@
       ],
       "depNameTemplate": "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Makefile$"],
+      "matchStrings": [
+        "ghcr\\.io/observiq/bindplane-agent:(?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "ghcr.io/observiq/bindplane-agent",
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -34,7 +43,10 @@
     },
     {
       "matchManagers": ["custom.regex"],
-      "matchDepNames": ["ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector"],
+      "matchDepNames": [
+        "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
+        "ghcr.io/observiq/bindplane-agent"
+      ],
       "groupName": "collector image"
     },
     {
