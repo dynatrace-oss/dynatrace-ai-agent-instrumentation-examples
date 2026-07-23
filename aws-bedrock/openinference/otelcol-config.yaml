@@ -13,7 +13,7 @@ processors:
   # Scoped to OpenInference spans via:
   #   (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
   #
-  # Processing order mirrors openpipeline-openinference.yaml processors 1–15.
+  # Processing order mirrors openpipeline-openinference.yaml processors 1–17.
   # Note: later statements reference renamed attributes (e.g. gen_ai.request.model
   # not llm.model_name) because OTTL statements execute sequentially.
   transform/openinference:
@@ -89,7 +89,7 @@ processors:
           # ── 12. SOURCE METADATA ─────────────────────────────────────────────────
           - set(attributes["ai.observability.source"], "openinference") where (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
 
-          # ── 15. INPUT/OUTPUT FALLBACK (INTERIM) ─────────────────────────────────
+          # ── 16. INPUT/OUTPUT FALLBACK (INTERIM) ─────────────────────────────────
           - set(attributes["gen_ai.input.messages"], attributes["input.value"]) where attributes["input.value"] != nil and attributes["gen_ai.input.messages"] == nil and (attributes["llm.token_count.total"] != nil or attributes["gen_ai.request.model"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - delete_key(attributes, "input.value") where attributes["input.value"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - set(attributes["gen_ai.output.messages"], attributes["output.value"]) where attributes["output.value"] != nil and (attributes["llm.token_count.total"] != nil or attributes["gen_ai.request.model"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
@@ -98,6 +98,22 @@ processors:
           # ── FIXUPS ──────────────────────────────────────────────────────────────
           - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+
+  # ── 11c. LLM GUARDRAIL PARAMETERS ──────────────────────────────────────────
+  # Extracts AWS Bedrock Guardrails identifiers from the llm.invocation_parameters
+  # JSON string emitted by OpenInference instrumentation.
+  #
+  # Scoped to OpenInference spans via:
+  #   (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+  transform/llm-invocation-params:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - set(attributes["gen_ai.guardrail.id"], attributes["temp.invocation_params"]["guardrailIdentifier"]) where attributes["temp.invocation_params"]["guardrailIdentifier"] != nil
+          - set(attributes["gen_ai.guardrail.version"], attributes["temp.invocation_params"]["guardrailVersion"]) where attributes["temp.invocation_params"]["guardrailVersion"] != nil
+          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
 
   batch:
     send_batch_size: 512
@@ -113,7 +129,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/openinference, batch]
+      processors: [transform/openinference, transform/llm-invocation-params, batch]
       exporters: [otlp_http/dynatrace]
     metrics:
       receivers: [otlp]
