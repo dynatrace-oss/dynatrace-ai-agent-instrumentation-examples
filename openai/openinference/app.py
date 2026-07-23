@@ -1,8 +1,10 @@
 import os
+import uuid
 import openai
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk
 from openinference.instrumentation.openai import OpenAIInstrumentor
+from opentelemetry import trace as otel_trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
@@ -18,7 +20,7 @@ MODEL: str = os.environ.get("MODEL", "gpt-4o")
 #                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
-    {service_attributes.SERVICE_NAME: "openinference"}))
+    {service_attributes.SERVICE_NAME: "openai/openinference"}))
 
 tracer_provider = trace_sdk.TracerProvider(resource=resource)
 tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
@@ -39,10 +41,15 @@ if __name__ == "__main__":
             base_url=os.getenv("OPENAI_API_BASE"),
             api_key=os.getenv("OPENAI_API_KEY"),
         )
+    otel_trace.get_current_span().set_attribute("gen_ai.conversation.id", str(uuid.uuid4()))
     response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
         model=MODEL,
-        messages=[{"role": "user", "content": "Write a haiku."}],
+        messages=[
+            {"role": "system", "content": "You are a haiku poet."},
+            {"role": "user", "content": "Write a haiku."},
+        ],
         max_completion_tokens=2000,
+        temperature=1.0,
         stream=True,
         stream_options={"include_usage": True},
     )
