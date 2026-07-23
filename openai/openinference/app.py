@@ -41,18 +41,19 @@ if __name__ == "__main__":
             base_url=os.getenv("OPENAI_API_BASE"),
             api_key=os.getenv("OPENAI_API_KEY"),
         )
-    otel_trace.get_current_span().set_attribute("gen_ai.conversation.id", str(uuid.uuid4()))
-    response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": "You are a haiku poet."},
-            {"role": "user", "content": "Write a haiku."},
-        ],
-        max_completion_tokens=2000,
-        temperature=1.0,
-        stream=True,
-        stream_options={"include_usage": True},
-    )
-    for chunk in response:
-        if chunk.choices and (content := chunk.choices[0].delta.content):
-            print(content, end="")
+    tracer = otel_trace.get_tracer(__name__)
+    with tracer.start_as_current_span("haiku") as span:
+        span.set_attribute("gen_ai.conversation.id", str(uuid.uuid4()))
+        response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
+            model=MODEL,
+            messages=[
+                {"role": "user", "content": "Write a haiku."},
+            ],
+            max_completion_tokens=2000,
+            temperature=1.0,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+        for chunk in response:
+            if chunk.choices and (content := chunk.choices[0].delta.content):
+                print(content, end="")
