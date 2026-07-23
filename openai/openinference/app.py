@@ -20,7 +20,7 @@ MODEL: str = os.environ.get("MODEL", "gpt-4o")
 #                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
-    {service_attributes.SERVICE_NAME: "openai/openinference"}))
+    {service_attributes.SERVICE_NAME: "openinference"}))
 
 tracer_provider = trace_sdk.TracerProvider(resource=resource)
 tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
