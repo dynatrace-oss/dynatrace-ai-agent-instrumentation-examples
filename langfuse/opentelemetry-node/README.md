@@ -41,7 +41,7 @@ make run-openpipeline   # direct to Dynatrace — OpenPipeline transforms on ing
 Node.js app → OTLP → OTel Collector → (transform) → Dynatrace
 ```
 
-Collector config: `../opentelemetry/otel-collector-config.yaml`
+Collector config: `../opentelemetry/otel-collector-config.yaml`. A `spanmetrics` connector in that config also derives the `gen_ai.client.operation.duration` metric from the LLM span durations and exports it to Dynatrace (needs the token's `metrics.ingest` scope). The OpenPipeline path produces the same metric server-side via a metric-extraction processor.
 
 ### OpenPipeline path (`make run-openpipeline`)
 
