@@ -27,6 +27,32 @@ processors:
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
 
+  # Extracts Azure OpenAI content-filter results embedded in the output.value
+  # JSON blob.
+  #
+  # Azure OpenAI wraps the model response and content-filter metadata together in
+  # output.value. The prompt_filter_results array captures per-prompt filter
+  # verdicts (hate, self-harm, sexual, violence, etc.) returned by Azure content
+  # filtering. This processor promotes that array to a dedicated span attribute
+  # so it is queryable in Dynatrace DQL without parsing the full output blob.
+  #
+  # INPUT  (OpenInference / Azure OpenAI):
+  #   output.value  (JSON string)
+  #     └── prompt_filter_results  — array of per-prompt content-filter results
+  #
+  # OUTPUT:
+  #   gen_ai.prompt.prompt_filter_results  — serialised filter-result array
+  #
+  # NOTE: This processor must appear before gen_ai_normalizer in the pipeline.
+  transform/output_prompt_results:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.output_value"], ParseJSON(attributes["output.value"])) where attributes["output.value"] != nil
+          - set(attributes["gen_ai.prompt.prompt_filter_results"], String(attributes["temp.output_value"]["prompt_filter_results"])) where attributes["temp.output_value"]["prompt_filter_results"] != nil
+          - delete_key(attributes, "temp.output_value")
+
 exporters:
   debug:
     verbosity: detailed
@@ -39,5 +65,5 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model]
+      processors: [transform/output_prompt_results, gen_ai_normalizer, transform/response_model]
       exporters: [debug, otlp_http/dynatrace]

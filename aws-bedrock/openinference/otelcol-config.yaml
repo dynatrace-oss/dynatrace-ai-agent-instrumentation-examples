@@ -29,6 +29,22 @@ processors:
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
 
+  # ── 11c. LLM GUARDRAIL PARAMETERS ──────────────────────────────────────────
+  # Extracts AWS Bedrock Guardrails identifiers from the llm.invocation_parameters
+  # JSON string emitted by OpenInference instrumentation.
+  #
+  # Scoped to OpenInference spans via:
+  #   (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+  transform/llm-invocation-params:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - set(attributes["gen_ai.guardrail.id"], attributes["temp.invocation_params"]["guardrailIdentifier"]) where attributes["temp.invocation_params"]["guardrailIdentifier"] != nil
+          - set(attributes["gen_ai.guardrail.version"], attributes["temp.invocation_params"]["guardrailVersion"]) where attributes["temp.invocation_params"]["guardrailVersion"] != nil
+          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -43,7 +59,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, batch]
+      processors: [gen_ai_normalizer, transform/response_model, transform/llm-invocation-params, batch]
       exporters: [otlp_http/dynatrace]
     metrics:
       receivers: [otlp]
