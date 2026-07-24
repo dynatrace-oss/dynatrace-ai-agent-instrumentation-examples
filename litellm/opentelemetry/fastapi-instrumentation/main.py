@@ -43,7 +43,7 @@ litellm.callbacks = [LiteLLMOTel()]
 # Route Python logs to the local OTLP collector (same endpoint as metrics/spans)
 _log_provider = LoggerProvider()
 _log_provider.add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter(endpoint=COLLECTOR_BASE_URL))
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint=COLLECTOR_BASE_URL, insecure=True))
 )
 set_logger_provider(_log_provider)
 logging.basicConfig(level=logging.INFO)
@@ -56,7 +56,7 @@ Traceloop.init(
     api_endpoint=COLLECTOR_BASE_URL,
     disable_batch=True,
     should_enrich_metrics=True,
-    metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL),
+    metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL, insecure=True),
 )
 
 # Register LiteLLM's built-in OTEL callback — automatically captures gen_ai.*
