@@ -225,6 +225,23 @@ processing:
         script: |
           fieldsAdd `ai.observability.source` = "langfuse"
 
+    # ============================================================================
+    # 14. DURATION IN SECONDS (feeds the operation-duration metric below)
+    # ============================================================================
+    # The span `duration` field is in nanoseconds. The metric-extraction
+    # "duration" measurement emits MICROSECONDS, but the OTel semconv metric
+    # gen_ai.client.operation.duration (and every native SDK emitter) is in
+    # SECONDS. Materialize a seconds value here and point the metric at it via
+    # measurement: "field" so the OpenPipeline path matches the Collector path.
+    - id: "langfuse-duration-seconds"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation"'
+      type: "dql"
+      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
 # ==============================================================================
 # METRIC EXTRACTION
 # ==============================================================================
@@ -245,8 +262,11 @@ metricExtraction:
       description: "Extract gen_ai.client.operation.duration from generation span duration"
       samplingAwareHistogramMetric:
         metricKey: "gen_ai.client.operation.duration"
-        measurement: "duration"
-        # Required by the schema when measurement is "duration".
+        # Measure the seconds field computed in processing (step 14). The built-in
+        # "duration" measurement would emit microseconds, which the app charts as
+        # if seconds — off by 1,000,000.
+        measurement: "field"
+        field: "duration_seconds"
         aggregation: "enabled"
         sampling: "enabled"
         dimensions:
