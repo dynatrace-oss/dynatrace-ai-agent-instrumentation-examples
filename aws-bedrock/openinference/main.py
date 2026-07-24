@@ -48,10 +48,19 @@ def _get_chain():
             ("system", "You are a haiku poet. Write a haiku (5-7-5 syllables) about the given topic. Reply with only the haiku, no extra text."),
             ("human", "Topic: {topic}"),
         ])
+        guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+        guardrail_version = os.environ.get("BEDROCK_GUARDRAIL_VERSION")
+        guardrail_kwargs = {}
+        if guardrail_id and guardrail_version:
+            guardrail_kwargs["guardrails"] = {
+                "guardrailIdentifier": guardrail_id,
+                "guardrailVersion": guardrail_version,
+            }
         model = ChatBedrock(
             model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
             region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
             provider="anthropic",
+            **guardrail_kwargs,
         )
         _chain = prompt | model | StrOutputParser()
     return _chain
