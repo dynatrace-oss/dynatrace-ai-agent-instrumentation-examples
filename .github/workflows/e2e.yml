@@ -517,14 +517,18 @@ jobs:
           path: all-reports/
         continue-on-error: true
 
-      - name: Post or update PR comment
+      - name: Build comment body
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REPORTS_DIR: all-reports
+          OUTPUT_FILE: comment.md
         run: bash .github/scripts/pr-audit-comment.sh
+
+      - name: Post or update PR comment
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: e2e-span-audit
+          path: comment.md
 
   notify:
     name: Notify on regression or recovery

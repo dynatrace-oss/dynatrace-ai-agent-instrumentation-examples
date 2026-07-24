@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Post (or update) a sticky PR comment summarizing the span-audit reports produced
-# by the e2e suites that ran for this pull request.
+# Build the body of the sticky PR comment summarizing the span-audit reports
+# produced by the e2e suites that ran for this pull request. The stickiness
+# (find/create/update a single comment) is handled by the
+# marocchino/sticky-pull-request-comment action; this script only writes the
+# comment body to OUTPUT_FILE.
 #
 # Behavior:
 #   0 reports          → short "no suites affected" note
@@ -8,20 +11,15 @@
 #   > THRESHOLD         → each report collapsed in a <details> fold with a verdict
 #                         tick in the summary, plus a link to the run for the detail.
 #
-# The comment is made sticky via a hidden HTML marker: on every push we find the
-# existing comment carrying the marker and PATCH it, otherwise we POST a new one.
-#
 # Inputs (environment variables):
-#   GH_TOKEN    - token with pull-requests:write (provided by the workflow)
-#   REPO        - owner/repo (github.repository)
-#   PR_NUMBER   - pull request number (github.event.pull_request.number)
 #   RUN_URL     - URL of this Actions run (linked in the overflow case)
 #   REPORTS_DIR - directory containing the merged *.md / *.json reports
+#   OUTPUT_FILE - path to write the comment body to (default: comment.md)
 set -euo pipefail
 
 THRESHOLD=2
-MARKER="<!-- e2e-span-audit-report -->"
 REPORTS_DIR="${REPORTS_DIR:-all-reports}"
+OUTPUT_FILE="${OUTPUT_FILE:-comment.md}"
 
 # Collect report basenames (one per suite) from the JSON files, sorted for a
 # stable comment order. JSON is the source of truth for the verdict tick; the
@@ -32,9 +30,9 @@ while IFS= read -r f; do
 done < <(find "$REPORTS_DIR" -maxdepth 1 -name '*.json' 2>/dev/null | sort)
 count=${#json_files[@]}
 
-body_file="$(mktemp)"
+body_file="$OUTPUT_FILE"
+: > "$body_file"
 {
-  echo "$MARKER"
   echo "## 🔭 GenAI span audit"
   echo
 } > "$body_file"
@@ -96,17 +94,4 @@ else
   done
 fi
 
-# Upsert the sticky comment: find an existing comment carrying the marker,
-# PATCH it if present, otherwise POST a new one.
-existing_id=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" --paginate \
-  --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -n1 || true)
-
-if [ -n "$existing_id" ]; then
-  jq -n --rawfile body "$body_file" '{body: $body}' \
-    | gh api -X PATCH "repos/${REPO}/issues/comments/${existing_id}" --input -
-  echo "updated comment ${existing_id}"
-else
-  jq -n --rawfile body "$body_file" '{body: $body}' \
-    | gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" --input -
-  echo "created new comment"
-fi
+echo "wrote comment body to ${body_file} (${count} reports)"
