@@ -28,8 +28,7 @@ processors:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
 
   # Extracts Azure OpenAI content-filter results embedded in the output.value
-  # JSON blob. Must run BEFORE gen_ai_normalizer, which moves output.value into
-  # gen_ai.output.messages and discards the original attribute.
+  # JSON blob.
   #
   # Azure OpenAI wraps the model response and content-filter metadata together in
   # output.value. The prompt_filter_results array captures per-prompt filter
@@ -45,7 +44,7 @@ processors:
   #   gen_ai.prompt.prompt_filter_results  — serialised filter-result array
   #
   # NOTE: This processor must appear before gen_ai_normalizer in the pipeline.
-  transform/ouput_prompt_results:
+  transform/output_prompt_results:
     error_mode: ignore
     trace_statements:
       - context: span
@@ -66,5 +65,5 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, transform/output_prompt_results]
+      processors: [transform/output_prompt_results, gen_ai_normalizer, transform/response_model]
       exporters: [debug, otlp_http/dynatrace]
