@@ -26,6 +26,7 @@ processors:
       - context: span
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+          - set(attributes["gen_ai.request.temperature"], attributes["llm.temperature"]) where attributes["llm.temperature"] != nil
 
 exporters:
   debug:
