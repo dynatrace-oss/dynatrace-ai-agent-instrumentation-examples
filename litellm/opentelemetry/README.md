@@ -13,7 +13,7 @@ The Dynatrace API token needs the **`openTelemetryTrace.ingest`**, **`metrics.in
 
 | Example | Description |
 |---|---|
-| [fastapi-instrumentation](./fastapi-instrumentation/) | Custom FastAPI app using LiteLLM as an LLM router — full traces, custom metrics, and correlated logs |
+| [fastapi-instrumentation](./fastapi-instrumentation/) | Custom FastAPI app using LiteLLM as an LLM router; full traces, custom metrics, and correlated logs |
 | [litellm-gateway-with-instrumentation](./litellm-gateway-with-instrumentation/) | LiteLLM's built-in proxy server instrumented via Traceloop and FastAPI auto-instrumentation |
 
 > [!TIP]

@@ -1,8 +1,8 @@
 ## Google Agent Development Kit (ADK) + OpenTelemetry
 
-Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents — one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`, and ADK also records the OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`.
+Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents; one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`, and ADK also records the OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`.
 
-![Google ADK — AI Observability Prompt View](./assets/google-adk-prompt-view.png)
+![Google ADK: AI Observability Prompt View](./assets/google-adk-prompt-view.png)
 
 ## Prerequisites
 
@@ -14,18 +14,18 @@ Demonstrates tracing and metering a multi-agent Google ADK application with Dyna
 ## Quick Start
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
-2. `make install` — install dependencies
-3. `make run` — start the app on port 8000
-4. `make request` — send a test research request (in a second terminal)
+2. `make install`; install dependencies
+3. `make run`; start the app on port 8000
+4. `make request`; send a test research request (in a second terminal)
 
 ## Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GOOGLE_API_KEY` | Yes | — | Google AI Studio API key (`aistudio.google.com/apikey`) |
+| `GOOGLE_API_KEY` | Yes | None | Google AI Studio API key (`aistudio.google.com/apikey`) |
 | `MODEL` | No | `gemini-3.1-flash-lite` | Gemini model to use |
-| `DT_API_TOKEN` | Yes | — | Dynatrace API token with `openTelemetryTrace.ingest` and `metrics.ingest` scopes |
-| `OTEL_ENDPOINT` | Yes | — | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
+| `DT_API_TOKEN` | Yes | None | Dynatrace API token with `openTelemetryTrace.ingest` and `metrics.ingest` scopes |
+| `OTEL_ENDPOINT` | Yes | None | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
 
 ## Makefile Targets
 

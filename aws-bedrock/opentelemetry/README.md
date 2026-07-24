@@ -21,7 +21,7 @@ Python app → OTel Collector (localhost:4318) → Dynatrace OTLP endpoint
 
 | Signal | How | Details |
 |---|---|---|
-| **Traces** | `BotocoreInstrumentor` + Traceloop | One span per Bedrock API call — includes model ID, token usage, finish reason via `gen_ai.*` attributes |
+| **Traces** | `BotocoreInstrumentor` + Traceloop | One span per Bedrock API call; includes model ID, token usage, finish reason via `gen_ai.*` attributes |
 | **Metrics** | Traceloop (`should_enrich_metrics=True`) | OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`, used by the AI Observability app's cost and latency charts |
 | **Logs** | `OTLPLogExporter` (HTTP) | Python `logging` bridged to OTel; correlated to the active trace span |
 
@@ -106,7 +106,7 @@ fetch spans, from:now()-1h
 
 | File | Description |
 |---|---|
-| `main.py` | Fully instrumented entrypoint — auto-instruments Boto3, sets up Traceloop, runs a continuous loop calling both APIs |
+| `main.py` | Fully instrumented entrypoint; auto-instruments Boto3, sets up Traceloop, runs a continuous loop calling both APIs |
 | `converse.py` | Minimal standalone example using the Converse API (no instrumentation) |
 | `invoke.py` | Minimal standalone example using the Invoke API (no instrumentation) |
 | `guard_rail_metrics.py` | Fetches Bedrock Guardrail metrics from CloudWatch (intervention count, latency, text units) |
