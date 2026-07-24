@@ -2,9 +2,10 @@
 # Outputs oneagent-matrix and otelcol-matrix JSON arrays to GITHUB_OUTPUT.
 #
 # Inputs (environment variables):
-#   EVENT       - github.event_name (pull_request | workflow_dispatch | schedule)
+#   EVENT       - github.event_name (pull_request | pull_request_target | workflow_dispatch | schedule)
 #   SUITE_INPUT - optional suite name from workflow_dispatch input
-#   BASE_REF    - PR base branch (e.g. "main"), set only for pull_request events
+#   BASE_REF    - PR base branch (e.g. "main"), set only for PR events
+#   HEAD_SHA    - PR head commit SHA, set only for PR events; diffed as data (never executed)
 set -euo pipefail
 
 OA_ALL='[
@@ -41,10 +42,20 @@ OC_ALL='[
   {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true}
 ]'
 
-if [[ "$EVENT" == "pull_request" ]]; then
-  # Fetch the tip of the base branch so we can diff against it.
+if [[ "$EVENT" == "pull_request" || "$EVENT" == "pull_request_target" ]]; then
+  # Fetch the base branch tip and the PR head so we can diff between them. On
+  # pull_request_target the working tree is the base (trusted), so HEAD is not the PR head;
+  # we diff against the explicitly-fetched HEAD_SHA instead. git diff compares the two commit
+  # trees directly and needs no common ancestor, so shallow fetches are fine.
   git fetch --depth=1 origin "$BASE_REF"
-  CHANGED=$(git diff --name-only FETCH_HEAD HEAD)
+  BASE_SHA=$(git rev-parse FETCH_HEAD)
+  if [[ -n "${HEAD_SHA:-}" ]]; then
+    git fetch --depth=1 origin "$HEAD_SHA"
+    HEAD_REV=$(git rev-parse FETCH_HEAD)
+  else
+    HEAD_REV=HEAD
+  fi
+  CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_REV")
   CHANGED_JSON=$(echo "$CHANGED" | jq -Rs 'split("\n") | map(select(length > 0))')
 
   # Changes to shared infrastructure trigger a full run:
