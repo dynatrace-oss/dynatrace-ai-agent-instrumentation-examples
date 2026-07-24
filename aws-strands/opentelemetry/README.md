@@ -34,6 +34,9 @@ Strands Agents does not follow the OpenTelemetry GenAI semantic conventions for 
 - Normalizes Strands attributes to Dynatrace `gen_ai.*` format — either via a local OTel Collector or via Dynatrace OpenPipeline.
 - Shows the full agentic trace in the Dynatrace AI Observability app including tool calls, cycle spans, model invocations, token usage, and message content.
 
+> [!NOTE]
+> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. The app's metric tiles for this example therefore rely on the OpenPipeline span-to-metric extraction described below, not on native SDK metrics.
+
 ---
 
 ## Prerequisites
