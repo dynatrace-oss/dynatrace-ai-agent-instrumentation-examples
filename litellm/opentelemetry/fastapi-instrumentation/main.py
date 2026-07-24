@@ -26,6 +26,10 @@ from litellm.proxy.proxy_server import app
 # Must run BEFORE litellm imports the proxy app
 COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
 
+# Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
+# Must be set before the OTLP metric exporter is constructed in Traceloop.init below.
+os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
+
 # Optional LLM provider keys — set in environment to enable each provider
 # Grok (xAI): use model prefix "xai/", e.g. "xai/grok-2-latest"
 # Groq:       use model prefix "groq/", e.g. "groq/llama-3.3-70b-versatile"

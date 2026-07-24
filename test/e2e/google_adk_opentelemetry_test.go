@@ -14,4 +14,8 @@ func TestGoogleADKOpenTelemetry(t *testing.T) {
 | filter gen_ai.system == "gemini"
 | sort timestamp desc
 | limit 1`)
+
+	// Google ADK records the OTel GenAI client metrics natively; the MeterProvider
+	// + delta temporality added in app.py are required to export and accept them.
+	assertGenAIClientMetrics(t, "google-adk-samples")
 }
