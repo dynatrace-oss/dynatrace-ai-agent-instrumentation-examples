@@ -224,3 +224,39 @@ processing:
       dql:
         script: |
           fieldsAdd `ai.observability.source` = "langfuse"
+
+# ==============================================================================
+# METRIC EXTRACTION
+# ==============================================================================
+# Spans routed to this custom pipeline bypass the built-in span pipeline, so the
+# gen_ai.client.operation.duration metric that the AI Observability app charts
+# (timeseries avg(gen_ai.client.operation.duration)) is not produced for them.
+# Re-create it here from the generation span's own duration so the OpenPipeline
+# path matches the OTel Collector path. Extraction runs after processing, so the
+# gen_ai.* dimensions set above are available. Requires the DPS "Metrics Ingest
+# and Process" rate card (metric extraction from spans).
+# ==============================================================================
+metricExtraction:
+  processors:
+    - id: "langfuse-operation-duration-metric"
+      enabled: true
+      matcher: 'langfuse.observation.type == "generation"'
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from generation span duration"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "duration"
+        # Required by the schema when measurement is "duration".
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"

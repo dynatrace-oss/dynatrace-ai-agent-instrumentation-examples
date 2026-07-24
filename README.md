@@ -80,10 +80,11 @@ Monitor AI agent frameworks with Dynatrace.
 | Framework | OneAgent | OpenInference | OpenTelemetry |
 |-----------|----------|---------------|---------------|
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
-| [AWS Strands Agents](./aws-strands/oneagent/) | [✓](./aws-strands/oneagent/) | — | — |
+| [AWS Strands Agents](./aws-strands/oneagent/) | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) |
 | [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
 | [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
 | [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
+| [Langfuse](./langfuse/) | — | — | [✓ Python](./langfuse/opentelemetry/) / [✓ Node](./langfuse/opentelemetry-node/) |
 | [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓](./langgraph/opentelemetry/) |
 | [LiteLLM](./litellm/opentelemetry/) | — | — | [✓](./litellm/opentelemetry/) |
 | [MCP (Model Context Protocol)](mcp/opentelemetry/) | — | — | [✓](mcp/opentelemetry/) |

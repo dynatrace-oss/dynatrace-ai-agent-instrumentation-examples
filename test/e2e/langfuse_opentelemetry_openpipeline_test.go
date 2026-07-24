@@ -15,4 +15,9 @@ func TestLangfuseOpenTelemetryOpenPipeline(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
+
+	// gen_ai.client.operation.duration is extracted by the samplingAwareHistogramMetric
+	// processor in openpipeline-langfuse.yaml (spans routed to the custom pipeline
+	// bypass the built-in span pipeline that produces it on the collector path).
+	assertGenAIDurationMetric(t, "langfuse-openpipeline")
 }

@@ -17,4 +17,8 @@ func TestLangfuseOpenTelemetry(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
+
+	// The AI Observability app charts gen_ai.client.operation.duration; the
+	// collector path gets it from the built-in span pipeline.
+	assertGenAIDurationMetric(t, "langfuse")
 }

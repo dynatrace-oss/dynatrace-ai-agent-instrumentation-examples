@@ -50,7 +50,7 @@ Langfuse uses its own semantic conventions that the Dynatrace AI Observability a
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
 | **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
-Both paths produce the same `gen_ai.*` span attributes. The OTel Collector path also emits `gen_ai.client.operation.duration` metrics; the OpenPipeline path does not.
+Both paths produce the same `gen_ai.*` span attributes, and both emit the `gen_ai.client.operation.duration` metric charted by the AI Observability app -- Option A via the collector's `spanmetrics` connector, Option B via an OpenPipeline metric-extraction processor. Both derive it from the LLM span's duration (see [Attribute mapping reference](#attribute-mapping-reference)).
 
 ---
 
@@ -61,6 +61,7 @@ Both paths produce the same `gen_ai.*` span attributes. The OTel Collector path 
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
 2. Create a token with these permissions:
    - `openTelemetryTrace.ingest`
+   - `metrics.ingest` (for the `gen_ai.client.operation.duration` metric -- Option A exports it from the collector; Option B extracts it in OpenPipeline)
 3. Copy the token value.
 
 ### 2. Set environment variables
@@ -104,7 +105,7 @@ App  →  Langfuse SDK (OTLP export)  →  OTel Collector (transform processor) 
 make run
 ```
 
-The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
+The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A second pipeline branch feeds a `spanmetrics` connector that derives the `gen_ai.client.operation.duration` metric (seconds) from the LLM span durations and exports it to Dynatrace. The collector stays running after the app exits so the metric flushes; stop it with `make stop`.
 
 **Useful commands:**
 
@@ -130,7 +131,9 @@ This is a one-time setup per tenant.
 
 1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
 2. Select **Spans**.
-3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`.
+3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`:
+   - **Processing** tab: the `langfuse.* → gen_ai.*` attribute mappings.
+   - **Metric extraction** tab: the `gen_ai.client.operation.duration` histogram processor (extracting metrics from spans requires the DPS **Metrics Ingest and Process** rate card).
 4. Go to the **Routing** tab and add an entry:
    - Matcher: `isNotNull(langfuse.observation.type)`
    - Pipeline: `langfuse-ai-spans`
@@ -174,6 +177,12 @@ These mappings are applied by both the OTel Collector (`transform/langfuse` proc
 | `langfuse.user_id` / `langfuse.userId` | `user.id` | |
 | `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
+
+### Extracted metric
+
+| Metric | Source | Notes |
+|---|---|---|
+| `gen_ai.client.operation.duration` | LLM span duration | Charted by the AI Observability app. Option A (Collector) emits it via the `spanmetrics` connector; Option B (OpenPipeline) extracts it with a `samplingAwareHistogramMetric` processor (`measurement: duration`). Both carry `service.name` as a dimension. OpenPipeline metric extraction from spans requires the DPS **Metrics Ingest and Process** rate card. |
 
 ---
 
