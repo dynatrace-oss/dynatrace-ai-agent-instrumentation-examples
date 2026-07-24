@@ -9,7 +9,13 @@ on:
         description: 'Run only this suite by name (e.g. openai-oneagent, litellm-opentelemetry). Leave blank to run all.'
         required: false
         type: string
+  # Same-repo PRs: secrets are available automatically, e2e runs without approval.
   pull_request:
+  # Fork PRs: 'pull_request' withholds secrets, so those runs would panic. Fork PRs
+  # instead run via 'pull_request_target' (base context, secrets available) gated by the
+  # 'e2e-fork' Environment's required reviewers — a maintainer must approve each run in the
+  # PR pipeline before untrusted fork code executes with secrets. See the fork jobs below.
+  pull_request_target:
 
 permissions:
   contents: read
@@ -21,10 +27,19 @@ jobs:
   #   pull_request       → all entries (full validation on every PR)
   filter:
     runs-on: ubuntu-latest
+    # Route each PR through exactly one event: same-repo via pull_request, forks via
+    # pull_request_target. Prevents the duplicate workflow run that dual triggers would
+    # otherwise create on same-repo PRs.
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+      && (github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.fork == true)
     outputs:
       oneagent-matrix: ${{ steps.compute.outputs.oneagent-matrix }}
       otelcol-matrix: ${{ steps.compute.outputs.otelcol-matrix }}
     steps:
+      # Checks out the base ref (trusted) on pull_request_target — the fork's code is NOT
+      # executed here. compute-e2e-matrix.sh diffs against HEAD_SHA as data only; the matrix
+      # values themselves come from the hardcoded lists in the trusted base script.
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
@@ -34,6 +49,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           SUITE_INPUT: ${{ inputs.suite }}
           BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: bash .github/scripts/compute-e2e-matrix.sh
 
   # Per-suite oneagent job for PR and workflow_dispatch triggers.
@@ -42,7 +58,18 @@ jobs:
   oneagent:
     name: E2E / ${{ matrix.name }}
     needs: filter
-    if: (github.event_name == 'pull_request' || inputs.suite != '') && needs.filter.outputs.oneagent-matrix != '[]'
+    # Same-repo PRs run on pull_request (secrets available, no approval). Fork PRs run on
+    # pull_request_target, gated below by the e2e-fork Environment's required reviewers.
+    if: >-
+      needs.filter.outputs.oneagent-matrix != '[]'
+      && (
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        || (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.fork == true)
+        || (github.event_name == 'workflow_dispatch' && inputs.suite != '')
+      )
+    # On pull_request_target the job waits for a required reviewer to approve the e2e-fork
+    # Environment before it starts, and only then can it read the secrets. No-op for other events.
+    environment: ${{ github.event_name == 'pull_request_target' && 'e2e-fork' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -50,8 +77,12 @@ jobs:
         include: ${{ fromJson(needs.filter.outputs.oneagent-matrix) }}
 
     steps:
+      # Explicitly check out the PR head. On pull_request_target this is the fork's code,
+      # which only runs after a maintainer approved the e2e-fork Environment above.
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -405,7 +436,17 @@ jobs:
   otelcol:
     name: E2E / ${{ matrix.name }}
     needs: filter
-    if: needs.filter.outputs.otelcol-matrix != '[]'
+    # Same-repo PRs run on pull_request; fork PRs on pull_request_target behind the e2e-fork
+    # Environment's required reviewers. Also runs on schedule/workflow_dispatch (nightly + manual).
+    if: >-
+      needs.filter.outputs.otelcol-matrix != '[]'
+      && (
+        github.event_name == 'schedule'
+        || github.event_name == 'workflow_dispatch'
+        || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        || (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.fork == true)
+      )
+    environment: ${{ github.event_name == 'pull_request_target' && 'e2e-fork' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -413,8 +454,12 @@ jobs:
         include: ${{ fromJson(needs.filter.outputs.otelcol-matrix) }}
 
     steps:
+      # Explicitly check out the PR head. On pull_request_target this is the fork's code,
+      # which only runs after a maintainer approved the e2e-fork Environment above.
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
