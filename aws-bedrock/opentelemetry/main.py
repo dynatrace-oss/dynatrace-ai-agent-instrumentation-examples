@@ -51,6 +51,9 @@ BotocoreInstrumentor().instrument()
 
 
 logging.info("Initializing traceloop...")
+# Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
+# Must be set before Traceloop.init builds the metric exporter.
+os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 traceloop = Traceloop()
 Traceloop.init(
     app_name=os.environ.get("OTEL_SERVICE_NAME", "bedrock_example_app"),

@@ -2,11 +2,18 @@
 
 This folder contains two examples for instrumenting LLM gateway traffic with OpenTelemetry and routing signals to Dynatrace.
 
-Both examples use the [Traceloop SDK](https://www.traceloop.com/docs) for LLM-specific semantic conventions and a local OpenTelemetry Collector to forward gRPC-encoded signals to Dynatrace's OTLP HTTP endpoint.
+Both examples use the [Traceloop SDK](https://www.traceloop.com/docs) for LLM-specific semantic conventions and a local OpenTelemetry Collector to forward gRPC-encoded signals to Dynatrace's OTLP HTTP endpoint. Alongside traces and logs they emit the OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`, which drive the AI Observability app's cost and latency charts.
+
+> [!IMPORTANT]
+> Two settings are required for the metrics to reach Dynatrace:
+> - The gRPC metric and log exporters target the local collector's **plaintext** gRPC port (4317), so they are created with `insecure=True`; without it the TLS handshake fails and metrics/logs never leave the app.
+> - Dynatrace OTLP metric ingest accepts **delta** temporality only (cumulative is rejected with HTTP 400), so the app sets `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`.
+
+The Dynatrace API token needs the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, and **`logs.ingest`** scopes.
 
 | Example | Description |
 |---|---|
-| [fastapi-instrumentation](./fastapi-instrumentation/) | Custom FastAPI app using LiteLLM as an LLM router — full traces, custom metrics, and correlated logs |
+| [fastapi-instrumentation](./fastapi-instrumentation/) | Custom FastAPI app using LiteLLM as an LLM router; full traces, custom metrics, and correlated logs |
 | [litellm-gateway-with-instrumentation](./litellm-gateway-with-instrumentation/) | LiteLLM's built-in proxy server instrumented via Traceloop and FastAPI auto-instrumentation |
 
 > [!TIP]

@@ -16,4 +16,8 @@ func TestAWSBedrockOpenTelemetry(t *testing.T) {
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
+
+	// Traceloop emits the OTel GenAI client metrics; delta temporality (added in
+	// main.py) is required for Dynatrace to accept them.
+	assertGenAIClientMetrics(t, "aws-bedrock/opentelemetry")
 }

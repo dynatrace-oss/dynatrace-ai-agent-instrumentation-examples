@@ -1,6 +1,6 @@
 ## AWS Bedrock Tracing
 
-This example shows how to instrument [AWS Bedrock](https://aws.amazon.com/bedrock/) LLM calls with OpenTelemetry and route traces and logs to Dynatrace.
+This example shows how to instrument [AWS Bedrock](https://aws.amazon.com/bedrock/) LLM calls with OpenTelemetry and route traces, metrics, and logs to Dynatrace.
 
 Both the `Converse` and `Invoke` Bedrock APIs are covered, using the Boto3 client auto-instrumented via the [Traceloop SDK](https://www.traceloop.com/docs) and OpenTelemetry `BotocoreInstrumentor`. Traceloop enriches spans with `gen_ai.*` semantic conventions (model, token counts, finish reason) and the `@workflow`, `@task`, `@agent` decorators provide logical grouping in traces.
 
@@ -21,10 +21,14 @@ Python app → OTel Collector (localhost:4318) → Dynatrace OTLP endpoint
 
 | Signal | How | Details |
 |---|---|---|
-| **Traces** | `BotocoreInstrumentor` + Traceloop | One span per Bedrock API call — includes model ID, token usage, finish reason via `gen_ai.*` attributes |
+| **Traces** | `BotocoreInstrumentor` + Traceloop | One span per Bedrock API call; includes model ID, token usage, finish reason via `gen_ai.*` attributes |
+| **Metrics** | Traceloop (`should_enrich_metrics=True`) | OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`, used by the AI Observability app's cost and latency charts |
 | **Logs** | `OTLPLogExporter` (HTTP) | Python `logging` bridged to OTel; correlated to the active trace span |
 
 All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Traceloop decorators.
+
+> [!IMPORTANT]
+> Dynatrace OTLP metric ingest accepts **delta** temporality only and rejects cumulative metrics with HTTP 400. The app sets `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` before initializing Traceloop so the GenAI client metrics are accepted.
 
 ## How to use
 
@@ -34,7 +38,7 @@ All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Tr
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials configured (`aws configure` or environment variables) with Bedrock access in `us-east-1`
 - A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
-- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** and **`logs.ingest`** scopes
+- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, and **`logs.ingest`** scopes
 
 ### Install dependencies
 
@@ -102,7 +106,7 @@ fetch spans, from:now()-1h
 
 | File | Description |
 |---|---|
-| `main.py` | Fully instrumented entrypoint — auto-instruments Boto3, sets up Traceloop, runs a continuous loop calling both APIs |
+| `main.py` | Fully instrumented entrypoint; auto-instruments Boto3, sets up Traceloop, runs a continuous loop calling both APIs |
 | `converse.py` | Minimal standalone example using the Converse API (no instrumentation) |
 | `invoke.py` | Minimal standalone example using the Invoke API (no instrumentation) |
 | `guard_rail_metrics.py` | Fetches Bedrock Guardrail metrics from CloudWatch (intervention count, latency, text units) |

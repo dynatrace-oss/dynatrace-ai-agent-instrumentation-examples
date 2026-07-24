@@ -6,6 +6,9 @@ from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExp
 
 print ("Initializing Traceloop...")
 os.environ["CONFIG_FILE_PATH"] = "./config.yaml"
+# Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
+# Must be set before the OTLP metric exporter below is constructed.
+os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OTEL_URL = os.getenv("OTEL_URL")
@@ -21,7 +24,7 @@ Traceloop.init(
     api_key="KEY",
     disable_batch=True,
     should_enrich_metrics=True,
-    metrics_exporter=OTLPMetricExporter(endpoint="http://localhost:4317"),
+    metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL, insecure=True),
 )
 
 
