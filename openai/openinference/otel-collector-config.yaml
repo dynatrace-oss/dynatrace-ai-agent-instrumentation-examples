@@ -16,13 +16,15 @@ processors:
       - name: openinference
         remove_originals: true
 
-  # reads ll.m* attributes before gen_ai normalizer deletes them
+  # Reads llm.* attributes before gen_ai_normalizer deletes them 
   transform/pre_normalize:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system"
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil
+          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["temperature"]) where attributes["temp.invocation_params"]["temperature"] != nil
+          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
 
   # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
   # emit gen_ai.response.model (OpenInference has no separate response-model
