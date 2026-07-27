@@ -83,7 +83,8 @@ var genericOptional = []AttributeCheck{
 	{Name: "gen_ai.conversation.id", RuleID: "AR-041"},
 	{Name: "gen_ai.request.temperature", RuleID: "AR-042"},
 	{Name: "gen_ai.system_instructions", RuleID: "AR-043"},
-	{Name: "gen_ai.client.token.usage", RuleID: "AR-044"},
+	// AR-044 (gen_ai.client.token.usage) is a metric, not a span attribute — it is
+	// verified via the metric-existence check (see auditSpanWithMetrics), not here.
 	{Name: "span.status_code", RuleID: "AR-047"},
 }
 
