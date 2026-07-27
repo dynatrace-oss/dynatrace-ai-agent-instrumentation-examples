@@ -24,7 +24,14 @@ from opentelemetry._logs import set_logger_provider
 from traceloop.sdk.decorators import workflow, task, agent
 import requests
 
-COLLECTOR_BASE_URL = "http://localhost:4318"
+# Export OTLP directly to Dynatrace — no collector needed. Traceloop
+# (OpenLLMetry) already emits gen_ai.* semantic conventions natively, so no
+# collector-side normalization is required. Dynatrace rejects cumulative OTLP
+# metrics, so request delta temporality for the client metrics.
+os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
+
+DT_OTLP_ENDPOINT = os.environ.get("DT_ENDPOINT", "").rstrip("/") + "/api/v2/otlp"
+DT_HEADERS = {"Authorization": f"Api-Token {os.environ.get('DT_API_TOKEN', '')}"}
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -34,11 +41,11 @@ logging.basicConfig(
 logging.getLogger("botocore").setLevel(logging.INFO)
 logging.getLogger("urllib3").setLevel(logging.INFO)
 
-# Ship Python logs to the local OTel collector via OTLP/HTTP
+# Ship Python logs directly to Dynatrace via OTLP/HTTP
 _log_provider = LoggerProvider()
 set_logger_provider(_log_provider)
 _log_provider.add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{COLLECTOR_BASE_URL}/v1/logs"))
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{DT_OTLP_ENDPOINT}/v1/logs", headers=DT_HEADERS))
 )
 logging.getLogger().addHandler(OTLPLoggingHandler(logger_provider=_log_provider))
 
@@ -56,7 +63,8 @@ Traceloop.init(
     app_name=os.environ.get("OTEL_SERVICE_NAME", "bedrock_example_app"),
     disable_batch=True,
     should_enrich_metrics=True,
-    api_endpoint=COLLECTOR_BASE_URL,
+    api_endpoint=DT_OTLP_ENDPOINT,
+    headers=DT_HEADERS,
 )
 
 Traceloop.set_association_properties({

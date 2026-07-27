@@ -11,11 +11,13 @@ Both the `Converse` and `Invoke` Bedrock APIs are covered, using the Boto3 clien
 
 ## Architecture
 
-The example routes via a local [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/), which forwards to Dynatrace. This is required because the Traceloop SDK exports over gRPC, while Dynatrace ingests OTLP over HTTP/protobuf.
+The app exports OTLP over HTTP directly to the Dynatrace OTLP endpoint. No collector is needed: the Traceloop SDK already emits `gen_ai.*` semantic conventions natively, so there is nothing to normalize on the way to Dynatrace.
 
 ```
-Python app → OTel Collector (localhost:4318) → Dynatrace OTLP endpoint
+Python app --> Dynatrace OTLP endpoint (/api/v2/otlp)
 ```
+
+Metrics are exported with delta temporality (`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`), which Dynatrace requires; cumulative OTLP metrics are rejected.
 
 ## Signals
 
@@ -33,8 +35,7 @@ All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Tr
 - Python 3.9+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials configured (`aws configure` or environment variables) with Bedrock access in `us-east-1`
-- A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
-- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** and **`logs.ingest`** scopes
+- A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, and **`logs.ingest`** scopes
 
 ### Install dependencies
 
@@ -42,43 +43,17 @@ All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Tr
 make install
 ```
 
-### Configure the OTel Collector
+### Configure
 
-Add the following to your collector config to receive from the app and forward to Dynatrace:
+Copy `.env.sample` to `.env` and set `DT_ENDPOINT`, `DT_API_TOKEN`, and your AWS credentials. The Makefile sources `.env` automatically.
 
-```yaml
-receivers:
-  otlp:
-    protocols:
-      http:
-        endpoint: 0.0.0.0:4318
-
-exporters:
-  otlphttp:
-    endpoint: https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp
-    headers:
-      Authorization: "Api-Token <YOUR_DT_TOKEN>"
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [otlphttp]
-    logs:
-      receivers: [otlp]
-      exporters: [otlphttp]
-```
-
-After you saved your `config.yaml`, you can start the collector with
 ```bash
-docker run \
-  -p 127.0.0.1:4317:4317 \
-  -p 127.0.0.1:4318:4318 \
-  -p 127.0.0.1:55679:55679 \
-  --mount type=bind,source="$(pwd)"/config.yaml,target=/config.yaml,readonly \
-  -it \
-  otel/opentelemetry-collector:0.151.0  \
-  --config=/config.yaml
+# .env
+DT_ENDPOINT=https://<YOUR_ENV_ID>.live.dynatrace.com
+DT_API_TOKEN=dt0c01.****
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
 ```
 
 ### Run
