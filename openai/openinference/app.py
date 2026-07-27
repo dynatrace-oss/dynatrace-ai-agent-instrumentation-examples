@@ -4,7 +4,7 @@ import openai
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk
 from openinference.instrumentation.openai import OpenAIInstrumentor
-from opentelemetry import trace as otel_trace
+from openinference.instrumentation import using_attributes
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
@@ -41,16 +41,14 @@ if __name__ == "__main__":
             base_url=os.getenv("OPENAI_API_BASE"),
             api_key=os.getenv("OPENAI_API_KEY"),
         )
-    tracer = otel_trace.get_tracer(__name__)
-    with tracer.start_as_current_span("haiku") as span:
-        span.set_attribute("gen_ai.conversation.id", str(uuid.uuid4()))
+    with using_attributes(session_id=str(uuid.uuid4())):
         response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
             model=MODEL,
             messages=[
+                {"role": "system", "content": "You are a haiku poet."},
                 {"role": "user", "content": "Write a haiku."},
             ],
             max_completion_tokens=2000,
-            temperature=1.0,
             stream=True,
             stream_options={"include_usage": True},
         )

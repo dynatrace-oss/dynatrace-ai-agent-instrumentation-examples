@@ -16,6 +16,14 @@ processors:
       - name: openinference
         remove_originals: true
 
+  # reads ll.m* attributes before gen_ai normalizer deletes them
+  transform/pre_normalize:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system"
+
   # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
   # emit gen_ai.response.model (OpenInference has no separate response-model
   # field). The Dynatrace AI Observability app requires gen_ai.response.model,
@@ -112,7 +120,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
