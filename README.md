@@ -69,7 +69,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
 | [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
 | [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
-| [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) | — |
+| [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.
 
