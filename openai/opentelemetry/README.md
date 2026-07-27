@@ -41,7 +41,9 @@ Uses the [Traceloop SDK](https://github.com/traceloop/openllmetry) (OpenLLMetry)
 ### 1. Create a Dynatrace access token
 
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
-2. Create a token with the permission: `openTelemetryTrace.ingest`
+2. Create a token with these permissions:
+   - `openTelemetryTrace.ingest`
+   - `metrics.ingest`
 3. Copy the token value.
 
 ### 2. Set environment variables

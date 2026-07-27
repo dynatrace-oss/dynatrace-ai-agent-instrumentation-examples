@@ -41,7 +41,8 @@ run: ## Start OTel collector + run app  [recommended]
 # run-direct: app → Dynatrace (no collector)
 # ---------------------------------------------------------------------------
 run-direct: ## Run app directly to Dynatrace  [no collector needed]
-	@uv run python3 app.py
+	@OTEL_EXPORTER_OTLP_ENDPOINT="" \
+	  uv run python3 app.py
 
 request: ## Run a haiku request through the running collector
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
