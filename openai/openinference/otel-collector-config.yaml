@@ -36,7 +36,6 @@ processors:
       - context: span
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
-          - set(attributes["gen_ai.request.temperature"], attributes["llm.temperature"]) where attributes["llm.temperature"] != nil
 
   # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
   # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
@@ -129,7 +128,7 @@ service:
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, filter/genai_only]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only]
       exporters: [spanmetrics, signal_to_metrics]
     metrics:
       receivers: [spanmetrics, signal_to_metrics]

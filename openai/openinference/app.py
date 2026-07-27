@@ -51,6 +51,7 @@ if __name__ == "__main__":
             max_completion_tokens=2000,
             stream=True,
             stream_options={"include_usage": True},
+            temperature=1.0,
         )
         for chunk in response:
             if chunk.choices and (content := chunk.choices[0].delta.content):
