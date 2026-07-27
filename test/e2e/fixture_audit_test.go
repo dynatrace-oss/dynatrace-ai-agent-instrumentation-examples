@@ -385,14 +385,27 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	logAuditResult(t, report, spanCount)
 }
 
-// buildSpanReport polls DT until a span matching dql is found (5-minute timeout),
+// spanPollTimeout is how long to poll Dynatrace for an anchor span before
+// failing. Defaults to 8 minutes to absorb slow app startup (dependency install,
+// collector image pull, first LLM call). Override with the E2E_SPAN_POLL_TIMEOUT
+// env var (a Go duration, e.g. "10m").
+func spanPollTimeout() time.Duration {
+	if v := os.Getenv("E2E_SPAN_POLL_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return 8 * time.Minute
+}
+
+// buildSpanReport polls DT until a span matching dql is found (spanPollTimeout),
 // fetches all spans in the same trace, and returns the evaluated report plus the
 // number of spans in the trace. It does NOT write the report, so callers can
 // attach extra results (e.g. metric checks) before writing. Fails the test if no
 // anchor span is found.
 func buildSpanReport(t *testing.T, sdk, instrumentation string, p Profile, dql string, note ...string) (SpanReport, int) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
 	defer cancel()
 
 	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
@@ -435,7 +448,7 @@ func logAuditResult(t *testing.T, report SpanReport, spanCount int) {
 // An optional note string is included in the report (e.g. to document mock backends).
 func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql string, note ...string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
 	defer cancel()
 
 	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
