@@ -7,6 +7,7 @@ import (
 func TestAWSBedrockOpenInference(t *testing.T) {
 	startApp(t, "aws-bedrock/openinference")
 	triggerHaiku(t, true)
+	triggerHaikuGuardrail(t)
 
 	auditSpan(t, "aws-bedrock", "openinference", GenericProfile,
 		`fetch spans, from: now()-10m

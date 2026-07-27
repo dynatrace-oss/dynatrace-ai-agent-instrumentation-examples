@@ -7,6 +7,7 @@ import (
 func TestAWSBedrockOneAgent(t *testing.T) {
 	startApp(t, "aws-bedrock/oneagent")
 	triggerHaiku(t, true)
+	triggerHaikuGuardrail(t)
 
 	auditSpan(t, "aws-bedrock", "oneagent", BedrockProfile,
 		`fetch spans, from: now()-10m

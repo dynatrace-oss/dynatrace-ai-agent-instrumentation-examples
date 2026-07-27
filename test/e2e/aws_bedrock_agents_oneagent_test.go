@@ -7,9 +7,8 @@ import (
 func TestAWSBedrockAgentsOneAgent(t *testing.T) {
 	startApp(t, "aws-bedrock-agents/oneagent")
 	triggerAgent(t)
+	triggerAgentGuardrail(t)
 
-	// gen_ai.bedrock.guardrail.* (AR-017/AR-018/AR-019) are not emitted
-	// because the demo does not configure Bedrock guardrails — expected FAIL in report.
 	auditSpan(t, "aws-bedrock-agents", "oneagent", BedrockProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock-agents/oneagent"
