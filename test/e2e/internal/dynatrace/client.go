@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -23,8 +24,21 @@ func New(endpoint, token string) *Client {
 	return &Client{
 		endpoint: strings.TrimRight(endpoint, "/"),
 		token:    token,
-		http:     &http.Client{Timeout: 30 * time.Second},
+		http:     &http.Client{Timeout: httpTimeout()},
 	}
+}
+
+// httpTimeout is the per-request HTTP timeout for DT platform API calls. It must
+// exceed the server-side requestTimeoutMilliseconds (25s) with headroom for
+// gateway latency. Defaults to 60s; override with E2E_DT_HTTP_TIMEOUT (a Go
+// duration, e.g. "90s").
+func httpTimeout() time.Duration {
+	if v := os.Getenv("E2E_DT_HTTP_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return 60 * time.Second
 }
 
 type executeRequest struct {
@@ -56,16 +70,23 @@ func (c *Client) Execute(ctx context.Context, dql string) ([]map[string]interfac
 // PollUntilSpans repeatedly executes the DQL query until at least one record is
 // returned or the context deadline is reached.
 func (c *Client) PollUntilSpans(ctx context.Context, dql string, interval time.Duration) ([]map[string]interface{}, error) {
+	var lastErr error
 	for {
 		records, err := c.execute(ctx, dql)
-		if err != nil {
-			return nil, err
-		}
-		if len(records) > 0 {
+		switch {
+		case err != nil:
+			// Transient query failures (slow gateway, HTTP client timeout, 5xx)
+			// should not abort the poll — keep retrying until the context
+			// deadline. Only surface the error if the deadline is hit.
+			lastErr = err
+		case len(records) > 0:
 			return records, nil
 		}
 		select {
 		case <-ctx.Done():
+			if lastErr != nil {
+				return nil, fmt.Errorf("timed out waiting for DT spans (last query error: %w)", lastErr)
+			}
 			return nil, fmt.Errorf("timed out waiting for DT spans: %w", ctx.Err())
 		case <-time.After(interval):
 		}
