@@ -29,6 +29,12 @@ type AttributeResult struct {
 	FallbackUsed string `json:"fallback_used,omitempty"`
 }
 
+// MetricResult is the outcome of one metric-existence check.
+type MetricResult struct {
+	Metric string `json:"metric"`
+	Status string `json:"status"` // "present" | "absent"
+}
+
 // SpanReport holds the full audit result for one SDK/instrumentation run.
 type SpanReport struct {
 	SDK             string            `json:"sdk"`
@@ -38,6 +44,7 @@ type SpanReport struct {
 	Note            string            `json:"note,omitempty"`
 	Required        []AttributeResult `json:"required"`
 	Optional        []AttributeResult `json:"optional"`
+	Metrics         []MetricResult    `json:"metrics,omitempty"`
 	GeneratedAt     string            `json:"generated_at"`
 }
 
@@ -281,6 +288,19 @@ func buildMarkdown(r SpanReport) string {
 			a.RuleID, a.Attribute, statusIcon(a.Status), a.Status)
 	}
 
+	if len(r.Metrics) > 0 {
+		sb.WriteString("\n## Metrics\n\n")
+		sb.WriteString("| Metric | Status |\n")
+		sb.WriteString("|--------|--------|\n")
+		for _, m := range r.Metrics {
+			icon := "❌"
+			if m.Status == "present" {
+				icon = "✅"
+			}
+			fmt.Fprintf(&sb, "| `%s` | %s %s |\n", m.Metric, icon, m.Status)
+		}
+	}
+
 	return sb.String()
 }
 
@@ -359,6 +379,18 @@ func scopedDQL(dql string) string {
 // An optional note string is included in the report (e.g. to document mock backends).
 func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string, note ...string) {
 	t.Helper()
+	report, spanCount := buildSpanReport(t, sdk, instrumentation, p, dql, note...)
+	writeReport(t, report)
+	logAuditResult(t, report, spanCount)
+}
+
+// buildSpanReport polls DT until a span matching dql is found (5-minute timeout),
+// fetches all spans in the same trace, and returns the evaluated report plus the
+// number of spans in the trace. It does NOT write the report, so callers can
+// attach extra results (e.g. metric checks) before writing. Fails the test if no
+// anchor span is found.
+func buildSpanReport(t *testing.T, sdk, instrumentation string, p Profile, dql string, note ...string) (SpanReport, int) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -376,15 +408,24 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	if len(note) > 0 {
 		report.Note = note[0]
 	}
-	writeReport(t, report)
+	return report, len(spans)
+}
 
+// logAuditResult logs any missing required attributes and the final verdict line.
+func logAuditResult(t *testing.T, report SpanReport, spanCount int) {
+	t.Helper()
 	for _, r := range report.Required {
 		if r.Status == "fail" {
 			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
 		}
 	}
+	for _, m := range report.Metrics {
+		if m.Status != "present" {
+			t.Logf("metric missing: %s", m.Metric)
+		}
+	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
-		report.Verdict, len(spans), sdk, instrumentation)
+		report.Verdict, spanCount, report.SDK, report.Instrumentation)
 }
 
 // auditSpanOptional is like auditSpan but skips the (sub)test when no anchor
