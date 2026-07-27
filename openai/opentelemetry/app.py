@@ -40,7 +40,11 @@ if __name__ == "__main__":
 
     response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
         model=MODEL,
-        messages=[{"role": "user", "content": "Write a haiku."}],
+        messages=[
+            {"role": "system", "content": "You are a skilled poet specializing in haiku."},
+            {"role": "user", "content": "Write a haiku."},
+        ],
+        temperature=0.7,
         max_completion_tokens=2000,
         stream=True,
         stream_options={"include_usage": True},
