@@ -11,29 +11,16 @@ os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "tru
 
 from traceloop.sdk import Traceloop
 
-# Export target. When OTEL_EXPORTER_OTLP_ENDPOINT is set (see the Makefile `run`
-# target), spans go to a local OTel collector that forwards to Dynatrace.
-# Otherwise export straight to Dynatrace.
 _app_name = os.environ.get("OTEL_SERVICE_NAME", "openai")
-_collector = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").rstrip("/")
-if _collector:
-    Traceloop.init(
-        app_name=_app_name,
-        api_endpoint=_collector,
-        headers={},
-        disable_batch=True,
-        should_enrich_metrics=True,
-    )
-else:
-    _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-    _dt_token = os.environ.get("DT_API_TOKEN", "")
-    Traceloop.init(
-        app_name=_app_name,
-        api_endpoint=f"{_dt_base}/api/v2/otlp",
-        headers={"Authorization": f"Api-Token {_dt_token}"},
-        disable_batch=True,
-        should_enrich_metrics=True,
-    )
+_dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+_dt_token = os.environ.get("DT_API_TOKEN", "")
+Traceloop.init(
+    app_name=_app_name,
+    api_endpoint=f"{_dt_base}/api/v2/otlp",
+    headers={"Authorization": f"Api-Token {_dt_token}"},
+    disable_batch=True,
+    should_enrich_metrics=True,
+)
 
 MODEL: str = os.environ.get("MODEL", "gpt-4o")
 
