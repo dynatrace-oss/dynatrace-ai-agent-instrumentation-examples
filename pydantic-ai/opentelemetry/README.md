@@ -79,6 +79,7 @@ An outer `music_agent.ask` span (kind `SERVER`) adds API-level context including
 ### Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials with access to Bedrock (Claude models in `us-east-1`)
 - Azure OpenAI endpoint and deployment (optional — falls back to Bedrock if unreachable)
 - A Dynatrace environment with an API token that has the following scopes:
@@ -108,16 +109,13 @@ AZURE_OPENAI_API_VERSION=2024-02-01
 ### Install dependencies
 
 ```bash
-cd pydantic/backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+make install
 ```
 
 ### Run the app
 
 ```bash
-python main.py
+make run
 ```
 
 The app is available at [http://localhost:8000](http://localhost:8000).

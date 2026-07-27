@@ -13,6 +13,8 @@ func TestOpenAIOneAgent(t *testing.T) {
 | filter service.name == "openai/oneagent"
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
+| filter isNotNull(dt.smartscape.service)
 | sort timestamp desc
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 }

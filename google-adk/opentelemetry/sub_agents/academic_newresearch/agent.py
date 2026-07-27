@@ -14,11 +14,13 @@
 
 """Academic_newresearch_agent for finding new research lines"""
 
+import os
+
 from google.adk import Agent
 
 from . import prompt
 
-MODEL = "gemini-2.5-pro"
+MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 
 academic_newresearch_agent = Agent(
     model=MODEL,

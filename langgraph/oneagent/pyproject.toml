@@ -1,0 +1,11 @@
+[project]
+name = "langgraph-oneagent-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "oneagent-sdk",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+]

@@ -2,9 +2,12 @@
 
 Demonstrates tracing Cohere SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
+> **Experimental sensor** — Enables monitoring of Cohere SDK calls in Python applications. Prompt input and output capture is not supported yet.
+
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Cohere API key (`COHERE_API_KEY`)
 - Dynatrace OneAgent installed on the host
 
@@ -20,7 +23,8 @@ Demonstrates tracing Cohere SDK API calls with Dynatrace via OneAgent auto-instr
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `COHERE_API_KEY` | Yes | — | Cohere API key |
-| `MODEL` | No | `command-r-08-2024` | Model to use |
+| `MODEL` | No | `command-r-08-2024` | Cohere model to use |
+| `CO_API_URL` | No | — | Override Cohere base URL (e.g. for local testing) |
 
 ## Makefile Targets
 
@@ -32,3 +36,7 @@ Demonstrates tracing Cohere SDK API calls with Dynatrace via OneAgent auto-instr
 | `make push` | Build and push image to registry |
 | `make request` | POST /haiku to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Smartscape service entity
+
+OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.

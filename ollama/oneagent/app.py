@@ -7,7 +7,7 @@ from fastapi.responses import PlainTextResponse
 MODEL: str = os.environ.get("MODEL", "llama3.2")
 OLLAMA_HOST: str = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
-app = FastAPI()
+app = FastAPI(title="ollama-oneagent")
 
 
 @app.get("/health")

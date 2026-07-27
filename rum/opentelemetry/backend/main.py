@@ -7,23 +7,86 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
-# OTel must be initialised before pydantic-ai imports
+# Define the span exporter wrapper BEFORE calling setup_otel so we can pass it
+# as exporter_wrapper. This lets us override gen_ai.conversation.id after
+# pydantic-ai sets it (it runs after on_start, overwriting whatever we staged).
+from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
+GEN_AI_CONVERSATION_ID_ATTR = "gen_ai.conversation.id"
+_current_conversation_id: ContextVar[str | None] = ContextVar("current_conversation_id", default=None)
+
+# Private staging attribute — pydantic-ai doesn't know about it so it won't
+# overwrite it. SessionIdExporter reads it and copies the value to
+# gen_ai.conversation.id just before spans leave the process.
+_STAGING_ATTR = "_rum_session_id"
+
+
+class ConversationIdSpanProcessor(SpanProcessor):
+    def on_start(self, span: Span, parent_context=None) -> None:
+        conversation_id = _current_conversation_id.get()
+        if conversation_id:
+            span.set_attribute(_STAGING_ATTR, conversation_id)
+
+    def on_end(self, span: ReadableSpan) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return True
+
+
+class SessionIdExporter(SpanExporter):
+    """Wraps the real exporter and forces gen_ai.conversation.id to the browser
+    session UUID staged by ConversationIdSpanProcessor, overriding whatever
+    pydantic-ai set after on_start ran."""
+
+    def __init__(self, inner: SpanExporter) -> None:
+        self._inner = inner
+
+    def export(self, spans: list[ReadableSpan]) -> SpanExportResult:
+        for span in spans:
+            attrs = getattr(span, "_attributes", None)
+            if not attrs:
+                continue
+            session_id = attrs.get(_STAGING_ATTR)
+            if session_id:
+                attrs[GEN_AI_CONVERSATION_ID_ATTR] = session_id
+                del attrs[_STAGING_ATTR]
+        return self._inner.export(spans)
+
+    def shutdown(self) -> None:
+        self._inner.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return self._inner.force_flush(timeout_millis)
+
+
+# OTel must be initialised before pydantic-ai imports.
+# Pass SessionIdExporter so the single BatchSpanProcessor wraps it — avoiding
+# double-export while still overriding gen_ai.conversation.id at flush time.
 from otel_setup import setup_otel
 
-_tracer_provider, _meter_provider = setup_otel("rum-music-agent")
+_tracer_provider, _meter_provider = setup_otel("rum/opentelemetry", exporter_wrapper=SessionIdExporter)
+
+# Register our staging processor so on_start can note the browser session UUID
+# before pydantic-ai gets a chance to overwrite gen_ai.conversation.id.
+if _tracer_provider:
+    _tracer_provider.add_span_processor(ConversationIdSpanProcessor())
 
 from opentelemetry import trace
 from opentelemetry.propagate import extract  # extracts W3C traceparent from RUM headers
-from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.azure import AzureProvider
 from pydantic_ai.providers.bedrock import BedrockProvider
 
@@ -45,47 +108,35 @@ _instrumentation = InstrumentationSettings(
     include_content=True,
 )
 
+Agent.instrument_all(_instrumentation)
+
 tracer = trace.get_tracer("rum-music-agent-api")
-GEN_AI_CONVERSATION_ID_ATTR = "gen_ai.conversation.id"
-_current_conversation_id: ContextVar[str | None] = ContextVar("current_conversation_id", default=None)
-
-
-class ConversationIdSpanProcessor(SpanProcessor):
-    def on_start(self, span: Span, parent_context=None) -> None:
-        conversation_id = _current_conversation_id.get()
-        if conversation_id:
-            span.set_attribute(GEN_AI_CONVERSATION_ID_ATTR, conversation_id)
-
-    def on_end(self, span: ReadableSpan) -> None:
-        pass
-
-    def shutdown(self) -> None:
-        pass
-
-    def force_flush(self, timeout_millis: int = 30000) -> bool:
-        return True
-
-
-if _tracer_provider:
-    _tracer_provider.add_span_processor(ConversationIdSpanProcessor())
 
 
 def _bedrock_provider() -> BedrockProvider:
     return BedrockProvider(
-        aws_access_key_id=os.environ["BEDROCK_USERNAME"],
-        aws_secret_access_key=os.environ["BEDROCK_KEY"],
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         region_name="us-east-1",
     )
 
 
-def build_azure_model() -> tuple[OpenAIModel, str, str]:
+def _azure_available() -> bool:
+    return all(os.getenv(k) for k in ("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_DEPLOYMENT"))
+
+
+def _bedrock_available() -> bool:
+    return all(os.getenv(k) for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"))
+
+
+def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     provider = AzureProvider(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
-        api_version="2024-02-01",
+        api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
     )
     deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
-    return OpenAIModel(deployment, provider=provider), "Azure OpenAI", deployment
+    return OpenAIChatModel(deployment, provider=provider), "Azure OpenAI", deployment
 
 
 def build_bedrock_sonnet() -> tuple[BedrockConverseModel, str, str]:
@@ -104,6 +155,15 @@ def build_bedrock_haiku() -> tuple[BedrockConverseModel, str, str]:
     )
 
 
+def _available_builders() -> list:
+    builders = []
+    if _azure_available():
+        builders.append(build_azure_model)
+    if _bedrock_available():
+        builders.extend([build_bedrock_sonnet, build_bedrock_haiku])
+    return builders
+
+
 app = FastAPI(title="RUM Music Agent")
 
 app.add_middleware(
@@ -117,7 +177,7 @@ app.add_middleware(
 
 class QuestionRequest(BaseModel):
     question: str
-    conversation_id: str  # generated client-side, propagated through every exchange
+    conversation_id: str = ""
 
 
 class AnswerResponse(BaseModel):
@@ -135,9 +195,21 @@ class FeedbackRequest(BaseModel):
     model: str
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 async def serve_index():
-    return FileResponse(FRONTEND_DIR / "index.html")
+    html = (FRONTEND_DIR / "index.html").read_text()
+    rum_script = os.getenv("DT_RUM_SCRIPT", "")
+    if rum_script:
+        html = html.replace(
+            "https://js-cdn.dynatrace.com/jstag/<follow-the-instructions-in-the-README>.js",
+            rum_script,
+        )
+    return HTMLResponse(content=html)
 
 
 @app.post("/api/feedback", status_code=204)
@@ -167,7 +239,9 @@ async def ask_question(http_request: Request, body: QuestionRequest):
     incoming_ctx = extract(dict(http_request.headers))
 
     try:
-        builders = [build_azure_model, build_bedrock_sonnet, build_bedrock_haiku]
+        builders = _available_builders()
+        if not builders:
+            raise HTTPException(status_code=503, detail="No AI providers configured")
         random.shuffle(builders)
 
         last_error: Exception | None = None
@@ -190,12 +264,11 @@ async def ask_question(http_request: Request, body: QuestionRequest):
                     agent = Agent(
                         model=model,
                         system_prompt=MUSIC_SYSTEM_PROMPT,
-                        instrument=_instrumentation,
                     )
                     result = await agent.run(body.question)
                     answer = result.output if hasattr(result, "output") else result.data
 
-                    usage = result.usage()
+                    usage = result.usage
                     if usage:
                         span.set_attribute("gen_ai.usage.input_tokens", usage.input_tokens or 0)
                         span.set_attribute("gen_ai.usage.output_tokens", usage.output_tokens or 0)

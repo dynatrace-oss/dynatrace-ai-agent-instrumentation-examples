@@ -65,11 +65,13 @@ Monitor specific AI provider SDKs with Dynatrace.
 |----------|----------|---------------|---------------|
 | [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) |
 | [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
-| [Cohere](./cohere/oneagent/) | [✓](./cohere/oneagent/) | — | — |
-| [Groq](./groq/oneagent/) | [✓](./groq/oneagent/) | — | — |
-| [Mistral](./mistral/oneagent/) | [✓](./mistral/oneagent/) | — | — |
-| [Ollama](./ollama/oneagent/) | [✓](./ollama/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | — | — |
+| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
+| [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
+| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
 | [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) | — |
+
+\* Experimental sensor — prompt input and output capture not yet supported.
 
 ### Agent Framework Demos
 
@@ -78,12 +80,14 @@ Monitor AI agent frameworks with Dynatrace.
 | Framework | OneAgent | OpenInference | OpenTelemetry |
 |-----------|----------|---------------|---------------|
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
-| [AWS Strands Agents](./aws-strands/oneagent/) | [✓](./aws-strands/oneagent/) | — | — |
+| [AWS Strands Agents](./aws-strands/oneagent/) | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) |
 | [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
 | [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
 | [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
+| [Langfuse](./langfuse/) | — | — | [✓ Python](./langfuse/opentelemetry/) / [✓ Node](./langfuse/opentelemetry-node/) |
+| [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓](./langgraph/opentelemetry/) |
 | [LiteLLM](./litellm/opentelemetry/) | — | — | [✓](./litellm/opentelemetry/) |
-| [MCP (Model Context Protocol)](./mcp/oneagent/) | [✓](./mcp/oneagent/) | — | — |
+| [MCP (Model Context Protocol)](mcp/opentelemetry/) | — | — | [✓](mcp/opentelemetry/) |
 | [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
 | [OpenAI Agents SDK](./openai-agents/opentelemetry/) | — | — | [✓](./openai-agents/opentelemetry/) |
 | [Pydantic AI](./pydantic-ai/opentelemetry/) | — | — | [✓](./pydantic-ai/opentelemetry/) |

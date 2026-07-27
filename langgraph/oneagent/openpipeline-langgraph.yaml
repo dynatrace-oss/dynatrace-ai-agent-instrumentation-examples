@@ -1,0 +1,56 @@
+---
+# OpenPipeline configuration for the LangGraph + OneAgent demo.
+#
+# This is the OneAgent-path equivalent of the collector `transform` processor
+# used by the langgraph/opentelemetry demo. OneAgent captures gen_ai.* spans and
+# ships them straight to Dynatrace, so there is no customer-side collector to
+# redact in — the redaction is done server-side, on ingest, by OpenPipeline.
+#
+# It anonymizes captured message content: if gen_ai.input.messages,
+# gen_ai.output.messages, or gen_ai.system_instructions mentions "secret"
+# (case-insensitive), the value is replaced with "***REDACTED***".
+#
+# NOTE: unlike the collector approach, the raw text still travels from the host
+# to Dynatrace before being masked here. If secrets must never leave the host,
+# use the collector-based langgraph/opentelemetry demo instead.
+#
+# Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
+# then add a routing entry:
+#   Matcher:  dt.service.name == "langgraph/oneagent (langgraph-oneagent)" AND dt.openpipeline.source == "oneagent"
+#   Pipeline: langgraph-redact-secrets
+#
+# The matcher uses dt.service.name (the OneAgent-detected service display name)
+# combined with dt.openpipeline.source to scope the rule to OneAgent-captured spans only.
+
+customId: "langgraph-redact-secrets"
+displayName: "LangGraph AI Observability - Redact secrets"
+
+processing:
+  processors:
+
+    - id: "langgraph-redact-input-messages"
+      enabled: true
+      matcher: "isNotNull(gen_ai.input.messages)"
+      type: "dql"
+      description: "Redact input messages that mention a secret"
+      dql:
+        script: |
+          fieldsAdd gen_ai.input.messages = if(contains(toString(gen_ai.input.messages), "secret"), "***REDACTED***", else: gen_ai.input.messages)
+
+    - id: "langgraph-redact-output-messages"
+      enabled: true
+      matcher: "isNotNull(gen_ai.output.messages)"
+      type: "dql"
+      description: "Redact output messages that mention a secret"
+      dql:
+        script: |
+          fieldsAdd gen_ai.output.messages = if(contains(toString(gen_ai.output.messages), "secret"), "***REDACTED***", else: gen_ai.output.messages)
+
+    - id: "langgraph-redact-system-instructions"
+      enabled: true
+      matcher: "isNotNull(gen_ai.system_instructions)"
+      type: "dql"
+      description: "Redact system instructions that mention a secret"
+      dql:
+        script: |
+          fieldsAdd gen_ai.system_instructions = if(contains(toString(gen_ai.system_instructions), "secret"), "***REDACTED***", else: gen_ai.system_instructions)

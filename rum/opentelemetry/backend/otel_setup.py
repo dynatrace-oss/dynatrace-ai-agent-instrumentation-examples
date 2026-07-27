@@ -4,17 +4,17 @@ import os
 from urllib.parse import urlparse
 
 
-def setup_otel(service_name: str = "rum-music-agent"):
+def setup_otel(service_name: str = "rum-music-agent", exporter_wrapper=None):
     """
     Initialise OpenTelemetry traces + metrics and export to Dynatrace.
     Uses DT_ENDPOINT and DT_TOKEN from the environment (set via .env).
     Returns (tracer_provider, meter_provider).
     """
     dt_endpoint = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-    dt_api_token = os.environ.get("DT_TOKEN", "")
+    dt_api_token = os.environ.get("DT_API_TOKEN", "")
 
     if not dt_endpoint or not dt_api_token:
-        print("[otel] DT_ENDPOINT or DT_TOKEN not set — OTel export disabled")
+        print("[otel] DT_ENDPOINT or DT_API_TOKEN not set — OTel export disabled")
         return None, None
 
     parsed = urlparse(dt_endpoint)
@@ -45,11 +45,9 @@ def setup_otel(service_name: str = "rum-music-agent"):
     )
 
     tracer_provider = TracerProvider(resource=resource)
-    tracer_provider.add_span_processor(
-        BatchSpanProcessor(
-            OTLPSpanExporter(endpoint=f"{otlp_base}/v1/traces", headers=headers)
-        )
-    )
+    raw_exporter = OTLPSpanExporter(endpoint=f"{otlp_base}/v1/traces", headers=headers)
+    exporter = exporter_wrapper(raw_exporter) if exporter_wrapper else raw_exporter
+    tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(tracer_provider)
 
     meter_provider = MeterProvider(

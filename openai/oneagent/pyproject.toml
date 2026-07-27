@@ -1,0 +1,9 @@
+[project]
+name = "openai-oneagent-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=2.38.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+]

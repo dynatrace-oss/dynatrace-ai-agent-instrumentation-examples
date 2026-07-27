@@ -8,7 +8,7 @@ from main import setup_instrumentation, write_haiku
 
 setup_instrumentation()
 
-app = FastAPI(title="Haiku Writer")
+app = FastAPI(title="bedrock-oneagent")
 
 
 class HaikuRequest(BaseModel):

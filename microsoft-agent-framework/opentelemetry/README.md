@@ -19,9 +19,13 @@ Prompt and completion content (`gen_ai.input.messages` / `gen_ai.output.messages
 
 Latency (`gen_ai.client.operation.duration`) and token type (`gen_ai.token.type`) are emitted as OTel **metrics** and require a separate metrics endpoint to populate the latency and cost dashboard views in Dynatrace.
 
+> [!NOTE]
+> This example is not supported on Windows. `agent-framework`'s dependency tree includes `azure-search-documents==11.7.0b2` which is unavailable on PyPI for Python 3.14+ on Windows.
+
 ## Prerequisites
 
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - A Dynatrace API token with:
   - `openTelemetryTrace.ingest` — for traces and prompts
   - `metrics.ingest` — for latency charts and cost dashboard
@@ -36,7 +40,7 @@ OPENAI_API_KEY=...
 OPENAI_API_BASE=https://<resource>.openai.azure.com/openai/deployments/<deployment>
 OPENAI_API_VERSION=2025-04-01-preview
 MODEL=<deployment>
-TEMPERATURE=0.7
+TEMPERATURE=1  # model-dependent: some models only accept the default (1)
 
 DT_ENDPOINT=https://<tenant>.live.dynatrace.com
 DT_API_TOKEN=dt0c01....

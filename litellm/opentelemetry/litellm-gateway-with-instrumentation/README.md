@@ -27,6 +27,7 @@ All signals are forwarded via gRPC to a local OTel Collector at `localhost:4317`
 ### Prerequisites
 
 - Python 3.9+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Ollama](https://ollama.com) running locally (`ollama serve`) with `llama3.2` and `all-minilm` pulled
 - A running [OpenTelemetry Collector](../README.md) forwarding to Dynatrace
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** and **`metrics.ingest`** scopes
@@ -84,10 +85,9 @@ docker run \
 ### Run
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python3 basic.py
+cd litellm/opentelemetry/litellm-gateway-with-instrumentation
+uv sync
+uv run python3 basic.py
 ```
 
 The proxy starts on `http://localhost:4000`. The Admin UI is available at `http://localhost:4000/ui`.

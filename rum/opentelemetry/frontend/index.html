@@ -465,13 +465,19 @@
     );
   }
 
-  const CONV_ID = sessionStorage.getItem('conversationId') || (() => {
+  let CONV_ID = sessionStorage.getItem('conversationId') || (() => {
     const id = uuidv4();
     sessionStorage.setItem('conversationId', id);
     return id;
   })();
 
-  document.getElementById('convIdDisplay').textContent = CONV_ID;
+  function updateConvId(id) {
+    CONV_ID = id;
+    sessionStorage.setItem('conversationId', id);
+    document.getElementById('convIdDisplay').textContent = id;
+  }
+  updateConvId(CONV_ID);
+
 
   // Copy full DQL query to clipboard — paste directly into a Dynatrace Notebook
   document.getElementById('copyBtn').addEventListener('click', () => {
@@ -484,26 +490,24 @@
   });
 
   // ── Dynatrace RUM integration ────────────────────────────────────────────────
-  // If the DT RUM JS tag is loaded (see <head>), register the conversation ID as
-  // a session-level custom property. This links the RUM session to the backend
-  // OTel spans in Dynatrace — you can drill from a RUM user session directly into
-  // the distributed trace for any conversation.
-  function initRum() {
-    if (typeof dtrum !== 'undefined') {
-      // Set conversation ID as a session property visible in DT User Sessions
-      dtrum.sendSessionProperties(
-        undefined,           // custom number properties
-        undefined,           // custom date properties
-        { conversationId: CONV_ID }   // custom string properties
-      );
-      document.getElementById('rumStatus').textContent = 'RUM active';
-      document.getElementById('rumStatus').className = 'rum-status active';
-    }
-  }
+  // Poll until window.dtrum is defined — the RUM JS loads asynchronously so it
+  // may not be present when this script first runs.
+  const rumPoll = setInterval(() => {
+    if (typeof window.dtrum === 'undefined') return;
+    clearInterval(rumPoll);
 
-  // dtrum may load asynchronously — try immediately and again after load
-  initRum();
-  window.addEventListener('load', initRum);
+    // Try to align conversation ID with the RUM session ID if the API is available.
+    const rumId = window.dtrum.getSessionId?.();
+    if (rumId) updateConvId(rumId);
+
+    // Register conversation ID as a session-level custom property visible in
+    // Experience Vitals user sessions.
+    window.dtrum.sendSessionProperties?.(undefined, undefined, { conversationId: CONV_ID });
+
+    document.getElementById('rumStatus').textContent = 'RUM active';
+    document.getElementById('rumStatus').className = 'rum-status active';
+  }, 200);
+  setTimeout(() => clearInterval(rumPoll), 10000);
 
   // ── Category filter ──────────────────────────────────────────────────────────
   document.querySelectorAll('.cat-btn').forEach(btn => {

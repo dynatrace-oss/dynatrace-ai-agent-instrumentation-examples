@@ -7,7 +7,7 @@ from fastapi.responses import PlainTextResponse
 
 MODEL: str = os.environ.get("MODEL", "gpt-4o")
 
-app = FastAPI()
+app = FastAPI(title="openai-oneagent")
 
 
 @app.get("/health")

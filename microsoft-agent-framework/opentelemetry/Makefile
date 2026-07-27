@@ -1,12 +1,16 @@
-PYTHON ?= python3
-VENV ?= .venv
+SHELL            := /bin/bash
+-include .env
+export
 
-.PHONY: install run
+PORT             ?= 8000
 
-install:
-	$(PYTHON) -m venv $(VENV)
-	. $(VENV)/bin/activate && pip install -r requirements.txt
+.PHONY: install run help
 
-run:
-	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
-	. $(VENV)/bin/activate && python app.py
+help: ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+install: ## Install Python dependencies
+	uv sync
+
+run: ## Run the agent app
+	uv run python3 app.py

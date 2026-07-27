@@ -14,14 +14,16 @@
 
 """Academic_Research: Research advice, related literature finding, research area proposals, web knowledge access."""
 
+import os
+
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
-from . import prompt
-from .sub_agents.academic_newresearch import academic_newresearch_agent
-from .sub_agents.academic_websearch import academic_websearch_agent
+import prompt
+from sub_agents.academic_newresearch import academic_newresearch_agent
+from sub_agents.academic_websearch import academic_websearch_agent
 
-MODEL = "gemini-2.5-pro"
+MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 
 
 academic_coordinator = LlmAgent(

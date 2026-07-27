@@ -1,8 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "monorepo:opentelemetry-js"],
   "timezone": "UTC",
-  "schedule": ["before 5am on Monday"],
   "ignorePaths": ["**/.venv/**"],
   "customManagers": [
     {
@@ -12,6 +11,15 @@
         "ghcr\\.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:(?<currentValue>[^\\s]+)"
       ],
       "depNameTemplate": "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)Makefile$"],
+      "matchStrings": [
+        "ghcr\\.io/observiq/bindplane-agent:(?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "ghcr.io/observiq/bindplane-agent",
       "datasourceTemplate": "docker"
     }
   ],
@@ -34,7 +42,10 @@
     },
     {
       "matchManagers": ["custom.regex"],
-      "matchDepNames": ["ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector"],
+      "matchDepNames": [
+        "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
+        "ghcr.io/observiq/bindplane-agent"
+      ],
       "groupName": "collector image"
     },
     {

@@ -6,7 +6,7 @@ from fastapi.responses import PlainTextResponse
 
 MODEL: str = os.environ.get("MODEL", "llama-3.1-8b-instant")
 
-app = FastAPI()
+app = FastAPI(title="groq-oneagent")
 
 
 @app.get("/health")

@@ -26,7 +26,8 @@ Langfuse(
     ),
 )
 
-MODEL: str = os.environ.get("MODEL", "gpt-4o-mini")
+MODEL: str = os.environ.get("MODEL", "gpt-5.4-mini")
+TEMPERATURE: float = float(os.environ.get("TEMPERATURE", "1"))
 
 
 @observe()
@@ -48,6 +49,7 @@ def generate_haiku(topic: str = "observability") -> str:
         model=MODEL,
         messages=[{"role": "user", "content": f"Write a haiku about {topic}."}],
         max_completion_tokens=50,
+        temperature=TEMPERATURE,
     )
     return response.choices[0].message.content
 

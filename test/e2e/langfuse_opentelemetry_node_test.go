@@ -8,6 +8,7 @@ func TestLangfuseOpenTelemetryNode(t *testing.T) {
 	// CLI app: make run builds TypeScript, starts the OTel Collector (Docker),
 	// then runs dist/index.js once. No triggerHaiku — the haiku request is
 	// issued by make run itself.
+	startOpenAICompatibleMock(t, "OPENAI_API_KEY", "OPENAI_API_BASE")
 	startCLIApp(t, "langfuse/opentelemetry-node")
 
 	auditSpan(t, "langfuse", "opentelemetry-node", GenericProfile,
@@ -15,5 +16,10 @@ func TestLangfuseOpenTelemetryNode(t *testing.T) {
 | filter service.name == "langfuse-node"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
+| filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
+
+	// The AI Observability app charts gen_ai.client.operation.duration; the
+	// collector path gets it from the built-in span pipeline.
+	assertGenAIDurationMetric(t, "langfuse-node")
 }

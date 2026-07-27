@@ -54,6 +54,22 @@ func StartCLI(dir string) (*App, error) {
 	return &App{cmd: cmd}, nil
 }
 
+// StartCLIWithTarget runs "make -e <target>" in dir as a background process
+// without waiting for an HTTP readiness endpoint. Use this when a non-default
+// make target is needed (e.g. "run-openpipeline" instead of "run").
+func StartCLIWithTarget(dir, target string) (*App, error) {
+	cmd := exec.Command("make", "-e", target)
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("make %s: %w", target, err)
+	}
+	return &App{cmd: cmd}, nil
+}
+
 // Stop kills the process group of the app, ensuring all child processes
 // (e.g. uvicorn workers) are terminated along with the main process.
 func (a *App) Stop() error {

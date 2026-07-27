@@ -7,97 +7,27 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Replicates the OpenPipeline "openinference-ai-spans" pipeline using a
-  # standard OTel transform processor (OTTL statements).
-  #
-  # Scoped to OpenInference spans via:
-  #   (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-  #
-  # Processing order mirrors openpipeline-openinference.yaml processors 1–15.
-  # Note: later statements reference renamed attributes (e.g. gen_ai.request.model
-  # not llm.model_name) because OTTL statements execute sequentially.
-  transform/openinference:
+  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
+  # The built-in "openinference" source maps model, provider, token usage, tool,
+  # agent and session attributes, and reconstructs the flattened
+  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
+  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
+  # so the exported spans carry only gen_ai.* fields.
+  gen_ai_normalizer:
+    sources:
+      - name: openinference
+        remove_originals: true
+
+  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
+  # emit gen_ai.response.model (OpenInference has no separate response-model
+  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
+  # so mirror the request model when the response has not set one.
+  transform/response_model:
+    error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          # ── 1. OPERATION KIND ─────────────────────────────────────────────────
-          - set(attributes["gen_ai.operation.kind"], "task") where (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.operation.kind"], "workflow") where attributes["openinference.span.kind"] == "CHAIN" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.operation.kind"], "tool") where attributes["openinference.span.kind"] == "TOOL" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.operation.kind"], "agent") where attributes["openinference.span.kind"] == "AGENT" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.operation.kind"], "retrieval") where attributes["openinference.span.kind"] == "RETRIEVER" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 2. OPERATION NAME: LLM ────────────────────────────────────────────
-          - set(attributes["gen_ai.operation.name"], "chat") where (attributes["llm.token_count.total"] != nil or attributes["llm.model_name"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 3. LLM ATTRIBUTES: model + provider ──────────────────────────────
-          - set(attributes["gen_ai.request.model"], attributes["llm.model_name"]) where attributes["llm.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.model_name") where attributes["llm.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.provider.name"], attributes["llm.provider"]) where attributes["llm.provider"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.provider") where attributes["llm.provider"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 3b. FALLBACK: llm.system → gen_ai.provider.name ──────────────────
-          - set(attributes["gen_ai.provider.name"], attributes["llm.system"]) where attributes["llm.system"] != nil and attributes["gen_ai.provider.name"] == nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.system") where attributes["gen_ai.provider.name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 4. TOKEN USAGE ────────────────────────────────────────────────────
-          - set(attributes["gen_ai.usage.input_tokens"], attributes["llm.token_count.prompt"]) where attributes["llm.token_count.prompt"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.token_count.prompt") where attributes["llm.token_count.prompt"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.usage.output_tokens"], attributes["llm.token_count.completion"]) where attributes["llm.token_count.completion"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.token_count.completion") where attributes["llm.token_count.completion"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 4b. CACHE TOKEN USAGE ─────────────────────────────────────────────
-          - set(attributes["gen_ai.usage.prompt_caching.read_tokens"], attributes["llm.token_count.prompt_details.cache_read"]) where attributes["llm.token_count.prompt_details.cache_read"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.token_count.prompt_details.cache_read") where attributes["llm.token_count.prompt_details.cache_read"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.usage.prompt_caching.write_tokens"], attributes["llm.token_count.prompt_details.cache_write"]) where attributes["llm.token_count.prompt_details.cache_write"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.token_count.prompt_details.cache_write") where attributes["llm.token_count.prompt_details.cache_write"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 5. REQUEST PARAMETERS ─────────────────────────────────────────────
-          - set(attributes["gen_ai.request.temperature"], attributes["llm.temperature"]) where attributes["llm.temperature"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.temperature") where attributes["llm.temperature"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.request.max_tokens"], attributes["llm.max_tokens"]) where attributes["llm.max_tokens"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.max_tokens") where attributes["llm.max_tokens"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.request.top_p"], attributes["llm.top_p"]) where attributes["llm.top_p"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "llm.top_p") where attributes["llm.top_p"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 6. RESPONSE METADATA: finish reasons ──────────────────────────────
-          - set(attributes["gen_ai.response.finish_reasons"], [attributes["llm.finish_reason"]]) where attributes["llm.finish_reason"] != nil and (attributes["llm.token_count.total"] != nil or attributes["gen_ai.request.model"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 7. OPERATION NAME: EMBEDDINGS ──────────────────────────────────────
-          - set(attributes["gen_ai.operation.name"], "embeddings") where attributes["embedding.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 8. EMBEDDING ATTRIBUTES ────────────────────────────────────────────
-          - set(attributes["gen_ai.request.model"], attributes["embedding.model_name"]) where attributes["embedding.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "embedding.model_name") where attributes["embedding.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.embeddings.dimension.count"], attributes["embedding.vector_length"]) where attributes["embedding.vector_length"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "embedding.vector_length") where attributes["embedding.vector_length"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 9. RERANKER ─────────────────────────────────────────────────────────
-          - set(attributes["gen_ai.request.model"], attributes["reranker.model_name"]) where attributes["reranker.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "reranker.model_name") where attributes["reranker.model_name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 10. AGENT NAME ──────────────────────────────────────────────────────
-          - set(attributes["gen_ai.agent.name"], attributes["agent.name"]) where attributes["agent.name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "agent.name") where attributes["agent.name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 11. TOOL DETAILS ────────────────────────────────────────────────────
-          - set(attributes["gen_ai.tool.name"], attributes["tool.name"]) where attributes["tool.name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "tool.name") where attributes["tool.name"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.tool.description"], attributes["tool.description"]) where attributes["tool.description"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "tool.description") where attributes["tool.description"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 12. SOURCE METADATA ─────────────────────────────────────────────────
-          - set(attributes["ai.observability.source"], "openinference") where (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── 15. INPUT/OUTPUT FALLBACK (INTERIM) ─────────────────────────────────
-          - set(attributes["gen_ai.input.messages"], attributes["input.value"]) where attributes["input.value"] != nil and attributes["gen_ai.input.messages"] == nil and (attributes["llm.token_count.total"] != nil or attributes["gen_ai.request.model"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "input.value") where attributes["input.value"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.output.messages"], attributes["output.value"]) where attributes["output.value"] != nil and (attributes["llm.token_count.total"] != nil or attributes["gen_ai.request.model"] != nil) and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - delete_key(attributes, "output.value") where attributes["output.value"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-
-          # ── FIXUPS ──────────────────────────────────────────────────────────────
-          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure" and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
-          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and (IsMatch(instrumentation_scope.name, "openinference.*") or IsMatch(attributes["otel.scope.name"], "openinference.*"))
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
 
   batch:
     send_batch_size: 512
@@ -113,7 +43,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/openinference, batch]
+      processors: [gen_ai_normalizer, transform/response_model, batch]
       exporters: [otlp_http/dynatrace]
     metrics:
       receivers: [otlp]

@@ -20,6 +20,7 @@ All signals are forwarded via gRPC to a local OTel Collector at `localhost:4317`
 ### Prerequisites
 
 - Python 3.9+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - A running [OpenTelemetry Collector](../README.md) forwarding to Dynatrace
 - At least one LLM provider API key (xAI, Groq, or Anthropic)
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, and **`logs.ingest`** scopes
@@ -78,10 +79,9 @@ docker run \
 ### Run
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+cd litellm/opentelemetry
+make install
+make run
 ```
 
 ### Call the API

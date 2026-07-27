@@ -1,6 +1,6 @@
 SHELL            := /bin/bash
 -include .env
-export
+export PORT ?= 8000
 
 .PHONY: install run build push request help
 
@@ -10,8 +10,8 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Run the Strands agent demo
-	uv run python3 main.py
+run: ## Run app locally on port $(PORT)
+	uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
@@ -19,5 +19,7 @@ build: ## Not applicable — no container defined for this demo
 push: ## Not applicable — no container defined for this demo
 	@echo "push: no Dockerfile for this demo"
 
-request: ## Not applicable — this demo runs as a CLI, not an HTTP server
-	@echo "request: this demo runs as a CLI script, not an HTTP server; use 'make run' instead"
+request: ## POST /agent to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/agent \
+	  -H 'Content-Type: application/json' \
+	  -d '{"task":"Broadway shows in NYC tonight"}' | python3 -m json.tool

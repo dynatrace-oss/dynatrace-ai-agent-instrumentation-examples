@@ -1,17 +1,16 @@
 [project]
-name = "agent-core"
+name = "aws-bedrock-agents-oneagent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Personal Assistant Agent built on top of Bedrock AgentCore, auto-instrumented by Dynatrace OneAgent"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "bedrock-agentcore",
     "boto3",
-    "botocore",
-    "langchain[aws]",
+    "langchain-aws",
     "langgraph",
-    "langsmith[otel]",
     "ddgs",
-    "langchain-community",
-    "python-dotenv",
-    "traceloop-sdk",
+    "oneagent-sdk",
+    "fastapi",
+    "uvicorn[standard]",
 ]

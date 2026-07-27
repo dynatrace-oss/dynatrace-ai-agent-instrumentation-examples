@@ -1,0 +1,40 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Anonymize captured messages before they leave the collector.
+  # Message content is recorded per the GenAI semantic conventions as the
+  # gen_ai.input.messages / gen_ai.output.messages / gen_ai.system_instructions
+  # span attributes (JSON-serialized message arrays). If any of them mentions
+  # "secret" (case-insensitive), the whole value is replaced so the sensitive
+  # text never reaches Dynatrace. Non-matching values pass through unchanged.
+  transform/redact_secrets:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.input.messages"], "***REDACTED***") where attributes["gen_ai.input.messages"] != nil and IsMatch(attributes["gen_ai.input.messages"], "(?i)secret")
+          - set(attributes["gen_ai.output.messages"], "***REDACTED***") where attributes["gen_ai.output.messages"] != nil and IsMatch(attributes["gen_ai.output.messages"], "(?i)secret")
+          - set(attributes["gen_ai.system_instructions"], "***REDACTED***") where attributes["gen_ai.system_instructions"] != nil and IsMatch(attributes["gen_ai.system_instructions"], "(?i)secret")
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp_http/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/redact_secrets]
+      exporters: [debug, otlp_http/dynatrace]
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug, otlp_http/dynatrace]

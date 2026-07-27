@@ -1,0 +1,13 @@
+[project]
+name = "aws-agent-sdk"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.12",
+    "opentelemetry-instrumentation-fastapi>=0.54b1",
+    "opentelemetry-instrumentation-urllib3>=0.54b1",
+    "strands-agents>=0.1.2",
+    "strands-agents-tools>=0.1.1",
+]

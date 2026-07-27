@@ -1,0 +1,173 @@
+---
+# OpenPipeline configuration for AWS Strands Agents (direct OTLP export, no collector)
+#
+# Normalizes Strands SDK span attributes to Dynatrace gen_ai.* semantic conventions.
+# Use this as an alternative to the OTel Collector when you prefer to let Dynatrace
+# OpenPipeline do the attribute remapping instead of running a local collector.
+#
+# Deploy in your Dynatrace tenant (Settings → OpenPipeline → Spans), then add
+# a routing entry:
+#   Matcher:  isNotNull(gen_ai.prompt) AND gen_ai.system == "strands-agents"
+#   Pipeline: strands-agents-ai-spans
+#
+# The matcher requires gen_ai.prompt to be present. The OTel Collector deletes
+# gen_ai.prompt after remapping it to gen_ai.input.messages, so collector-transformed
+# spans are excluded and only direct (no-collector) Strands spans enter this pipeline.
+#
+# Strands span types and their naming patterns:
+#   Agent span   — named after the agent (e.g. "Strands Agent")
+#   Model invoke — span.name == "Model invoke"
+#   Tool span    — span.name starts with "Tool: "
+#   Cycle span   — span.name starts with "Cycle "
+
+customId: "strands-agents-ai-spans"
+displayName: "AWS Strands Agents AI Observability - Spans"
+
+processing:
+  processors:
+
+    # ============================================================================
+    # 1. INPUT / OUTPUT MESSAGES
+    # ============================================================================
+    # Strands emits gen_ai.prompt and gen_ai.completion instead of the OTel GenAI
+    # convention (gen_ai.input.messages / gen_ai.output.messages). Copy them so
+    # the Dynatrace AI Observability app can display prompts and completions.
+    # Guards prevent double-mapping when the OTel Collector already did this.
+    # ============================================================================
+    - id: "strands-input-output"
+      enabled: true
+      matcher: 'gen_ai.system == "strands-agents"'
+      type: "dql"
+      description: "Map gen_ai.prompt / gen_ai.completion to OTel GenAI convention"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.input.messages`  = if(isNull(`gen_ai.input.messages`),  `gen_ai.prompt`,     else: `gen_ai.input.messages`)
+          | fieldsAdd `gen_ai.output.messages` = if(isNull(`gen_ai.output.messages`), `gen_ai.completion`, else: `gen_ai.output.messages`)
+
+    # ============================================================================
+    # 2. OPERATION NAME + KIND
+    # ============================================================================
+    # Infer gen_ai.operation.name and gen_ai.operation.kind from span name.
+    #
+    # Span name → kind / operation.name:
+    #   "Model invoke"  → task  / chat
+    #   "Tool: <name>"  → tool  / (tool name)
+    #   "Cycle <n>"     → task  / event-loop-cycle
+    #   anything else   → agent / (agent name — the span IS the top-level agent)
+    # ============================================================================
+    - id: "strands-operation"
+      enabled: true
+      matcher: 'gen_ai.system == "strands-agents"'
+      type: "dql"
+      description: "Set gen_ai.operation.kind and gen_ai.operation.name from span name"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.operation.kind` = if(span.name == "Model invoke", "task",
+                                             else: if(startsWith(span.name, "Tool:"), "tool",
+                                             else: if(startsWith(span.name, "Cycle "), "task",
+                                             else: "agent")))
+          | fieldsAdd `gen_ai.operation.name` = if(span.name == "Model invoke", "chat", else: span.name)
+
+    # ============================================================================
+    # 3. PROVIDER INFERENCE
+    # ============================================================================
+    # Bedrock model IDs encode the provider: [region.]<provider>.<model>:<version>
+    # Examples:
+    #   us.anthropic.claude-haiku-4-5-20251001-v1:0  → anthropic
+    #   anthropic.claude-3-sonnet-20240229-v1:0      → anthropic
+    #   us.amazon.titan-text-express-v1              → amazon
+    #   us.meta.llama3-8b-instruct-v1:0              → meta
+    #   us.cohere.command-r-v1:0                     → cohere
+    #   us.mistral.mistral-large-2402-v1:0           → mistral
+    # ============================================================================
+    - id: "strands-provider-inference"
+      enabled: true
+      matcher: 'isNotNull(`gen_ai.request.model`)'
+      type: "dql"
+      description: "Infer gen_ai.provider.name from Bedrock model ID"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.provider.name` = if(matchesPhrase(`gen_ai.request.model`, "anthropic"), "anthropic",
+                                            else: if(matchesPhrase(`gen_ai.request.model`, "amazon"), "amazon",
+                                            else: if(matchesPhrase(`gen_ai.request.model`, "meta"), "meta",
+                                            else: if(matchesPhrase(`gen_ai.request.model`, "cohere"), "cohere",
+                                            else: if(matchesPhrase(`gen_ai.request.model`, "mistral"), "mistral",
+                                            else: null)))))
+
+    # ============================================================================
+    # 4. RESPONSE MODEL
+    # ============================================================================
+    # Strands does not emit a separate response model field.
+    # Mirror gen_ai.request.model to gen_ai.response.model on model invoke spans.
+    # ============================================================================
+    - id: "strands-response-model"
+      enabled: true
+      matcher: 'span.name == "Model invoke" AND isNotNull(`gen_ai.request.model`)'
+      type: "dql"
+      description: "Mirror request model to gen_ai.response.model"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.response.model` = `gen_ai.request.model`
+
+    # ============================================================================
+    # 5. TOKEN NORMALIZATION
+    # ============================================================================
+    # Strands uses gen_ai.usage.prompt_tokens / gen_ai.usage.completion_tokens
+    # (older OTel GenAI naming). Rename to the current convention.
+    # ============================================================================
+    - id: "strands-token-normalization"
+      enabled: true
+      matcher: 'isNotNull(`gen_ai.usage.prompt_tokens`) OR isNotNull(`gen_ai.usage.completion_tokens`)'
+      type: "fieldsRename"
+      description: "Rename Strands token fields to current OTel GenAI naming"
+      fieldsRename:
+        fields:
+          - fromName: "gen_ai.usage.prompt_tokens"
+            toName: "gen_ai.usage.input_tokens"
+          - fromName: "gen_ai.usage.completion_tokens"
+            toName: "gen_ai.usage.output_tokens"
+
+    # ============================================================================
+    # 6. AGENT NAME
+    # ============================================================================
+    # Strands sets both agent.name and gen_ai.agent.name. Remove the non-namespaced
+    # copy; gen_ai.agent.name is already correct.
+    # ============================================================================
+    - id: "strands-agent-name-cleanup"
+      enabled: true
+      matcher: 'isNotNull(`agent.name`)'
+      type: "fieldsRemove"
+      description: "Remove agent.name; gen_ai.agent.name already carries the value"
+      fieldsRemove:
+        fields:
+          - "agent.name"
+
+    # ============================================================================
+    # 7. TOOL ATTRIBUTES
+    # ============================================================================
+    # Strands uses tool.name / tool.parameters on tool spans.
+    # Rename to the gen_ai.tool.* namespace.
+    # ============================================================================
+    - id: "strands-tool-attributes"
+      enabled: true
+      matcher: 'isNotNull(`tool.name`)'
+      type: "fieldsRename"
+      description: "Map Strands tool.* to gen_ai.tool.*"
+      fieldsRename:
+        fields:
+          - fromName: "tool.name"
+            toName: "gen_ai.tool.name"
+          - fromName: "tool.parameters"
+            toName: "gen_ai.tool.call.arguments"
+
+    # ============================================================================
+    # 8. SOURCE TAG
+    # ============================================================================
+    - id: "strands-source-tag"
+      enabled: true
+      matcher: 'gen_ai.system == "strands-agents"'
+      type: "dql"
+      description: "Tag spans with SDK source identifier"
+      dql:
+        script: |
+          fieldsAdd `ai.observability.source` = "strands-agents"

@@ -31,6 +31,7 @@ All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Tr
 ### Prerequisites
 
 - Python 3.9+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials configured (`aws configure` or environment variables) with Bedrock access in `us-east-1`
 - A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`** and **`logs.ingest`** scopes
@@ -38,9 +39,7 @@ All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Tr
 ### Install dependencies
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+make install
 ```
 
 ### Configure the OTel Collector
@@ -85,8 +84,7 @@ docker run \
 ### Run
 
 ```bash
-source .venv/bin/activate
-python3 main.py
+make run
 ```
 
 The script runs continuously, calling both the Converse and Invoke APIs every 5 seconds. Stop it with `Ctrl+C`.
