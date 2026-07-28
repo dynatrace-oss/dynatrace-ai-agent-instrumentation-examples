@@ -1,4 +1,5 @@
 import os
+import uuid
 import openai
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk
@@ -10,6 +11,7 @@ os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experiment
 os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
 
 from traceloop.sdk import Traceloop
+from traceloop.sdk.tracing.tracing import set_conversation_id
 
 _app_name = os.environ.get("OTEL_SERVICE_NAME", "openai")
 _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
@@ -38,6 +40,7 @@ if __name__ == "__main__":
             api_key=os.getenv("OPENAI_API_KEY"),
         )
 
+    set_conversation_id(str(uuid.uuid4()))
     response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
         model=MODEL,
         messages=[
