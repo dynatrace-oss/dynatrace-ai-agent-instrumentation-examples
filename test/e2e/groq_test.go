@@ -9,7 +9,7 @@ func TestGroqOneAgent(t *testing.T) {
 	startApp(t, "groq/oneagent")
 	triggerHaiku(t, false)
 
-	auditSpan(t, "groq", "oneagent", GenericProfile,
+	auditSpanWithMetrics(t, "groq", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "groq/oneagent"
 | filter gen_ai.provider.name == "groq" or gen_ai.system == "groq"
@@ -19,5 +19,6 @@ func TestGroqOneAgent(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
+		"groq/oneagent", genAIClientMetrics,
 		"Backend mocked: ollama running tinyllama locally serves Groq-compatible requests via GROQ_BASE_URL. Replace with a real GROQ_API_KEY secret for live validation.")
 }

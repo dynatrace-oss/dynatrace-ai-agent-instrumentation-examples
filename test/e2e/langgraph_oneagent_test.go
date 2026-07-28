@@ -48,7 +48,7 @@ func TestLangGraphOneAgent(t *testing.T) {
 | filter contains(toString(`+"`gen_ai.input.messages`"+`), "launch codes")
 | limit 1`))
 
-	auditSpan(t, "langgraph", "oneagent", GenericProfile,
+	auditSpanWithMetrics(t, "langgraph", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "langgraph/oneagent"
 | filter dt.openpipeline.source == "oneagent"
@@ -56,5 +56,6 @@ func TestLangGraphOneAgent(t *testing.T) {
 | filter isNotNull(dt.smartscape.service)
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`)
+| limit 1`,
+		"langgraph/oneagent", genAIClientMetrics)
 }

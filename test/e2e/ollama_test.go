@@ -8,12 +8,13 @@ func TestOllamaOneAgent(t *testing.T) {
 	startApp(t, "ollama/oneagent")
 	triggerHaiku(t, false)
 
-	auditSpan(t, "ollama", "oneagent", GenericProfile,
+	auditSpanWithMetrics(t, "ollama", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "ollama/oneagent"
 | filter (gen_ai.provider.name == "ollama" or gen_ai.system == "ollama") and dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | filter isNotNull(dt.smartscape.service)
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`)
+| limit 1`,
+		"ollama/oneagent", genAIClientMetrics)
 }

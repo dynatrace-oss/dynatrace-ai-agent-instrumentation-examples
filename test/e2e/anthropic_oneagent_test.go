@@ -8,7 +8,7 @@ func TestAnthropicOneAgent(t *testing.T) {
 	startApp(t, "anthropic/oneagent")
 	triggerHaiku(t, true)
 
-	auditSpan(t, "anthropic", "oneagent", GenericProfile,
+	auditSpanWithMetrics(t, "anthropic", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "anthropic/oneagent"
 | filter (gen_ai.provider.name == "anthropic" or gen_ai.system == "anthropic") and dt.openpipeline.source == "oneagent"
@@ -16,5 +16,6 @@ func TestAnthropicOneAgent(t *testing.T) {
 | filter isNotNull(dt.smartscape.service)
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`)
+| limit 1`,
+		"anthropic/oneagent", genAIClientMetrics)
 }

@@ -8,7 +8,7 @@ func TestOpenAIOneAgent(t *testing.T) {
 	startApp(t, "openai/oneagent")
 	triggerHaiku(t, false)
 
-	auditSpan(t, "openai", "oneagent", OpenAIProfile,
+	auditSpanWithMetrics(t, "openai", "oneagent", OpenAIProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "openai/oneagent"
 | filter dt.openpipeline.source == "oneagent"
@@ -16,5 +16,6 @@ func TestOpenAIOneAgent(t *testing.T) {
 | filter isNotNull(dt.smartscape.service)
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`)
+| limit 1`,
+		"openai/oneagent", genAIClientMetrics)
 }

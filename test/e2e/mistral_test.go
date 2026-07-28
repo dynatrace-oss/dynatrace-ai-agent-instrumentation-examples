@@ -9,7 +9,7 @@ func TestMistralOneAgent(t *testing.T) {
 	startApp(t, "mistral/oneagent")
 	triggerHaiku(t, false)
 
-	auditSpan(t, "mistral", "oneagent", GenericProfile,
+	auditSpanWithMetrics(t, "mistral", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "mistral/oneagent"
 | filter (gen_ai.provider.name == "mistralai" or gen_ai.system == "mistralai") and dt.openpipeline.source == "oneagent"
@@ -18,5 +18,6 @@ func TestMistralOneAgent(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
+		"mistral/oneagent", genAIClientMetrics,
 		"Backend mocked: in-process httptest stub intercepts Mistral SDK calls via MISTRAL_BASE_URL. Replace with a real MISTRAL_API_KEY secret for live validation.")
 }
