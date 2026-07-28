@@ -108,6 +108,28 @@ func init() {
 	}
 }
 
+// GuardrailProfile checks only Bedrock guardrail-assessment attributes. Bedrock
+// only attaches this data to the trace that actually tripped the guardrail —
+// a demo's baseline (non-triggering) trace will never carry it. Auditing it
+// together with the generic/bedrock profile made the verdict depend on which
+// of the two traces auditSpan happened to anchor on, so it's evaluated as its
+// own report against its own dedicated (deterministically sorted) anchor span
+// via auditGuardrailSpan.
+var GuardrailProfile = Profile{
+	Name: "bedrock-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.bedrock.guardrail.activation", RuleID: "AR-017"},
+		{Name: "gen_ai.bedrock.guardrail.content", RuleID: "AR-018"},
+		{Name: "gen_ai.bedrock.guardrail.sensitive_info", RuleID: "AR-019"},
+	},
+	Optional: []AttributeCheck{
+		{Name: "gen_ai.bedrock.guardrail.topics", RuleID: "AR-020"},
+		{Name: "gen_ai.bedrock.guardrail.words", RuleID: "AR-021"},
+		{Name: "gen_ai.bedrock.guardrail.contextual", RuleID: "AR-040"},
+		{Name: "gen_ai.guardrail.grounding_type", RuleID: "AR-046"},
+	},
+}
+
 // OpenAIProfile extends generic with OpenAI prompt-caching attributes.
 var OpenAIProfile Profile
 
@@ -417,6 +439,18 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
 		report.Verdict, len(spans), sdk, instrumentation)
+}
+
+// auditGuardrailSpan is like auditSpanOptional but always evaluates against
+// GuardrailProfile. It skips (rather than fails) the test when no anchor span
+// is found, since it is only ever called after triggerHaikuGuardrail /
+// triggerAgentGuardrail — which themselves no-op when BEDROCK_GUARDRAIL_ID is
+// unset, so no guardrail-triggering request would have been sent at all.
+// Reports are written under "<instrumentation>-guardrail" so they never
+// collide with the baseline auditSpan report for the same suite.
+func auditGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	auditSpanOptional(t, sdk, instrumentation+"-guardrail", GuardrailProfile, dql, note...)
 }
 
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
