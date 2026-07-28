@@ -15,6 +15,17 @@ oneagent.initialize()
 agentcore = BedrockAgentCoreApp()
 
 
+def _guardrail_config():
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+    if not guardrail_id:
+        return None
+    return {
+        "guardrailIdentifier": guardrail_id,
+        "guardrailVersion": os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),
+        "trace": "enabled",
+    }
+
+
 @tool("web_search")
 def web_search(query: str) -> str:
     """Search the web for current information about destinations, attractions, events, and general topics."""
@@ -35,12 +46,16 @@ _llm_with_tools = None
 def _get_llm_with_tools():
     global _llm_with_tools
     if _llm_with_tools is None:
-        llm = ChatBedrockConverse(
-            model=os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
-            region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
-            temperature=0.0,
-            max_tokens=512,
-        )
+        kwargs = {
+            "model": os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+            "region_name": os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+            "temperature": 0.0,
+            "max_tokens": 512,
+        }
+        gc = _guardrail_config()
+        if gc:
+            kwargs["guardrails"] = gc
+        llm = ChatBedrockConverse(**kwargs)
         _llm_with_tools = llm.bind_tools([web_search])
     return _llm_with_tools
 
@@ -73,6 +88,11 @@ async def invoke(payload):
     import asyncio
     result = await asyncio.to_thread(run_agent, task)
     yield result
+
+    if _guardrail_config():
+        print("=================")
+        guardrail_result = await asyncio.to_thread(run_agent, "What are the best football strategies for the World Cup?")
+        print("Guardrail trigger result:\n", guardrail_result)
 
 
 if __name__ == "__main__":

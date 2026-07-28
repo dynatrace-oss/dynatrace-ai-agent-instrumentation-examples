@@ -5,6 +5,33 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # opentelemetry-instrumentation-bedrock (>=0.62.1) captures guardrail
+  # intervention data but only exposes it as nested JSON blobs
+  # (gen_ai.bedrock.guardrail.input_filter / .output_filter). The Dynatrace
+  # guardrail_overview_cards dashboard expects it flattened into
+  # gen_ai.bedrock.guardrail.{activation,content,sensitive_info,topics,words}
+  # (AR-017..AR-021). Derive those here since the source data is already on
+  # the span — no app code change needed.
+  transform/bedrock-guardrail-attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.guardrail.input"], ParseJSON(attributes["gen_ai.bedrock.guardrail.input_filter"])) where attributes["gen_ai.bedrock.guardrail.input_filter"] != nil
+          - set(attributes["temp.guardrail.output"], ParseJSON(attributes["gen_ai.bedrock.guardrail.output_filter"])[0]) where attributes["gen_ai.bedrock.guardrail.output_filter"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["temp.guardrail.input"]["topic"]) where Len(attributes["temp.guardrail.input"]["topic"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["temp.guardrail.output"]["topic"]) where attributes["gen_ai.bedrock.guardrail.topics"] == nil and Len(attributes["temp.guardrail.output"]["topic"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["temp.guardrail.input"]["content"]) where Len(attributes["temp.guardrail.input"]["content"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["temp.guardrail.output"]["content"]) where attributes["gen_ai.bedrock.guardrail.content"] == nil and Len(attributes["temp.guardrail.output"]["content"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.words"], attributes["temp.guardrail.input"]["words"]) where Len(attributes["temp.guardrail.input"]["words"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.words"], attributes["temp.guardrail.output"]["words"]) where attributes["gen_ai.bedrock.guardrail.words"] == nil and Len(attributes["temp.guardrail.output"]["words"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["temp.guardrail.input"]["sensitive"]) where Len(attributes["temp.guardrail.input"]["sensitive"]["pii"]) > 0 or Len(attributes["temp.guardrail.input"]["sensitive"]["regex"]) > 0
+          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["temp.guardrail.output"]["sensitive"]) where attributes["gen_ai.bedrock.guardrail.sensitive_info"] == nil and (Len(attributes["temp.guardrail.output"]["sensitive"]["pii"]) > 0 or Len(attributes["temp.guardrail.output"]["sensitive"]["regex"]) > 0)
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], true) where attributes["gen_ai.bedrock.guardrail.topics"] != nil or attributes["gen_ai.bedrock.guardrail.content"] != nil or attributes["gen_ai.bedrock.guardrail.words"] != nil or attributes["gen_ai.bedrock.guardrail.sensitive_info"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and (attributes["temp.guardrail.input"] != nil or attributes["temp.guardrail.output"] != nil)
+          - delete_key(attributes, "temp.guardrail.input") where attributes["temp.guardrail.input"] != nil
+          - delete_key(attributes, "temp.guardrail.output") where attributes["temp.guardrail.output"] != nil
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -19,7 +46,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/bedrock-guardrail-attrs, batch]
       exporters: [otlphttp/dynatrace]
     metrics:
       receivers: [otlp]
