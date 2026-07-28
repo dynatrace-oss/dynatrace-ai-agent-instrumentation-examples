@@ -1,10 +1,11 @@
 {
-  "version": "1.2.1",
+  "version": "1.3.0",
   "scope": "current-state",
   "date": "2026-06-17",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.3.0 (2026-07-24): Add a per-profile metrics list. Move AR-025 (gen_ai.client.operation.duration) and AR-044 (gen_ai.client.token.usage) out of the generic optional_attributes into generic.metrics; they are verified as OTel metrics via timeseries existence, not as span attributes. The e2e suite now records metric-existence results in the generated per-SDK reports.",
     "1.2.1 (2026-06-17): Add VR-021 (conversation_thread view rule): gen_ai.conversation.id (AR-041) is set by AgentTelemetryLayer on invoke_agent spans only; ChatTelemetryLayer does not forward options to _get_span_attributes so inner chat spans never carry this attribute. Add span_scope note to AR-041. Update AR-041 note in attributes.",
     "1.2.0 (2026-06-16): Add dashboard-derived attributes: gen_ai.client.token.usage metric (AR-044); gen_ai.prompt.caching metric (AR-045); gen_ai.guardrail.grounding_type dimension (AR-046); span.status_code (AR-047); gen_ai.model bigevent field (AR-048); event.type generic gate (AR-049). Add audit_trail and service_health view_rules (VR-016..VR-019). Add kong_gateway_metrics section (KO-001..KO-004) and nvidia_nim_metrics section (NV-001..NV-008). Note AR-020/AR-021 not yet visualised in any dashboard.",
     "1.1.0 (2026-06-12): Add gen_ai.token.type (AR-024); add gen_ai.client.operation.duration (AR-025); add legacy token fallback attributes (AR-026, AR-027); add evaluation subsystem (AR-028..AR-040); add gen_ai.bedrock.guardrail.contextual (AR-041); add gen_ai.conversation.id (AR-042); add gen_ai.request.temperature (AR-043); add gen_ai.system_instructions (AR-044); fix normalization.legacy_fallbacks direction (primary→legacy, not legacy→primary).",
@@ -18,7 +19,8 @@
           "dashboard": "abmodelversioning.dashboard.json",
           "description": "Provider-agnostic profile. Covers all attributes in the all_genai_views, prompts_view, cost_dashboard, latency_charts, and service_health view_rules. Used for any OTel-compliant SDK regardless of provider.",
           "required_attributes": ["AR-001_or_AR-002", "AR-003", "AR-004", "AR-005", "AR-006", "AR-007"],
-          "optional_attributes": ["AR-008", "AR-009", "AR-010", "AR-011", "AR-012", "AR-024", "AR-041", "AR-042", "AR-043", "AR-044", "AR-047"]
+          "optional_attributes": ["AR-008", "AR-009", "AR-010", "AR-011", "AR-012", "AR-024", "AR-041", "AR-042", "AR-043", "AR-047"],
+          "metrics": ["AR-025", "AR-044"]
         },
         "openai": {
           "dashboard": "openai.dashboard.json",

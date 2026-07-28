@@ -7,7 +7,7 @@ Goal: make SDK/framework comparisons deterministic and consistent.
 
 ## What This Baseline Is
 
-`sdk-comparison-baseline.json` (v1.2.1) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
+`sdk-comparison-baseline.json` (v1.3.0) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
 
 It contains:
 - Core pass/fail rules (`must_have_any`, `must_have_all`)
@@ -23,7 +23,7 @@ It contains:
 
 ## How AI Should Use It
 
-1. Load `sdk-comparison-baseline.json` first. Check `changelog` to confirm you are on v1.2.1.
+1. Load `sdk-comparison-baseline.json` first. Check `changelog` to confirm you are on v1.3.0.
 2. Build an emitted-attributes set for the SDK under test.
 3. Apply contract rules in this order:
    - `profile_selection.profiles` — determine which profile applies and which dashboard it targets
@@ -33,6 +33,7 @@ It contains:
    - `required_resolution` (primary-with-fallback enforcement)
    - `view_rules` for any app view you want to validate specifically
    - provider-specific section for active provider profile only
+   - `profiles[].metrics` — OTel metrics (e.g. generic: AR-025 `gen_ai.client.operation.duration`, AR-044 `gen_ai.client.token.usage`). Verify these by **metric existence** (`timeseries sum(<metric>)`), not span-attribute presence. They are not part of the span attribute set.
    - optional/recommended checks as non-blocking unless policy says otherwise
 4. Apply normalization rules before deciding failures:
    - any-of equivalents
@@ -69,6 +70,7 @@ Use this structure in reports:
 - `failed_provider_specific`: list
 - `missing_recommended`: list
 - `missing_optional`: list
+- `missing_metrics`: list — profile `metrics` (e.g. AR-025, AR-044) absent from the metric store
 - `silent_failures`: list — attributes absent that cause empty charts with no visible error
 - `dashboard_coverage`: per-view table showing which dashboard tiles would be populated vs empty
 - `notes`: list

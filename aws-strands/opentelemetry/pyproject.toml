@@ -8,6 +8,7 @@ dependencies = [
     "fastapi>=0.115.12",
     "opentelemetry-instrumentation-fastapi>=0.54b1",
     "opentelemetry-instrumentation-urllib3>=0.54b1",
-    "strands-agents>=0.1.2",
-    "strands-agents-tools>=0.1.1",
+    "opentelemetry-exporter-otlp-proto-http>=1.33.0",
+    "strands-agents>=1.48.0",
+    "strands-agents-tools>=0.8.5",
 ]
