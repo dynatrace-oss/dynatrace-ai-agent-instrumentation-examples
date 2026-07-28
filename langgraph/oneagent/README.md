@@ -9,7 +9,7 @@ For a collector-based variant (which exports via OTLP and can redact secrets bef
 - Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body)
 - Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI
 - Relies on OneAgent to capture the agent's LLM calls as `gen_ai.*` spans
-- Ships an OpenPipeline config (`openpipeline-langgraph.yaml`) that redacts messages containing secrets on ingest
+- Ships an OpenPipeline config (`openpipeline-langgraph.yaml`) that redacts messages containing secrets on ingest, and also derives the `gen_ai.client.token.usage` / `gen_ai.client.operation.duration` metrics (see below)
 
 ## Redacting secrets with OpenPipeline
 
@@ -23,6 +23,10 @@ Because OneAgent sends spans directly to Dynatrace, there is no customer-side co
 | Pipeline | `langgraph-redact-secrets` |
 
 > **Trade-off vs. the collector approach:** OpenPipeline redacts *after* the data reaches Dynatrace, so the raw text travels from the host to the cluster before being masked. If secrets must never leave the host, use the collector-based [`langgraph/opentelemetry`](../opentelemetry) demo, which scrubs before egress.
+
+### Metrics via OpenPipeline
+
+OneAgent captures `gen_ai.*` span attributes here but doesn't emit the `gen_ai.client.token.usage` / `gen_ai.client.operation.duration` metrics the AI Observability app's cost and latency dashboard tiles chart. `openpipeline-langgraph.yaml` derives both from these same span attributes, alongside the redaction rules above — in the *same* pipeline object, not a separate one. That's a deliberate choice, not incidental: OpenPipeline's routing table is evaluated first-match, not fan-out, and this demo's routing entry (matched on `dt.service.name`) is more specific than — and ordered ahead of — the generic pipeline the other OneAgent demos share ([`openpipeline/openpipeline-oneagent-genai-metrics.yaml`](../../openpipeline/openpipeline-oneagent-genai-metrics.yaml)), so langgraph spans would never reach that generic pipeline at all.
 
 ### OpenPipeline implementation notes
 

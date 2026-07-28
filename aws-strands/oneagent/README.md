@@ -42,3 +42,7 @@ The app exposes a FastAPI HTTP server. A POST to `/agent` creates a Strands `Age
 | `make push` | Build and push image to registry |
 | `make request` | POST /agent to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Metrics via OpenPipeline
+
+OneAgent captures the `gen_ai.*` span attributes above, but doesn't emit the `gen_ai.client.token.usage` / `gen_ai.client.operation.duration` metrics the AI Observability app's cost and latency dashboard tiles chart. A shared, tenant-side OpenPipeline pipeline derives both from these same span attributes — deployed once per tenant, not per demo. See [`openpipeline/openpipeline-oneagent-genai-metrics.yaml`](../../openpipeline/openpipeline-oneagent-genai-metrics.yaml) for the pipeline definition and deploy instructions.

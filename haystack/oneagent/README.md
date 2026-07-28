@@ -48,3 +48,7 @@ Press `Ctrl+K` in Dynatrace and search for **AI Observability** to explore the t
 ![AI Observability — Explorer showing haystack/oneagent service](assets/explorer.png)
 
 ![AI Observability — Prompts detail with agentic trace and captured prompt/completion](assets/prompt.png)
+
+## Metrics via OpenPipeline
+
+OneAgent captures the `gen_ai.*` span attributes above, but doesn't emit the `gen_ai.client.token.usage` / `gen_ai.client.operation.duration` metrics the AI Observability app's cost and latency dashboard tiles chart. A shared, tenant-side OpenPipeline pipeline derives both from these same span attributes — deployed once per tenant, not per demo. See [`openpipeline/openpipeline-oneagent-genai-metrics.yaml`](../../openpipeline/openpipeline-oneagent-genai-metrics.yaml) for the pipeline definition and deploy instructions.
