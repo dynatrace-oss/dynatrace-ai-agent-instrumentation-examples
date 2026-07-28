@@ -21,6 +21,15 @@
 #
 # The matcher uses dt.service.name (the OneAgent-detected service display name)
 # combined with dt.openpipeline.source to scope the rule to OneAgent-captured spans only.
+#
+# Also carries the gen_ai.client.token.usage / operation.duration metric
+# extraction (see openpipeline/openpipeline-oneagent-genai-metrics.yaml for the
+# full explanation of the pattern) rather than relying on that generic pipeline:
+# OpenPipeline routing is first-match, not fan-out, and this pipeline's more
+# specific dt.service.name matcher is ordered ahead of the generic one in the
+# routing table — so langgraph/oneagent spans never reach it. langgraph is also
+# the one instrumentation that only ever sets gen_ai.response.model (never
+# request.model), which is why the matchers below check both.
 
 customId: "langgraph-redact-secrets"
 displayName: "LangGraph AI Observability - Redact secrets"
@@ -54,3 +63,90 @@ processing:
       dql:
         script: |
           fieldsAdd gen_ai.system_instructions = if(contains(toString(gen_ai.system_instructions), "secret"), "***REDACTED***", else: gen_ai.system_instructions)
+
+    - id: "oneagent-duration-seconds"
+      enabled: true
+      matcher: "isNotNull(gen_ai.request.model) OR isNotNull(gen_ai.response.model)"
+      type: "dql"
+      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
+metricExtraction:
+  processors:
+
+    - id: "oneagent-operation-duration-metric"
+      enabled: true
+      matcher: "isNotNull(gen_ai.request.model) OR isNotNull(gen_ai.response.model)"
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from OneAgent GenAI spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "oneagent-token-usage-input-metric"
+      enabled: true
+      matcher: "isNotNull(gen_ai.usage.input_tokens)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (input tokens) from OneAgent GenAI spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.input_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "input"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "oneagent-token-usage-output-metric"
+      enabled: true
+      matcher: "isNotNull(gen_ai.usage.output_tokens)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (output tokens) from OneAgent GenAI spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.output_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "output"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"

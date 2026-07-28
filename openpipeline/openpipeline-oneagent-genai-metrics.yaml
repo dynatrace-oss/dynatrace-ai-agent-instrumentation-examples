@@ -1,8 +1,15 @@
 ---
 # OpenPipeline configuration backfilling the two OTel GenAI client metrics for
-# every OneAgent-instrumented demo (anthropic, cohere, groq, haystack, mistral,
-# ollama, openai, aws-bedrock, aws-bedrock-agents, aws-strands, langgraph — all
-# */oneagent variants).
+# every OneAgent-instrumented demo that doesn't already have its own dedicated
+# pipeline (anthropic, cohere, groq, haystack, mistral, ollama, openai,
+# aws-bedrock, aws-bedrock-agents, aws-strands).
+#
+# langgraph/oneagent is the one exception: it already routes through its own
+# langgraph-redact-secrets pipeline (langgraph/oneagent/openpipeline-langgraph.yaml)
+# on a more specific dt.service.name matcher ordered ahead of this one in the
+# routing table. OpenPipeline routing is first-match, not fan-out, so langgraph
+# spans never reach this pipeline — its copy of these same metric extractors
+# lives in that other file instead, not here.
 #
 # OneAgent auto-instrumentation emits the gen_ai.* span attributes but no
 # gen_ai.client.* metrics (no collector sits in front of it to derive them).
