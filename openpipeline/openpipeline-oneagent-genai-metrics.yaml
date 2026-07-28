@@ -23,8 +23,17 @@
 #
 # Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
 # then add a routing entry:
-#   Matcher:  dt.openpipeline.source == "oneagent" AND isNotNull(gen_ai.request.model)
+#   Matcher:  dt.openpipeline.source == "oneagent" AND (isNotNull(gen_ai.request.model) OR isNotNull(gen_ai.response.model))
 #   Pipeline: oneagent-genai-metrics
+#
+# Gate on request.model OR response.model, not request.model alone: some
+# instrumentations (e.g. langgraph/oneagent) only ever set response.model on
+# the LLM-invocation span, never request.model. A request.model-only gate
+# silently drops those spans from this pipeline entirely — including their
+# (perfectly present) token counts. Confirmed via CI: PR #174's first run
+# showed langgraph/oneagent with usage.input_tokens/output_tokens present but
+# both metrics absent, root-caused to this matcher excluding the span before
+# either extractor ran.
 
 customId: "oneagent-genai-metrics"
 displayName: "OneAgent GenAI Observability - Metrics"
@@ -43,7 +52,7 @@ processing:
     # ============================================================================
     - id: "oneagent-duration-seconds"
       enabled: true
-      matcher: "isNotNull(gen_ai.request.model)"
+      matcher: "isNotNull(gen_ai.request.model) OR isNotNull(gen_ai.response.model)"
       type: "dql"
       description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
       dql:
@@ -61,7 +70,7 @@ metricExtraction:
 
     - id: "oneagent-operation-duration-metric"
       enabled: true
-      matcher: "isNotNull(gen_ai.request.model)"
+      matcher: "isNotNull(gen_ai.request.model) OR isNotNull(gen_ai.response.model)"
       type: "samplingAwareHistogramMetric"
       description: "Extract gen_ai.client.operation.duration from OneAgent GenAI spans"
       samplingAwareHistogramMetric:
