@@ -10,7 +10,8 @@
 # not fan-out, so its spans never reach this one — same extractors live there
 # instead.
 #
-# Deploy (Settings -> OpenPipeline -> Spans), then add a routing entry:
+# Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
+# then add a routing entry:
 #   Matcher:  dt.openpipeline.source == "oneagent" AND (isNotNull(gen_ai.request.model) OR isNotNull(gen_ai.response.model))
 #   Pipeline: oneagent-genai-metrics
 #

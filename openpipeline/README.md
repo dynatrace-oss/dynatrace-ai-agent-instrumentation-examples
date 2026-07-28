@@ -10,9 +10,11 @@ OneAgent auto-instrumentation captures `gen_ai.*` span attributes but emits neit
 
 `langgraph/oneagent` is the one OneAgent demo **not** covered by this file — it already has a more specific, higher-priority routing entry for its own pipeline (secret redaction), and OpenPipeline routing is first-match, not fan-out, so its spans never reach this generic pipeline. Its copy of the same three metric extractors lives in `langgraph/oneagent/openpipeline-langgraph.yaml` instead.
 
-Deploy with `dtctl` (see the file's header comment for the exact matcher/routing entry to add):
+Deploy in your Dynatrace tenant (one-time, per tenant):
 
-```bash
-dtctl create settings -f openpipeline/openpipeline-oneagent-genai-metrics.yaml \
-  --schema builtin:openpipeline.spans.pipelines --scope environment
-```
+1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
+2. Select **Spans**.
+3. Click **Add pipeline**, name it `oneagent-genai-metrics`, and add the processors from `openpipeline-oneagent-genai-metrics.yaml`:
+   - **Processing** tab: the duration-in-seconds conversion.
+   - **Metric extraction** tab: the three metric processors (extracting metrics from spans requires the DPS **Metrics Ingest and Process** rate card).
+4. Go to the **Routing** tab and add an entry — see the file's header comment for the exact matcher.
