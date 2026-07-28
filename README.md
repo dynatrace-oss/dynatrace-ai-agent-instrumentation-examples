@@ -85,7 +85,7 @@ Monitor AI agent frameworks with Dynatrace.
 | [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
 | [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
 | [Langfuse](./langfuse/) | — | — | [✓ Python](./langfuse/opentelemetry/) / [✓ Node](./langfuse/opentelemetry-node/) |
-| [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓](./langgraph/opentelemetry/) |
+| [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | [✓](./langgraph/openinference/) | [✓](./langgraph/opentelemetry/) |
 | [LiteLLM](./litellm/opentelemetry/) | — | — | [✓](./litellm/opentelemetry/) |
 | [MCP (Model Context Protocol)](mcp/opentelemetry/) | — | — | [✓](mcp/opentelemetry/) |
 | [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
