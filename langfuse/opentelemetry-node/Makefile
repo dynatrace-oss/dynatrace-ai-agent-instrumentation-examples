@@ -14,7 +14,11 @@ BUILD_PLATFORM      ?= linux/amd64
 
 NODE                := node
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
+# otel/opentelemetry-collector-contrib, not the Dynatrace distro: the metrics
+# branch in ../opentelemetry/otel-collector-config.yaml needs the
+# signaltometrics connector (token usage), which isn't compiled into
+# ghcr.io/dynatrace/dynatrace-otel-collector as of v0.52.0.
+override COLLECTOR_IMAGE     := otel/opentelemetry-collector-contrib:0.155.0
 override COLLECTOR_CONTAINER := otel-collector
 override COLLECTOR_CONFIG    := $(abspath ../opentelemetry/otel-collector-config.yaml)
 
