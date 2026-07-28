@@ -112,6 +112,8 @@ func init() {
 			AttributeCheck{Name: "gen_ai.bedrock.guardrail.contextual", RuleID: "AR-040"},
 			AttributeCheck{Name: "gen_ai.prompt.caching", RuleID: "AR-045"},
 			AttributeCheck{Name: "gen_ai.guardrail.grounding_type", RuleID: "AR-046"},
+			AttributeCheck{Name: "gen_ai.guardrail.id", RuleID: "AR-050"},
+			AttributeCheck{Name: "gen_ai.guardrail.version", RuleID: "AR-051"},
 		),
 	}
 }
@@ -129,6 +131,8 @@ var GuardrailProfile = Profile{
 		{Name: "gen_ai.bedrock.guardrail.activation", RuleID: "AR-017"},
 		{Name: "gen_ai.bedrock.guardrail.content", RuleID: "AR-018"},
 		{Name: "gen_ai.bedrock.guardrail.sensitive_info", RuleID: "AR-019"},
+		{Name: "gen_ai.guardrail.id", RuleID: "AR-050"},
+		{Name: "gen_ai.guardrail.version", RuleID: "AR-051"},
 	},
 	Optional: []AttributeCheck{
 		{Name: "gen_ai.bedrock.guardrail.topics", RuleID: "AR-020"},
