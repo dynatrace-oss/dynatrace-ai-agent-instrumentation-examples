@@ -1,7 +1,5 @@
 import os
 import openai
-from openai import Stream
-from openai.types.chat import ChatCompletionChunk
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
@@ -32,17 +30,17 @@ async def haiku() -> str:
         )
 
     def _call() -> str:
-        response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
+        # Non-streaming: OneAgent's Python OpenAI sensor only fully captures
+        # gen_ai.response.model and token usage in non-streaming mode (see
+        # test/e2e/sdk-analysis/openai-oneagent.md). No behavior change here —
+        # the streaming loop just assembled all chunks synchronously anyway.
+        response = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": "Write a haiku."}],
             max_completion_tokens=20,
-            stream=True,
+            stream=False,
         )
-        result = ""
-        for chunk in response:
-            if chunk.choices and (content := chunk.choices[0].delta.content):
-                result += content
-        return result
+        return response.choices[0].message.content or ""
 
     return await asyncio.to_thread(_call)
 
