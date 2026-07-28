@@ -45,7 +45,9 @@ logs: ## Tail collector logs
 # Internal targets
 # ---------------------------------------------------------------------------
 _collector:
-	@if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
+	@echo "Pulling collector image $(COLLECTOR_IMAGE) (may be slow on a cold runner)..." && \
+	docker pull $(COLLECTOR_IMAGE) && \
+	if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	  echo "Collector already running — stopping it first..."; \
 	  docker stop $(COLLECTOR_CONTAINER) && docker rm $(COLLECTOR_CONTAINER); \
 	fi; \
@@ -59,7 +61,7 @@ _collector:
 	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml && \
 	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
 	echo "Collector logs -> collector.log" && \
-	for i in $$(seq 1 15); do \
+	for i in $$(seq 1 30); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \
 	  fi; \
@@ -67,6 +69,6 @@ _collector:
 	  if [ "$$STATUS" = "exited" ]; then \
 	    echo "ERROR: collector crashed — logs:"; docker logs $(COLLECTOR_CONTAINER); exit 1; \
 	  fi; \
-	  echo "  ... ($$i/15)"; sleep 2; \
+	  echo "  ... ($$i/30)"; sleep 2; \
 	done; \
 	echo "ERROR: collector did not become ready"; docker logs $(COLLECTOR_CONTAINER); exit 1
