@@ -31,6 +31,7 @@ Strands Agents does not follow the OpenTelemetry GenAI semantic conventions for 
 
 - Runs a multi-turn Personal Assistant Agent using Strands Agents on Amazon Bedrock.
 - Produces OpenTelemetry traces with Strands semantic conventions (`gen_ai.prompt`, `gen_ai.completion`, etc.).
+- Calls a small local **appointments service** from the `create_appointment` tool, so the tool call becomes a real downstream span and the trace spans two services. The Makefile starts and stops this service for you.
 - Normalizes Strands attributes to Dynatrace `gen_ai.*` format; either via a local OTel Collector or via Dynatrace OpenPipeline.
 - Shows the full agentic trace in the Dynatrace AI Observability app including tool calls, cycle spans, model invocations, token usage, and message content.
 
@@ -202,3 +203,9 @@ make run-openpipeline
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
+
+**Appointments service fails to start / tool call is refused:**
+- The `create_appointment` tool calls a local appointments service on port `8081`, started automatically by `make run` / `make run-openpipeline`.
+- Ensure port `8081` is free: `lsof -i :8081`. Override it with `make run APPOINTMENTS_PORT=8082 APPOINTMENTS_URL=http://127.0.0.1:8082` if needed.
+- Check the service log with `cat appointments.log`.
+- Stop a stale instance with `make stop` (also removes the collector).
