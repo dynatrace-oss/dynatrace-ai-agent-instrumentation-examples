@@ -12,7 +12,10 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
+# Bindplane collector, not the Dynatrace distro: the metrics branch below needs
+# the signal_to_metrics connector (token usage), which isn't compiled into
+# ghcr.io/dynatrace/dynatrace-otel-collector as of v0.52.0.
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.0
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
