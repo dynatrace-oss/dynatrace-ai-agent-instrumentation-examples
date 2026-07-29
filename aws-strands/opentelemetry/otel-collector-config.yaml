@@ -20,8 +20,8 @@ processors:
           # pre-1.x gen_ai.prompt / gen_ai.completion names. The guards prevent overwriting.
           - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
           - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
-          # Delete the source attributes after remapping so the OpenPipeline routing
-          # matcher (isNotNull(gen_ai.prompt)) does not re-process collector-transformed spans.
+          # Delete the legacy source attributes after the fallback remap so downstream
+          # (e.g. OpenPipeline) sees only the gen_ai.input.messages / gen_ai.output.messages names.
           - delete_key(attributes, "gen_ai.prompt") where attributes["gen_ai.input.messages"] != nil
           - delete_key(attributes, "gen_ai.completion") where attributes["gen_ai.output.messages"] != nil
           # Strands does not emit gen_ai.response.model; mirror the request model.
