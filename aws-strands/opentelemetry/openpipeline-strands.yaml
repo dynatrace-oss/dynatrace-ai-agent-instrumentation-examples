@@ -7,13 +7,17 @@
 #
 # Deploy in your Dynatrace tenant (Settings → OpenPipeline → Spans), then add
 # a routing entry:
-#   Matcher:  gen_ai.system == "strands-agents"
+#   Matcher:  gen_ai.provider.name == "strands-agents"
 #   Pipeline: strands-agents-ai-spans
 #
 # The app is configured (OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental,
 # gen_ai_span_attributes_only) so Strands 1.x emits gen_ai.input.messages /
-# gen_ai.output.messages directly as span attributes. gen_ai.system == "strands-agents"
-# identifies Strands spans in both the collector and no-collector paths.
+# gen_ai.output.messages directly as span attributes. Latest conventions replace
+# gen_ai.system with gen_ai.provider.name == "strands-agents", which identifies
+# Strands spans at routing time. The provider-inference processor below then
+# overwrites gen_ai.provider.name with the real LLM vendor (anthropic, amazon, …),
+# so the processors that must run on every routed span use matcher "true" rather
+# than re-testing gen_ai.provider.name.
 #
 # Strands span types and their naming patterns:
 #   Agent span   — named after the agent (e.g. "Strands Agent")
@@ -37,7 +41,7 @@ processing:
     # ============================================================================
     - id: "strands-input-output"
       enabled: true
-      matcher: 'gen_ai.system == "strands-agents"'
+      matcher: "true"  # routing already gates this pipeline to Strands spans; see header
       type: "dql"
       description: "Map gen_ai.prompt / gen_ai.completion to OTel GenAI convention"
       dql:
@@ -58,7 +62,7 @@ processing:
     # ============================================================================
     - id: "strands-operation"
       enabled: true
-      matcher: 'gen_ai.system == "strands-agents"'
+      matcher: "true"  # routing already gates this pipeline to Strands spans; see header
       type: "dql"
       description: "Set gen_ai.operation.kind and gen_ai.operation.name from span name"
       dql:
@@ -166,7 +170,7 @@ processing:
     # ============================================================================
     - id: "strands-source-tag"
       enabled: true
-      matcher: 'gen_ai.system == "strands-agents"'
+      matcher: "true"  # routing already gates this pipeline to Strands spans; see header
       type: "dql"
       description: "Tag spans with SDK source identifier"
       dql:

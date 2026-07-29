@@ -147,7 +147,7 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `strands-agents-ai-spans`, and add the processors from [`openpipeline-strands.yaml`](./openpipeline-strands.yaml).
 4. Go to the **Routing** tab and add an entry:
-   - Matcher: `gen_ai.system == "strands-agents"`
+   - Matcher: `gen_ai.provider.name == "strands-agents"`
    - Pipeline: `strands-agents-ai-spans`
 
 ### Step 2: Run the app
@@ -200,7 +200,7 @@ make run-openpipeline
 **Spans in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.provider.name` to be set; added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml`.
-- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.system == "strands-agents"`, pipeline `strands-agents-ai-spans`.
+- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.provider.name == "strands-agents"`, pipeline `strands-agents-ai-spans`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
