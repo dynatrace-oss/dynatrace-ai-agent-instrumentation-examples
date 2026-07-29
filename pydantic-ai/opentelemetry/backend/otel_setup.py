@@ -54,6 +54,7 @@ def setup_otel(service_name: str = "pydantic-ai-music-agent"):
             "service.name": service_name,
             "service.version": "0.1.0",
             "gen_ai.agent.name": service_name,
+            "telemetry.sdk.name": "pydantic-ai",
         }
     )
 

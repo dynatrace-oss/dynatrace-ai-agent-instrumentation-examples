@@ -12,7 +12,7 @@
 #
 # Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
 # then add a routing entry:
-#   Matcher:  isNotNull(gen_ai.response.model)
+#   Matcher:  telemetry.sdk.name == "pydantic-ai"
 #   Pipeline: pydantic-ai-genai-metrics
 #
 # Scope note: pydantic-ai adds nested GenAI spans for each model call — those
