@@ -4,6 +4,18 @@ import os
 def init():
     os.environ['TRACELOOP_TELEMETRY'] = "false"
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
+
+    # Strands 1.x emits message content (gen_ai.input.messages / gen_ai.output.messages)
+    # as span *events* by default, which the Dynatrace AI Observability app does not read.
+    # - gen_ai_latest_experimental: emit the aggregated gen_ai.input/output.messages content.
+    # - gen_ai_span_attributes_only: record that content as span *attributes* instead of
+    #   events, so Dynatrace ingests the input/output messages.
+    # Set before StrandsTelemetry initializes the tracer, which reads this at construction.
+    os.environ.setdefault(
+        "OTEL_SEMCONV_STABILITY_OPT_IN",
+        "gen_ai_latest_experimental,gen_ai_span_attributes_only",
+    )
+
     service_name = os.environ.get("OTEL_SERVICE_NAME", "aws-strands/opentelemetry")
     # StrandsTelemetry builds the OTel resource from OTEL_SERVICE_NAME; ensure it is set.
     os.environ.setdefault("OTEL_SERVICE_NAME", service_name)

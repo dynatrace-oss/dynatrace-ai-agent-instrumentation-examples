@@ -14,9 +14,10 @@ processors:
     trace_statements:
       - context: span
         statements:
-          # Strands emits gen_ai.prompt / gen_ai.completion; map to the OTel GenAI
-          # convention (gen_ai.input.messages / gen_ai.output.messages) that the
-          # Dynatrace AI Observability app queries.
+          # With the OTEL_SEMCONV_STABILITY_OPT_IN opt-in (set in dynatrace.py), Strands 1.x
+          # emits gen_ai.input.messages / gen_ai.output.messages directly, so these two
+          # set() statements are a no-op fallback for legacy spans that still carry the
+          # pre-1.x gen_ai.prompt / gen_ai.completion names. The guards prevent overwriting.
           - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
           - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
           # Delete the source attributes after remapping so the OpenPipeline routing

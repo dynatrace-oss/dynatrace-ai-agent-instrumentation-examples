@@ -7,12 +7,13 @@
 #
 # Deploy in your Dynatrace tenant (Settings → OpenPipeline → Spans), then add
 # a routing entry:
-#   Matcher:  isNotNull(gen_ai.prompt) AND gen_ai.system == "strands-agents"
+#   Matcher:  gen_ai.system == "strands-agents"
 #   Pipeline: strands-agents-ai-spans
 #
-# The matcher requires gen_ai.prompt to be present. The OTel Collector deletes
-# gen_ai.prompt after remapping it to gen_ai.input.messages, so collector-transformed
-# spans are excluded and only direct (no-collector) Strands spans enter this pipeline.
+# The app is configured (OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental,
+# gen_ai_span_attributes_only) so Strands 1.x emits gen_ai.input.messages /
+# gen_ai.output.messages directly as span attributes. gen_ai.system == "strands-agents"
+# identifies Strands spans in both the collector and no-collector paths.
 #
 # Strands span types and their naming patterns:
 #   Agent span   — named after the agent (e.g. "Strands Agent")
@@ -29,10 +30,10 @@ processing:
     # ============================================================================
     # 1. INPUT / OUTPUT MESSAGES
     # ============================================================================
-    # Strands emits gen_ai.prompt and gen_ai.completion instead of the OTel GenAI
-    # convention (gen_ai.input.messages / gen_ai.output.messages). Copy them so
-    # the Dynatrace AI Observability app can display prompts and completions.
-    # Guards prevent double-mapping when the OTel Collector already did this.
+    # With the current opt-in, Strands 1.x emits gen_ai.input.messages /
+    # gen_ai.output.messages directly, so this step is normally a no-op. It is
+    # kept as a fallback for legacy Strands spans that still carry gen_ai.prompt /
+    # gen_ai.completion. Guards prevent overwriting values already present.
     # ============================================================================
     - id: "strands-input-output"
       enabled: true
