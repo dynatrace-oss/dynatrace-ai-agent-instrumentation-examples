@@ -15,18 +15,19 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 	// unspecified, and the guardrail-blocked trace is missing several
 	// baseline attributes (e.g. token usage), which would flip this audit's
 	// verdict independent of any real regression.
-	auditSpan(t, "aws-bedrock", "openinference", GenericProfile,
+	auditSpanWithMetrics(t, "aws-bedrock", "openinference", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock/openinference"
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | sort start_time asc
-| limit 1`)
+| limit 1`,
+		"aws-bedrock/openinference", genAIClientMetrics)
 
 	// The guardrail-triggering request is always sent last, so the latest
 	// matching span is the one that actually tripped the guardrail. Metrics are
 	// service-scoped and include data from the non-guardrail request above.
-	auditSpanOptionalWithMetrics(t, "aws-bedrock", "openinference-guardrail", GuardrailProfile,
+	auditSpanWithMetrics(t, "aws-bedrock", "openinference-guardrail", GuardrailProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock/openinference"
 | filter isNotNull(gen_ai.request.model)
