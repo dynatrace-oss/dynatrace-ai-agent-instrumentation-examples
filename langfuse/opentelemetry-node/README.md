@@ -43,7 +43,7 @@ Node.js app → OTLP → OTel Collector → (transform) → Dynatrace
 
 Collector config: `../opentelemetry/otel-collector-config.yaml`. A `spanmetrics` connector in that config derives `gen_ai.client.operation.duration` from the LLM span durations, and a `signal_to_metrics` connector derives `gen_ai.client.token.usage` from `gen_ai.usage.input_tokens` / `output_tokens` — both exported to Dynatrace (needs the token's `metrics.ingest` scope). The OpenPipeline path produces the same two metrics server-side via metric-extraction processors.
 
-> **Note:** this runs `otel/opentelemetry-collector-contrib`, not the Dynatrace distribution -- `signal_to_metrics` isn't compiled into `ghcr.io/dynatrace/dynatrace-otel-collector` as of its latest release (checked v0.52.0).
+> **Note:** this runs the [Bindplane collector](https://github.com/observIQ/bindplane-agent), not the Dynatrace distribution -- `signal_to_metrics` isn't compiled into `ghcr.io/dynatrace/dynatrace-otel-collector` as of its latest release (checked v0.52.0).
 
 ### OpenPipeline path (`make run-openpipeline`)
 

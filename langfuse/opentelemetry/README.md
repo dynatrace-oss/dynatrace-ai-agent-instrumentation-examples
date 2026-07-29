@@ -107,7 +107,7 @@ make run
 
 The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A second pipeline branch feeds `spanmetrics` (derives `gen_ai.client.operation.duration`, seconds, from LLM span durations) and `signal_to_metrics` (derives `gen_ai.client.token.usage` from the `gen_ai.usage.input_tokens` / `output_tokens` attributes), both exported to Dynatrace. The collector stays running after the app exits so the metrics flush; stop it with `make stop`.
 
-> **Note:** this runs `otel/opentelemetry-collector-contrib`, not the Dynatrace distribution -- `signal_to_metrics` isn't compiled into `ghcr.io/dynatrace/dynatrace-otel-collector` as of its latest release (checked v0.52.0).
+> **Note:** this runs the [Bindplane collector](https://github.com/observIQ/bindplane-agent), not the Dynatrace distribution -- `signal_to_metrics` isn't compiled into `ghcr.io/dynatrace/dynatrace-otel-collector` as of its latest release (checked v0.52.0).
 
 **Useful commands:**
 
