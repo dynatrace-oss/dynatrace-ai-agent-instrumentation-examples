@@ -5,9 +5,10 @@ def init():
     os.environ['TRACELOOP_TELEMETRY'] = "false"
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
 
-    # Strands 1.x emits message content (gen_ai.input.messages / gen_ai.output.messages)
-    # as span *events* by default, which the Dynatrace AI Observability app does not read.
-    # - gen_ai_latest_experimental: emit the aggregated gen_ai.input/output.messages content.
+    # By default Strands 1.x records message content as span *events* (legacy names
+    # gen_ai.choice / gen_ai.tool.message / gen_ai.user.message), which the Dynatrace
+    # AI Observability app does not read.
+    # - gen_ai_latest_experimental: use the aggregated gen_ai.input/output.messages names.
     # - gen_ai_span_attributes_only: record that content as span *attributes* instead of
     #   events, so Dynatrace ingests the input/output messages.
     # Set before StrandsTelemetry initializes the tracer, which reads this at construction.
