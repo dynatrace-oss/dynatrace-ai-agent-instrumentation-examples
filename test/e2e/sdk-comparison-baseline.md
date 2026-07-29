@@ -7,7 +7,7 @@ Goal: make SDK/framework comparisons deterministic and consistent.
 
 ## What This Baseline Is
 
-`sdk-comparison-baseline.json` (v1.3.0) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
+`sdk-comparison-baseline.json` (v1.3.1) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
 
 It contains:
 - Core pass/fail rules (`must_have_any`, `must_have_all`)
@@ -23,7 +23,7 @@ It contains:
 
 ## How AI Should Use It
 
-1. Load `sdk-comparison-baseline.json` first. Check `changelog` to confirm you are on v1.3.0.
+1. Load `sdk-comparison-baseline.json` first. Check `changelog` to confirm you are on v1.3.1.
 2. Build an emitted-attributes set for the SDK under test.
 3. Apply contract rules in this order:
    - `profile_selection.profiles` — determine which profile applies and which dashboard it targets
@@ -167,6 +167,8 @@ Profile precedence:
 | `gen_ai.bedrock.guardrail.words` | AR-021 | provider-specific (bedrock) | guardrail_overview_cards — **⚠️ defined but not visualised in bedrock.dashboard.json** |
 | `gen_ai.bedrock.guardrail.contextual` | AR-040 | provider-specific (bedrock) | guardrail_overview_cards — contextual grounding score |
 | `gen_ai.guardrail.grounding_type` | AR-046 | provider-specific (bedrock) | guardrail_overview_cards — metric dimension on AR-040; values: `GROUNDING`, `RELEVANCE`. Splits grounding vs relevance tiles. |
+| `gen_ai.guardrail.id` | AR-050 | provider-specific (bedrock) | guardrail_overview_cards — unique guardrail identifier, extracted from `llm.invocation_parameters` by collector processor |
+| `gen_ai.guardrail.version` | AR-051 | provider-specific (bedrock) | guardrail_overview_cards — guardrail version (e.g. `DRAFT` or a pinned numeric version) |
 
 ### Caching (OpenAI / Bedrock)
 
@@ -299,6 +301,7 @@ These rules model app behavior better than a flat required/optional list.
 - Bedrock includes the contextual grounding score (`gen_ai.bedrock.guardrail.contextual`, AR-040)
 - `gen_ai.guardrail.grounding_type` (AR-046) is the metric dimension that separates grounding from relevance score tiles
 - AR-020 and AR-021 are expected from the Bedrock SDK but not yet visualised in any dashboard tile
+- `gen_ai.guardrail.id` (AR-050) and `gen_ai.guardrail.version` (AR-051) identify the specific guardrail applied; extracted from `llm.invocation_parameters` by the collector `transform/llm-invocation-params` processor (OpenInference path)
 
 ### `cached_vs_non_cached_chart`
 - Depends on: `all_genai_views`
@@ -348,7 +351,7 @@ These rules model app behavior better than a flat required/optional list.
 
 ### Bedrock profile (→ bedrock.dashboard.json)
 - Must pass generic profile first.
-- Then also require Bedrock provider-specific attributes (AR-017, AR-018, AR-019 required; AR-020, AR-021, AR-040, AR-045, AR-046 optional).
+- Then also require Bedrock provider-specific attributes (AR-017, AR-018, AR-019 required; AR-020, AR-021, AR-040, AR-045, AR-046 optional). On guardrail-triggering spans also require AR-050 and AR-051 (guardrail id/version).
 - Note: AR-020 and AR-021 are in the baseline but not visualised in any dashboard tile — presence is expected from the SDK but their absence does not degrade any dashboard.
 
 ### OpenAI profile (→ openai.dashboard.json)
