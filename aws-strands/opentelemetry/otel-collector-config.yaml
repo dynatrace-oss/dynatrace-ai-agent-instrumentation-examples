@@ -32,8 +32,8 @@ processors:
           - delete_key(attributes, "gen_ai.usage.prompt_tokens") where attributes["gen_ai.usage.input_tokens"] != nil
           - delete_key(attributes, "gen_ai.usage.completion_tokens") where attributes["gen_ai.usage.output_tokens"] != nil
 
-  # Keep only the LLM-call spans (gen_ai.request.model is set only on "Model
-  # invoke" spans by the transform above) for the metrics branch, so the derived
+  # Keep only the LLM-call spans ("chat" spans in Strands 1.x with gen_ai_latest_experimental;
+  # gen_ai.request.model is set only on those) for the metrics branch, so the derived
   # metrics cover LLM calls only, not the agent/tool/cycle spans. The export
   # pipeline is left untouched so all spans still reach Distributed Tracing.
   filter/genai_only:
