@@ -64,18 +64,19 @@ connectors:
   # Token usage: OpenInference is span-only (no metric instruments). Re-create
   # gen_ai.client.token.usage from the span token attributes with two sum defs
   # sharing one metric name; the gen_ai.token.type dimension is synthesized per
-  # direction via default_value. signaltometrics emits delta per batch, which
+  # direction via default_value. signal_to_metrics emits delta per batch, which
   # Dynatrace requires. Collector-path equivalent of the OpenPipeline
   # two-extractor pattern.
-  signaltometrics:
+  signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage
-        description: GenAI input token usage
-        unit: "1"
-        # include_resource_attributes is per-metric (not a connector-level key);
-        # setting it here keeps service.name on the output metric.
-        include_resource_attributes:
-          - key: service.name
+        description: "Number of tokens used per LLM call, by direction"
+        unit: "{token}"
+        conditions:
+          - attributes["gen_ai.usage.input_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.input_tokens"])
+          monotonic: true
         attributes:
           - key: gen_ai.token.type
             default_value: input
@@ -83,16 +84,14 @@ connectors:
           - key: gen_ai.response.model
           - key: gen_ai.provider.name
           - key: gen_ai.operation.name
-        conditions:
-          - attributes["gen_ai.usage.input_tokens"] != nil
-        sum:
-          value: Int(attributes["gen_ai.usage.input_tokens"])
-          monotonic: true
       - name: gen_ai.client.token.usage
-        description: GenAI output token usage
-        unit: "1"
-        include_resource_attributes:
-          - key: service.name
+        description: "Number of tokens used per LLM call, by direction"
+        unit: "{token}"
+        conditions:
+          - attributes["gen_ai.usage.output_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.output_tokens"])
+          monotonic: true
         attributes:
           - key: gen_ai.token.type
             default_value: output
@@ -100,11 +99,8 @@ connectors:
           - key: gen_ai.response.model
           - key: gen_ai.provider.name
           - key: gen_ai.operation.name
-        conditions:
-          - attributes["gen_ai.usage.output_tokens"] != nil
-        sum:
-          value: Int(attributes["gen_ai.usage.output_tokens"])
-          monotonic: true
+      # service.name is a resource attribute included by default — no
+      # include_resource_attributes filter needed, same as spanmetrics.
 
 exporters:
   otlp_http/dynatrace:
@@ -124,9 +120,9 @@ service:
     traces/genai_metrics:
       receivers: [otlp]
       processors: [gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
-      exporters: [spanmetrics, signaltometrics]
+      exporters: [spanmetrics, signal_to_metrics]
     metrics:
-      receivers: [otlp, spanmetrics, signaltometrics]
+      receivers: [otlp, spanmetrics, signal_to_metrics]
       exporters: [otlp_http/dynatrace]
     logs:
       receivers: [otlp]
