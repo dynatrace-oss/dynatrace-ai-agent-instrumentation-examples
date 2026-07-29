@@ -176,7 +176,7 @@ make run-openpipeline
 | `gen_ai.usage.prompt_tokens` | `gen_ai.usage.input_tokens` | Renamed to current OTel GenAI naming |
 | `gen_ai.usage.completion_tokens` | `gen_ai.usage.output_tokens` | Renamed |
 | _(mirrored from request model)_ | `gen_ai.response.model` | Strands does not emit a separate response model field |
-| _(derived from Bedrock model ID)_ | `gen_ai.provider.name` | Inferred from model ID prefix: `anthropic`, `amazon`, `meta`, `cohere`, `mistral` |
+| `gen_ai.provider.name` | `gen_ai.provider.name` | Emitted as `"strands-agents"` by Strands 1.x (latest conventions); passed through and used as the routing/matcher key |
 | `span.name` | `gen_ai.operation.name` / `gen_ai.operation.kind` | `"Model invoke"` → kind `task`, name `chat`; `"Tool: <n>"` → kind `tool`; `"Cycle <n>"` → kind `task`; agent span → kind `agent` |
 | `tool.name` | `gen_ai.tool.name` | OpenPipeline only |
 | `tool.parameters` | `gen_ai.tool.call.arguments` | OpenPipeline only |

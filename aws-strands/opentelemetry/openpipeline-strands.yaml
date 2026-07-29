@@ -14,10 +14,7 @@
 # gen_ai_span_attributes_only) so Strands 1.x emits gen_ai.input.messages /
 # gen_ai.output.messages directly as span attributes. Latest conventions replace
 # gen_ai.system with gen_ai.provider.name == "strands-agents", which identifies
-# Strands spans at routing time. The provider-inference processor below then
-# overwrites gen_ai.provider.name with the real LLM vendor (anthropic, amazon, …),
-# so the processors that must run on every routed span use matcher "true" rather
-# than re-testing gen_ai.provider.name.
+# Strands spans both at routing time and for every processor matcher below.
 #
 # Strands span types and their naming patterns:
 #   Agent span   — named after the agent (e.g. "Strands Agent")
@@ -41,7 +38,7 @@ processing:
     # ============================================================================
     - id: "strands-input-output"
       enabled: true
-      matcher: "true"  # routing already gates this pipeline to Strands spans; see header
+      matcher: 'gen_ai.provider.name == "strands-agents"'
       type: "dql"
       description: "Map gen_ai.prompt / gen_ai.completion to OTel GenAI convention"
       dql:
@@ -62,7 +59,7 @@ processing:
     # ============================================================================
     - id: "strands-operation"
       enabled: true
-      matcher: "true"  # routing already gates this pipeline to Strands spans; see header
+      matcher: 'gen_ai.provider.name == "strands-agents"'
       type: "dql"
       description: "Set gen_ai.operation.kind and gen_ai.operation.name from span name"
       dql:
@@ -74,33 +71,7 @@ processing:
           | fieldsAdd `gen_ai.operation.name` = if(span.name == "Model invoke", "chat", else: span.name)
 
     # ============================================================================
-    # 3. PROVIDER INFERENCE
-    # ============================================================================
-    # Bedrock model IDs encode the provider: [region.]<provider>.<model>:<version>
-    # Examples:
-    #   us.anthropic.claude-haiku-4-5-20251001-v1:0  → anthropic
-    #   anthropic.claude-3-sonnet-20240229-v1:0      → anthropic
-    #   us.amazon.titan-text-express-v1              → amazon
-    #   us.meta.llama3-8b-instruct-v1:0              → meta
-    #   us.cohere.command-r-v1:0                     → cohere
-    #   us.mistral.mistral-large-2402-v1:0           → mistral
-    # ============================================================================
-    - id: "strands-provider-inference"
-      enabled: true
-      matcher: 'isNotNull(`gen_ai.request.model`)'
-      type: "dql"
-      description: "Infer gen_ai.provider.name from Bedrock model ID"
-      dql:
-        script: |
-          fieldsAdd `gen_ai.provider.name` = if(matchesPhrase(`gen_ai.request.model`, "anthropic"), "anthropic",
-                                            else: if(matchesPhrase(`gen_ai.request.model`, "amazon"), "amazon",
-                                            else: if(matchesPhrase(`gen_ai.request.model`, "meta"), "meta",
-                                            else: if(matchesPhrase(`gen_ai.request.model`, "cohere"), "cohere",
-                                            else: if(matchesPhrase(`gen_ai.request.model`, "mistral"), "mistral",
-                                            else: null)))))
-
-    # ============================================================================
-    # 4. RESPONSE MODEL
+    # 3. RESPONSE MODEL
     # ============================================================================
     # Strands does not emit a separate response model field.
     # Mirror gen_ai.request.model to gen_ai.response.model on model invoke spans.
@@ -115,7 +86,7 @@ processing:
           fieldsAdd `gen_ai.response.model` = `gen_ai.request.model`
 
     # ============================================================================
-    # 5. TOKEN NORMALIZATION
+    # 4. TOKEN NORMALIZATION
     # ============================================================================
     # Strands uses gen_ai.usage.prompt_tokens / gen_ai.usage.completion_tokens
     # (older OTel GenAI naming). Rename to the current convention.
@@ -133,7 +104,7 @@ processing:
             toName: "gen_ai.usage.output_tokens"
 
     # ============================================================================
-    # 6. AGENT NAME
+    # 5. AGENT NAME
     # ============================================================================
     # Strands sets both agent.name and gen_ai.agent.name. Remove the non-namespaced
     # copy; gen_ai.agent.name is already correct.
@@ -148,7 +119,7 @@ processing:
           - "agent.name"
 
     # ============================================================================
-    # 7. TOOL ATTRIBUTES
+    # 6. TOOL ATTRIBUTES
     # ============================================================================
     # Strands uses tool.name / tool.parameters on tool spans.
     # Rename to the gen_ai.tool.* namespace.
@@ -166,11 +137,11 @@ processing:
             toName: "gen_ai.tool.call.arguments"
 
     # ============================================================================
-    # 8. SOURCE TAG
+    # 7. SOURCE TAG
     # ============================================================================
     - id: "strands-source-tag"
       enabled: true
-      matcher: "true"  # routing already gates this pipeline to Strands spans; see header
+      matcher: 'gen_ai.provider.name == "strands-agents"'
       type: "dql"
       description: "Tag spans with SDK source identifier"
       dql:
