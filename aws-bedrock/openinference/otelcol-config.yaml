@@ -68,12 +68,14 @@ connectors:
   # Dynatrace requires. Collector-path equivalent of the OpenPipeline
   # two-extractor pattern.
   signaltometrics:
-    include_resource_attributes:
-      - key: service.name
     spans:
       - name: gen_ai.client.token.usage
         description: GenAI input token usage
         unit: "1"
+        # include_resource_attributes is per-metric (not a connector-level key);
+        # setting it here keeps service.name on the output metric.
+        include_resource_attributes:
+          - key: service.name
         attributes:
           - key: gen_ai.token.type
             default_value: input
@@ -89,6 +91,8 @@ connectors:
       - name: gen_ai.client.token.usage
         description: GenAI output token usage
         unit: "1"
+        include_resource_attributes:
+          - key: service.name
         attributes:
           - key: gen_ai.token.type
             default_value: output
