@@ -19,10 +19,11 @@ With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note bel
 - [Prerequisites](#prerequisites)
 - [Configuration options](#configuration-options)
 - [Setup](#setup)
-- [Option A: OTel Collector with transform processor](#option-a-otel-collector-with-transform-processor)
+- [Option A: Bindplane Collector with transform processor](#option-a-bindplane-collector-with-transform-processor)
 - [Option B: Dynatrace OpenPipeline](#option-b-dynatrace-openpipeline)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
 - [Attribute mapping reference](#attribute-mapping-reference)
+- [Metrics](#metrics)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -32,11 +33,11 @@ With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note bel
 - Runs a multi-turn Personal Assistant Agent using Strands Agents on Amazon Bedrock.
 - Produces OpenTelemetry traces with `gen_ai.*` attributes, including `gen_ai.input.messages` / `gen_ai.output.messages` message content (via the `OTEL_SEMCONV_STABILITY_OPT_IN` opt-in).
 - Calls a small local **appointments service** from the `create_appointment` tool, so the tool call becomes a real downstream span and the trace spans two services. The Makefile starts and stops this service for you.
-- Normalizes Strands attributes to Dynatrace `gen_ai.*` format; either via a local OTel Collector or via Dynatrace OpenPipeline.
+- Normalizes Strands attributes to Dynatrace `gen_ai.*` format; either via a local Bindplane Collector or via Dynatrace OpenPipeline.
 - Shows the full agentic trace in the Dynatrace AI Observability app including tool calls, cycle spans, model invocations, token usage, and message content.
 
 > [!NOTE]
-> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. The app's metric tiles for this example therefore rely on the OpenPipeline span-to-metric extraction described below, not on native SDK metrics.
+> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. Both options below re-create the two metrics the app needs — `gen_ai.client.token.usage` and `gen_ai.client.operation.duration` — from the Strands spans: Option A in the collector (`spanmetrics` + `signaltometrics` connectors), Option B server-side in OpenPipeline (span-to-metric extraction). See [Metrics](#metrics).
 
 ---
 
@@ -53,7 +54,7 @@ With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note bel
 
 Strands Agents uses its own span attribute conventions that the Dynatrace AI Observability app does not natively understand. Two equivalent approaches normalize the attributes:
 
-|  | Option A: OTel Collector | Option B: OpenPipeline |
+|  | Option A: Bindplane Collector | Option B: OpenPipeline |
 |---|---|---|
 | **Where transforms run** | In the collector process, before ingest | Server-side, in your Dynatrace tenant |
 | **Requires Docker** | Yes | No |
@@ -108,19 +109,19 @@ make install
 
 ---
 
-## Option A: OTel Collector with transform processor
+## Option A: Bindplane Collector with transform processor
 
-The OTel Collector intercepts spans and applies all Strands → `gen_ai.*` attribute mappings before forwarding to Dynatrace. No Dynatrace configuration needed.
+The Bindplane Collector intercepts spans and applies all Strands → `gen_ai.*` attribute mappings before forwarding to Dynatrace, and derives the two `gen_ai.client.*` metrics from the spans. No Dynatrace configuration needed.
 
 ```
-App  →  Strands SDK (OTLP export)  →  OTel Collector (transform processor)  →  Dynatrace Grail
+App  →  Strands SDK (OTLP export)  →  Bindplane Collector (transform + metric connectors)  →  Dynatrace Grail
 ```
 
 ```bash
 make run
 ```
 
-The collector listens on port `4318`. The `transform/strands` processor remaps non-standard Strands attributes to `gen_ai.*` before forwarding to Dynatrace.
+The collector listens on port `4318`. The `transform/strands` processor remaps non-standard Strands attributes to `gen_ai.*`, and the `spanmetrics` / `signaltometrics` connectors derive the `gen_ai.client.*` metrics (see [Metrics](#metrics)), before forwarding to Dynatrace. This demo runs the **Bindplane** collector image (`ghcr.io/observiq/bindplane-agent`).
 
 **Useful commands:**
 
@@ -185,6 +186,21 @@ make run-openpipeline
 
 ---
 
+## Metrics
+
+Strands emits `gen_ai.*` span attributes and its own `strands.*` metrics, but not the two OTel semconv metrics the AI Observability app charts. Both options re-create them from the spans, so the cost and latency tiles populate either way:
+
+| Metric | Option A (collector) | Option B (OpenPipeline) |
+|---|---|---|
+| `gen_ai.client.operation.duration` (s) | `spanmetrics` connector, on `Model invoke` spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
+| `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs | two `samplingAwareValueMetric` extractors, one per direction |
+
+**Option A** derives both metrics in the collector. `gen_ai.client.token.usage` needs the `signaltometrics` connector, which ships in the **Bindplane** collector (`ghcr.io/observiq/bindplane-agent`) but **not** in the Dynatrace collector distro — this is why the Makefile pins the Bindplane image. Requires the token's `metrics.ingest` scope. Both metrics use delta temporality (Dynatrace rejects cumulative).
+
+**Option B** derives the same two metrics server-side from the ingested spans via the metric-extraction processors in [`openpipeline-strands.yaml`](openpipeline-strands.yaml) — no collector required. The token metric uses the two-extractor pattern (one extractor per direction, both writing `gen_ai.client.token.usage` with a constant `gen_ai.token.type` dimension).
+
+---
+
 ## Troubleshooting
 
 **No spans in Dynatrace:**
@@ -194,7 +210,7 @@ make run-openpipeline
 - Option B: run `uv run python3 main.py` with env vars set; any auth error appears in the console.
 
 **Collector crashes on startup (Option A):**
-- Run `docker ps -a` and `docker logs otel-collector` to see the error.
+- Run `docker ps -a` and `docker logs bindplane-collector` to see the error.
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
 
 **Spans in Distributed Tracing but not in AI Observability:**

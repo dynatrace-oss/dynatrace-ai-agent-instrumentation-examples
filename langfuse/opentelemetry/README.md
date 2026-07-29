@@ -11,7 +11,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 - [Prerequisites](#prerequisites)
 - [Configuration options](#configuration-options)
 - [Setup](#setup)
-- [Option A -- OTel Collector with transform processor](#option-a----otel-collector-with-transform-processor)
+- [Option A -- Bindplane Collector with transform processor](#option-a----bindplane-collector-with-transform-processor)
 - [Option B -- Dynatrace OpenPipeline](#option-b----dynatrace-openpipeline)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
 - [Attribute mapping reference](#attribute-mapping-reference)
@@ -23,7 +23,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 
 - Calls an LLM to generate a haiku using the Langfuse instrumentation library.
 - Produces OpenTelemetry traces with Langfuse SDK 4.x semantic conventions (`langfuse.observation.*` attributes).
-- Normalizes Langfuse attributes to Dynatrace `gen_ai.*` format -- either via a local OTel Collector or via Dynatrace OpenPipeline.
+- Normalizes Langfuse attributes to Dynatrace `gen_ai.*` format -- either via a local Bindplane Collector or via Dynatrace OpenPipeline.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, conversation grouping, and message content.
 
 ---
@@ -42,7 +42,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 
 Langfuse uses its own semantic conventions that the Dynatrace AI Observability app does not natively understand. Two equivalent approaches normalize the attributes:
 
-|  | Option A -- OTel Collector | Option B -- OpenPipeline |
+|  | Option A -- Bindplane Collector | Option B -- OpenPipeline |
 |---|---|---|
 | **Where transforms run** | In the collector process | Server-side, in your Dynatrace tenant |
 | **Requires Docker** | Yes | No |
@@ -93,12 +93,12 @@ make install
 
 ---
 
-## Option A -- OTel Collector with transform processor
+## Option A -- Bindplane Collector with transform processor
 
-The OTel Collector intercepts spans and applies all Langfuse → `gen_ai.*` attribute mappings before forwarding to Dynatrace. No Dynatrace configuration needed.
+The Bindplane Collector intercepts spans and applies all Langfuse → `gen_ai.*` attribute mappings before forwarding to Dynatrace. No Dynatrace configuration needed.
 
 ```
-App  →  Langfuse SDK (OTLP export)  →  OTel Collector (transform processor)  →  Dynatrace Grail
+App  →  Langfuse SDK (OTLP export)  →  Bindplane Collector (transform processor)  →  Dynatrace Grail
 ```
 
 ```bash
@@ -161,7 +161,7 @@ make run-openpipeline
 
 ## Attribute mapping reference
 
-These mappings are applied by both the OTel Collector (`transform/langfuse` processor) and Dynatrace OpenPipeline. Langfuse SDK 4.x attribute names are used.
+These mappings are applied by both the Bindplane Collector (`transform/langfuse` processor) and Dynatrace OpenPipeline. Langfuse SDK 4.x attribute names are used.
 
 | Langfuse source | Dynatrace target | Notes |
 |---|---|---|
