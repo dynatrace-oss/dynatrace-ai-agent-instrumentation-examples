@@ -14,7 +14,7 @@ func TestAWSStrandsOpenTelemetryOpenPipeline(t *testing.T) {
 	auditSpan(t, "aws-strands", "opentelemetry-openpipeline", BedrockProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-strands/opentelemetry-openpipeline"
-| filter isNotNull(gen_ai.system)
+| filter isNotNull(gen_ai.provider.name)
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
 | limit 1`)

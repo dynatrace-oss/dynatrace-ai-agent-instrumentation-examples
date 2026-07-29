@@ -1,9 +1,9 @@
 # AWS Strands Agents + Dynatrace AI Observability
 
 Run a Personal Assistant Agent built on [Strands Agents](https://strandsagents.com/), send traces to Dynatrace, and see them in the **AI Observability** app.
-Strands Agents does not follow the OpenTelemetry GenAI semantic conventions for message content: instead of emitting `gen_ai.input.messages` / `gen_ai.output.messages` as span attributes it uses non-standard names (`gen_ai.prompt`, `gen_ai.completion`). This example shows two ways to normalize them into the correct `gen_ai.*` format before they reach Dynatrace.
+With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note below), Strands 1.x emits message content as `gen_ai.input.messages` / `gen_ai.output.messages` span attributes. Its remaining span attributes (operation name and kind, provider, response model, tool fields) still differ from what the Dynatrace AI Observability app expects. This example shows two ways to normalize those attributes into the correct `gen_ai.*` format before they reach Dynatrace.
 
-> ⚠️ **Do not set `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.** When this flag is set, Strands moves message content out of span attributes entirely and into OTel log events; a format not yet supported by the normalization pipeline or the AI Observability app. Leave this variable unset.
+> ℹ️ **Message content requires `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental,gen_ai_span_attributes_only`.** Strands 1.x emits message content as OTel span events by default, which the AI Observability app does not read. This example sets both tokens in [`dynatrace.py`](./dynatrace.py) so Strands records `gen_ai.input.messages` / `gen_ai.output.messages` directly as span attributes. `gen_ai_span_attributes_only` is what forces span attributes instead of events; do not set `gen_ai_latest_experimental` on its own.
 
 ![AI Observability: Prompts view with full input/output content](assets/prompts-view.png)
 
@@ -30,7 +30,8 @@ Strands Agents does not follow the OpenTelemetry GenAI semantic conventions for 
 ## What you'll build
 
 - Runs a multi-turn Personal Assistant Agent using Strands Agents on Amazon Bedrock.
-- Produces OpenTelemetry traces with Strands semantic conventions (`gen_ai.prompt`, `gen_ai.completion`, etc.).
+- Produces OpenTelemetry traces with `gen_ai.*` attributes, including `gen_ai.input.messages` / `gen_ai.output.messages` message content (via the `OTEL_SEMCONV_STABILITY_OPT_IN` opt-in).
+- Calls a small local **appointments service** from the `create_appointment` tool, so the tool call becomes a real downstream span and the trace spans two services. The Makefile starts and stops this service for you.
 - Normalizes Strands attributes to Dynatrace `gen_ai.*` format; either via a local OTel Collector or via Dynatrace OpenPipeline.
 - Shows the full agentic trace in the Dynatrace AI Observability app including tool calls, cycle spans, model invocations, token usage, and message content.
 
@@ -146,7 +147,7 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `strands-agents-ai-spans`, and add the processors from [`openpipeline-strands.yaml`](./openpipeline-strands.yaml).
 4. Go to the **Routing** tab and add an entry:
-   - Matcher: `isNotNull(gen_ai.prompt) AND gen_ai.system == "strands-agents"`
+   - Matcher: `gen_ai.provider.name == "strands-agents"`
    - Pipeline: `strands-agents-ai-spans`
 
 ### Step 2: Run the app
@@ -169,12 +170,13 @@ make run-openpipeline
 
 | Strands source | Dynatrace target | Notes |
 |---|---|---|
-| `gen_ai.prompt` | `gen_ai.input.messages` | Non-standard Strands attr; renamed to OTel GenAI convention |
-| `gen_ai.completion` | `gen_ai.output.messages` | Non-standard Strands attr; renamed |
+| `gen_ai.input.messages` | `gen_ai.input.messages` | Emitted directly as a span attribute via the `OTEL_SEMCONV_STABILITY_OPT_IN` opt-in; passed through |
+| `gen_ai.output.messages` | `gen_ai.output.messages` | Emitted directly as a span attribute via the opt-in; passed through |
+| `gen_ai.prompt` / `gen_ai.completion` | `gen_ai.input.messages` / `gen_ai.output.messages` | Legacy fallback only: mapped if a span still carries the pre-1.x names |
 | `gen_ai.usage.prompt_tokens` | `gen_ai.usage.input_tokens` | Renamed to current OTel GenAI naming |
 | `gen_ai.usage.completion_tokens` | `gen_ai.usage.output_tokens` | Renamed |
 | _(mirrored from request model)_ | `gen_ai.response.model` | Strands does not emit a separate response model field |
-| _(derived from Bedrock model ID)_ | `gen_ai.provider.name` | Inferred from model ID prefix: `anthropic`, `amazon`, `meta`, `cohere`, `mistral` |
+| `gen_ai.provider.name` | `gen_ai.provider.name` | Emitted as `"strands-agents"` by Strands 1.x (latest conventions); passed through and used as the routing/matcher key |
 | `span.name` | `gen_ai.operation.name` / `gen_ai.operation.kind` | `"Model invoke"` → kind `task`, name `chat`; `"Tool: <n>"` → kind `tool`; `"Cycle <n>"` → kind `task`; agent span → kind `agent` |
 | `tool.name` | `gen_ai.tool.name` | OpenPipeline only |
 | `tool.parameters` | `gen_ai.tool.call.arguments` | OpenPipeline only |
@@ -198,7 +200,13 @@ make run-openpipeline
 **Spans in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.provider.name` to be set; added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml`.
-- Option B: confirm the OpenPipeline routing entry is active; matcher `isNotNull(gen_ai.prompt) AND gen_ai.system == "strands-agents"`, pipeline `strands-agents-ai-spans`.
+- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.provider.name == "strands-agents"`, pipeline `strands-agents-ai-spans`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
+
+**Appointments service fails to start / tool call is refused:**
+- The `create_appointment` tool calls a local appointments service on port `8081`, started automatically by `make run` / `make run-openpipeline`.
+- Ensure port `8081` is free: `lsof -i :8081`. Override it with `make run APPOINTMENTS_PORT=8082 APPOINTMENTS_URL=http://127.0.0.1:8082` if needed.
+- Check the service log with `cat appointments.log`.
+- Stop a stale instance with `make stop` (also removes the collector).

@@ -36,7 +36,10 @@ def create_appointment(date: str, location: str, title: str) -> str:
     """
     with otel_tracer.start_as_current_span(name="appointment"):
         new_title = "Dentist appointment"
-        contents = http.request("GET", "http://0.0.0.0:8081/api/v1/random")
+        appointments_url = os.environ.get(
+            "APPOINTMENTS_URL", "http://127.0.0.1:8081"
+        )
+        contents = http.request("GET", f"{appointments_url}/api/v1/random")
         if contents:
             new_title = contents.data.decode('utf-8')
         return f"Appointment {new_title} with at {location} in {date} created"
