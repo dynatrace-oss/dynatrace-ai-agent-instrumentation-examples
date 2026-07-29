@@ -1,0 +1,78 @@
+---
+# OpenPipeline configuration for the pydantic-ai music-agent demo.
+#
+# pydantic-ai exports gen_ai.* spans (and the gen_ai.client.token.usage metric)
+# straight to Dynatrace OTLP with no collector in between. Token usage arrives
+# natively, but pydantic-ai does NOT emit gen_ai.client.operation.duration — so
+# the AI Observability app's latency tiles stay empty. That one metric is
+# backfilled here tenant-side from the span duration, the same duration
+# extraction used for OneAgent
+# (openpipeline/openpipeline-oneagent-genai-metrics.yaml). No token extractor is
+# needed — pydantic-ai already emits gen_ai.client.token.usage.
+#
+# Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
+# then add a routing entry:
+#   Matcher:  isNotNull(gen_ai.response.model)
+#   Pipeline: pydantic-ai-genai-metrics
+#
+# Scope note: pydantic-ai adds nested GenAI spans for each model call — those
+# carry gen_ai.response.model and are the correct unit for operation.duration.
+# The demo's outer "music_agent.ask" SERVER span sets only gen_ai.request.model
+# (never response.model), so keying on response.model targets the LLM span alone
+# and avoids double-counting the API-level wrapper span (which also spans retries).
+
+customId: "pydantic-ai-genai-metrics"
+displayName: "pydantic-ai AI Observability - Metrics"
+
+processing:
+  processors:
+
+    # ============================================================================
+    # DURATION IN SECONDS (feeds the operation-duration metric below)
+    # ============================================================================
+    # The span `duration` field is in nanoseconds. The metric-extraction
+    # "duration" measurement emits MICROSECONDS, but the OTel semconv metric
+    # gen_ai.client.operation.duration (and every native SDK emitter) is in
+    # SECONDS. Materialize a seconds value here and point the metric at it via
+    # measurement: "field" (same fix as openpipeline-langfuse.yaml, PR #166).
+    # ============================================================================
+    - id: "pydantic-ai-duration-seconds"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.response.model`)"
+      type: "dql"
+      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
+# ==============================================================================
+# METRIC EXTRACTION
+# ==============================================================================
+# Only gen_ai.client.operation.duration is backfilled — pydantic-ai emits
+# gen_ai.client.token.usage natively.
+# ==============================================================================
+metricExtraction:
+  processors:
+
+    - id: "pydantic-ai-operation-duration-metric"
+      enabled: true
+      matcher: "isNotNull(duration_seconds)"
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from pydantic-ai LLM spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"

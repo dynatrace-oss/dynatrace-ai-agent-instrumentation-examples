@@ -147,3 +147,120 @@ processing:
       dql:
         script: |
           fieldsAdd `ai.observability.source` = "strands-agents"
+
+    # ============================================================================
+    # 8. DURATION IN SECONDS (feeds the operation-duration metric below)
+    # ============================================================================
+    # The span `duration` field is in nanoseconds. The metric-extraction
+    # "duration" measurement emits MICROSECONDS, but the OTel semconv metric
+    # gen_ai.client.operation.duration (and every native SDK emitter) is in
+    # SECONDS. Materialize a seconds value here and point the metric at it via
+    # measurement: "field" (same fix as openpipeline-langfuse.yaml, PR #166).
+    # Scoped to Model invoke spans — the LLM call is the unit the duration and
+    # token metrics describe.
+    # ============================================================================
+    - id: "strands-duration-seconds"
+      enabled: true
+      matcher: 'span.name == "Model invoke"'
+      type: "dql"
+      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
+# ==============================================================================
+# METRIC EXTRACTION
+# ==============================================================================
+# Strands 1.x emits gen_ai.* spans but not the gen_ai.client.* metrics the AI
+# Observability app queries (its native metrics live under strands.* names).
+# Both metrics are re-created here from the normalized attributes above, the
+# same tenant-side two-extractor pattern used for OneAgent
+# (openpipeline/openpipeline-oneagent-genai-metrics.yaml).
+# ==============================================================================
+metricExtraction:
+  processors:
+
+    - id: "strands-operation-duration-metric"
+      enabled: true
+      matcher: 'span.name == "Model invoke"'
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from Strands model-invoke spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    # ============================================================================
+    # TOKEN USAGE — two extractors, same metric key, aliased dimension
+    # ============================================================================
+    # A span carries gen_ai.usage.input_tokens and gen_ai.usage.output_tokens as
+    # two separate numeric fields with no token-type dimension of their own. The
+    # app queries one dimensioned metric (`sum(gen_ai.client.token.usage)` filtered
+    # by `gen_ai.token.type`), so each direction gets its own extractor into the
+    # same metricKey, with a constant dimension value naming which one it is.
+    # (Token attributes were normalized to gen_ai.usage.* in step 4 above.)
+    # ============================================================================
+    - id: "strands-token-usage-input-metric"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.input_tokens`)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (input tokens) from Strands spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.input_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "input"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "strands-token-usage-output-metric"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.output_tokens`)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (output tokens) from Strands spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.output_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "output"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
