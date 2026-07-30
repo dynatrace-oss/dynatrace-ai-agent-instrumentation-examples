@@ -73,3 +73,39 @@ func auditSpanWithMetrics(t *testing.T, sdk, instrumentation string, p Profile, 
 	writeReport(t, report)
 	logAuditResult(t, report, spanCount)
 }
+
+// auditSpanOptionalWithMetrics is like auditSpanWithMetrics but skips the
+// (sub)test when no anchor span is found within the timeout instead of failing.
+// Use for provider-specific audits where the provider may not have been
+// selected in the current run.
+func auditSpanOptionalWithMetrics(t *testing.T, sdk, instrumentation string, p Profile, dql, serviceName string, metricKeys []string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s spans found — provider likely not selected this run", sdk, instrumentation)
+		return
+	}
+	assertNotErrorSpan(t, records[0])
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation, p, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+
+	for _, key := range metricKeys {
+		status := "absent"
+		if pollMetricExists(t, serviceName, key) {
+			status = "present"
+		} else {
+			t.Errorf("metric %q not found for service %q within timeout", key, serviceName)
+		}
+		report.Metrics = append(report.Metrics, MetricResult{Metric: key, Status: status})
+	}
+
+	writeReport(t, report)
+	logAuditResult(t, report, len(spans))
+}

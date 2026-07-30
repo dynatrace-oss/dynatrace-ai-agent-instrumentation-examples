@@ -133,6 +133,54 @@ connectors:
       - name: gen_ai.operation.name
     metrics_flush_interval: 15s
 
+  # Derive gen_ai.client.token.usage (OTel GenAI semconv, "{token}" unit) from the
+  # gen_ai.usage.input_tokens / output_tokens attributes the transform above
+  # already normalized. spanmetrics only derives duration/call-count from span
+  # timing, not arbitrary attribute values, so a second connector is needed here.
+  # Always emits delta temporality (hardcoded by the connector, same requirement
+  # as spanmetrics above — no config knob for it).
+  #
+  # Two entries feed the same metric name, one per token direction — mirroring
+  # the "two extractors, one metric key" pattern already used on the OpenPipeline
+  # path (openpipeline-langfuse.yaml): gen_ai.token.type has no source attribute
+  # of its own, so each entry's condition picks the matching field and
+  # default_value supplies the dimension the span itself never sets.
+  signal_to_metrics:
+    spans:
+      - name: gen_ai.client.token.usage
+        description: "Number of tokens used per LLM call, by direction"
+        unit: "{token}"
+        conditions:
+          - attributes["gen_ai.usage.input_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.input_tokens"])
+          monotonic: true
+        attributes:
+          - key: gen_ai.token.type
+            default_value: input
+          - key: gen_ai.operation.name
+          - key: gen_ai.provider.name
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+      - name: gen_ai.client.token.usage
+        description: "Number of tokens used per LLM call, by direction"
+        unit: "{token}"
+        conditions:
+          - attributes["gen_ai.usage.output_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.output_tokens"])
+          monotonic: true
+        attributes:
+          - key: gen_ai.token.type
+            default_value: output
+          - key: gen_ai.operation.name
+          - key: gen_ai.provider.name
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+      # service.name is a resource attribute, not a span attribute — it isn't
+      # listed above because it's already included by default (no
+      # include_resource_attributes filter is set), same as spanmetrics.
+
 exporters:
   debug:
     verbosity: detailed
@@ -148,12 +196,12 @@ service:
       processors: [attributes/tag_langfuse, transform/langfuse]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: transform, keep only LLM spans, and feed
-    # the spanmetrics connector. Kept separate from the export pipeline so the
-    # filter here never drops spans from Distributed Tracing.
+    # the spanmetrics + signaltometrics connectors. Kept separate from the export
+    # pipeline so the filter here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
       processors: [attributes/tag_langfuse, transform/langfuse, filter/genai_only]
-      exporters: [spanmetrics]
+      exporters: [spanmetrics, signal_to_metrics]
     metrics:
-      receivers: [spanmetrics]
+      receivers: [spanmetrics, signal_to_metrics]
       exporters: [otlp_http/dynatrace]

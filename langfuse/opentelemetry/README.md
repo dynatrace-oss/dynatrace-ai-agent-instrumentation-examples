@@ -11,7 +11,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 - [Prerequisites](#prerequisites)
 - [Configuration options](#configuration-options)
 - [Setup](#setup)
-- [Option A -- OTel Collector with transform processor](#option-a----otel-collector-with-transform-processor)
+- [Option A -- Bindplane Collector with transform processor](#option-a----bindplane-collector-with-transform-processor)
 - [Option B -- Dynatrace OpenPipeline](#option-b----dynatrace-openpipeline)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
 - [Attribute mapping reference](#attribute-mapping-reference)
@@ -23,7 +23,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 
 - Calls an LLM to generate a haiku using the Langfuse instrumentation library.
 - Produces OpenTelemetry traces with Langfuse SDK 4.x semantic conventions (`langfuse.observation.*` attributes).
-- Normalizes Langfuse attributes to Dynatrace `gen_ai.*` format -- either via a local OTel Collector or via Dynatrace OpenPipeline.
+- Normalizes Langfuse attributes to Dynatrace `gen_ai.*` format -- either via a local Bindplane Collector or via Dynatrace OpenPipeline.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, conversation grouping, and message content.
 
 ---
@@ -42,7 +42,7 @@ Langfuse uses its own semantic conventions (`langfuse.observation.type`, `langfu
 
 Langfuse uses its own semantic conventions that the Dynatrace AI Observability app does not natively understand. Two equivalent approaches normalize the attributes:
 
-|  | Option A -- OTel Collector | Option B -- OpenPipeline |
+|  | Option A -- Bindplane Collector | Option B -- OpenPipeline |
 |---|---|---|
 | **Where transforms run** | In the collector process | Server-side, in your Dynatrace tenant |
 | **Requires Docker** | Yes | No |
@@ -50,7 +50,7 @@ Langfuse uses its own semantic conventions that the Dynatrace AI Observability a
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
 | **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
-Both paths produce the same `gen_ai.*` span attributes, and both emit the `gen_ai.client.operation.duration` metric charted by the AI Observability app -- Option A via the collector's `spanmetrics` connector, Option B via an OpenPipeline metric-extraction processor. Both derive it from the LLM span's duration (see [Attribute mapping reference](#attribute-mapping-reference)).
+Both paths produce the same `gen_ai.*` span attributes, and both emit the `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` metrics charted by the AI Observability app -- Option A via the collector's `spanmetrics` and `signal_to_metrics` connectors, Option B via OpenPipeline metric-extraction processors (see [Attribute mapping reference](#attribute-mapping-reference)).
 
 ---
 
@@ -61,7 +61,7 @@ Both paths produce the same `gen_ai.*` span attributes, and both emit the `gen_a
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
 2. Create a token with these permissions:
    - `openTelemetryTrace.ingest`
-   - `metrics.ingest` (for the `gen_ai.client.operation.duration` metric -- Option A exports it from the collector; Option B extracts it in OpenPipeline)
+   - `metrics.ingest` (for the `gen_ai.client.operation.duration` / `gen_ai.client.token.usage` metrics -- Option A exports them from the collector; Option B extracts them in OpenPipeline)
 3. Copy the token value.
 
 ### 2. Set environment variables
@@ -93,19 +93,21 @@ make install
 
 ---
 
-## Option A -- OTel Collector with transform processor
+## Option A -- Bindplane Collector with transform processor
 
-The OTel Collector intercepts spans and applies all Langfuse → `gen_ai.*` attribute mappings before forwarding to Dynatrace. No Dynatrace configuration needed.
+The Bindplane Collector intercepts spans and applies all Langfuse → `gen_ai.*` attribute mappings before forwarding to Dynatrace. No Dynatrace configuration needed.
 
 ```
-App  →  Langfuse SDK (OTLP export)  →  OTel Collector (transform processor)  →  Dynatrace Grail
+App  →  Langfuse SDK (OTLP export)  →  Bindplane Collector (transform processor)  →  Dynatrace Grail
 ```
 
 ```bash
 make run
 ```
 
-The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A second pipeline branch feeds a `spanmetrics` connector that derives the `gen_ai.client.operation.duration` metric (seconds) from the LLM span durations and exports it to Dynatrace. The collector stays running after the app exits so the metric flushes; stop it with `make stop`.
+The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A second pipeline branch feeds `spanmetrics` (derives `gen_ai.client.operation.duration`, seconds, from LLM span durations) and `signal_to_metrics` (derives `gen_ai.client.token.usage` from the `gen_ai.usage.input_tokens` / `output_tokens` attributes), both exported to Dynatrace. The collector stays running after the app exits so the metrics flush; stop it with `make stop`.
+
+> **Note:** this runs the [Bindplane collector](https://github.com/observIQ/bindplane-agent), not the Dynatrace distribution -- `signal_to_metrics` isn't compiled into `ghcr.io/dynatrace/dynatrace-otel-collector` as of its latest release (checked v0.52.0).
 
 **Useful commands:**
 
@@ -133,7 +135,7 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `langfuse-ai-spans`, and add the processors from `openpipeline-langfuse.yaml`:
    - **Processing** tab: the `langfuse.* → gen_ai.*` attribute mappings.
-   - **Metric extraction** tab: the `gen_ai.client.operation.duration` histogram processor (extracting metrics from spans requires the DPS **Metrics Ingest and Process** rate card).
+   - **Metric extraction** tab: the `gen_ai.client.operation.duration` histogram processor and the two `gen_ai.client.token.usage` value-metric processors (input/output) (extracting metrics from spans requires the DPS **Metrics Ingest and Process** rate card).
 4. Go to the **Routing** tab and add an entry:
    - Matcher: `isNotNull(langfuse.observation.type)`
    - Pipeline: `langfuse-ai-spans`
@@ -159,7 +161,7 @@ make run-openpipeline
 
 ## Attribute mapping reference
 
-These mappings are applied by both the OTel Collector (`transform/langfuse` processor) and Dynatrace OpenPipeline. Langfuse SDK 4.x attribute names are used.
+These mappings are applied by both the Bindplane Collector (`transform/langfuse` processor) and Dynatrace OpenPipeline. Langfuse SDK 4.x attribute names are used.
 
 | Langfuse source | Dynatrace target | Notes |
 |---|---|---|
@@ -178,11 +180,12 @@ These mappings are applied by both the OTel Collector (`transform/langfuse` proc
 | `langfuse.observation.level` | `span.status_code` | `"ERROR"` → `error`; generation spans without error → `ok` |
 | _(hardcoded)_ | `ai.observability.source = "langfuse"` | set on all Langfuse spans |
 
-### Extracted metric
+### Extracted metrics
 
 | Metric | Source | Notes |
 |---|---|---|
-| `gen_ai.client.operation.duration` | LLM span duration | Charted by the AI Observability app. Option A (Collector) emits it via the `spanmetrics` connector; Option B (OpenPipeline) extracts it with a `samplingAwareHistogramMetric` processor (`measurement: duration`). Both carry `service.name` as a dimension. OpenPipeline metric extraction from spans requires the DPS **Metrics Ingest and Process** rate card. |
+| `gen_ai.client.operation.duration` | LLM span duration | Charted by the AI Observability app. Option A (Collector) emits it via the `spanmetrics` connector; Option B (OpenPipeline) extracts it with a `samplingAwareHistogramMetric` processor (`measurement: field`, seconds). Both carry `service.name` as a dimension. OpenPipeline metric extraction from spans requires the DPS **Metrics Ingest and Process** rate card. |
+| `gen_ai.client.token.usage` | `gen_ai.usage.input_tokens` / `output_tokens` | Charted by the AI Observability app, dimensioned by `gen_ai.token.type` (`input`/`output`). Option A (Collector) emits it via the `signal_to_metrics` connector (two `sum` metric definitions, one per direction, `gen_ai.token.type` set via `default_value` since the span carries no such attribute itself); Option B (OpenPipeline) extracts it with two `samplingAwareValueMetric` processors (same two-extractors-one-metric-key pattern, `gen_ai.token.type` set via a `constant` dimension). |
 
 ---
 
