@@ -280,3 +280,66 @@ metricExtraction:
             sourceFieldName: "gen_ai.request.model"
           - extractionType: "field"
             sourceFieldName: "gen_ai.response.model"
+
+    # ============================================================================
+    # TOKEN USAGE — two extractors, same metric key, aliased dimension
+    # ============================================================================
+    # gen_ai.usage.input_tokens and gen_ai.usage.output_tokens (materialized in
+    # processing step 6) are two separate numeric fields with no token-type
+    # dimension of their own. The app queries one dimensioned metric
+    # (sum(gen_ai.client.token.usage) filtered by gen_ai.token.type), so each
+    # direction gets its own extractor into the same metricKey, with a constant
+    # dimension value naming which one it is (same pattern as
+    # openpipeline-oneagent-genai-metrics.yaml, PR #174).
+    # ============================================================================
+    - id: "langfuse-token-usage-input-metric"
+      enabled: true
+      matcher: "isNotNull(gen_ai.usage.input_tokens)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (input tokens) from Langfuse generation spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.input_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "input"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "langfuse-token-usage-output-metric"
+      enabled: true
+      matcher: "isNotNull(gen_ai.usage.output_tokens)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (output tokens) from Langfuse generation spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.output_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "output"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"

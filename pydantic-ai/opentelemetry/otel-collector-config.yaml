@@ -1,0 +1,66 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # Keep only the nested LLM-call spans for the metrics branch. pydantic-ai sets
+  # gen_ai.response.model on the model-call spans; the demo's outer
+  # "music_agent.ask" wrapper span sets only gen_ai.request.model. Keying on
+  # response.model targets the LLM call alone, so spanmetrics does not also derive
+  # a (wrong, retry-spanning) duration from the wrapper span. The export pipeline
+  # is untouched, so all spans still reach Distributed Tracing.
+  filter/genai_only:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.response.model"] == nil
+
+connectors:
+  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
+  # from the LLM span durations — pydantic-ai emits the token metric natively but
+  # NOT this one. Same connector the langfuse demo uses.
+  spanmetrics:
+    namespace: gen_ai.client.operation
+    # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp_http/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, otlp_http/dynatrace]
+    # Second branch: keep only LLM spans and feed the spanmetrics connector.
+    traces/genai_metrics:
+      receivers: [otlp]
+      processors: [filter/genai_only, batch]
+      exporters: [spanmetrics]
+    # pydantic-ai's native gen_ai.client.token.usage arrives on [otlp]; the derived
+    # gen_ai.client.operation.duration arrives on [spanmetrics]. Both forwarded.
+    metrics:
+      receivers: [otlp, spanmetrics]
+      exporters: [otlp_http/dynatrace]

@@ -5,7 +5,12 @@ export
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.51.0
+# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.104.0 tracks OTel
+# contrib v0.156.0 and bundles the signaltometrics connector used to derive
+# gen_ai.client.token.usage from span attributes — that connector is NOT in the
+# Dynatrace collector distro, so this demo runs Bindplane. Pinned so a version
+# bump surfaces metric-derivation regressions in the e2e test.
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.104.0
 override COLLECTOR_CONTAINER := otel-collector
 
 # Downstream 'appointments' service the create_appointment tool calls.
@@ -83,10 +88,10 @@ _collector:
 	docker run -d \
 	  --name $(COLLECTOR_CONTAINER) \
 	  -p 4318:4318 \
-	  -v $$(pwd)/$(CONFIG):/etc/otelcol/otel-collector-config.yaml:ro \
+	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml && \
+	  $(COLLECTOR_IMAGE) && \
 	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
 	echo "Collector logs -> collector.log" && \
 	for i in $$(seq 1 30); do \
