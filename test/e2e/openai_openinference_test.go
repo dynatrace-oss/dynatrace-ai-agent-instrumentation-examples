@@ -16,5 +16,5 @@ func TestOpenAIOpenInference(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
-		"pydantic-ai-music-agent", genAIClientMetrics)
+		"openai/openinference", genAIClientMetrics)
 }
