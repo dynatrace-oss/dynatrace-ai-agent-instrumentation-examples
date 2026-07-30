@@ -61,6 +61,36 @@ func triggerHaiku(t *testing.T, withBody bool) {
 	}
 }
 
+// triggerHaikuGuardrail POSTs a football-topic request to /haiku on
+// localhost:8000 to trip the demo's Bedrock guardrail (a topic-denial policy
+// on "football"). No-op when BEDROCK_GUARDRAIL_ID is unset, matching the
+// app-side skip behavior — nothing would fire anyway.
+func triggerHaikuGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	const url = "http://127.0.0.1:8000/haiku"
+
+	b, _ := json.Marshal(haiku{Topic: "football strategies for the World Cup"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /haiku (guardrail trigger): %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /haiku (guardrail trigger) returned %d: %s", resp.StatusCode, rb)
+	}
+}
+
 // triggerAgent POSTs a task to /agent on localhost:8000.
 func triggerAgent(t *testing.T) {
 	t.Helper()
@@ -84,6 +114,37 @@ func triggerAgent(t *testing.T) {
 	if resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("POST /agent returned %d: %s", resp.StatusCode, body)
+	}
+}
+
+// triggerAgentGuardrail POSTs a football-topic task to /agent on
+// localhost:8000 to trip the demo's Bedrock guardrail (a topic-denial policy
+// on "football"). No-op when BEDROCK_GUARDRAIL_ID is unset.
+func triggerAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	const url = "http://127.0.0.1:8000/agent"
+
+	b, _ := json.Marshal(map[string]string{
+		"task": "What are the best football strategies for the World Cup?",
+	})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent (guardrail trigger): %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent (guardrail trigger) returned %d: %s", resp.StatusCode, body)
 	}
 }
 

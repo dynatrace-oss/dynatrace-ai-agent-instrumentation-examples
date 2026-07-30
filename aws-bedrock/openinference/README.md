@@ -1,6 +1,21 @@
 # AWS Bedrock + OpenInference Demo
 
-Demonstrates tracing LangChain + AWS Bedrock API calls with Dynatrace via OpenInference instrumentation. Traces are sent to Dynatrace via OTLP.
+Demonstrates tracing LangChain + AWS Bedrock API calls with Dynatrace via OpenInference instrumentation. The app exports spans over OTLP to a local Bindplane collector, which normalizes them and forwards them to Dynatrace.
+
+## How it works
+
+OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) that the Dynatrace AI Observability app does not natively understand. This example normalizes them to the Dynatrace `gen_ai.*` format in the collector, so no Dynatrace-side configuration is needed:
+
+```
+App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
+```
+
+The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`) and forwards spans. The pipeline runs two processors (see [`otelcol-config.yaml`](otelcol-config.yaml)):
+
+1. **`gen_ai_normalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
+2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+
+The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane Distro for OpenTelemetry), which tracks OTel Collector contrib v0.156.0 and bundles the `genainormalizer` processor. The pin means a future version bump surfaces normalization changes in the e2e test.
 
 ## Prerequisites
 

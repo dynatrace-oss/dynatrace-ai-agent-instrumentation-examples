@@ -30,7 +30,14 @@ type SpanReport struct {
 	Note            string            `json:"note,omitempty"`
 	Required        []AttributeResult `json:"required"`
 	Optional        []AttributeResult `json:"optional"`
+	Metrics         []MetricResult    `json:"metrics,omitempty"`
 	GeneratedAt     string            `json:"generated_at"`
+}
+
+// MetricResult mirrors the type in fixture_audit_test.go.
+type MetricResult struct {
+	Metric string `json:"metric"`
+	Status string `json:"status"`
 }
 
 // RunSummary is one entry in history.json.
@@ -467,6 +474,22 @@ footer {
                 </tbody>
               </table>
             </div>
+            {{if .Metrics}}
+            <div class="detail-section">
+              <h3>Metrics</h3>
+              <table class="attr-table">
+                <thead><tr><th>Metric</th><th>Status</th></tr></thead>
+                <tbody>
+                {{range .Metrics}}
+                  <tr>
+                    <td><code>{{.Metric}}</code></td>
+                    <td class="s-{{if eq .Status "present"}}pass{{else}}fail{{end}}">{{if eq .Status "present"}}✅{{else}}❌{{end}} {{.Status}}</td>
+                  </tr>
+                {{end}}
+                </tbody>
+              </table>
+            </div>
+            {{end}}
           </div>
         </div>
       </td>

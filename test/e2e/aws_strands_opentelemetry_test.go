@@ -9,11 +9,16 @@ func TestAWSStrandsOpenTelemetry(t *testing.T) {
 
 	// gen_ai.bedrock.guardrail.* (AR-017/AR-018/AR-019) are not emitted
 	// because the demo does not configure Bedrock guardrails — expected FAIL in report.
-	auditSpan(t, "aws-strands", "opentelemetry", BedrockProfile,
+	// The otel-collector derives gen_ai.client.token.usage and
+	// gen_ai.client.operation.duration from span attributes/durations via the
+	// signaltometrics and spanmetrics connectors; results are recorded alongside
+	// the span audit in the generated report.
+	auditSpanWithMetrics(t, "aws-strands", "opentelemetry", BedrockProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-strands/opentelemetry"
-| filter isNotNull(gen_ai.system)
+| filter isNotNull(gen_ai.provider.name)
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
-| limit 1`)
+| limit 1`,
+		"aws-strands/opentelemetry", genAIClientMetrics)
 }

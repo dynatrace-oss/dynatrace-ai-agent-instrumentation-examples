@@ -14,13 +14,14 @@ processors:
     trace_statements:
       - context: span
         statements:
-          # Strands emits gen_ai.prompt / gen_ai.completion; map to the OTel GenAI
-          # convention (gen_ai.input.messages / gen_ai.output.messages) that the
-          # Dynatrace AI Observability app queries.
+          # With the OTEL_SEMCONV_STABILITY_OPT_IN opt-in (set in dynatrace.py), Strands 1.x
+          # emits gen_ai.input.messages / gen_ai.output.messages directly, so these two
+          # set() statements are a no-op fallback for legacy spans that still carry the
+          # pre-1.x gen_ai.prompt / gen_ai.completion names. The guards prevent overwriting.
           - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
           - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
-          # Delete the source attributes after remapping so the OpenPipeline routing
-          # matcher (isNotNull(gen_ai.prompt)) does not re-process collector-transformed spans.
+          # Delete the legacy source attributes after the fallback remap so downstream
+          # (e.g. OpenPipeline) sees only the gen_ai.input.messages / gen_ai.output.messages names.
           - delete_key(attributes, "gen_ai.prompt") where attributes["gen_ai.input.messages"] != nil
           - delete_key(attributes, "gen_ai.completion") where attributes["gen_ai.output.messages"] != nil
           # Strands does not emit gen_ai.response.model; mirror the request model.
@@ -30,6 +31,82 @@ processors:
           - set(attributes["gen_ai.usage.output_tokens"], attributes["gen_ai.usage.completion_tokens"]) where attributes["gen_ai.usage.completion_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
           - delete_key(attributes, "gen_ai.usage.prompt_tokens") where attributes["gen_ai.usage.input_tokens"] != nil
           - delete_key(attributes, "gen_ai.usage.completion_tokens") where attributes["gen_ai.usage.output_tokens"] != nil
+
+  # Keep only the LLM-call spans ("chat" spans in Strands 1.x with gen_ai_latest_experimental;
+  # gen_ai.request.model is set only on those) for the metrics branch, so the derived
+  # metrics cover LLM calls only, not the agent/tool/cycle spans. The export
+  # pipeline is left untouched so all spans still reach Distributed Tracing.
+  filter/genai_only:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.request.model"] == nil
+
+connectors:
+  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
+  # from the LLM span durations — same connector the langfuse demo uses. Strands'
+  # native metrics live under strands.* names, so this recreates the semconv one.
+  spanmetrics:
+    namespace: gen_ai.client.operation
+    # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # Token usage: Strands emits token counts as span attributes (renamed to
+  # gen_ai.usage.* above), not as the semconv metric. Re-create
+  # gen_ai.client.token.usage with two sum defs sharing one metric name; the
+  # gen_ai.token.type dimension is synthesized per direction via default_value.
+  # signaltometrics emits delta per batch, which Dynatrace requires. This needs
+  # the Bindplane collector (signaltometrics is not in the Dynatrace collector
+  # distro) — see the COLLECTOR_IMAGE in the Makefile. Collector-path equivalent
+  # of the OpenPipeline two-extractor pattern in openpipeline-strands.yaml.
+  signaltometrics:
+    spans:
+      - name: gen_ai.client.token.usage
+        description: GenAI input token usage
+        unit: "1"
+        # include_resource_attributes is per-metric (not a connector-level key);
+        # setting it here keeps service.name on the output metric.
+        include_resource_attributes:
+          - key: service.name
+        attributes:
+          - key: gen_ai.token.type
+            default_value: input
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+          - key: gen_ai.provider.name
+          - key: gen_ai.operation.name
+        conditions:
+          - attributes["gen_ai.usage.input_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.input_tokens"])
+          monotonic: true
+      - name: gen_ai.client.token.usage
+        description: GenAI output token usage
+        unit: "1"
+        include_resource_attributes:
+          - key: service.name
+        attributes:
+          - key: gen_ai.token.type
+            default_value: output
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+          - key: gen_ai.provider.name
+          - key: gen_ai.operation.name
+        conditions:
+          - attributes["gen_ai.usage.output_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.output_tokens"])
+          monotonic: true
 
 exporters:
   otlphttp/dynatrace:
@@ -43,8 +120,15 @@ service:
       receivers: [otlp]
       processors: [transform/strands, batch]
       exporters: [otlphttp/dynatrace]
-    metrics:
+    # Second branch of the same spans: transform, keep only LLM spans, and feed
+    # the metric connectors. Kept separate from the export pipeline so the filter
+    # here never drops spans from Distributed Tracing.
+    traces/genai_metrics:
       receivers: [otlp]
+      processors: [transform/strands, filter/genai_only, batch]
+      exporters: [spanmetrics, signaltometrics]
+    metrics:
+      receivers: [otlp, spanmetrics, signaltometrics]
       processors: [batch]
       exporters: [otlphttp/dynatrace]
     logs:

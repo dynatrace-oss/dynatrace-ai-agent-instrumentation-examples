@@ -99,6 +99,9 @@ __pypackages__/
 celerybeat-schedule
 celerybeat.pid
 
+# Demo appointments service pidfile (aws-strands/opentelemetry)
+appointments.pid
+
 # SageMath parsed files
 *.sage.py
 

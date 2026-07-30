@@ -17,6 +17,7 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - [Option B -- Dynatrace OpenPipeline](#option-b----dynatrace-openpipeline)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
 - [Attribute mapping reference](#attribute-mapping-reference)
+- [Metrics](#metrics)
 - [Known gaps & limitations](#known-gaps--limitations)
 - [Troubleshooting](#troubleshooting)
 
@@ -252,6 +253,19 @@ Unlike a hand-written transform, `genainormalizer` reconstructs the full convers
 The OpenPipeline configuration in [`openpipeline-openinference.yaml`](openpipeline-openinference.yaml) applies its own DQL-based translations server-side, including `gen_ai.operation.kind`, request parameters (`temperature`, `max_tokens`, `top_p`), `finish_reasons`, and prompt-caching flags. It uses an interim fallback for message content (`input.value` / `output.value` → `gen_ai.input.messages` / `gen_ai.output.messages`) because DQL cannot iterate over the indexed per-message attributes at transform time.
 
 `session.id` and `user.id` already match the OTel standard and pass through unchanged in both options.
+
+---
+
+## Metrics
+
+OpenInference is span-only by design (its instrumentors emit no metric instruments), so the two metrics the AI Observability app charts must be derived from the spans. Both options do this, so the cost and latency tiles populate either way:
+
+| Metric | Option A (collector) | Option B (OpenPipeline) |
+|---|---|---|
+| `gen_ai.client.operation.duration` (s) | `spanmetrics` connector, on LLM spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
+| `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs | two `samplingAwareValueMetric` extractors, one per direction |
+
+Both read the normalized `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` (mapped from OpenInference's `llm.token_count.*`). **Option A** derives both metrics in the Bindplane collector — `signaltometrics` (token) is bundled there alongside `genainormalizer`; requires the token's `metrics.ingest` scope, and both metrics use delta temporality (Dynatrace rejects cumulative). **Option B** derives the same two metrics server-side via the metric-extraction processors in [`openpipeline-openinference.yaml`](openpipeline-openinference.yaml); the token metric uses the two-extractor pattern (one per direction, both writing `gen_ai.client.token.usage` with a constant `gen_ai.token.type` dimension).
 
 ---
 
