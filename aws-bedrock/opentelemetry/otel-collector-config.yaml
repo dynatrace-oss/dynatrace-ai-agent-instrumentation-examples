@@ -33,7 +33,6 @@ processors:
           - delete_key(attributes, "temp.guardrail.output") where attributes["temp.guardrail.output"] != nil
           # Extract gen_ai.guardrail.id and gen_ai.guardrail.version from
           # aws.bedrock.guardrail.id, which is formatted as "<id>:<version>"
-          # (e.g. "ld9c4okehpgk:DRAFT").
           - set(attributes["gen_ai.guardrail.id"], Split(attributes["aws.bedrock.guardrail.id"], ":")[0]) where attributes["aws.bedrock.guardrail.id"] != nil
           - set(attributes["gen_ai.guardrail.version"], Split(attributes["aws.bedrock.guardrail.id"], ":")[1]) where attributes["aws.bedrock.guardrail.id"] != nil
 
