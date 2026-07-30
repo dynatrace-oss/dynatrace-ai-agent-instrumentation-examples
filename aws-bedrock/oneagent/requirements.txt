@@ -1,5 +1,4 @@
-langchain
-langchain-aws
+boto3
 
 # dynatrace oneagent
 oneagent-sdk
