@@ -1,6 +1,6 @@
 # AWS Bedrock + OneAgent Demo
 
-Demonstrates tracing LangChain + AWS Bedrock API calls with Dynatrace via OneAgent auto-instrumentation.
+Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with Dynatrace via OneAgent auto-instrumentation.
 
 ## Prerequisites
 
