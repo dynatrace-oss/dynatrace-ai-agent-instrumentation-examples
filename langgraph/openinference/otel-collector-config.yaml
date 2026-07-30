@@ -31,16 +31,20 @@ processors:
   # JSON blob.
   #
   # Azure OpenAI wraps the model response and content-filter metadata together in
-  # output.value. The prompt_filter_results array captures per-prompt filter
-  # verdicts (hate, self-harm, sexual, violence, etc.) returned by Azure content
-  # filtering. 
+  # output.value. Two sets of filter results are promoted to dedicated attributes:
+  #   - llm_output.prompt_filter_results: per-prompt verdicts from Azure content
+  #     filtering (hate, self-harm, sexual, violence, jailbreak, etc.)
+  #   - generations[0][0].generation_info.content_filter_results: per-completion
+  #     content filter verdicts returned alongside the generated text
   #
-  # INPUT  (OpenInference / Azure OpenAI):
+  # INPUT  (OpenInference / Azure OpenAI via LangChain):
   #   output.value  (JSON string)
-  #     └── prompt_filter_results  — array of per-prompt content-filter results
+  #     ├── llm_output.prompt_filter_results
+  #     └── generations[0][0].generation_info.content_filter_results
   #
   # OUTPUT:
-  #   gen_ai.prompt.prompt_filter_results  — serialised filter-result array
+  #   gen_ai.prompt.prompt_filter_results      — serialised prompt-filter array
+  #   gen_ai.completion.content_filter_results — serialised completion-filter object
   #
   # NOTE: This processor must appear before gen_ai_normalizer in the pipeline.
   transform/output_prompt_results:
@@ -50,6 +54,7 @@ processors:
         statements:
           - set(attributes["temp.output_value"], ParseJSON(attributes["output.value"])) where attributes["output.value"] != nil
           - set(attributes["gen_ai.prompt.prompt_filter_results"], String(attributes["temp.output_value"]["llm_output"]["prompt_filter_results"])) where attributes["temp.output_value"]["llm_output"]["prompt_filter_results"] != nil
+          - set(attributes["gen_ai.completion.content_filter_results"], String(attributes["temp.output_value"]["generations"][0][0]["generation_info"]["content_filter_results"])) where attributes["temp.output_value"]["generations"][0][0]["generation_info"]["content_filter_results"] != nil
           - delete_key(attributes, "temp.output_value")
 
 
