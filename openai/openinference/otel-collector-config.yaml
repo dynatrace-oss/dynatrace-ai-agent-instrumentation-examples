@@ -16,6 +16,16 @@ processors:
       - name: openinference
         remove_originals: true
 
+  # Reads llm.* attributes before gen_ai_normalizer deletes them 
+  transform/pre_normalize:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil
+          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["temperature"]) where attributes["temp.invocation_params"]["temperature"] != nil
+          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
+
   # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
   # emit gen_ai.response.model (OpenInference has no separate response-model
   # field). The Dynatrace AI Observability app requires gen_ai.response.model,
@@ -137,14 +147,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/output_prompt_results, gen_ai_normalizer, transform/response_model]
+      processors: [transform/pre_normalize, transform/output_prompt_results, gen_ai_normalizer, transform/response_model]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, filter/genai_only]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only]
       exporters: [spanmetrics, signal_to_metrics]
     metrics:
       receivers: [spanmetrics, signal_to_metrics]
