@@ -4,20 +4,20 @@ import (
 	"testing"
 )
 
-func TestCohereTraceloop(t *testing.T) {
+func TestCohereOpenLLMetry(t *testing.T) {
 	startCohereCompatibleMock(t)
-	startApp(t, "cohere/traceloop")
+	startApp(t, "cohere/openllmetry")
 	triggerHaiku(t, false)
 
-	// Traceloop instruments Cohere via the OpenLLMetry CohereInstrumentor.
+	// CohereInstrumentor from OpenLLMetry instruments Cohere SDK calls.
 	// The OneAgent Python GenAI Cohere sensor must be DISABLED so that the
-	// suppression mechanism does not drop the Traceloop spans; OneAgent's OTel
+	// suppression mechanism does not drop the OpenLLMetry spans; OneAgent's OTel
 	// sensor then picks them up and nests them into the PurePath.
-	// Unlike the OneAgent-only path, Traceloop also captures gen_ai.input.messages
-	// and gen_ai.output.messages (prompt/response content).
-	auditSpan(t, "cohere", "traceloop", GenericProfile,
+	// Unlike the OneAgent-only path, CohereInstrumentor also captures
+	// gen_ai.input.messages and gen_ai.output.messages (prompt/response content).
+	auditSpan(t, "cohere", "openllmetry", GenericProfile,
 		`fetch spans, from: now()-10m
-| filter service.name == "cohere-traceloop"
+| filter service.name == "cohere/openllmetry"
 | filter gen_ai.system == "Cohere"
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"

@@ -3,9 +3,11 @@ import os
 import cohere
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
-from traceloop.sdk import Traceloop
+from opentelemetry.instrumentation.cohere import CohereInstrumentor
 
-Traceloop.init(app_name="cohere-traceloop")
+os.environ.setdefault("OTEL_SERVICE_NAME", "cohere/openllmetry")
+
+CohereInstrumentor().instrument()
 
 MODEL: str = os.environ.get("MODEL", "command-r-08-2024")
 

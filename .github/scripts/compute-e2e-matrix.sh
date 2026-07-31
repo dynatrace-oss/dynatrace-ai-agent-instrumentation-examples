@@ -19,7 +19,7 @@ OA_ALL='[
   {"name":"aws-bedrock-agents-oneagent","app_dir":"aws-bedrock-agents/oneagent","test_file":"test/e2e/aws_bedrock_agents_oneagent_test.go","test_run":"TestAWSBedrockAgentsOneAgent","otel_service_name":"aws-bedrock-agents/oneagent", "oneagent_warmup_seconds":"60"},
   {"name":"mistral-oneagent","app_dir":"mistral/oneagent","test_file":"test/e2e/mistral_test.go","test_run":"TestMistralOneAgent","otel_service_name":"mistral/oneagent","model":"mistral-small-latest"},
   {"name":"langgraph-oneagent","app_dir":"langgraph/oneagent","test_file":"test/e2e/langgraph_oneagent_test.go","test_run":"TestLangGraphOneAgent","otel_service_name":"langgraph/oneagent"},
-  {"name":"cohere-traceloop","app_dir":"cohere/traceloop","test_file":"test/e2e/cohere_traceloop_test.go","test_run":"TestCohereTraceloop","otel_service_name":"cohere-traceloop"}
+  {"name":"cohere-openllmetry","app_dir":"cohere/openllmetry","test_file":"test/e2e/cohere_openllmetry_test.go","test_run":"TestCohereOpenLLMetry","otel_service_name":"cohere/openllmetry"}
 ]'
 
 OC_ALL='[
