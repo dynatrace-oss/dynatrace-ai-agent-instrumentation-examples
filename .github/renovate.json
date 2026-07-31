@@ -59,7 +59,33 @@
     },
     {
       "matchManagers": ["npm"],
-      "groupName": "npm dependencies"
+      "matchFileNames": ["langfuse/opentelemetry-node/**"],
+      "groupName": "npm dependencies (langfuse)"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["rum/opentelemetry/nextjs-frontend/**"],
+      "groupName": "npm dependencies (rum)"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["mcp/opentelemetry/mpc-server/**"],
+      "groupName": "npm dependencies (mcp)"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["ai-coding-agents/openclaw-observability-plugin/otel-observability/**"],
+      "groupName": "npm dependencies (openclaw)"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["ai-coding-agents/github-copilot-sdk/**"],
+      "groupName": "npm dependencies (github-copilot-sdk)"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["openai-agents/opentelemetry/ui/**"],
+      "groupName": "npm dependencies (openai-agents)"
     }
   ]
 }
