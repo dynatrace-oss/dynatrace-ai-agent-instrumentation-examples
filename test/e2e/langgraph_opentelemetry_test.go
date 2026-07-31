@@ -85,3 +85,18 @@ func TestLangGraphOpenTelemetry(t *testing.T) {
 | sort timestamp desc
 | limit 1`)
 }
+
+// TestLangGraphOpenTelemetryBedrock exercises the LangGraph + Bedrock demo
+// via a Dynatrace OpenTelemetry Collector that forwards spans to Dynatrace.
+func TestLangGraphOpenTelemetryBedrock(t *testing.T) {
+	startApp(t, "langgraph/opentelemetry/bedrock")
+
+	makeRequest(t, "langgraph/opentelemetry/bedrock", "request")
+
+	auditSpan(t, "langgraph-bedrock", "opentelemetry", GenericProfile,
+		`fetch spans, from: now()-10m
+| filter service.name == "langgraph-bedrock"
+| filter isNotNull(gen_ai.request.model)
+| sort timestamp desc
+| limit 1`)
+}
