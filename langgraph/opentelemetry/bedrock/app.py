@@ -3,7 +3,7 @@ import os
 from typing import TypedDict
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
-os.environ.setdefault("OTEL_SERVICE_NAME", "langgraph-bedrock")
+os.environ.setdefault("OTEL_SERVICE_NAME", "langgraph/opentelemetry/bedrock")
 # Dynatrace ingests delta metrics only; export delta temporality from the SDK.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
@@ -16,7 +16,7 @@ from traceloop.sdk import Traceloop
 _collector = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").rstrip("/")
 if _collector:
     Traceloop.init(
-        app_name="langgraph-bedrock",
+        app_name="langgraph/opentelemetry/bedrock",
         api_endpoint=_collector,
         headers={},
         disable_batch=True,
@@ -26,7 +26,7 @@ else:
     _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
     _dt_token = os.environ.get("DT_API_TOKEN", "")
     Traceloop.init(
-        app_name="langgraph-bedrock",
+        app_name="langgraph/opentelemetry/bedrock",
         api_endpoint=f"{_dt_base}/api/v2/otlp",
         headers={"Authorization": f"Api-Token {_dt_token}"},
         disable_batch=True,

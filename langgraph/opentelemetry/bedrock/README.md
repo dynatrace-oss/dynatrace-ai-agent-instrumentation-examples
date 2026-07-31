@@ -63,7 +63,7 @@ After a few minutes, refresh the Dynatrace views and you should see data being p
 
 | View | What to look for |
 |------|-----------------|
-| **Distributed Tracing** | Filter by `service.name = langgraph-bedrock` |
+| **Distributed Tracing** | Filter by `service.name = langgraph/opentelemetry/bedrock` |
 | **AI Observability** | Token usage, latency, and model per request |
 
-In the **AI Observability** app you can filter by service or model to explore token usage, cost breakdown, and latency across your graph runs. The **Agents topology** view shows how the `langgraph-bedrock` agent, the `aws.bedrock` provider, and the LLM model connect.
+In the **AI Observability** app you can filter by service or model to explore token usage, cost breakdown, and latency across your graph runs. The **Agents topology** view shows how the `langgraph/opentelemetry/bedrock` agent, the `aws.bedrock` provider, and the LLM model connect.

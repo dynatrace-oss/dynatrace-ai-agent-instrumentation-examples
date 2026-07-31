@@ -88,19 +88,19 @@ Explore how your graph runs, which models are used, and how token usage is attri
 
 Remember that you can drill down into the end-to-end trace whenever a `trace.id` is shown. Just right-click the trace ID and "open with" `Distributed Tracing`.
 
-You can also open the Dynatrace `Distributed Tracing` view and filter for `service.name = langgraph`.
+You can also open the Dynatrace `Distributed Tracing` view and filter for `service.name = langgraph/opentelemetry/openai`.
 
 In the Dynatrace **AI Observability** app you can filter by service or model to explore token usage, cost breakdown, and latency across your graph runs.
 
 | View | What to look for |
 |------|-----------------|
-| **Distributed Tracing** | Filter by `service.name = langgraph` |
+| **Distributed Tracing** | Filter by `service.name = langgraph/opentelemetry/openai` |
 | **AI Observability** | Token usage, latency, and model per request |
 
 The **Prompts** view shows the captured `gen_ai.*` attributes for a request, including the agentic trace and the (redacted or intact) message content:
 
 ![LangGraph request metadata in the Dynatrace AI Observability Prompts view](assets/langgraph-prompt-metadata.png)
 
-The **Agents topology** view shows how the `langgraph` agent, the `azure.ai.openai` provider, and the LLM model connect:
+The **Agents topology** view shows how the `langgraph/opentelemetry/openai` agent, the `azure.ai.openai` provider, and the LLM model connect:
 
 ![LangGraph agents topology in Dynatrace AI Observability](assets/langgraph-agents-topology.png)
