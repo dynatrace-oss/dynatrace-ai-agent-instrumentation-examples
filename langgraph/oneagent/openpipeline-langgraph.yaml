@@ -2,7 +2,7 @@
 # OpenPipeline configuration for the LangGraph + OneAgent demo.
 #
 # This is the OneAgent-path equivalent of the collector `transform` processor
-# used by the langgraph/opentelemetry demo. OneAgent captures gen_ai.* spans and
+# used by the langgraph/opentelemetry/openai demo. OneAgent captures gen_ai.* spans and
 # ships them straight to Dynatrace, so there is no customer-side collector to
 # redact in — the redaction is done server-side, on ingest, by OpenPipeline.
 #
@@ -12,7 +12,7 @@
 #
 # NOTE: unlike the collector approach, the raw text still travels from the host
 # to Dynatrace before being masked here. If secrets must never leave the host,
-# use the collector-based langgraph/opentelemetry demo instead.
+# use the collector-based langgraph/opentelemetry/openai demo instead.
 #
 # Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
 # then add a routing entry:

@@ -57,7 +57,7 @@ MODEL=<deployment>
 ## Install and run
 
 ```bash
-cd langgraph/opentelemetry
+cd langgraph/opentelemetry/openai
 make install
 make run
 ```

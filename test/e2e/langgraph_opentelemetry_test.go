@@ -51,12 +51,12 @@ func assertNoSpan(t *testing.T, dql string) {
 // It sends two requests — one whose topic contains "secret" and one that does
 // not — and asserts the first is redacted while the second passes through.
 func TestLangGraphOpenTelemetry(t *testing.T) {
-	startApp(t, "langgraph/opentelemetry")
+	startApp(t, "langgraph/opentelemetry/openai")
 
 	// Drive both paths via the Makefile: request-secret sends a "secret" topic
 	// (redacted by the collector); request sends a benign one (passes through).
-	makeRequest(t, "langgraph/opentelemetry", "request-secret")
-	makeRequest(t, "langgraph/opentelemetry", "request")
+	makeRequest(t, "langgraph/opentelemetry/openai", "request-secret")
+	makeRequest(t, "langgraph/opentelemetry/openai", "request")
 
 	// The secret-bearing input message must be redacted by the collector.
 	assertSpanExists(t, scopedDQL(`fetch spans

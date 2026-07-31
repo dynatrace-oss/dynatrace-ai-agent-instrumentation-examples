@@ -2,7 +2,7 @@
 
 This sample traces a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with Dynatrace using **OneAgent auto-instrumentation** — no manual OpenTelemetry export or collector. OneAgent instruments the underlying Azure OpenAI SDK calls and ships `gen_ai.*` spans straight to Dynatrace.
 
-For a collector-based variant (which exports via OTLP and can redact secrets before they leave the host), see [`langgraph/opentelemetry`](../opentelemetry).
+For a collector-based variant (which exports via OTLP and can redact secrets before they leave the host), see [`langgraph/opentelemetry/openai`](../opentelemetry/openai).
 
 ## What this sample does
 
@@ -22,7 +22,7 @@ Because OneAgent sends spans directly to Dynatrace, there is no customer-side co
 | Matcher | `dt.service.name == "langgraph/oneagent (langgraph-oneagent)" AND dt.openpipeline.source == "oneagent"` |
 | Pipeline | `langgraph-redact-secrets` |
 
-> **Trade-off vs. the collector approach:** OpenPipeline redacts *after* the data reaches Dynatrace, so the raw text travels from the host to the cluster before being masked. If secrets must never leave the host, use the collector-based [`langgraph/opentelemetry`](../opentelemetry) demo, which scrubs before egress.
+> **Trade-off vs. the collector approach:** OpenPipeline redacts *after* the data reaches Dynatrace, so the raw text travels from the host to the cluster before being masked. If secrets must never leave the host, use the collector-based [`langgraph/opentelemetry/openai`](../opentelemetry/openai) demo, which scrubs before egress.
 
 ### OpenPipeline implementation notes
 
