@@ -1,8 +1,6 @@
 import os
 
-from langchain_aws import ChatBedrock
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+import boto3
 
 
 def _guardrail_config():
@@ -21,31 +19,36 @@ def setup_instrumentation() -> None:
     oneagent.initialize()
 
 
-_chain = None
+_SYSTEM_PROMPT = (
+    "You are a haiku poet. Write a haiku (5-7-5 syllables) about the given "
+    "topic. Reply with only the haiku, no extra text."
+)
+
+_client = None
 
 
-def _get_chain():
-    global _chain
-    if _chain is None:
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a haiku poet. Write a haiku (5-7-5 syllables) about the given topic. Reply with only the haiku, no extra text."),
-            ("human", "Topic: {topic}"),
-        ])
-        kwargs = {
-            "model_id": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
-            "region_name": os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
-            "provider": "anthropic",
-        }
-        gc = _guardrail_config()
-        if gc:
-            kwargs["guardrails"] = gc
-        model = ChatBedrock(**kwargs)
-        _chain = prompt | model | StrOutputParser()
-    return _chain
+def _get_client():
+    global _client
+    if _client is None:
+        _client = boto3.client(
+            "bedrock-runtime",
+            region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+        )
+    return _client
 
 
 def write_haiku(topic: str) -> str:
-    return _get_chain().invoke({"topic": topic})
+    kwargs = {
+        "modelId": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+        "system": [{"text": _SYSTEM_PROMPT}],
+        "messages": [{"role": "user", "content": [{"text": f"Topic: {topic}"}]}],
+    }
+    gc = _guardrail_config()
+    if gc:
+        kwargs["guardrailConfig"] = gc
+    response = _get_client().converse(**kwargs)
+    content = response["output"]["message"]["content"]
+    return content[0]["text"] if content else "(blocked by guardrail)"
 
 
 def main():

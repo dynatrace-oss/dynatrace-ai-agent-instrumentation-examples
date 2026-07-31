@@ -1,6 +1,6 @@
 # AWS Bedrock + OpenInference Demo
 
-Demonstrates tracing LangChain + AWS Bedrock API calls with Dynatrace via OpenInference instrumentation. The app exports spans over OTLP to a local Bindplane collector, which normalizes them and forwards them to Dynatrace.
+Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with Dynatrace via OpenInference instrumentation (`BedrockInstrumentor`). The app exports spans over OTLP to a local Bindplane collector, which normalizes them and forwards them to Dynatrace.
 
 ## How it works
 
