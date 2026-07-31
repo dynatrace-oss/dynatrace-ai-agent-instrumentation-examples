@@ -18,7 +18,7 @@ NODE                := node
 # ../opentelemetry/otel-collector-config.yaml needs the signal_to_metrics
 # connector (token usage), which isn't compiled into
 # ghcr.io/dynatrace/dynatrace-otel-collector as of v0.52.0.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.0
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
 override COLLECTOR_CONTAINER := otel-collector
 override COLLECTOR_CONFIG    := $(abspath ../opentelemetry/otel-collector-config.yaml)
 

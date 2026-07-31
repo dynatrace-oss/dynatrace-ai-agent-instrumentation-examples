@@ -10,7 +10,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 # Bindplane Distro for OpenTelemetry (BDOT) collector. v1.104.0 tracks OTel
 # contrib v0.156.0. Used only by `make run-collector` to derive
 # gen_ai.client.operation.duration from spans via the spanmetrics connector.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.104.0
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: install run run-collector build push request stop logs help
