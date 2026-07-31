@@ -23,7 +23,16 @@
       "datasourceTemplate": "docker"
     }
   ],
+  "prHourlyLimit": 20,
+  "lockFileMaintenance": {
+    "enabled": false
+  },
   "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "prConcurrentLimit": 2,
+      "prPriority": -1
+    },
     {
       "matchManagers": ["pip_requirements", "pep621"],
       "groupName": "python dependencies"
