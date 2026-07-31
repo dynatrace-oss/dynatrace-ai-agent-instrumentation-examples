@@ -31,6 +31,10 @@ processors:
           - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and (attributes["temp.guardrail.input"] != nil or attributes["temp.guardrail.output"] != nil)
           - delete_key(attributes, "temp.guardrail.input") where attributes["temp.guardrail.input"] != nil
           - delete_key(attributes, "temp.guardrail.output") where attributes["temp.guardrail.output"] != nil
+          # Extract gen_ai.guardrail.id and gen_ai.guardrail.version from
+          # aws.bedrock.guardrail.id, which is formatted as "<id>:<version>"
+          - set(attributes["gen_ai.guardrail.id"], Split(attributes["aws.bedrock.guardrail.id"], ":")[0]) where attributes["aws.bedrock.guardrail.id"] != nil
+          - set(attributes["gen_ai.guardrail.version"], Split(attributes["aws.bedrock.guardrail.id"], ":")[1]) where attributes["aws.bedrock.guardrail.id"] != nil
 
   batch:
     send_batch_size: 512

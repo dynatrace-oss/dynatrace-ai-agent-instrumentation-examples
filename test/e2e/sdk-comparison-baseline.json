@@ -5,6 +5,7 @@
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.3.1 (2026-07-28): Add gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) as provider-specific required attributes in the guardrails-bedrock group. Extracted from llm.invocation_parameters by the collector transform/llm-invocation-params processor (OpenInference path). Added to GuardrailProfile required checks in the e2e audit fixture.",
     "1.3.0 (2026-07-24): Add a per-profile metrics list. Move AR-025 (gen_ai.client.operation.duration) and AR-044 (gen_ai.client.token.usage) out of the generic optional_attributes into generic.metrics; they are verified as OTel metrics via timeseries existence, not as span attributes. The e2e suite now records metric-existence results in the generated per-SDK reports.",
     "1.2.1 (2026-06-17): Add VR-021 (conversation_thread view rule): gen_ai.conversation.id (AR-041) is set by AgentTelemetryLayer on invoke_agent spans only; ChatTelemetryLayer does not forward options to _get_span_attributes so inner chat spans never carry this attribute. Add span_scope note to AR-041. Update AR-041 note in attributes.",
     "1.2.0 (2026-06-16): Add dashboard-derived attributes: gen_ai.client.token.usage metric (AR-044); gen_ai.prompt.caching metric (AR-045); gen_ai.guardrail.grounding_type dimension (AR-046); span.status_code (AR-047); gen_ai.model bigevent field (AR-048); event.type generic gate (AR-049). Add audit_trail and service_health view_rules (VR-016..VR-019). Add kong_gateway_metrics section (KO-001..KO-004) and nvidia_nim_metrics section (NV-001..NV-008). Note AR-020/AR-021 not yet visualised in any dashboard.",
@@ -206,7 +207,9 @@
       "gen_ai.guardrail.grounding_type": "AR-046",
       "span.status_code": "AR-047",
       "gen_ai.model": "AR-048",
-      "event.type": "AR-049"
+      "event.type": "AR-049",
+      "gen_ai.guardrail.id": "AR-050",
+      "gen_ai.guardrail.version": "AR-051"
     },
     "non_sdk_rule_ids": {
       "dt.smartscape.service": "NS-001",
@@ -346,9 +349,11 @@
               "gen_ai.bedrock.guardrail.sensitive_info",
               "gen_ai.bedrock.guardrail.topics",
               "gen_ai.bedrock.guardrail.words",
-              "gen_ai.bedrock.guardrail.contextual"
+              "gen_ai.bedrock.guardrail.contextual",
+              "gen_ai.guardrail.id",
+              "gen_ai.guardrail.version"
             ],
-            "rule_ids": ["AR-017", "AR-018", "AR-019", "AR-020", "AR-021", "AR-040"]
+            "rule_ids": ["AR-017", "AR-018", "AR-019", "AR-020", "AR-021", "AR-040", "AR-050", "AR-051"]
           }
         ]
       },
@@ -1042,6 +1047,28 @@
         }
       ],
       "note": "Primary gate field for all bizevents processed by the app. Each bigevent stream has its own event.type value; the app filters on this before reading any other bigevent fields."
+    },
+    {
+      "name": "gen_ai.guardrail.id",
+      "rule_id": "AR-050",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "collector_processor",
+      "used_by": ["guardrail_overview_cards"],
+      "note": "Unique identifier of the AWS Bedrock Guardrail applied to the request."
+    },
+    {
+      "name": "gen_ai.guardrail.version",
+      "rule_id": "AR-051",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "collector_processor",
+      "used_by": ["guardrail_overview_cards"],
+      "note": "Version of the AWS Bedrock Guardrail applied to the request."
     }
   ],
   "non_sdk_fields": [

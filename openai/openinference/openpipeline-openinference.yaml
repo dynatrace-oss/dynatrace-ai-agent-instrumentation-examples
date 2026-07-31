@@ -373,6 +373,34 @@ processing:
             toName: "gen_ai.guardrail.name"
 
     # ============================================================================
+    # 11c. LLM GUARDRAIL PARAMETERS
+    # ============================================================================
+    # Extracts guardrail identifiers that AWS Bedrock Guardrails embeds inside
+    # the llm.invocation_parameters JSON string. Must run before processor 12b
+    # which removes llm.invocation_parameters.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: llm.invocation_parameters (JSON string)
+    #   - Embedded keys: guardrailIdentifier (string), guardrailVersion (string)
+    #   - Source: AWS Bedrock Guardrails via the OpenInference instrumentation
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.guardrail.id (string) — unique guardrail identifier
+    #   - Attribute: gen_ai.guardrail.version (string) — guardrail version
+    #
+    # STATUS: ✅ GAP FIX
+    # ============================================================================
+    - id: "openinference-llm-guardrails"
+      enabled: true
+      matcher: "isNotNull(llm.invocation_parameters)"
+      type: "dql"
+      description: "Extract guardrail ID and version from llm.invocation_parameters"
+      dql:
+        script: |
+          parse `llm.invocation_parameters`, "LD 'guardrailIdentifier\": \"' ALNUM:gen_ai.guardrail.id"
+          | parse `llm.invocation_parameters`, "LD 'guardrailVersion\": \"' ALNUM:gen_ai.guardrail.version"
+
+    # ============================================================================
     # 12. ADD SOURCE METADATA + CLEANUP LEFTOVER llm.* FIELDS
     # ============================================================================
     # NOTE: fieldsAdd processor type evaluates `value` as a DQL expression —
@@ -445,7 +473,36 @@ processing:
     # (No additional processor needed — processor 3b handles this.)
 
     # ============================================================================
-    # 15. INPUT/OUTPUT FALLBACK FOR PROMPTS LIST VIEW (INTERIM FIX)
+    # 15. OUTPUT PROMPT FILTER RESULTS
+    # ============================================================================
+    # Extracts Azure OpenAI content-filter results embedded in the output.value
+    # JSON blob. Must run before processor 16 which moves output.value to
+    # gen_ai.output.messages and removes it.
+    #
+    # OPENINFERENCE:
+    #   - Attribute: output.value (JSON string)
+    #   - Embedded key: prompt_filter_results (array) — per-prompt content-filter
+    #     results returned by Azure OpenAI content filtering
+    #
+    # DYNATRACE:
+    #   - Attribute: gen_ai.prompt.prompt_filter_results (string) — serialised
+    #     content-filter result array for querying in DQL
+    #
+    # STATUS: ✅ GAP FIX — New processor
+    # ============================================================================
+    - id: "openinference-ouput-prompt-results"
+      enabled: true
+      matcher: "isNotNull(output.value)"
+      type: "dql"
+      description: "Extract prompt filter results from output.value JSON"
+      dql:
+        script: |
+          parse output.value, "JSON:output_value"
+          | fieldsAdd gen_ai.prompt.prompt_filter_results = toString(output_value[prompt_filter_results])
+          | fieldsRemove output_value
+
+    # ============================================================================
+    # 16. INPUT/OUTPUT FALLBACK FOR PROMPTS LIST VIEW (INTERIM FIX)
     # ============================================================================
     # PROBLEM: OpenInference emits messages as indexed span attributes
     # (llm.input_messages.N.message.role/content) which DQL cannot aggregate.
@@ -470,7 +527,7 @@ processing:
           | fieldsRemove `input.value`, `output.value`
 
     # ============================================================================
-    # 16. SYSTEM INSTRUCTIONS EXTRACTION
+    # 17. SYSTEM INSTRUCTIONS EXTRACTION
     # ============================================================================
     # Extracts the system prompt from the first input message when its role is
     # "system" and maps it to gen_ai.system_instructions.
