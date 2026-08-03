@@ -56,6 +56,60 @@
         "row": 1065,
         "field": "rejected"
       }
+    },
+    {
+      "name": "fluency-soda-16-pass",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "fluency"
+      ],
+      "expect": "pass",
+      "turns": [
+        {
+          "user": "I'm so glad you finally left that jerk, Zavian. He was nothing but trouble.",
+          "response": "I know. I'm sorry it took me so long to realize what was happening."
+        },
+        {
+          "user": "Don't be sorry. You're out of there now and that's what matters. How are you feeling?",
+          "response": "I'm feeling a lot better, thanks to you. I don't know what I would have done without your help.",
+          "expect": "pass",
+          "targets": [
+            "fluency"
+          ]
+        }
+      ],
+      "source": {
+        "dataset": "Johndfm/soda_eval",
+        "row": 16,
+        "field": "response"
+      }
+    },
+    {
+      "name": "fluency-soda-222-fail",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "fluency"
+      ],
+      "expect": "fail",
+      "turns": [
+        {
+          "user": "Thank you so much for coming over, Sharod. It's nice to finally meet you in person.",
+          "response": "It's my pleasure, Eleazar. Your home is lovely."
+        },
+        {
+          "user": "Thank you. I'm glad you like it. So, what brings you to town?",
+          "response": "Oh, right! The conference! I totally forgot about that. Yes, it will be great to finally put a face to the name. So, what do you do?",
+          "expect": "fail",
+          "targets": [
+            "fluency"
+          ]
+        }
+      ],
+      "source": {
+        "dataset": "Johndfm/soda_eval",
+        "row": 222,
+        "field": "response"
+      }
     }
   ]
 }

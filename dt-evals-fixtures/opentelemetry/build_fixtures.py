@@ -80,6 +80,56 @@ def build_toxicity_cases(dataset, rows: list[int] = HHRLHF_TOXICITY_ROWS) -> lis
     return cases
 
 
+# --- soda_eval (fluency, real multi-turn) -----------------------------------
+
+# Curated rows: score-5 no-issue dialogues (fluent, pass) and issue-flagged
+# dialogues with coherence/repetition problems (fail). Chosen with an even
+# utterance count so the evaluated `response` is the final assistant turn.
+SODA_FLUENCY_ROWS = {"pass": [16], "fail": [222]}
+
+
+def _strip_speaker(line: str) -> str:
+    """'Ashli: Don't be sorry.' -> 'Don't be sorry.' (drop the speaker label)."""
+    return line.split(": ", 1)[1].strip() if ": " in line else line.strip()
+
+
+def _soda_utterances(record: dict) -> list[str]:
+    """Full utterance sequence: dialog history + the evaluated response."""
+    lines = [l for l in record["dialog_history"].split("\n") if l.strip()]
+    lines.append(record["response"])
+    utterances = [_strip_speaker(l) for l in lines]
+    # Keep the evaluated response as the final assistant turn: an even count maps
+    # cleanly to (user, assistant) pairs, so drop the oldest line if it is odd.
+    if len(utterances) % 2 == 1:
+        utterances = utterances[1:]
+    return utterances
+
+
+def _fluency_case(row: int, expect: str, utterances: list[str]) -> dict:
+    turns = [
+        {"user": utterances[i], "response": utterances[i + 1]}
+        for i in range(0, len(utterances), 2)
+    ]
+    turns[-1] = {**turns[-1], "expect": expect, "targets": ["fluency"]}
+    return {
+        "name": f"fluency-soda-{row}-{expect}",
+        "system": DEFAULT_SYSTEM,
+        "targets": ["fluency"],
+        "expect": expect,
+        "turns": turns,
+        "source": {"dataset": "Johndfm/soda_eval", "row": row, "field": "response"},
+    }
+
+
+def build_fluency_cases(dataset, rows: dict[str, list[int]] = SODA_FLUENCY_ROWS) -> list[dict]:
+    """Fluent (pass) and issue-flagged (fail) conversations from soda_eval."""
+    cases: list[dict] = []
+    for expect, indices in rows.items():
+        for row in indices:
+            cases.append(_fluency_case(row, expect, _soda_utterances(dataset[row])))
+    return cases
+
+
 def _load_hhrlhf():
     from datasets import Dataset
 
@@ -98,8 +148,27 @@ def _load_hhrlhf():
     return Dataset.from_file(matches[0])
 
 
+def _load_soda():
+    from datasets import Dataset
+
+    matches = glob.glob(
+        str(
+            Path.home()
+            / ".cache/huggingface/datasets/Johndfm___soda_eval/**/soda_eval-train.arrow"
+        ),
+        recursive=True,
+    )
+    if not matches:
+        raise FileNotFoundError(
+            "Johndfm/soda_eval not found in the HF cache. Download it first: "
+            "`datasets.load_dataset('Johndfm/soda_eval')`."
+        )
+    return Dataset.from_file(matches[0])
+
+
 def build_all() -> dict:
     cases = build_toxicity_cases(_load_hhrlhf())
+    cases += build_fluency_cases(_load_soda())
     return {"service_name": DEFAULT_SERVICE_NAME, "cases": cases}
 
 
