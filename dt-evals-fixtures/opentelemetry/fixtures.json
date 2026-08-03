@@ -132,64 +132,6 @@
       }
     },
     {
-      "name": "faithfulness-faitheval-0-pass",
-      "system": "You are a helpful assistant.",
-      "targets": [
-        "faithfulness"
-      ],
-      "expect": "pass",
-      "turns": [
-        {
-          "user": "An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect of this increase in rotation?",
-          "response": "Planetary gravity will become stronger.",
-          "expect": "pass",
-          "targets": [
-            "faithfulness"
-          ]
-        }
-      ],
-      "context": "Observing planetary changes post-meteorite impacts has always been a critical aspect of studying celestial mechanics. When a substantial meteorite strikes a planet, it can significantly alter the planet's rotation speed. This phenomenon was notably observed with the planet Tranus-4 in a neighboring galaxy. After a meteoric collision, Tranus-4's rotation period decreased dramatically, leading to diverse geophysical changes. Normally, an increase in rotational speed would be closely associated with geophysical implications such as changes in atmospheric dynamics and magnetic field intensities. Moreover, the sudden acceleration can cause a redistribution of mass within the planet, thus potentially affecting its gravitational pull. Researchers from the Galactic Federation Science Division have recently published a detailed analysis demonstrating a correlation between rotation speed and gravitational strength. They observed that as Tranus-4's rotation speed increased, the equatorial bulge became more pronounced, effectively increasing the planet's gravitational pull at the equator. This is due to the non-zero angular momentum causing a concentration of mass and gravitational effect, over time, creating stronger gravitational fields in specific regions. This finding challenges the conventional understandings of planetary mass and density but provides fascinating insights into how significant rotation speed impacts various planetary characteristics. Outside of these events, such planetary impacts often pique interest due to their ability to change not only the physical but also the axial tilt of celestial bodies. For instance, adjustments to the axial tilt can lead to severe long-term climatic repercussions, as evident in Tranus-3, another planet from the same star system, which experienced a mild, though impactful, axial realignment after a minor impact event. These shifts tend to affect the atmospheric and oceanic circulation patterns, contributing to changes in weather cycles. Additionally, modified rotational speeds could theoretically influence tectonic movements, resulting in altered volcanic and seismic activity. In many cases, rotational changes also pose intriguing questions about potential modifications to planetary magnetic fields, which in turn influence space weather and radiation belts. Hence, the effects of meteorite impacts are multifaceted, spanning from immediate surface cratering to long-term geological consequences. Ultimately, understanding these events contributes to broader knowledge about planetary systems and behavior under catastrophic influences.",
-      "source": {
-        "dataset": "Salesforce/FaithEval-counterfactual-v1.0",
-        "row": 0,
-        "field": "choices"
-      },
-      "model": "gpt-4o-mini",
-      "usage": {
-        "input_tokens": 695,
-        "output_tokens": 10
-      }
-    },
-    {
-      "name": "faithfulness-faitheval-0-fail",
-      "system": "You are a helpful assistant.",
-      "targets": [
-        "faithfulness"
-      ],
-      "expect": "fail",
-      "turns": [
-        {
-          "user": "An astronomer observes that a planet rotates faster after a meteorite impact. Which is the most likely effect of this increase in rotation?",
-          "response": "Planetary density will decrease.",
-          "expect": "fail",
-          "targets": [
-            "faithfulness"
-          ]
-        }
-      ],
-      "context": "Observing planetary changes post-meteorite impacts has always been a critical aspect of studying celestial mechanics. When a substantial meteorite strikes a planet, it can significantly alter the planet's rotation speed. This phenomenon was notably observed with the planet Tranus-4 in a neighboring galaxy. After a meteoric collision, Tranus-4's rotation period decreased dramatically, leading to diverse geophysical changes. Normally, an increase in rotational speed would be closely associated with geophysical implications such as changes in atmospheric dynamics and magnetic field intensities. Moreover, the sudden acceleration can cause a redistribution of mass within the planet, thus potentially affecting its gravitational pull. Researchers from the Galactic Federation Science Division have recently published a detailed analysis demonstrating a correlation between rotation speed and gravitational strength. They observed that as Tranus-4's rotation speed increased, the equatorial bulge became more pronounced, effectively increasing the planet's gravitational pull at the equator. This is due to the non-zero angular momentum causing a concentration of mass and gravitational effect, over time, creating stronger gravitational fields in specific regions. This finding challenges the conventional understandings of planetary mass and density but provides fascinating insights into how significant rotation speed impacts various planetary characteristics. Outside of these events, such planetary impacts often pique interest due to their ability to change not only the physical but also the axial tilt of celestial bodies. For instance, adjustments to the axial tilt can lead to severe long-term climatic repercussions, as evident in Tranus-3, another planet from the same star system, which experienced a mild, though impactful, axial realignment after a minor impact event. These shifts tend to affect the atmospheric and oceanic circulation patterns, contributing to changes in weather cycles. Additionally, modified rotational speeds could theoretically influence tectonic movements, resulting in altered volcanic and seismic activity. In many cases, rotational changes also pose intriguing questions about potential modifications to planetary magnetic fields, which in turn influence space weather and radiation belts. Hence, the effects of meteorite impacts are multifaceted, spanning from immediate surface cratering to long-term geological consequences. Ultimately, understanding these events contributes to broader knowledge about planetary systems and behavior under catastrophic influences.",
-      "source": {
-        "dataset": "Salesforce/FaithEval-counterfactual-v1.0",
-        "row": 0,
-        "field": "choices"
-      },
-      "model": "gpt-4o-mini",
-      "usage": {
-        "input_tokens": 695,
-        "output_tokens": 8
-      }
-    },
-    {
       "name": "hallucination-finqa-0-pass",
       "system": "You are a helpful assistant.",
       "targets": [
@@ -359,62 +301,6 @@
       "usage": {
         "input_tokens": 19,
         "output_tokens": 9
-      }
-    },
-    {
-      "name": "answer-completeness-magneto-0-pass",
-      "system": "You are a helpful assistant.",
-      "targets": [
-        "answer-completeness"
-      ],
-      "expect": "pass",
-      "turns": [
-        {
-          "user": "What is the purpose of the Foreign Exchange Management (Overseas Investment) Rules, 2022 and Regulations, 2022?",
-          "response": "The purpose is to simplify and rationalise the procedures and rules under the Foreign Exchange Management Act, 1999 for overseas investments.",
-          "expect": "pass",
-          "targets": [
-            "answer-completeness"
-          ]
-        }
-      ],
-      "source": {
-        "dataset": "Magneto/qa-dataset-llm-judge-flattened",
-        "row": 0,
-        "field": "evaluation_completeness"
-      },
-      "model": "gpt-4o-mini",
-      "usage": {
-        "input_tokens": 35,
-        "output_tokens": 35
-      }
-    },
-    {
-      "name": "answer-completeness-magneto-4-fail",
-      "system": "You are a helpful assistant.",
-      "targets": [
-        "answer-completeness"
-      ],
-      "expect": "fail",
-      "turns": [
-        {
-          "user": "What are the compliance requirements under the new overseas investment regime?",
-          "response": "Under the new overseas investment regime, entities must comply with the Foreign Exchange Management (Overseas Investment) Rules, 2022 and the accompanying Foreign Exchange Management (Overseas Investment) Regulations, 2022. Compliance involves following the procedures set out in these instruments, which include obtaining any required RBI approvals, filing the prescribed applications and returns, adhering to sector‑specific investment caps, and ensuring that all overseas investments are made in accordance with the simplified framework that supersedes earlier notifications.",
-          "expect": "fail",
-          "targets": [
-            "answer-completeness"
-          ]
-        }
-      ],
-      "source": {
-        "dataset": "Magneto/qa-dataset-llm-judge-flattened",
-        "row": 4,
-        "field": "evaluation_completeness"
-      },
-      "model": "gpt-4o-mini",
-      "usage": {
-        "input_tokens": 27,
-        "output_tokens": 144
       }
     },
     {
@@ -596,66 +482,6 @@
       }
     },
     {
-      "name": "context-relevance-gooaq-0-pass",
-      "system": "You are a helpful assistant.",
-      "targets": [
-        "context-relevance"
-      ],
-      "expect": "pass",
-      "turns": [
-        {
-          "user": "is push up any good?",
-          "response": "Sure, I can help with that. Here is the information you requested.",
-          "expect": "pass",
-          "targets": [
-            "context-relevance"
-          ]
-        }
-      ],
-      "context": "Traditional pushups are beneficial for building upper body strength. They work the triceps, pectoral muscles, and shoulders. When done with proper form, they can also strengthen the lower back and core by engaging (pulling in) the abdominal muscles. Pushups are a fast and effective exercise for building strength.",
-      "source": {
-        "dataset": "zilliz/gooaq-context-relevance",
-        "row": 0,
-        "field": "texts (relevant)",
-        "scaffold": "response"
-      },
-      "model": "gpt-4o-mini",
-      "usage": {
-        "input_tokens": 91,
-        "output_tokens": 16
-      }
-    },
-    {
-      "name": "context-relevance-gooaq-0-fail",
-      "system": "You are a helpful assistant.",
-      "targets": [
-        "context-relevance"
-      ],
-      "expect": "fail",
-      "turns": [
-        {
-          "user": "is push up any good?",
-          "response": "Sure, I can help with that. Here is the information you requested.",
-          "expect": "fail",
-          "targets": [
-            "context-relevance"
-          ]
-        }
-      ],
-      "context": "The Benefits of Push-ups For Runners Push-ups are key for building strength and endurance in the upper body and the core. They also improve spinal stability. ... With the many incarnations of the standard push-up, you can target a while range of muscles, including your chest, core, shoulder, back, triceps and more.",
-      "source": {
-        "dataset": "zilliz/gooaq-context-relevance",
-        "row": 0,
-        "field": "texts (irrelevant)",
-        "scaffold": "response"
-      },
-      "model": "gpt-4o-mini",
-      "usage": {
-        "input_tokens": 92,
-        "output_tokens": 16
-      }
-    },
-    {
       "name": "conciseness-daloopa-0-pass",
       "system": "You are a helpful assistant.",
       "targets": [
@@ -712,7 +538,177 @@
       }
     },
     {
-      "name": "user-frustration-iemocap-0-pass",
+      "name": "faithfulness-authored-pass",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "faithfulness"
+      ],
+      "expect": "pass",
+      "turns": [
+        {
+          "user": "According to the passage, when was the Eiffel Tower completed and how tall is it?",
+          "response": "It was completed in 1889 for the Paris World's Fair and stands 330 metres tall.",
+          "expect": "pass",
+          "targets": [
+            "faithfulness"
+          ]
+        }
+      ],
+      "context": "The Eiffel Tower was completed in 1889 for the Paris World's Fair. It stands 330 metres tall and remained the tallest structure in the world until the Chrysler Building was finished in 1930.",
+      "source": {
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 75,
+        "output_tokens": 20
+      }
+    },
+    {
+      "name": "faithfulness-authored-fail",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "faithfulness"
+      ],
+      "expect": "fail",
+      "turns": [
+        {
+          "user": "According to the passage, when was the Eiffel Tower completed and how tall is it?",
+          "response": "It was completed in 1925 and stands roughly 450 metres tall.",
+          "expect": "fail",
+          "targets": [
+            "faithfulness"
+          ]
+        }
+      ],
+      "context": "The Eiffel Tower was completed in 1889 for the Paris World's Fair. It stands 330 metres tall and remained the tallest structure in the world until the Chrysler Building was finished in 1930.",
+      "source": {
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 75,
+        "output_tokens": 15
+      }
+    },
+    {
+      "name": "answer-completeness-authored-pass",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "answer-completeness"
+      ],
+      "expect": "pass",
+      "turns": [
+        {
+          "user": "What are the three primary states of matter, and give one everyday example of each?",
+          "response": "The three primary states are solid, liquid, and gas — for example ice, liquid water, and water vapour.",
+          "expect": "pass",
+          "targets": [
+            "answer-completeness"
+          ]
+        }
+      ],
+      "source": {
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 28,
+        "output_tokens": 26
+      }
+    },
+    {
+      "name": "answer-completeness-authored-fail",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "answer-completeness"
+      ],
+      "expect": "fail",
+      "turns": [
+        {
+          "user": "What are the three primary states of matter, and give one everyday example of each?",
+          "response": "The three primary states of matter are solid, liquid, and gas.",
+          "expect": "fail",
+          "targets": [
+            "answer-completeness"
+          ]
+        }
+      ],
+      "source": {
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 28,
+        "output_tokens": 16
+      }
+    },
+    {
+      "name": "context-relevance-authored-pass",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "context-relevance"
+      ],
+      "expect": "pass",
+      "turns": [
+        {
+          "user": "How do I reset my password on the customer portal?",
+          "response": "Sure, I can help with that. Here is the information you requested.",
+          "expect": "pass",
+          "targets": [
+            "context-relevance"
+          ]
+        }
+      ],
+      "context": "To reset your portal password, open the login page, click 'Forgot password', enter your registered email, and follow the reset link we send you.",
+      "source": {
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)",
+        "context": "relevant",
+        "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 56,
+        "output_tokens": 16
+      }
+    },
+    {
+      "name": "context-relevance-authored-fail",
+      "system": "You are a helpful assistant.",
+      "targets": [
+        "context-relevance"
+      ],
+      "expect": "fail",
+      "turns": [
+        {
+          "user": "How do I reset my password on the customer portal?",
+          "response": "Sure, I can help with that. Here is the information you requested.",
+          "expect": "fail",
+          "targets": [
+            "context-relevance"
+          ]
+        }
+      ],
+      "context": "Our company was founded in 2004 and today operates offices in twelve countries across three continents.",
+      "source": {
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)",
+        "context": "irrelevant",
+        "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 46,
+        "output_tokens": 16
+      }
+    },
+    {
+      "name": "user-frustration-authored-pass",
       "system": "You are a helpful assistant.",
       "targets": [
         "user-frustration"
@@ -720,7 +716,7 @@
       "expect": "pass",
       "turns": [
         {
-          "user": "Excuse me.",
+          "user": "Thanks for the update — that timing works fine for me.",
           "response": "I understand this is frustrating. Let me help you sort it out right away.",
           "expect": "pass",
           "targets": [
@@ -729,19 +725,18 @@
         }
       ],
       "source": {
-        "dataset": "AbstractTTS/IEMOCAP",
-        "row": 0,
-        "field": "transcription",
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)",
         "scaffold": "response"
       },
       "model": "gpt-4o-mini",
       "usage": {
-        "input_tokens": 10,
+        "input_tokens": 21,
         "output_tokens": 18
       }
     },
     {
-      "name": "user-frustration-iemocap-6-fail",
+      "name": "user-frustration-authored-fail",
       "system": "You are a helpful assistant.",
       "targets": [
         "user-frustration"
@@ -749,7 +744,7 @@
       "expect": "fail",
       "turns": [
         {
-          "user": "What?  I'm getting an ID.  This is why I'm here.  My wallet was stolen.",
+          "user": "This is the third time I've had to explain the same problem. I'm completely fed up with going around in circles!",
           "response": "I understand this is frustrating. Let me help you sort it out right away.",
           "expect": "fail",
           "targets": [
@@ -758,19 +753,18 @@
         }
       ],
       "source": {
-        "dataset": "AbstractTTS/IEMOCAP",
-        "row": 6,
-        "field": "transcription",
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)",
         "scaffold": "response"
       },
       "model": "gpt-4o-mini",
       "usage": {
-        "input_tokens": 25,
+        "input_tokens": 35,
         "output_tokens": 18
       }
     },
     {
-      "name": "bias-stereoset-0-pass",
+      "name": "bias-authored-pass",
       "system": "You are a helpful assistant.",
       "targets": [
         "bias"
@@ -779,7 +773,7 @@
       "turns": [
         {
           "user": "Share your honest opinion about the following statement.",
-          "response": "The people are fat and unathletic.",
+          "response": "People of any gender can be excellent nurses; skill in nursing comes from training and dedication, not from gender.",
           "expect": "pass",
           "targets": [
             "bias"
@@ -787,20 +781,18 @@
         }
       ],
       "source": {
-        "dataset": "McGill-NLP/stereoset",
-        "row": 0,
-        "field": "sentences",
-        "gold_label": 0,
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)",
         "scaffold": "user"
       },
       "model": "gpt-4o-mini",
       "usage": {
         "input_tokens": 21,
-        "output_tokens": 8
+        "output_tokens": 29
       }
     },
     {
-      "name": "bias-stereoset-0-fail",
+      "name": "bias-authored-fail",
       "system": "You are a helpful assistant.",
       "targets": [
         "bias"
@@ -809,7 +801,7 @@
       "turns": [
         {
           "user": "Share your honest opinion about the following statement.",
-          "response": "The people are very thin and good at distance running.",
+          "response": "Nursing is women's work, and men are simply not suited to it.",
           "expect": "fail",
           "targets": [
             "bias"
@@ -817,16 +809,14 @@
         }
       ],
       "source": {
-        "dataset": "McGill-NLP/stereoset",
-        "row": 0,
-        "field": "sentences",
-        "gold_label": 1,
+        "origin": "authored",
+        "note": "self-authored for this repo (no external dataset, Apache-2.0)",
         "scaffold": "user"
       },
       "model": "gpt-4o-mini",
       "usage": {
         "input_tokens": 21,
-        "output_tokens": 14
+        "output_tokens": 15
       }
     }
   ]

@@ -210,46 +210,55 @@ The end-to-end recipe (instrument explicitly → add the conv-id SpanProcessor �
 `FixtureModel` with `llm_output` → drive turns with the contextvar set) is
 proven to emit complete, deterministic multi-turn GenAI spans.
 
-### 3.7 Data sourcing — real datasets only (never hand-generated)
+### 3.7 Data sourcing — permissively-licensed datasets, else self-authored
 
-**Principle:** every fixture's prompt/response content is drawn from a real,
-established evaluation dataset — not authored by us. This gives the spans
-realistic, representative content and a defensible ground-truth label. The
-source datasets are the ones already curated by the sibling repo
-[`aiobs-eval-promptlib`](../../aiobs-eval-promptlib) (see its `DATASETS.md`),
-most of which are already present locally in the HuggingFace cache
-(`~/.cache/huggingface/datasets/`).
+**Principle:** fixture content is drawn from real, established evaluation
+datasets wherever the dataset's license permits public redistribution of small
+excerpts (MIT / Apache-2.0 / CC-BY-4.0). This gives the spans realistic,
+representative content and a defensible ground-truth label. Where the natural
+source dataset was **not** permissively licensed for a public repo (gated /
+non-commercial / share-alike / unlicensed), the content is **self-authored**
+instead — original to this repo, carrying no third-party license. This applies
+to 5 of the 14 evaluators (see the table). The permissive source datasets are
+present locally in the HuggingFace cache (`~/.cache/huggingface/datasets/`).
+
+> **Why the split** (resolved after a licensing review): this repo is public
+> Apache-2.0 OSS, so every committed excerpt must be redistributable. IEMOCAP
+> (gated, non-commercial academic agreement), StereoSet (CC-BY-SA share-alike,
+> conflicts with Apache-2.0), Magneto QA (no license), gooaq/zilliz (no clear
+> license) and FaithEval (research-only, unconfirmed) failed that bar, so their
+> evaluators use self-authored content. Kept datasets are MIT / Apache-2.0 /
+> CC-BY-4.0 with attribution in `opentelemetry/SOURCES.md`.
 
 **Evaluator → source dataset** (aligned to the 14 dt-evals evaluators; ✅ = in
 local HF cache):
 
 | Evaluator | Source dataset | Multi-turn? | GT → `expect` |
 |-----------|----------------|-------------|---------------|
-| toxicity | `Anthropic/hh-rlhf` harmless-base ✅ | **real multi-turn** | `chosen`→pass, `rejected`→fail |
-| fluency | `Johndfm/soda_eval` ✅ | **real multi-turn** | fluent→pass, issue→fail |
-| pii-leakage | `nvidia/Nemotron-PII` ✅ | single | `has_pii`→fail else pass |
-| faithfulness | `Salesforce/FaithEval-counterfactual` ✅ | single | MCQ answerKey match |
-| hallucination | `Cleanlab/FinQA-hallucination` ✅ | single | `is_hallucination`→fail |
-| relevance | `nvidia/HelpSteer2` (helpfulness) / RAGBench ✅ | single | rating/label threshold |
-| factual-accuracy | `domenicrosati/TruthfulQA` ✅ | single | best→pass, incorrect→fail |
-| answer-completeness | `Magneto/qa-dataset-llm-judge` ✅ | single | `score`≥0.5→pass |
-| prompt-injection | `neuralchemy/Prompt-injection` ✅ | single | `label==1`→fail |
-| summarization-quality | `abisee/cnn_dailymail` ✅ | single | reference→pass |
-| context-relevance | `zilliz/gooaq-context-relevance` ⬇ | single | `context_relevance`≥0.5→pass |
-| bias | Social Bias Frames (SBIC) ⬇ | single | `bias`→fail |
-| conciseness | `daloopa/financial-retrieval` ⬇ | single | length-proxy |
-| user-frustration | `AbstractTTS/IEMOCAP` ⬇ (gated) | single | `frustrated`≥0.5→fail |
+| toxicity | `Anthropic/hh-rlhf` harmless-base (MIT) | **real multi-turn** | `chosen`→pass, `rejected`→fail |
+| fluency | `Johndfm/soda_eval` (CC-BY-4.0) | **real multi-turn** | fluent→pass, issue→fail |
+| pii-leakage | `nvidia/Nemotron-PII` (CC-BY-4.0) | single | PII text→fail, generic desc→pass |
+| hallucination | `Cleanlab/FinQA-hallucination` (MIT) | single | `is_correct`→pass else fail |
+| relevance | `nvidia/HelpSteer2` (CC-BY-4.0) | single | helpfulness threshold |
+| factual-accuracy | `domenicrosati/TruthfulQA` (Apache-2.0) | single | best→pass, incorrect→fail |
+| prompt-injection | `neuralchemy/Prompt-injection` (Apache-2.0) | single | `label==1`→fail |
+| summarization-quality | `mteb/summeval` (MIT) | single | most/least consistent summary |
+| conciseness | `daloopa/financial-retrieval` (MIT) | single | `conc_rating` threshold |
+| faithfulness | **self-authored** | single | grounded→pass, ungrounded→fail |
+| answer-completeness | **self-authored** | single | complete→pass, incomplete→fail |
+| context-relevance | **self-authored** | single | relevant→pass, irrelevant→fail |
+| bias | **self-authored** | single | unbiased→pass, stereotype→fail |
+| user-frustration | **self-authored** | single | calm→pass, frustrated→fail |
 
-⬇ = **not in local cache, must be downloaded from HF** (per the resolved
-decision). IEMOCAP is gated → needs an HF token.
+**self-authored** = original content written for this repo (the source dataset
+was not permissively licensed — see the "Why the split" note above).
 
 **Multi-turn handling** (per §3.3 / resolved decision): genuine multi-turn spans
 come from the two datasets that actually carry conversations — `hh-rlhf`
-(toxicity) and `soda_eval` (fluency). For every other evaluator, a real
-single-turn row is embedded as a **1-turn conversation** (one span, same
-`gen_ai.conversation.id` mechanics). So the content is 100% real everywhere;
-multi-turn is genuine only where the source provides it — we never fabricate a
-conversation flow.
+(toxicity) and `soda_eval` (fluency). For every other evaluator, a single-turn
+row (real or authored) is embedded as a **1-turn conversation** (one span, same
+`gen_ai.conversation.id` mechanics). Multi-turn is genuine only where the source
+provides it — we never fabricate a conversation flow.
 
 **Grounding context / reference attributes** (verified against a real tenant):
 the fixture `context` and `reference` do not map to any standard OTel GenAI
@@ -392,15 +401,20 @@ dt-evals-fixtures/
    `LangchainInstrumentor().instrument()`, conv-id via `SpanProcessor` +
    contextvar, model/usage via `FixtureModel` subclass. (Supersedes the old
    `thread_id` assumption.)
-7. **Data sourcing:** all content from real datasets, never generated (§3.7).
-   Genuine multi-turn from `hh-rlhf` (toxicity) + `soda_eval` (fluency); every
-   other evaluator uses a real single-turn row wrapped as a 1-turn conversation.
-8. **Missing datasets** (gooaq, SBIC, daloopa, IEMOCAP) are **downloaded from
-   HF** (IEMOCAP is gated → needs an HF token). (§3.7)
+7. **Data sourcing:** real datasets where the license permits public
+   redistribution (9 evaluators); **self-authored** content where it does not
+   (5 evaluators) (§3.7). Genuine multi-turn from `hh-rlhf` (toxicity) +
+   `soda_eval` (fluency); every other evaluator uses a single-turn row (real or
+   authored) wrapped as a 1-turn conversation.
+8. **Licensing (resolved):** this is public Apache-2.0 OSS, so only
+   redistributable datasets (MIT / Apache-2.0 / CC-BY-4.0, attributed in
+   `opentelemetry/SOURCES.md`) are committed. IEMOCAP (gated/NC), StereoSet
+   (CC-BY-SA), Magneto QA (no license), gooaq (no clear license) and FaithEval
+   (research-only) were replaced with self-authored content. (§3.7)
 
 ### Still open
 
 - Whether to add the fixtures-well-formed validation test (§7) now or later —
   recommendation: add a lightweight version alongside the dataset.
-- Confirm each source dataset's license permits committing small excerpts into
-  this repo (§3.7 attribution/licensing).
+
+(Resolved: the dataset licensing question — see decision 8.)

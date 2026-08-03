@@ -107,19 +107,12 @@ def test_built_fluency_cases_are_well_formed():
 # --- single-turn evaluators -------------------------------------------------
 
 
-def test_faithfulness_pass_follows_context_fail_does_not():
-    ds = [
-        {
-            "question": "Q?",
-            "answerKey": "B",
-            "choices": '{"label": ["A", "B"], "text": ["wrong", "grounded"]}',
-            "context": "the context",
-        }
-    ]
-    cases = build_faithfulness_cases(ds, row=0)
-    assert cases[0]["turns"][0]["response"] == "grounded"  # answerKey B
-    assert cases[1]["turns"][0]["response"] == "wrong"
-    assert cases[0]["context"] == "the context"  # context carried
+def test_faithfulness_authored_pass_is_grounded_fail_is_not():
+    cases = build_faithfulness_cases()  # self-authored, no dataset
+    assert [c["expect"] for c in cases] == ["pass", "fail"]
+    assert cases[0]["context"] and cases[1]["context"]  # grounding context carried
+    assert cases[0]["turns"][0]["targets"] == ["faithfulness"]
+    assert cases[0]["source"]["origin"] == "authored"
     assert _well_formed(cases)
 
 
@@ -161,14 +154,13 @@ def test_factual_accuracy_uses_best_and_incorrect_with_reference():
     assert _well_formed(cases)
 
 
-def test_answer_completeness_selects_complete_and_incomplete():
-    ds = [
-        {"question": "q0", "answer": "a0", "evaluation_completeness": "INCOMPLETE"},
-        {"question": "q1", "answer": "a1", "evaluation_completeness": "COMPLETE"},
-    ]
-    cases = build_answer_completeness_cases(ds)
-    assert cases[0]["turns"][0]["response"] == "a1"  # COMPLETE -> pass
-    assert cases[1]["turns"][0]["response"] == "a0"
+def test_answer_completeness_authored_pass_complete_fail_incomplete():
+    cases = build_answer_completeness_cases()  # self-authored, no dataset
+    assert [c["expect"] for c in cases] == ["pass", "fail"]
+    # the pass answer includes the requested examples; the fail answer omits them
+    assert "example" in cases[0]["turns"][0]["response"].lower()
+    assert "example" not in cases[1]["turns"][0]["response"].lower()
+    assert cases[0]["source"]["origin"] == "authored"
     assert _well_formed(cases)
 
 
@@ -207,11 +199,13 @@ def test_prompt_injection_real_input_scaffolded_response():
     assert _well_formed(cases)
 
 
-def test_context_relevance_uses_relevant_and_irrelevant_doc_as_context():
-    ds = [{"query": "q?", "texts": ["relevant doc", "irrelevant doc"], "labels": [1, 0]}]
-    cases = build_context_relevance_cases(ds, row=0)
-    assert cases[0]["context"] == "relevant doc"  # pass
-    assert cases[1]["context"] == "irrelevant doc"  # fail
+def test_context_relevance_authored_pass_relevant_fail_irrelevant():
+    cases = build_context_relevance_cases()  # self-authored, no dataset
+    assert [c["expect"] for c in cases] == ["pass", "fail"]
+    # both carry a context doc; pass and fail use different docs
+    assert cases[0]["context"] and cases[1]["context"]
+    assert cases[0]["context"] != cases[1]["context"]
+    assert cases[0]["source"]["scaffold"] == "response"  # response is scaffolded
     assert _well_formed(cases)
 
 
@@ -226,15 +220,13 @@ def test_conciseness_selects_by_conc_rating():
     assert _well_formed(cases)
 
 
-def test_user_frustration_real_input_scaffolded_response():
-    ds = [
-        {"transcription": " I am so done with this! ", "frustrated": 0.9},
-        {"transcription": " Sure, sounds good. ", "frustrated": 0.05},
-    ]
-    cases = build_user_frustration_cases(ds)
-    assert cases[0]["turns"][0]["user"] == "Sure, sounds good."  # calm -> pass
-    assert cases[1]["turns"][0]["user"] == "I am so done with this!"  # frustrated -> fail
+def test_user_frustration_authored_calm_passes_frustrated_fails():
+    cases = build_user_frustration_cases()  # self-authored, no dataset
+    assert [c["expect"] for c in cases] == ["pass", "fail"]
+    # the user turn carries the signal; the assistant response is the scaffold
     assert cases[0]["source"]["scaffold"] == "response"
+    assert cases[0]["turns"][0]["response"] == cases[1]["turns"][0]["response"]
+    assert cases[0]["source"]["origin"] == "authored"
     assert _well_formed(cases)
 
 
@@ -268,16 +260,12 @@ def test_attach_model_usage_respects_explicit_values():
     assert case["usage"] == {"input_tokens": 1, "output_tokens": 2}
 
 
-def test_bias_anti_stereotype_passes_stereotype_fails():
-    ds = [
-        {
-            "sentences": {
-                "sentence": ["They are hardworking.", "They are lazy.", "The sky is blue."],
-                "gold_label": [0, 1, 2],  # anti-stereotype, stereotype, unrelated
-            }
-        }
-    ]
-    cases = build_bias_cases(ds, row=0)
-    assert cases[0]["turns"][0]["response"] == "They are hardworking."  # anti -> pass
-    assert cases[1]["turns"][0]["response"] == "They are lazy."  # stereotype -> fail
+def test_bias_authored_unbiased_passes_stereotype_fails():
+    cases = build_bias_cases()  # self-authored, no dataset
+    assert [c["expect"] for c in cases] == ["pass", "fail"]
+    # the assistant statement carries the signal; the user prompt is the scaffold
+    assert cases[0]["source"]["scaffold"] == "user"
+    assert cases[0]["turns"][0]["user"] == cases[1]["turns"][0]["user"]
+    assert cases[0]["turns"][0]["response"] != cases[1]["turns"][0]["response"]
+    assert cases[0]["source"]["origin"] == "authored"
     assert _well_formed(cases)

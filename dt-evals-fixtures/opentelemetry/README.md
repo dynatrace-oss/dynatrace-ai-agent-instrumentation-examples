@@ -62,12 +62,19 @@ production chatbot produces. Genuine multi-turn cases come from datasets that
 carry real conversations (toxicity, fluency); other evaluators use a real
 single-turn row as a one-turn conversation.
 
-### Content is sourced, not generated
+### Content sources
 
-The example content is **not** hand-written — it is drawn from established
-evaluation datasets (NVIDIA Nemotron-PII / HelpSteer2, Anthropic HH-RLHF,
-ToxiGen, TruthfulQA, StereoSet, …). See [`SOURCES.md`](SOURCES.md) for the full
-per-evaluator mapping and attribution.
+Most content is drawn from established evaluation datasets whose license permits
+redistribution (NVIDIA Nemotron-PII / HelpSteer2, Anthropic HH-RLHF, TruthfulQA,
+SummEval, …). Five evaluators (faithfulness, answer-completeness,
+context-relevance, bias, user-frustration) use short **self-authored** content
+instead, because their natural source datasets were not permissively licensed for
+a public repo. See [`SOURCES.md`](SOURCES.md) for the full per-evaluator mapping,
+licenses, and attribution.
+
+> **Content warning.** Some fixtures deliberately contain toxic, biased, or
+> PII-shaped text — they are the negative test inputs for the toxicity, bias, and
+> pii-leakage evaluators. Any PII is synthetic; none of it is real personal data.
 
 ## Regenerating fixtures
 
@@ -89,5 +96,6 @@ make test              # or: uv run pytest -q
 ```
 
 Tests use an in-memory span exporter (no tenant): they verify the emitter
-produces linked multi-turn spans with the right attributes, that every builder
-maps its dataset correctly, and that the shipped `fixtures.json` is well-formed.
+produces linked multi-turn spans with the right attributes, that each builder
+produces well-formed pass/fail cases, and that the shipped `fixtures.json` is
+well-formed.
