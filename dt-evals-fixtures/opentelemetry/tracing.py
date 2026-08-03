@@ -36,6 +36,8 @@ _conversation_id: contextvars.ContextVar = contextvars.ContextVar(
     "fixture_conversation_id", default=None
 )
 
+_initialized = False
+
 
 class ConversationIdSpanProcessor(SpanProcessor):
     """Stamp gen_ai.conversation.id onto every span started while a conversation
@@ -71,7 +73,14 @@ def init_tracing(service_name: str, *, exporter=None, api_endpoint=None, headers
 
     Pass `exporter` for tests (in-memory, no tenant); pass `api_endpoint` +
     `headers` to ship straight to a Dynatrace tenant.
+
+    Idempotent: the first call wins (Traceloop can only be initialized once), so
+    a test can set up an in-memory exporter before the app's startup runs.
     """
+    global _initialized
+    if _initialized:
+        return
+
     kwargs = {"app_name": service_name, "disable_batch": True}
     if exporter is not None:
         kwargs["exporter"] = exporter
@@ -85,3 +94,4 @@ def init_tracing(service_name: str, *, exporter=None, api_endpoint=None, headers
         LangchainInstrumentor().instrument()
 
     trace.get_tracer_provider().add_span_processor(ConversationIdSpanProcessor())
+    _initialized = True

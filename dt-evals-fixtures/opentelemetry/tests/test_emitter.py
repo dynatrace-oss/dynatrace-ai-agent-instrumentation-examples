@@ -5,18 +5,11 @@ import json
 
 import pytest
 from opentelemetry import trace
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 
 
-@pytest.fixture(scope="module")
-def exporter() -> InMemorySpanExporter:
-    from tracing import init_tracing
-
-    exp = InMemorySpanExporter()
-    init_tracing("test-fixtures", exporter=exp)
-    return exp
+@pytest.fixture
+def exporter(span_exporter):
+    return span_exporter
 
 
 def _emit(exporter, case_dict):
