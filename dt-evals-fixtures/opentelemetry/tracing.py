@@ -18,10 +18,12 @@ import os
 os.environ["TRACELOOP_TELEMETRY"] = "false"
 # Dynatrace ingests delta metrics only; export delta temporality from the SDK.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
-# Capture message content as gen_ai.input.messages / gen_ai.output.messages
-# (off by default in the GenAI semconv).
-os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
-os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Capture prompt/response content as gen_ai.input.messages / gen_ai.output.messages.
+# The Traceloop LangChain instrumentation (0.62.1) gates this solely on
+# should_send_prompts() -> TRACELOOP_TRACE_CONTENT (default "true"); the generic
+# OTEL_SEMCONV_STABILITY_OPT_IN / OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+# flags are not read on this path. Set it explicitly to document intent.
+os.environ.setdefault("TRACELOOP_TRACE_CONTENT", "true")
 
 import contextvars
 
