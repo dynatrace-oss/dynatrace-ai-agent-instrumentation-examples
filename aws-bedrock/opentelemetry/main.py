@@ -13,7 +13,6 @@ import json
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler as OTLPLoggingHandler
@@ -22,9 +21,10 @@ from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
-import requests
+from opentelemetry import trace as _ot_trace
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
+MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -47,7 +47,6 @@ logging.info("Starting Bedrock Example Instrumetors...")
 BedrockInstrumentor().instrument()
 RequestsInstrumentor().instrument()
 AsyncioInstrumentor().instrument()
-BotocoreInstrumentor().instrument()
 
 
 logging.info("Initializing traceloop...")
@@ -85,7 +84,7 @@ def _guardrail_config():
 def run_converse(client_context):
     logging.info("Calling Converse API with Boto3...")
     kwargs = {
-        "modelId": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "modelId": MODEL_ID,
         "messages": [
             {
                 "role": "user",
@@ -107,7 +106,7 @@ def run_converse_guardrail_trigger(client_context):
         return
     logging.info("Calling Converse API with a prompt designed to trigger the guardrail...")
     response = client_context.converse(
-        modelId="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        modelId=MODEL_ID,
         messages=[
             {
                 "role": "user",
@@ -125,7 +124,7 @@ def run_converse_guardrail_trigger(client_context):
 def run_invoke(client_context):
     logging.info("Calling Invoke API with Boto3...")
     response = client_context.invoke_model(
-        modelId="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        modelId=MODEL_ID,
         body=json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1024,
@@ -149,7 +148,7 @@ def run_invoke_extra(client_context):
 
     # Set the model ID, e.g., Titan Text Premier.
     #model_id = "amazon.titan-text-premier-v1:0"
-    model_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    model_id = MODEL_ID
 
     # Define the prompt for the model.
     prompt = "Describe the purpose of a 'hello world' program in one line."
@@ -179,16 +178,92 @@ def run_invoke_extra(client_context):
 
 
 
+# Multi-agent turn: one user turn fans out into several Bedrock calls, recorded on the
+# agent span (see the README "Multi-agent turn" section).
+
+
+def _messages(role, text):
+    return json.dumps([{"role": role, "parts": [{"type": "text", "content": text}]}])
+
+
+def _stamp_turn_io(span, question, answer):
+    # Record the turn on the agent span (message form only) so one clean input->output
+    # record exists; provider.name makes it show in the Prompts view.
+    span.set_attribute("gen_ai.provider.name", "aws.bedrock")
+    span.set_attribute("gen_ai.operation.kind", "agent")
+    span.set_attribute("gen_ai.agent.name", "multiagent_turn")
+    span.set_attribute("gen_ai.input.messages", _messages("user", question))
+    span.set_attribute("gen_ai.output.messages", _messages("assistant", answer))
+
+
+def _converse_text(client_context, text):
+    resp = client_context.converse(
+        modelId=MODEL_ID, messages=[{"role": "user", "content": [{"text": text}]}])
+    return resp["output"]["message"]["content"][0]["text"]
+
+
+@task("route_intent")
+def route_intent(client_context, question):
+    return _converse_text(client_context,
+        'Classify the intent. Reply ONLY JSON {"agent":..,"confidence":..}. ' + question)
+
+
+@task("answer_agent")
+def answer_agent(client_context, question):
+    return _converse_text(client_context, question)
+
+
+@agent("multiagent_turn")
+def run_multiagent_turn(client_context, question):
+    span = _ot_trace.get_current_span()
+    route_intent(client_context, question)
+    answer = answer_agent(client_context, question)
+    _stamp_turn_io(span, question, answer)
+    print(answer)
+    return answer
+
+
+# Four independent stories in one entrypoint; a selector runs one at a time for a focused trace.
+STORY_ORDER = ["converse", "guardrails", "invoke", "multiagent"]
+
+
+def _run_story(name, client):
+    if name == "converse":
+        run_converse(client)
+    elif name == "guardrails":
+        if not _guardrail_config():
+            logging.warning("story 'guardrails' selected but BEDROCK_GUARDRAIL_ID is unset; nothing to trigger")
+        run_converse_guardrail_trigger(client)
+    elif name == "invoke":
+        run_invoke(client)
+        run_invoke_extra(client)
+    elif name == "multiagent":
+        run_multiagent_turn(client, "What is the policy for checking my account balance?")
+
+
+def _selected_stories():
+    # CLI arg wins over the STORY env var; both accept a single name, a comma-separated
+    # list, or "all" (the default). e.g. `python main.py guardrails` or `STORY=converse,invoke`.
+    raw = os.environ.get("STORY", "all")
+    positional = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if positional:
+        raw = positional[0]
+    if raw.strip() in ("", "all"):
+        return STORY_ORDER
+    names = [n.strip() for n in raw.split(",") if n.strip()]
+    unknown = [n for n in names if n not in STORY_ORDER]
+    if unknown:
+        raise SystemExit(f"unknown story {unknown}; choose from {STORY_ORDER} or 'all'")
+    return names
+
+
 @workflow("aws_bedrock_agent")
 def run_workflow():
     logging.info("Starting the Workflow...")
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
-    run_converse(client)
-    run_converse_guardrail_trigger(client)
-    run_invoke(client)
-    # run_call_with_service_tier()
-    run_invoke_extra(client)
+    for story in _selected_stories():
+        _run_story(story, client)
 
 @agent("aws_bedrock_agent")
 def run_agent():

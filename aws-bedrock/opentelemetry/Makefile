@@ -4,6 +4,10 @@ export
 
 PORT             ?= 8000
 
+# Which story to run: all (default), converse, guardrails, invoke, multiagent
+# (comma-separated list also works). e.g. `make run STORY=guardrails`
+STORY            ?= all
+
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
@@ -18,9 +22,9 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start collector + run the AWS Bedrock tracing demo
+run: ## Start collector + run the demo (STORY=all|converse|guardrails|invoke|multiagent)
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
-	uv run python3 main.py
+	STORY=$(STORY) uv run python3 main.py
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
