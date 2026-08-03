@@ -14,6 +14,7 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from pydantic import BaseModel
 from typing import Optional
 from traceloop.sdk import Traceloop
+from traceloop.sdk.tracing.tracing import set_conversation_id
 
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
@@ -119,9 +120,9 @@ async def chat_completions(request: ChatCompletionRequest):
     if request.temperature is not None:
         kwargs["temperature"] = request.temperature
     if request.conversation_id:
-        Traceloop.set_conversation_id(request.conversation_id)
+        set_conversation_id(request.conversation_id)
     else:
-        Traceloop.set_conversation_id(str(uuid.uuid4()))
+        set_conversation_id(str(uuid.uuid4()))
 
     attrs = {"model": request.model}
     logger.info("chat request: model=%s", request.model)
