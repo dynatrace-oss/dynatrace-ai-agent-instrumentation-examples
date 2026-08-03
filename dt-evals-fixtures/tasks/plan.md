@@ -5,7 +5,7 @@ Derived from `dt-evals-fixtures/SPEC.md`. Work lives in
 
 ## Tasks
 
-1. **Deterministic multi-turn span emitter** *(this task)*
+1. **Deterministic multi-turn span emitter** ✅ *(done — commit aa8b19a)*
    - `FixtureModel` (FakeListChatModel + `llm_output` for model/usage),
      `tracing.py` (explicit LangChain instrumentation + conversation-id
      SpanProcessor + contextvar), `fixtures.py` (schema + normalize
