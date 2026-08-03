@@ -39,7 +39,7 @@ Agents that fan a single user turn out into several Bedrock calls (a router, one
 | Fix | Function | What it does |
 |---|---|---|
 | **Turn-level correlation** | `_stamp_turn_io()` | Stamps the whole turn onto the `@workflow` span so one clean `input -> output` record exists. Sets both the flat form (`gen_ai.prompt.0.*` / `gen_ai.completion.0.*`) the Prompts view reads today and the message form (`gen_ai.input.messages` / `gen_ai.output.messages`) from the Dynatrace semantic dictionary, plus `gen_ai.operation.name=chat`. It also sets `gen_ai.system` / `gen_ai.provider.name`, because the AI Observability app only treats a span as a GenAI span when one of those is present (`isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)`); without them the `@workflow` span is filtered out of the Prompts view. |
-| **Evaluation as a separate signal** | `evaluate_answer()` | Emits the judge verdict as a `gen_ai.evaluation` event through the OTLP logs pipeline instead of running it as a `converse` call. A judge run as a chat span is indistinguishable from a real reply and pollutes the Prompts/conversation view. In production, ingest this as a Dynatrace Business Event so it lands on the AI Observability Evaluations page. |
+| **Evaluation as a separate signal** | `evaluate_answer()` | Ingests the judge verdict as a Dynatrace **Business Event** (`gen_ai.evaluation`) via `/api/v2/bizevents/ingest`, correlated to the turn by `trace_id` / `span_id`, so it lands on the AI Observability Evaluations page instead of running as a `converse` call. A judge run as a chat span is indistinguishable from a real reply and pollutes the Prompts/conversation view. Falls back to an OTLP log when the bizevent env vars are not set, so local runs still work. |
 
 The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` spans. The Prompts view shows every span that passes the GenAI filter, so after this fix you get **three rows** for the turn: the single correct `multiagent_turn` record plus the two internal steps. The app has no built-in "hide internal steps" concept, so suppressing the router/specialist rows is a pipeline-layer concern (for example an OpenPipeline rule that drops spans by `traceloop.entity.name` or `span.name`). The point of the fix is that a correct turn-level `input -> output` record now exists at all, which it did not before.
 
@@ -52,6 +52,7 @@ The router (`route_intent`) and specialist (`answer_agent`) calls still emit the
 - AWS credentials configured (`aws configure` or environment variables) with Bedrock access in `us-east-1`
 - A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, and **`logs.ingest`** scopes
+- Optional, for the evaluation Business Event: set `DT_ENDPOINT` (for example `https://<env-id>.live.dynatrace.com`) and `DT_API_TOKEN` (token with the **`bizevents.ingest`** scope). When unset, `evaluate_answer()` falls back to an OTLP log
 
 ### Install dependencies
 

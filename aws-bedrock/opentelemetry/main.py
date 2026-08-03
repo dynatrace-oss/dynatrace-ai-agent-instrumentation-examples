@@ -257,32 +257,69 @@ def answer_agent(client_context, question):
     return resp["output"]["message"]["content"][0]["text"]
 
 
+def _emit_evaluation_bizevent(payload):
+    """Ingest the evaluation as a Dynatrace Business Event.
+
+    Endpoint: POST {DT_ENDPOINT}/api/v2/bizevents/ingest (Content-Type
+    application/json), token scope `bizevents.ingest`. Configure via env:
+      DT_ENDPOINT   e.g. https://<env-id>.live.dynatrace.com
+      DT_API_TOKEN  token with the bizevents.ingest scope
+    If either is unset, we skip the REST call and fall back to an OTLP log so
+    the default local-collector run still works.
+    """
+    dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+    dt_token = os.environ.get("DT_API_TOKEN", "")
+    if not (dt_base and dt_token):
+        return False
+    resp = requests.post(
+        f"{dt_base}/api/v2/bizevents/ingest",
+        headers={
+            "Authorization": f"Api-Token {dt_token}",
+            "Content-Type": "application/json",
+        },
+        data=json.dumps(payload),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return True
+
+
 def evaluate_answer(question, answer):
     """LLM-as-judge, emitted as an EVALUATION signal -- not a chat span.
 
     A judge implemented as a normal Bedrock converse call is indistinguishable
     from a user-facing reply and pollutes the Prompts/conversation view. The
-    Dynatrace convention is a separate evaluation-result signal.
+    Dynatrace convention is a separate evaluation-result signal (a Business
+    Event), so this is ingested via /api/v2/bizevents/ingest and lands on the
+    AI Observability Evaluations page rather than in Prompts.
 
-    Here we emit it as a structured event via the OTLP logs pipeline so it stays
-    OUT of the chat stream and is trivially testable against the local collector.
-    In production, ingest this as a Dynatrace Business Event (bizevent) so it
-    lands on the AI Observability Evaluations page rather than in Prompts.
+    The bizevent is correlated to the turn via trace_id/span_id. When DT_ENDPOINT
+    / DT_API_TOKEN are not set, it falls back to an OTLP log for local testing.
     """
     # Deterministic stand-in verdict; swap for a real judge call if desired.
     passed = bool(answer and len(answer.strip()) > 0)
-    logging.info(
-        "gen_ai.evaluation",
-        extra={
-            "event.name": "gen_ai.evaluation",
-            "gen_ai.operation.name": "chat",
-            "gen_ai.evaluation.name": "non_empty_answer",
-            "gen_ai.evaluation.score": 1.0 if passed else 0.0,
-            "gen_ai.evaluation.passed": passed,
-            "gen_ai.evaluation.question": question,
-            "gen_ai.evaluation.answer": answer,
-        },
-    )
+
+    ctx = _ot_trace.get_current_span().get_span_context()
+    event = {
+        "event.type": "gen_ai.evaluation",
+        "event.provider": "aws-bedrock-opentelemetry-example",
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.evaluation.name": "non_empty_answer",
+        "gen_ai.evaluation.score": 1.0 if passed else 0.0,
+        "gen_ai.evaluation.passed": passed,
+        "gen_ai.evaluation.question": question,
+        "gen_ai.evaluation.answer": answer,
+        "trace_id": format(ctx.trace_id, "032x"),
+        "span_id": format(ctx.span_id, "016x"),
+    }
+
+    try:
+        if not _emit_evaluation_bizevent(event):
+            logging.info("gen_ai.evaluation", extra=event)
+    except Exception as e:
+        logging.error(f"Failed to ingest evaluation bizevent: {e}")
+        logging.info("gen_ai.evaluation", extra=event)
     return passed
 
 
