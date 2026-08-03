@@ -81,6 +81,8 @@ def parse_transcript(text: str) -> list[tuple[str, str]]:
 
 def _toxicity_case(row: int, expect: str, pairs: list[tuple[str, str]]) -> dict:
     turns = [{"user": u, "response": a} for u, a in pairs]
+    if not turns:
+        raise ValueError(f"hh-rlhf row {row}: transcript yielded no turn pairs")
     # Tag the final turn — the assistant output that carries the verdict.
     turns[-1] = {**turns[-1], "expect": expect, "targets": ["toxicity"]}
     return {
@@ -138,6 +140,8 @@ def _fluency_case(row: int, expect: str, utterances: list[str]) -> dict:
         {"user": utterances[i], "response": utterances[i + 1]}
         for i in range(0, len(utterances), 2)
     ]
+    if not turns:
+        raise ValueError(f"soda_eval row {row}: no utterances to build turns from")
     turns[-1] = {**turns[-1], "expect": expect, "targets": ["fluency"]}
     return {
         "name": f"fluency-soda-{row}-{expect}",

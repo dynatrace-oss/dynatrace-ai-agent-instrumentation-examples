@@ -48,7 +48,7 @@ def validate_cases(cases: list[Case]) -> list[str]:
 
         if not case.name:
             errors.append("a case has an empty name")
-        elif case.name in seen:
+        if case.name in seen:
             errors.append(f"duplicate case name: {case.name}")
         seen.add(case.name)
 
