@@ -24,6 +24,25 @@ func runMakeTarget(t *testing.T, appDir, target string) {
 	}
 }
 
+// triggerIngest POSTs to /ingest on localhost:8000. The dt-evals-fixtures app
+// replays every deterministic fixture as GenAI spans in a single call — no body,
+// no real LLM. Returns once all fixtures have been shipped to the tenant.
+func triggerIngest(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/ingest"
+
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST /ingest: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /ingest returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 type haiku struct {
 	Topic string `json:"topic,omitempty"`
 	Haiku string `json:"haiku,omitempty"`
