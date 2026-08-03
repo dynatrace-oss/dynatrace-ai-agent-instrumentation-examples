@@ -9,25 +9,6 @@ Both the `Converse` and `Invoke` Bedrock APIs are covered, using the Boto3 clien
 > [!TIP]
 > For Dynatrace setup instructions, API token scopes, and advanced configuration, see the [AI Observability Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
 
-## What this example demonstrates
-
-`main.py` runs four independent stories in a single loop; each produces its own spans so you can look at them in isolation in the Prompts view.
-
-| Story | Driver in `main.py` | What to look for in Dynatrace |
-|---|---|---|
-| **1. Converse API** | `run_converse()` | One `gen_ai` span per Converse call: model ID, token usage, finish reason |
-| **2. Invoke API** | `run_invoke()` / `run_invoke_extra()` | Same signals via the alternate Bedrock Invoke API |
-| **3. Guardrails** | `run_converse_guardrail_trigger()` | A blocked request: `gen_ai.response.finish_reasons=["content_filter"]` plus `gen_ai.bedrock.guardrail.*` (see [Guardrails](#guardrails)) |
-| **4. Multi-agent turn** | `run_multiagent_turn()` | Turn-level input/output correlation on the agent span, with the internal fan-out calls kept out of the conversation view (see [Multi-agent turn](#multi-agent-turn-inputoutput-correlation-in-the-prompts-view)) |
-
-By default all four run in one loop. To look at a single story with a focused trace, select it with the `STORY` variable (or a comma-separated list):
-
-```bash
-make run                    # all four (default)
-make run STORY=guardrails   # just the guardrail story
-make run STORY=converse,invoke
-```
-
 ## Architecture
 
 The example routes via a local [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/), which forwards to Dynatrace. This is required because the Traceloop SDK exports over gRPC, while Dynatrace ingests OTLP over HTTP/protobuf.
@@ -152,6 +133,25 @@ fetch spans, from:now()-1h
 | filter service.name == "bedrock_example_app"  // or your OTEL_SERVICE_NAME
 | sort timestamp desc
 | limit 50
+```
+
+## What this example demonstrates
+
+`main.py` runs four independent stories in a single loop; each produces its own spans so you can look at them in isolation in the Prompts view.
+
+| Story | Driver in `main.py` | What to look for in Dynatrace |
+|---|---|---|
+| **1. Converse API** | `run_converse()` | One `gen_ai` span per Converse call: model ID, token usage, finish reason |
+| **2. Invoke API** | `run_invoke()` / `run_invoke_extra()` | Same signals via the alternate Bedrock Invoke API |
+| **3. Guardrails** | `run_converse_guardrail_trigger()` | A blocked request: `gen_ai.response.finish_reasons=["content_filter"]` plus `gen_ai.bedrock.guardrail.*` (see [Guardrails](#guardrails)) |
+| **4. Multi-agent turn** | `run_multiagent_turn()` | Turn-level input/output correlation on the agent span, with the internal fan-out calls kept out of the conversation view (see [Multi-agent turn](#multi-agent-turn-inputoutput-correlation-in-the-prompts-view)) |
+
+By default all four run in one loop. To look at a single story with a focused trace, select it with the `STORY` variable (or a comma-separated list):
+
+```bash
+make run                    # all four (default)
+make run STORY=guardrails   # just the guardrail story
+make run STORY=converse,invoke
 ```
 
 ## Files
