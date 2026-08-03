@@ -123,6 +123,7 @@ fetch spans, from:now()-1h
 | File | Description |
 |---|---|
 | `main.py` | Fully instrumented entrypoint; auto-instruments Boto3, sets up Traceloop, runs a continuous loop calling both APIs and a multi-agent turn that demonstrates turn-level input/output correlation and evaluation-as-a-separate-signal |
+| `evaluation_bizevent.json` | Static fields of the evaluation Business Event; `evaluate_answer()` loads this and fills the per-run fields (score, verdict, question/answer, trace/span) |
 | `converse.py` | Minimal standalone example using the Converse API (no instrumentation) |
 | `invoke.py` | Minimal standalone example using the Invoke API (no instrumentation) |
 | `guard_rail_metrics.py` | Fetches Bedrock Guardrail metrics from CloudWatch (intervention count, latency, text units) |

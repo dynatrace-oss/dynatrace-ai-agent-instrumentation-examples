@@ -181,163 +181,87 @@ def run_invoke_extra(client_context):
 
 
 
-# ---------------------------------------------------------------------------
-# Multi-agent turn: reproduces the "Prompts view mis-correlates input/output"
-# scenario reported by customers instrumenting Bedrock agents with OpenLLMetry,
-# and shows the two fixes.
-#
-# THE PROBLEM: a single user turn fans out into several Bedrock calls (router,
-# answer agent, an eval/judge). OpenLLMetry stamps gen_ai.* on each *model call*
-# span, but NOT on the traceloop @workflow/@agent span. The Prompts view pairs
-# input->output per gen_ai span, so intermediate calls produce half-rows and no
-# single span holds "user question -> final answer".
-#
-# FIX 1 (_stamp_turn_io): put the whole turn on the workflow span so exactly one
-#        clean input->output record exists.
-# FIX 2 (evaluate_answer): emit the judge result as a separate evaluation signal
-#        instead of running it as a chat span that looks like a real reply.
-# ---------------------------------------------------------------------------
+# Multi-agent turn: one user turn fans out into several Bedrock calls, then the
+# turn is recorded on the @workflow span and evaluated as a separate signal.
+# See README ("Multi-agent turn") for the why.
 
-def _stamp_turn_io(user_question, final_answer):
-    """Stamp the whole user turn onto the current (workflow) span.
+_EVAL_TEMPLATE = os.path.join(os.path.dirname(__file__), "evaluation_bizevent.json")
 
-    Sets the message form (gen_ai.input.messages / gen_ai.output.messages) from
-    the Dynatrace semantic dictionary plus gen_ai.operation.name=chat, giving the
-    Prompts view one canonical turn record. Only the message form is used: the
-    Prompts renderer appends both the flat form (gen_ai.prompt.N /
-    gen_ai.completion.0) and the message form, so setting both would render the
-    same turn twice.
-    """
-    span = _ot_trace.get_current_span()
-    # The AI Observability app treats a span as a GenAI span only when
-    # gen_ai.system OR gen_ai.provider.name is set (its DQL_AI_SPANS_FILTER).
-    # The @workflow span has neither by default, so without these markers the
-    # stamped turn record below would be filtered out of the Prompts view.
+
+def _messages(role, text):
+    return json.dumps([{"role": role, "parts": [{"type": "text", "content": text}]}])
+
+
+def _stamp_turn_io(span, question, answer):
+    # Mark the @workflow span as a GenAI span (the app keys off gen_ai.system /
+    # gen_ai.provider.name) and record the turn once, via the message form only
+    # (the flat gen_ai.prompt.* form would double-render it).
     span.set_attribute("gen_ai.system", "aws.bedrock")
     span.set_attribute("gen_ai.provider.name", "aws.bedrock")
     span.set_attribute("gen_ai.operation.name", "chat")
-    # Use ONLY the message form (semantic dictionary). The Prompts renderer
-    # appends both the flat form (gen_ai.prompt.N / completion.0) and the message
-    # form, so setting both would render the same turn twice.
-    span.set_attribute(
-        "gen_ai.input.messages",
-        json.dumps([{"role": "user",
-                     "parts": [{"type": "text", "content": user_question}]}]),
-    )
-    span.set_attribute(
-        "gen_ai.output.messages",
-        json.dumps([{"role": "assistant",
-                     "parts": [{"type": "text", "content": final_answer}]}]),
-    )
+    span.set_attribute("gen_ai.input.messages", _messages("user", question))
+    span.set_attribute("gen_ai.output.messages", _messages("assistant", answer))
 
 
 @task("route_intent")
 def route_intent(client_context, question):
-    """Internal router call -> emits its own gen_ai span (NOT a user turn)."""
-    resp = client_context.converse(
-        modelId=MODEL_ID,
-        messages=[{"role": "user", "content": [{
-            "text": "You are an intent classifier. Reply ONLY with a JSON like "
-                    '{"agent":"<name>","confidence":<0-1>}. Message: ' + question
-        }]}],
-    )
+    resp = client_context.converse(modelId=MODEL_ID, messages=[{"role": "user", "content": [
+        {"text": 'Classify the intent. Reply ONLY JSON {"agent":..,"confidence":..}. ' + question}]}])
     return resp["output"]["message"]["content"][0]["text"]
 
 
 @task("answer_agent")
 def answer_agent(client_context, question):
-    """Specialist agent call -> emits its own gen_ai span (NOT a user turn)."""
-    resp = client_context.converse(
-        modelId=MODEL_ID,
-        messages=[{"role": "user", "content": [{"text": question}]}],
-    )
+    resp = client_context.converse(modelId=MODEL_ID, messages=[
+        {"role": "user", "content": [{"text": question}]}])
     return resp["output"]["message"]["content"][0]["text"]
 
 
-def _emit_evaluation_bizevent(payload):
-    """Ingest the evaluation as a Dynatrace Business Event.
-
-    Endpoint: POST {DT_ENDPOINT}/api/v2/bizevents/ingest (Content-Type
-    application/json), token scope `bizevents.ingest`. Configure via env:
-      DT_ENDPOINT   e.g. https://<env-id>.live.dynatrace.com
-      DT_API_TOKEN  token with the bizevents.ingest scope
-    If either is unset, we skip the REST call and fall back to an OTLP log so
-    the default local-collector run still works.
-    """
-    dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-    dt_token = os.environ.get("DT_API_TOKEN", "")
-    if not (dt_base and dt_token):
-        return False
-    resp = requests.post(
-        f"{dt_base}/api/v2/bizevents/ingest",
-        headers={
-            "Authorization": f"Api-Token {dt_token}",
-            "Content-Type": "application/json",
-        },
-        data=json.dumps(payload),
-        timeout=10,
-    )
-    resp.raise_for_status()
-    return True
-
-
-def evaluate_answer(question, answer):
-    """LLM-as-judge, emitted as an EVALUATION signal -- not a chat span.
-
-    A judge implemented as a normal Bedrock converse call is indistinguishable
-    from a user-facing reply and pollutes the Prompts/conversation view. The
-    Dynatrace convention is a separate evaluation-result signal (a Business
-    Event), so this is ingested via /api/v2/bizevents/ingest and lands on the
-    AI Observability Evaluations page rather than in Prompts.
-
-    The bizevent is correlated to the turn via trace_id/span_id. When DT_ENDPOINT
-    / DT_API_TOKEN are not set, it falls back to an OTLP log for local testing.
-    """
-    # Deterministic stand-in verdict; swap for a real judge call if desired.
-    passed = bool(answer and len(answer.strip()) > 0)
-
-    # Field names and event.type mirror what the AI Observability Evaluations
-    # page queries (event.type == "gen_ai.evaluation.result", score.value/label,
-    # input.question/answer, trace_id/span_id). Keep these in sync with the app.
-    ctx = _ot_trace.get_current_span().get_span_context()
-    event = {
-        "event.type": "gen_ai.evaluation.result",
-        "event.provider": "aws-bedrock-opentelemetry-example",
+def evaluate_answer(span, question, answer):
+    # LLM-as-judge result emitted as an evaluation bizevent (not a chat span) so
+    # it lands on the Evaluations page. Static fields live in evaluation_bizevent.json.
+    passed = bool(answer and answer.strip())
+    ctx = span.get_span_context()
+    with open(_EVAL_TEMPLATE) as f:
+        event = json.load(f)
+    event.update({
         "trace_id": format(ctx.trace_id, "032x"),
         "span_id": format(ctx.span_id, "016x"),
-        "gen_ai.evaluation.name": "non_empty_answer",
-        "gen_ai.evaluation.type": "heuristic",
-        "gen_ai.evaluation.version": "1",
-        "gen_ai.evaluation.spec_id": "non_empty_answer",
-        "gen_ai.evaluation.scoring_format": "score_0_to_1",
         "gen_ai.evaluation.score.value": 1.0 if passed else 0.0,
         "gen_ai.evaluation.score.label": "pass" if passed else "fail",
-        "gen_ai.evaluation.explanation": (
-            "Answer is non-empty." if passed else "Answer was empty."
-        ),
-        "gen_ai.evaluation.method": "heuristic",
+        "gen_ai.evaluation.explanation": "Answer is non-empty." if passed else "Answer was empty.",
         "gen_ai.evaluation.input.question": question,
         "gen_ai.evaluation.input.answer": answer,
         "gen_ai.request.model": MODEL_ID,
-        "gen_ai.provider.name": "anthropic",
-    }
-
-    try:
-        if not _emit_evaluation_bizevent(event):
-            logging.info("gen_ai.evaluation", extra=event)
-    except Exception as e:
-        logging.error(f"Failed to ingest evaluation bizevent: {e}")
-        logging.info("gen_ai.evaluation", extra=event)
+    })
+    _ingest_bizevent(event)
     return passed
+
+
+def _ingest_bizevent(event):
+    # POST to {DT_ENDPOINT}/api/v2/bizevents/ingest (token scope bizevents.ingest);
+    # fall back to an OTLP log when unset so the local collector run still works.
+    base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+    token = os.environ.get("DT_API_TOKEN", "")
+    if not (base and token):
+        logging.info("gen_ai.evaluation", extra=event)
+        return
+    try:
+        requests.post(f"{base}/api/v2/bizevents/ingest",
+                      headers={"Authorization": f"Api-Token {token}", "Content-Type": "application/json"},
+                      data=json.dumps(event), timeout=10).raise_for_status()
+    except Exception as e:
+        logging.error(f"eval bizevent ingest failed: {e}")
+        logging.info("gen_ai.evaluation", extra=event)
 
 
 @workflow("multiagent_turn")
 def run_multiagent_turn(client_context, question):
-    logging.info("Starting a multi-agent turn...")
-    route_intent(client_context, question)          # internal call -> own gen_ai span
-    answer = answer_agent(client_context, question)  # internal call -> own gen_ai span
-    _stamp_turn_io(question, answer)                 # FIX 1: one correct turn record
-    evaluate_answer(question, answer)                # FIX 2: eval as separate signal
+    span = _ot_trace.get_current_span()
+    route_intent(client_context, question)
+    answer = answer_agent(client_context, question)
+    _stamp_turn_io(span, question, answer)
+    evaluate_answer(span, question, answer)
     print(answer)
     return answer
 
