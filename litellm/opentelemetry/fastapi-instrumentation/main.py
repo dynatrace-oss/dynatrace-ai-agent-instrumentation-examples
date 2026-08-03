@@ -2,6 +2,7 @@ import litellm
 import logging
 import os
 import time
+import uuid
 from fastapi import FastAPI, HTTPException
 from litellm.integrations.opentelemetry import OpenTelemetry as LiteLLMOTel
 from opentelemetry import metrics
@@ -29,6 +30,9 @@ COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
 # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
 # Must be set before the OTLP metric exporter is constructed in Traceloop.init below.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
+
+# Capture prompt/response content as span attributes (OFF by default in LiteLLM Otel v2, since it may contain sensitive data)
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "span_only")
 
 # Optional LLM provider keys — set in environment to enable each provider
 # Grok (xAI): use model prefix "xai/", e.g. "xai/grok-2-latest"
@@ -102,6 +106,7 @@ class ChatCompletionRequest(BaseModel):
     messages: list[ChatMessage]
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    conversation_id: Optional[str] = None
 
 
 @app.post("/chat/completions")
@@ -113,6 +118,10 @@ async def chat_completions(request: ChatCompletionRequest):
         kwargs["max_tokens"] = request.max_tokens
     if request.temperature is not None:
         kwargs["temperature"] = request.temperature
+    if request.conversation_id:
+        Traceloop.set_conversation_id(request.conversation_id)
+    else:
+        Traceloop.set_conversation_id(str(uuid.uuid4()))
 
     attrs = {"model": request.model}
     logger.info("chat request: model=%s", request.model)
