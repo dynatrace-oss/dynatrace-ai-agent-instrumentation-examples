@@ -47,17 +47,16 @@ Set `BEDROCK_GUARDRAIL_ID` (and optionally `BEDROCK_GUARDRAIL_VERSION`, default 
 
 Agents that fan a single user turn out into several Bedrock calls (a router, one or more specialist agents, an LLM-as-judge) expose a correlation gap in the Prompts view. Traceloop stamps `gen_ai.*` on each **model-call** span, but not on the enclosing `@workflow` / `@agent` span. Because the Prompts view pairs input to output per `gen_ai` span, the intermediate calls produce half-rows (an input with no text output when the model returns a tool call, or an output with no user input when the input is a tool result), and no single span holds "user question to final answer".
 
-`run_multiagent_turn()` in `main.py` reproduces this and demonstrates two fixes:
+`run_multiagent_turn()` in `main.py` reproduces this and demonstrates the fix:
 
 | Fix | Where | What it does |
 |---|---|---|
 | **Turn-level correlation** | `_stamp_turn_io()` | Records the whole turn on the **agent span** (`@agent`) so one clean `input -> output` record exists, using the message form (`gen_ai.input.messages` / `gen_ai.output.messages`) from the Dynatrace semantic dictionary. The span is typed as an agent (`gen_ai.operation.kind=agent`, `gen_ai.agent.name`) rather than a model call. Only the message form is set: the Prompts renderer appends both the flat form (`gen_ai.prompt.N` / `gen_ai.completion.0`) and the message form, so setting both would render the same turn twice. `gen_ai.provider.name=aws.bedrock` is set because the agent is Bedrock-backed; it is also what makes the app treat the span as a GenAI span (its filter is `isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)`), so the turn shows in the Prompts view. |
-| **Keep internal fan-out calls out of the conversation view** | `_strip_internal_conversation_attrs()` | The router (`route_intent`) and specialist (`answer_agent`) calls each emit their own auto-instrumented Bedrock model-call span carrying `gen_ai.system` / `gen_ai.provider.name`, so without intervention the Prompts view shows **three rows** for one turn (the correct turn record plus two half-row internal steps). A Traceloop `span_postprocess_callback` strips those two attributes from the internal model-call spans (matched by the `opentelemetry.instrumentation.bedrock` scope), so they drop out of the GenAI filter and only the turn-level agent span remains in the conversation view. The spans stay in the raw trace; only their GenAI-view membership is removed. The turn's own agent span is created by Traceloop (not the Bedrock scope), so it keeps `provider.name` and still appears. |
 
-Stripping the attributes in app code keeps the example self-contained; in a real deployment you would more often shape this at the pipeline layer (an OpenPipeline DQL processor or OTel Collector `transform` that matches the internal spans by `traceloop.entity.name` / `span.name`), which keeps the demo app free of view-specific logic.
+The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` model-call spans, so the Prompts view shows them as separate rows alongside the turn: the turn appears as an **Agent** row (it carries `gen_ai.agent.name`) and the internal steps as **LLM** rows. This is expected — the fix is that a correct turn-level `input -> output` record now exists, not that the steps disappear. If you want a conversation view with only turns, suppress the internal rows at the pipeline layer (for example an OpenPipeline DQL processor or OTel Collector `transform` that drops the internal spans, or removes their `gen_ai.*` attributes so they fall out of the app's GenAI filter, matched by `traceloop.entity.name` / `span.name`).
 
 > [!NOTE]
-> This is a demonstration, so the multi-agent turn is simplified from a real deployment: the fan-out is sequential rather than parallel with a synthesis step, and the router/specialist stripping is gated to the `multiagent` story (one `STORY` runs per process) rather than matching a production span taxonomy.
+> This is a demonstration, so the multi-agent turn is simplified from a real deployment: the fan-out is sequential rather than parallel with a synthesis step.
 
 ## How to use
 
@@ -124,7 +123,7 @@ make run STORY=multiagent   # or a single story: converse | guardrails | invoke 
 
 The script runs continuously, replaying the selected story (or all four) every 5 seconds. Stop it with `Ctrl+C`.
 
-To confirm the turn-level correlation, open the Prompts view and filter to your service (`bedrock_example_app` by default, or your `OTEL_SERVICE_NAME` if you set one): the `multiagent_turn` agent span appears as one row with the question as input and the answer as output, and the internal `route_intent` / `answer_agent` model calls no longer appear as separate conversation rows (their `gen_ai.system` / `gen_ai.provider.name` are stripped).
+To confirm the turn-level correlation, open the Prompts view and filter to your service (`bedrock_example_app` by default, or your `OTEL_SERVICE_NAME` if you set one): the `multiagent_turn` agent span appears as one **Agent** row with the question as input and the answer as output, and the internal `route_intent` / `answer_agent` model calls appear as separate **LLM** rows (suppress these at the pipeline layer if you want a turns-only conversation view).
 
 ### Verify in Dynatrace
 
@@ -144,7 +143,7 @@ fetch spans, from:now()-1h
 | **1. Converse API** | `run_converse()` | One `gen_ai` span per Converse call: model ID, token usage, finish reason |
 | **2. Invoke API** | `run_invoke()` / `run_invoke_extra()` | Same signals via the alternate Bedrock Invoke API |
 | **3. Guardrails** | `run_converse_guardrail_trigger()` | A blocked request: `gen_ai.response.finish_reasons=["content_filter"]` plus `gen_ai.bedrock.guardrail.*` (see [Guardrails](#guardrails)) |
-| **4. Multi-agent turn** | `run_multiagent_turn()` | Turn-level input/output correlation on the agent span, with the internal fan-out calls kept out of the conversation view (see [Multi-agent turn](#multi-agent-turn-inputoutput-correlation-in-the-prompts-view)) |
+| **4. Multi-agent turn** | `run_multiagent_turn()` | Turn-level input/output correlation on the agent span (see [Multi-agent turn](#multi-agent-turn-inputoutput-correlation-in-the-prompts-view)) |
 
 By default all four run in one loop. To look at a single story with a focused trace, select it with the `STORY` variable (or a comma-separated list):
 

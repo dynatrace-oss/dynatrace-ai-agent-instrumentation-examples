@@ -51,25 +51,6 @@ AsyncioInstrumentor().instrument()
 BotocoreInstrumentor().instrument()
 
 
-# Strip gen_ai.system / provider.name from the internal fan-out model-call spans so they
-# drop out of the conversation view, leaving only the turn-level agent span. Gated to the
-# multiagent story (one STORY runs per process).
-# More generally: call this to hide any tool/intermediate prompt you don't want surfaced in
-# the AI app -- match the span (by scope, name, or attribute) and drop its gen_ai.* keys so
-# it fails the app's GenAI filter while staying in the raw trace.
-_STRIP_INTERNAL_GENAI = False
-_BEDROCK_SCOPE = "opentelemetry.instrumentation.bedrock"
-
-
-def _strip_internal_conversation_attrs(span):
-    if not _STRIP_INTERNAL_GENAI:
-        return
-    scope = getattr(span, "instrumentation_scope", None)
-    if scope is not None and scope.name == _BEDROCK_SCOPE:
-        span._attributes.pop("gen_ai.system", None)
-        span._attributes.pop("gen_ai.provider.name", None)
-
-
 logging.info("Initializing traceloop...")
 # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
 # Must be set before Traceloop.init builds the metric exporter.
@@ -80,7 +61,6 @@ Traceloop.init(
     disable_batch=True,
     should_enrich_metrics=True,
     api_endpoint=COLLECTOR_BASE_URL,
-    span_postprocess_callback=_strip_internal_conversation_attrs,
 )
 
 Traceloop.set_association_properties({
@@ -260,9 +240,6 @@ def _run_story(name, client):
         run_invoke(client)
         run_invoke_extra(client)
     elif name == "multiagent":
-        # Enable internal-span stripping for this story (see _strip_internal_conversation_attrs).
-        global _STRIP_INTERNAL_GENAI
-        _STRIP_INTERNAL_GENAI = True
         run_multiagent_turn(client, "What is the policy for checking my account balance?")
 
 
