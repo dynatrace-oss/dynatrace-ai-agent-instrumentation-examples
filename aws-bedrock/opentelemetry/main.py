@@ -23,9 +23,8 @@ from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
 from opentelemetry import trace as _ot_trace
-from concurrent.futures import ThreadPoolExecutor
-import atexit
-import requests
+
+import evaluator
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
 MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -184,15 +183,8 @@ def run_invoke_extra(client_context):
 
 
 # Multi-agent turn: one user turn fans out into several Bedrock calls, then the
-# turn is recorded on the agent span and evaluated out-of-band. See README
-# ("Multi-agent turn") for the why.
-
-with open(os.path.join(os.path.dirname(__file__), "evaluation_bizevent.json")) as _f:
-    _EVAL_FIELDS = json.load(_f)
-
-# Evaluation runs off the request path, as a real deployment would.
-_EVAL_POOL = ThreadPoolExecutor(max_workers=2)
-atexit.register(lambda: _EVAL_POOL.shutdown(wait=True))
+# turn is recorded on the agent span and evaluated out-of-band (see evaluator.py
+# and the README "Multi-agent turn" section).
 
 
 def _messages(role, text):
@@ -224,55 +216,13 @@ def answer_agent(client_context, question):
     return resp["output"]["message"]["content"][0]["text"]
 
 
-def submit_evaluation(span, question, answer):
-    # Hand the turn to a background worker; a real deployment runs the judge
-    # asynchronously off the request path. Correlated by trace_id/span_id.
-    ctx = span.get_span_context()
-    _EVAL_POOL.submit(_run_evaluation, question, answer,
-                      format(ctx.trace_id, "032x"), format(ctx.span_id, "016x"))
-
-
-def _run_evaluation(question, answer, trace_id, span_id):
-    # Stand-in judge: always returns the same verdict. Emitted as an evaluation
-    # bizevent (not a chat span) so it lands on the Evaluations page.
-    event = dict(_EVAL_FIELDS)
-    event.update({
-        "trace_id": trace_id,
-        "span_id": span_id,
-        "gen_ai.evaluation.score.value": 1.0,
-        "gen_ai.evaluation.score.label": "pass",
-        "gen_ai.evaluation.explanation": "Stand-in evaluator: always passes.",
-        "gen_ai.evaluation.input.question": question,
-        "gen_ai.evaluation.input.answer": answer,
-        "gen_ai.request.model": MODEL_ID,
-    })
-    _ingest_bizevent(event)
-
-
-def _ingest_bizevent(event):
-    # POST to {DT_ENDPOINT}/api/v2/bizevents/ingest (token scope bizevents.ingest);
-    # fall back to an OTLP log when unset so the local collector run still works.
-    base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-    token = os.environ.get("DT_API_TOKEN", "")
-    if not (base and token):
-        logging.info("gen_ai.evaluation", extra=event)
-        return
-    try:
-        requests.post(f"{base}/api/v2/bizevents/ingest",
-                      headers={"Authorization": f"Api-Token {token}", "Content-Type": "application/json"},
-                      data=json.dumps(event), timeout=10).raise_for_status()
-    except Exception as e:
-        logging.error(f"eval bizevent ingest failed: {e}")
-        logging.info("gen_ai.evaluation", extra=event)
-
-
 @agent("multiagent_turn")
 def run_multiagent_turn(client_context, question):
     span = _ot_trace.get_current_span()
     route_intent(client_context, question)
     answer = answer_agent(client_context, question)
     _stamp_turn_io(span, question, answer)
-    submit_evaluation(span, question, answer)
+    evaluator.submit(span, question, answer, MODEL_ID)
     print(answer)
     return answer
 
