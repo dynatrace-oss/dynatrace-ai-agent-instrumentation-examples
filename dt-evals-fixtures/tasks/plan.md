@@ -39,9 +39,18 @@ Derived from `dt-evals-fixtures/SPEC.md`. Work lives in
 7. **Download missing HF datasets** ✅ *(done)* — gooaq (context-relevance),
    daloopa (conciseness), IEMOCAP (user-frustration) downloaded; SBIC's HF loader
    is deprecated so StereoSet (cached) covers bias. All 14 evaluators covered.
+   ⚠️ *Superseded by task 9:* gooaq, IEMOCAP and StereoSet were later dropped for
+   licensing reasons (their evaluators are now self-authored).
 
 8. **`SOURCES.md` + README + Makefile `build-fixtures` target** ✅ *(done)* —
    per-dataset attribution + licensing note.
 
+9. **Licensing rework for public OSS** ✅ *(done, 2026-08-03)* — repo is public
+   Apache-2.0, so 5 evaluators whose source datasets are not redistributable
+   (IEMOCAP, StereoSet, Magneto, gooaq, FaithEval) were switched to self-authored
+   content; the other 9 keep MIT/Apache/CC-BY datasets with explicit attribution.
+   See SPEC §3.7 / §9.8.
+
 **Status: all tasks complete. fixtures.json = 28 cases across all 14 dt-evals
-judge evaluators (2 pass/fail each). 31 tests passing.**
+judge evaluators (2 pass/fail each) — 9 from permissive datasets, 5 self-authored.
+35 tests passing.**

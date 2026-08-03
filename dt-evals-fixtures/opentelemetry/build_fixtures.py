@@ -421,7 +421,7 @@ def build_context_relevance_cases() -> list[dict]:
     )
 
     def src(kind: str) -> dict:
-        return {"origin": "authored", "note": AUTHORED_NOTE, "context": kind, "scaffold": "response"}
+        return {"origin": "authored", "note": AUTHORED_NOTE, "variant": kind, "scaffold": "response"}
 
     return [
         _single_turn_case(

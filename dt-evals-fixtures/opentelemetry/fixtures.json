@@ -668,7 +668,7 @@
       "source": {
         "origin": "authored",
         "note": "self-authored for this repo (no external dataset, Apache-2.0)",
-        "context": "relevant",
+        "variant": "relevant",
         "scaffold": "response"
       },
       "model": "gpt-4o-mini",
@@ -698,7 +698,7 @@
       "source": {
         "origin": "authored",
         "note": "self-authored for this repo (no external dataset, Apache-2.0)",
-        "context": "irrelevant",
+        "variant": "irrelevant",
         "scaffold": "response"
       },
       "model": "gpt-4o-mini",
