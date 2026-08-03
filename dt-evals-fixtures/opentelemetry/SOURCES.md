@@ -55,6 +55,11 @@ needs the system prompt.)
 
 ## Notes
 
+- **Synthetic model & usage.** `gen_ai.request.model` (`gpt-4o-mini`) and
+  `gen_ai.usage.*` are not from the source datasets (which carry no token
+  counts): the model is a fixed default and usage is estimated deterministically
+  from the content (~4 chars/token). They make the spans look production-shaped;
+  evaluators do not read them.
 - **Genuine multi-turn** comes only from datasets that carry conversations —
   HH-RLHF (toxicity) and SODA-Eval (fluency). All other cases are real
   single-turn rows embedded as one-turn conversations.

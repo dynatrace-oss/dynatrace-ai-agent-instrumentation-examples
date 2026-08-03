@@ -27,6 +27,11 @@
         "subset": "harmless-base",
         "row": 1065,
         "field": "chosen"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 35,
+        "output_tokens": 61
       }
     },
     {
@@ -55,6 +60,11 @@
         "subset": "harmless-base",
         "row": 1065,
         "field": "rejected"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 35,
+        "output_tokens": 72
       }
     },
     {
@@ -82,6 +92,11 @@
         "dataset": "Johndfm/soda_eval",
         "row": 16,
         "field": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 48,
+        "output_tokens": 41
       }
     },
     {
@@ -109,6 +124,11 @@
         "dataset": "Johndfm/soda_eval",
         "row": 222,
         "field": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 44,
+        "output_tokens": 45
       }
     },
     {
@@ -133,6 +153,11 @@
         "dataset": "Salesforce/FaithEval-counterfactual-v1.0",
         "row": 0,
         "field": "choices"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 695,
+        "output_tokens": 10
       }
     },
     {
@@ -157,6 +182,11 @@
         "dataset": "Salesforce/FaithEval-counterfactual-v1.0",
         "row": 0,
         "field": "choices"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 695,
+        "output_tokens": 8
       }
     },
     {
@@ -181,6 +211,11 @@
         "dataset": "Cleanlab/FinQA-hallucination-detection",
         "row": 0,
         "field": "llm_response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 988,
+        "output_tokens": 1
       }
     },
     {
@@ -205,6 +240,11 @@
         "dataset": "Cleanlab/FinQA-hallucination-detection",
         "row": 6,
         "field": "llm_response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 728,
+        "output_tokens": 4
       }
     },
     {
@@ -228,6 +268,11 @@
         "dataset": "nvidia/HelpSteer2",
         "row": 1,
         "field": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 8,
+        "output_tokens": 408
       }
     },
     {
@@ -251,6 +296,11 @@
         "dataset": "nvidia/HelpSteer2",
         "row": 10,
         "field": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 35,
+        "output_tokens": 854
       }
     },
     {
@@ -275,6 +325,11 @@
         "dataset": "domenicrosati/TruthfulQA",
         "row": 0,
         "field": "Best Answer"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 19,
+        "output_tokens": 14
       }
     },
     {
@@ -299,6 +354,11 @@
         "dataset": "domenicrosati/TruthfulQA",
         "row": 0,
         "field": "Incorrect Answers"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 19,
+        "output_tokens": 9
       }
     },
     {
@@ -322,6 +382,11 @@
         "dataset": "Magneto/qa-dataset-llm-judge-flattened",
         "row": 0,
         "field": "evaluation_completeness"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 35,
+        "output_tokens": 35
       }
     },
     {
@@ -345,6 +410,11 @@
         "dataset": "Magneto/qa-dataset-llm-judge-flattened",
         "row": 4,
         "field": "evaluation_completeness"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 27,
+        "output_tokens": 144
       }
     },
     {
@@ -369,6 +439,11 @@
         "row": 0,
         "field": "document_description",
         "scaffold": "user"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 26,
+        "output_tokens": 108
       }
     },
     {
@@ -393,6 +468,11 @@
         "row": 0,
         "field": "text",
         "scaffold": "user"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 26,
+        "output_tokens": 37
       }
     },
     {
@@ -419,6 +499,11 @@
         "summary_index": 3,
         "field": "machine_summaries",
         "scaffold": "user"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 599,
+        "output_tokens": 72
       }
     },
     {
@@ -445,6 +530,11 @@
         "summary_index": 0,
         "field": "machine_summaries",
         "scaffold": "user"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 599,
+        "output_tokens": 78
       }
     },
     {
@@ -469,6 +559,11 @@
         "row": 0,
         "field": "text",
         "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 21,
+        "output_tokens": 16
       }
     },
     {
@@ -493,6 +588,11 @@
         "row": 20,
         "field": "text",
         "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 23,
+        "output_tokens": 16
       }
     },
     {
@@ -518,6 +618,11 @@
         "row": 0,
         "field": "texts (relevant)",
         "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 91,
+        "output_tokens": 16
       }
     },
     {
@@ -543,6 +648,11 @@
         "row": 0,
         "field": "texts (irrelevant)",
         "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 92,
+        "output_tokens": 16
       }
     },
     {
@@ -566,6 +676,11 @@
         "dataset": "daloopa/financial-retrieval",
         "row": 0,
         "field": "answer"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 31,
+        "output_tokens": 10
       }
     },
     {
@@ -589,6 +704,11 @@
         "dataset": "daloopa/financial-retrieval",
         "row": 4,
         "field": "answer"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 31,
+        "output_tokens": 180
       }
     },
     {
@@ -613,6 +733,11 @@
         "row": 0,
         "field": "transcription",
         "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 10,
+        "output_tokens": 18
       }
     },
     {
@@ -637,6 +762,11 @@
         "row": 6,
         "field": "transcription",
         "scaffold": "response"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 25,
+        "output_tokens": 18
       }
     },
     {
@@ -662,6 +792,11 @@
         "field": "sentences",
         "gold_label": 0,
         "scaffold": "user"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 21,
+        "output_tokens": 8
       }
     },
     {
@@ -687,6 +822,11 @@
         "field": "sentences",
         "gold_label": 1,
         "scaffold": "user"
+      },
+      "model": "gpt-4o-mini",
+      "usage": {
+        "input_tokens": 21,
+        "output_tokens": 14
       }
     }
   ]

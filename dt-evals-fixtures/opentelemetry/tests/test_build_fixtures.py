@@ -238,6 +238,36 @@ def test_user_frustration_real_input_scaffolded_response():
     assert _well_formed(cases)
 
 
+def test_attach_model_usage_defaults():
+    from build_fixtures import DEFAULT_MODEL, _attach_model_usage
+
+    case = _attach_model_usage(
+        {"system": "sys", "turns": [{"user": "hello there", "response": "hi back"}]}
+    )
+    assert case["model"] == DEFAULT_MODEL
+    assert case["usage"]["input_tokens"] > 0
+    assert case["usage"]["output_tokens"] > 0
+    # Deterministic: same content -> same estimate.
+    again = _attach_model_usage(
+        {"system": "sys", "turns": [{"user": "hello there", "response": "hi back"}]}
+    )
+    assert again["usage"] == case["usage"]
+
+
+def test_attach_model_usage_respects_explicit_values():
+    from build_fixtures import _attach_model_usage
+
+    case = _attach_model_usage(
+        {
+            "model": "custom-model",
+            "usage": {"input_tokens": 1, "output_tokens": 2},
+            "turns": [{"user": "x", "response": "y"}],
+        }
+    )
+    assert case["model"] == "custom-model"
+    assert case["usage"] == {"input_tokens": 1, "output_tokens": 2}
+
+
 def test_bias_anti_stereotype_passes_stereotype_fails():
     ds = [
         {

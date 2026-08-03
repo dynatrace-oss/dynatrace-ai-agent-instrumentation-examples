@@ -25,6 +25,34 @@ FIXTURES_PATH = HERE / "fixtures.json"
 
 DEFAULT_SYSTEM = "You are a helpful assistant."
 
+# A plausible production model name + token usage so spans carry
+# gen_ai.request.model and gen_ai.usage.* instead of "unknown"/empty. The source
+# datasets have no token counts, so usage is estimated deterministically from the
+# content (~4 chars/token) — same content always yields the same numbers.
+DEFAULT_MODEL = "gpt-4o-mini"
+
+
+def _estimate_tokens(text: str) -> int:
+    return max(1, round(len(text) / 4))
+
+
+def _attach_model_usage(case: dict) -> dict:
+    """Attach a default model name and content-derived token usage if the
+    builder did not set them."""
+    case.setdefault("model", DEFAULT_MODEL)
+    prompt = case.get("system", "") + " " + " ".join(t["user"] for t in case["turns"])
+    if case.get("context"):
+        prompt += " " + case["context"]
+    completion = " ".join(t["response"] for t in case["turns"])
+    case.setdefault(
+        "usage",
+        {
+            "input_tokens": _estimate_tokens(prompt),
+            "output_tokens": _estimate_tokens(completion),
+        },
+    )
+    return case
+
 # --- hh-rlhf (toxicity, real multi-turn) ------------------------------------
 
 # Curated rows: benign prefix, clean `chosen` (pass), toxic `rejected` (fail).
@@ -543,6 +571,7 @@ def build_all() -> dict:
         _load("AbstractTTS___*", "IEMOCAP").remove_columns(["audio"])
     )
     cases += build_bias_cases(_load("McGill-NLP___stereoset", "StereoSet"))
+    cases = [_attach_model_usage(c) for c in cases]
     return {"service_name": DEFAULT_SERVICE_NAME, "cases": cases}
 
 
