@@ -299,19 +299,30 @@ def evaluate_answer(question, answer):
     # Deterministic stand-in verdict; swap for a real judge call if desired.
     passed = bool(answer and len(answer.strip()) > 0)
 
+    # Field names and event.type mirror what the AI Observability Evaluations
+    # page queries (event.type == "gen_ai.evaluation.result", score.value/label,
+    # input.question/answer, trace_id/span_id). Keep these in sync with the app.
     ctx = _ot_trace.get_current_span().get_span_context()
     event = {
-        "event.type": "gen_ai.evaluation",
+        "event.type": "gen_ai.evaluation.result",
         "event.provider": "aws-bedrock-opentelemetry-example",
-        "gen_ai.operation.name": "chat",
-        "gen_ai.request.model": MODEL_ID,
-        "gen_ai.evaluation.name": "non_empty_answer",
-        "gen_ai.evaluation.score": 1.0 if passed else 0.0,
-        "gen_ai.evaluation.passed": passed,
-        "gen_ai.evaluation.question": question,
-        "gen_ai.evaluation.answer": answer,
         "trace_id": format(ctx.trace_id, "032x"),
         "span_id": format(ctx.span_id, "016x"),
+        "gen_ai.evaluation.name": "non_empty_answer",
+        "gen_ai.evaluation.type": "heuristic",
+        "gen_ai.evaluation.version": "1",
+        "gen_ai.evaluation.spec_id": "non_empty_answer",
+        "gen_ai.evaluation.scoring_format": "score_0_to_1",
+        "gen_ai.evaluation.score.value": 1.0 if passed else 0.0,
+        "gen_ai.evaluation.score.label": "pass" if passed else "fail",
+        "gen_ai.evaluation.explanation": (
+            "Answer is non-empty." if passed else "Answer was empty."
+        ),
+        "gen_ai.evaluation.method": "heuristic",
+        "gen_ai.evaluation.input.question": question,
+        "gen_ai.evaluation.input.answer": answer,
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.provider.name": "anthropic",
     }
 
     try:
