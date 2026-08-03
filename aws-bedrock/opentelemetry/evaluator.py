@@ -32,22 +32,32 @@ _POOL = ThreadPoolExecutor(max_workers=2)
 atexit.register(lambda: _POOL.shutdown(wait=True))
 
 
-def submit(span, question, answer, model):
-    """Queue an evaluation for the turn and return immediately."""
+def submit(span, question, answer, model, started, ended):
+    """Queue an evaluation for the turn and return immediately.
+
+    `started`/`ended` are timezone-aware datetimes bounding the turn span; they let
+    the bizevent carry the span's time range and a sort timestamp (see `_run`).
+    """
     ctx = span.get_span_context()
     fut = _POOL.submit(_run, question, answer, model,
-                       format(ctx.trace_id, "032x"), format(ctx.span_id, "016x"))
+                       format(ctx.trace_id, "032x"), format(ctx.span_id, "016x"),
+                       started.isoformat(), ended.isoformat())
     # Futures swallow worker exceptions; surface them so a failed eval is visible.
     fut.add_done_callback(
         lambda f: f.exception() and logging.error(f"evaluation worker failed: {f.exception()!r}"))
 
 
-def _run(question, answer, model, trace_id, span_id):
+def _run(question, answer, model, trace_id, span_id, span_start, span_end):
     event = dict(_FIELDS)
     event.update({
         "trace_id": trace_id,
         "span_id": span_id,
         "dt.eval.run_id": _RUN_ID,
+        # The app locates the evaluated span within this time range, and sorts the
+        # Evaluations page by `timestamp`; without them the eval can't resolve its span.
+        "span.start_time": span_start,
+        "span.end_time": span_end,
+        "timestamp": span_end,
         "gen_ai.evaluation.score.value": 1.0,
         "gen_ai.evaluation.score.label": "pass",
         "gen_ai.evaluation.explanation": "Stand-in evaluator: always passes.",

@@ -10,6 +10,7 @@ from tenacity import sleep
 from traceloop.sdk import Traceloop
 import logging
 import json
+from datetime import datetime, timezone
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -222,10 +223,14 @@ def answer_agent(client_context, question):
 @agent("multiagent_turn")
 def run_multiagent_turn(client_context, question):
     span = _ot_trace.get_current_span()
+    started = datetime.now(timezone.utc)
     route_intent(client_context, question)
     answer = answer_agent(client_context, question)
     _stamp_turn_io(span, question, answer)
-    evaluator.submit(span, question, answer, MODEL_ID)
+    # Hand the turn's wall-clock window to the evaluator so its bizevent can carry the
+    # span's time range (used by the app to locate the span) and a sort timestamp.
+    ended = datetime.now(timezone.utc)
+    evaluator.submit(span, question, answer, MODEL_ID, started, ended)
     print(answer)
     return answer
 
