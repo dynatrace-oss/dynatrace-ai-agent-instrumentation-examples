@@ -13,7 +13,6 @@ import json
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler as OTLPLoggingHandler
@@ -48,7 +47,6 @@ logging.info("Starting Bedrock Example Instrumetors...")
 BedrockInstrumentor().instrument()
 RequestsInstrumentor().instrument()
 AsyncioInstrumentor().instrument()
-BotocoreInstrumentor().instrument()
 
 
 logging.info("Initializing traceloop...")
