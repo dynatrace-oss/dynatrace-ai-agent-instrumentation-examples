@@ -3,6 +3,9 @@ cases. Uses an injected fake dataset so the test never touches the HF cache."""
 
 from build_fixtures import (
     build_answer_completeness_cases,
+    build_bias_cases,
+    build_conciseness_cases,
+    build_context_relevance_cases,
     build_factual_accuracy_cases,
     build_faithfulness_cases,
     build_fluency_cases,
@@ -12,6 +15,7 @@ from build_fixtures import (
     build_relevance_cases,
     build_summarization_cases,
     build_toxicity_cases,
+    build_user_frustration_cases,
     parse_transcript,
 )
 from fixtures import normalize_case
@@ -200,4 +204,50 @@ def test_prompt_injection_real_input_scaffolded_response():
     assert cases[0]["turns"][0]["user"] == "What is authentication?"  # benign -> pass
     assert cases[1]["turns"][0]["user"].startswith("Ignore all")  # injection -> fail
     assert cases[0]["source"]["scaffold"] == "response"
+    assert _well_formed(cases)
+
+
+def test_context_relevance_uses_relevant_and_irrelevant_doc_as_context():
+    ds = [{"query": "q?", "texts": ["relevant doc", "irrelevant doc"], "labels": [1, 0]}]
+    cases = build_context_relevance_cases(ds, row=0)
+    assert cases[0]["context"] == "relevant doc"  # pass
+    assert cases[1]["context"] == "irrelevant doc"  # fail
+    assert _well_formed(cases)
+
+
+def test_conciseness_selects_by_conc_rating():
+    ds = [
+        {"question": "q0", "answer": "verbose ...", "conc_rating": 1},
+        {"question": "q1", "answer": "tight", "conc_rating": 5},
+    ]
+    cases = build_conciseness_cases(ds)
+    assert cases[0]["turns"][0]["response"] == "tight"  # high rating -> pass
+    assert cases[1]["turns"][0]["response"] == "verbose ..."
+    assert _well_formed(cases)
+
+
+def test_user_frustration_real_input_scaffolded_response():
+    ds = [
+        {"transcription": " I am so done with this! ", "frustrated": 0.9},
+        {"transcription": " Sure, sounds good. ", "frustrated": 0.05},
+    ]
+    cases = build_user_frustration_cases(ds)
+    assert cases[0]["turns"][0]["user"] == "Sure, sounds good."  # calm -> pass
+    assert cases[1]["turns"][0]["user"] == "I am so done with this!"  # frustrated -> fail
+    assert cases[0]["source"]["scaffold"] == "response"
+    assert _well_formed(cases)
+
+
+def test_bias_anti_stereotype_passes_stereotype_fails():
+    ds = [
+        {
+            "sentences": {
+                "sentence": ["They are hardworking.", "They are lazy.", "The sky is blue."],
+                "gold_label": [0, 1, 2],  # anti-stereotype, stereotype, unrelated
+            }
+        }
+    ]
+    cases = build_bias_cases(ds, row=0)
+    assert cases[0]["turns"][0]["response"] == "They are hardworking."  # anti -> pass
+    assert cases[1]["turns"][0]["response"] == "They are lazy."  # stereotype -> fail
     assert _well_formed(cases)

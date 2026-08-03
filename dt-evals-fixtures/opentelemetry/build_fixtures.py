@@ -363,6 +363,106 @@ def build_prompt_injection_cases(dataset) -> list[dict]:
     ]
 
 
+def build_context_relevance_cases(dataset, row: int = 0) -> list[dict]:
+    """gooaq: a retrieved doc labelled relevant to the query (pass) vs one
+    labelled irrelevant (fail). The doc is the context; response is scaffolded."""
+    rec = dataset[row]
+    texts, labels = rec["texts"], rec["labels"]
+    relevant = texts[labels.index(1)]
+    irrelevant = texts[labels.index(0)]
+
+    def src(kind: str) -> dict:
+        return {
+            "dataset": "zilliz/gooaq-context-relevance",
+            "row": row,
+            "field": f"texts ({kind})",
+            "scaffold": "response",
+        }
+
+    return [
+        _single_turn_case(
+            f"context-relevance-gooaq-{row}-pass", "context-relevance", "pass",
+            rec["query"], _SCAFFOLD_ANSWER, context=relevant, source=src("relevant"),
+        ),
+        _single_turn_case(
+            f"context-relevance-gooaq-{row}-fail", "context-relevance", "fail",
+            rec["query"], _SCAFFOLD_ANSWER, context=irrelevant, source=src("irrelevant"),
+        ),
+    ]
+
+
+def build_conciseness_cases(dataset) -> list[dict]:
+    """daloopa: a concise answer (high conc_rating) passes, a verbose one fails."""
+
+    def case(idx: int, expect: str) -> dict:
+        r = dataset[idx]
+        return _single_turn_case(
+            f"conciseness-daloopa-{idx}-{expect}", "conciseness", expect,
+            r["question"], r["answer"],
+            source={"dataset": "daloopa/financial-retrieval", "row": idx, "field": "answer"},
+        )
+
+    ok = lambda r: bool((r["answer"] or "").strip())  # noqa: E731
+    return [
+        case(_find_index(dataset, lambda r: ok(r) and r["conc_rating"] >= 4), "pass"),
+        case(_find_index(dataset, lambda r: ok(r) and r["conc_rating"] <= 2), "fail"),
+    ]
+
+
+def build_user_frustration_cases(dataset) -> list[dict]:
+    """IEMOCAP: a calm user turn passes, a frustrated one fails. The evaluator
+    scores the user input; the assistant response is scaffolded."""
+
+    def case(idx: int, expect: str) -> dict:
+        r = dataset[idx]
+        return _single_turn_case(
+            f"user-frustration-iemocap-{idx}-{expect}", "user-frustration", expect,
+            r["transcription"].strip(), _SCAFFOLD_FRUSTRATION_ANSWER,
+            source={
+                "dataset": "AbstractTTS/IEMOCAP",
+                "row": idx,
+                "field": "transcription",
+                "scaffold": "response",
+            },
+        )
+
+    ok = lambda r: bool((r["transcription"] or "").strip())  # noqa: E731
+    return [
+        case(_find_index(dataset, lambda r: ok(r) and r["frustrated"] < 0.5), "pass"),
+        case(_find_index(dataset, lambda r: ok(r) and r["frustrated"] >= 0.5), "fail"),
+    ]
+
+
+def build_bias_cases(dataset, row: int = 0) -> list[dict]:
+    """StereoSet: an anti-stereotype sentence is unbiased (pass), a stereotype
+    sentence is biased (fail). The user prompt is scaffolded."""
+    rec = dataset[row]
+    sentences = rec["sentences"]
+    labels = sentences["gold_label"]  # 0=anti-stereotype, 1=stereotype, 2=unrelated
+    anti = sentences["sentence"][labels.index(0)]
+    stereo = sentences["sentence"][labels.index(1)]
+
+    def src(gold_label: int) -> dict:
+        return {
+            "dataset": "McGill-NLP/stereoset",
+            "row": row,
+            "field": "sentences",
+            "gold_label": gold_label,
+            "scaffold": "user",
+        }
+
+    return [
+        _single_turn_case(
+            f"bias-stereoset-{row}-pass", "bias", "pass",
+            _SCAFFOLD_BIAS_USER, anti, source=src(0),
+        ),
+        _single_turn_case(
+            f"bias-stereoset-{row}-fail", "bias", "fail",
+            _SCAFFOLD_BIAS_USER, stereo, source=src(1),
+        ),
+    ]
+
+
 def _load_hhrlhf():
     from datasets import Dataset
 
@@ -437,6 +537,12 @@ def build_all() -> dict:
     cases += build_prompt_injection_cases(
         _load("neuralchemy___prompt-injection-dataset", "neuralchemy prompt-injection")
     )
+    cases += build_context_relevance_cases(_load("zilliz___gooaq*", "gooaq context-relevance"))
+    cases += build_conciseness_cases(_load("daloopa___financial-retrieval", "daloopa"))
+    cases += build_user_frustration_cases(
+        _load("AbstractTTS___*", "IEMOCAP").remove_columns(["audio"])
+    )
+    cases += build_bias_cases(_load("McGill-NLP___stereoset", "StereoSet"))
     return {"service_name": DEFAULT_SERVICE_NAME, "cases": cases}
 
 
