@@ -27,7 +27,7 @@ Derived from `dt-evals-fixtures/SPEC.md`. Work lives in
    cache, curate a deterministic pass/fail subset, parse `Human:`/`Assistant:`
    into turns, write cases.
 
-5. **`build_fixtures.py` — fluency (soda_eval, real multi-turn)**.
+5. **`build_fixtures.py` — fluency (soda_eval, real multi-turn)** ✅ *(done — commit 6fd3a07)*
 
 6. **`build_fixtures.py` — single-turn evaluators** wrapped as 1-turn
    conversations (Nemotron-PII, FaithEval, FinQA, HelpSteer2, TruthfulQA,
