@@ -10,7 +10,6 @@ from tenacity import sleep
 from traceloop.sdk import Traceloop
 import logging
 import json
-from datetime import datetime, timezone
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -24,8 +23,6 @@ from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
 from opentelemetry import trace as _ot_trace
-
-import evaluator
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
 MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -54,6 +51,27 @@ AsyncioInstrumentor().instrument()
 BotocoreInstrumentor().instrument()
 
 
+# In the multi-agent story the turn fans out into internal Bedrock model calls (router +
+# specialist). Those auto-instrumented model-call spans carry gen_ai.system / provider.name,
+# so they surface in the Prompts conversation view as extra half-rows next to the correct
+# turn-level agent span. Strip those two attributes from the internal model-call spans so
+# they drop out of the GenAI/conversation views (they stay in raw traces). The turn's own
+# agent span is created by Traceloop, not the Bedrock instrumentation, so it keeps
+# provider.name and still appears. Gated to the multiagent story so the other stories'
+# converse spans stay intact (one STORY runs per process).
+_STRIP_INTERNAL_GENAI = False
+_BEDROCK_SCOPE = "opentelemetry.instrumentation.bedrock"
+
+
+def _strip_internal_conversation_attrs(span):
+    if not _STRIP_INTERNAL_GENAI:
+        return
+    scope = getattr(span, "instrumentation_scope", None)
+    if scope is not None and scope.name == _BEDROCK_SCOPE:
+        span._attributes.pop("gen_ai.system", None)
+        span._attributes.pop("gen_ai.provider.name", None)
+
+
 logging.info("Initializing traceloop...")
 # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
 # Must be set before Traceloop.init builds the metric exporter.
@@ -64,6 +82,7 @@ Traceloop.init(
     disable_batch=True,
     should_enrich_metrics=True,
     api_endpoint=COLLECTOR_BASE_URL,
+    span_postprocess_callback=_strip_internal_conversation_attrs,
 )
 
 Traceloop.set_association_properties({
@@ -184,8 +203,7 @@ def run_invoke_extra(client_context):
 
 
 # Multi-agent turn: one user turn fans out into several Bedrock calls, then the
-# turn is recorded on the agent span and evaluated out-of-band (see evaluator.py
-# and the README "Multi-agent turn" section).
+# turn is recorded on the agent span (see the README "Multi-agent turn" section).
 
 
 def _messages(role, text):
@@ -223,14 +241,9 @@ def answer_agent(client_context, question):
 @agent("multiagent_turn")
 def run_multiagent_turn(client_context, question):
     span = _ot_trace.get_current_span()
-    started = datetime.now(timezone.utc)
     route_intent(client_context, question)
     answer = answer_agent(client_context, question)
     _stamp_turn_io(span, question, answer)
-    # Hand the turn's wall-clock window to the evaluator so its bizevent can carry the
-    # span's time range (used by the app to locate the span) and a sort timestamp.
-    ended = datetime.now(timezone.utc)
-    evaluator.submit(span, question, answer, MODEL_ID, started, ended)
     print(answer)
     return answer
 
@@ -252,7 +265,11 @@ def _run_story(name, client):
         run_invoke(client)
         run_invoke_extra(client)
     elif name == "multiagent":
-        # Multi-agent turn demonstrating the Prompts-view correlation fix.
+        # Multi-agent turn demonstrating the Prompts-view correlation fix. Strip gen_ai.system /
+        # provider.name from the internal fan-out model spans so only the turn-level agent span
+        # shows up in the conversation view (see _strip_internal_conversation_attrs).
+        global _STRIP_INTERNAL_GENAI
+        _STRIP_INTERNAL_GENAI = True
         run_multiagent_turn(client, "What is the policy for checking my account balance?")
 
 

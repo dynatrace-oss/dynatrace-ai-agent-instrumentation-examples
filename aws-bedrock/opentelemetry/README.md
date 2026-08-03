@@ -18,7 +18,7 @@ Both the `Converse` and `Invoke` Bedrock APIs are covered, using the Boto3 clien
 | **1. Converse API** | `run_converse()` | One `gen_ai` span per Converse call: model ID, token usage, finish reason |
 | **2. Invoke API** | `run_invoke()` / `run_invoke_extra()` | Same signals via the alternate Bedrock Invoke API |
 | **3. Guardrails** | `run_converse_guardrail_trigger()` | A blocked request: `gen_ai.response.finish_reasons=["content_filter"]` plus `gen_ai.bedrock.guardrail.*` (see [Guardrails](#guardrails)) |
-| **4. Multi-agent turn + evaluation** | `run_multiagent_turn()` | Turn-level input/output correlation on the agent span, plus an evaluation Business Event (see [Multi-agent turn](#multi-agent-turn-inputoutput-correlation-in-the-prompts-view)) |
+| **4. Multi-agent turn** | `run_multiagent_turn()` | Turn-level input/output correlation on the agent span, with the internal fan-out calls kept out of the conversation view (see [Multi-agent turn](#multi-agent-turn-inputoutput-correlation-in-the-prompts-view)) |
 
 By default all four run in one loop. To look at a single story with a focused trace, select it with the `STORY` variable (or a comma-separated list):
 
@@ -68,15 +68,15 @@ Agents that fan a single user turn out into several Bedrock calls (a router, one
 
 `run_multiagent_turn()` in `main.py` reproduces this and demonstrates two fixes:
 
-| Fix | Function | What it does |
+| Fix | Where | What it does |
 |---|---|---|
 | **Turn-level correlation** | `_stamp_turn_io()` | Records the whole turn on the **agent span** (`@agent`) so one clean `input -> output` record exists, using the message form (`gen_ai.input.messages` / `gen_ai.output.messages`) from the Dynatrace semantic dictionary. The span is typed as an agent (`gen_ai.operation.kind=agent`, `gen_ai.agent.name`) rather than a model call. Only the message form is set: the Prompts renderer appends both the flat form (`gen_ai.prompt.N` / `gen_ai.completion.0`) and the message form, so setting both would render the same turn twice. `gen_ai.provider.name=aws.bedrock` is set because the agent is Bedrock-backed; it is also what makes the app treat the span as a GenAI span (its filter is `isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)`), so the turn shows in the Prompts view. |
-| **Evaluation as a separate signal (out-of-band)** | `evaluator.submit()` / `evaluator._run()` | Hands the turn to a background worker (`ThreadPoolExecutor`) so the evaluation runs off the request path, as a real deployment would. The worker ingests the verdict as a Dynatrace **Business Event** (`event.type = gen_ai.evaluation.result`) via `/api/v2/bizevents/ingest`, correlated to the turn by `trace_id` / `span_id`, so it lands on the Evaluations page instead of running as a `converse` call. It is also tagged with a `dt.eval.run_id` (`run-demo-standin-<timestamp>`); the Evaluations page is run-centric and keys its schema on that field, so a bizevent without one never appears there. The event also carries the turn's time range (`span.start_time` / `span.end_time`), which the app uses to locate the evaluated span, and a `timestamp` that the Evaluations page sorts by. Field names (`gen_ai.evaluation.score.value` / `.score.label`, `gen_ai.evaluation.input.question` / `.input.answer`) match what that page queries; static fields come from `evaluation_bizevent.json`. Falls back to an OTLP log when the bizevent env vars are not set, so local runs still work. |
+| **Keep internal fan-out calls out of the conversation view** | `_strip_internal_conversation_attrs()` | The router (`route_intent`) and specialist (`answer_agent`) calls each emit their own auto-instrumented Bedrock model-call span carrying `gen_ai.system` / `gen_ai.provider.name`, so without intervention the Prompts view shows **three rows** for one turn (the correct turn record plus two half-row internal steps). A Traceloop `span_postprocess_callback` strips those two attributes from the internal model-call spans (matched by the `opentelemetry.instrumentation.bedrock` scope), so they drop out of the GenAI filter and only the turn-level agent span remains in the conversation view. The spans stay in the raw trace; only their GenAI-view membership is removed. The turn's own agent span is created by Traceloop (not the Bedrock scope), so it keeps `provider.name` and still appears. |
 
-The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` spans. The Prompts view shows every span that passes the GenAI filter, so after this fix you get **three rows** for the turn: the single correct `multiagent_turn` record plus the two internal steps. The app has no built-in "hide internal steps" concept, so suppressing the router/specialist rows is a pipeline-layer concern (for example an OpenPipeline rule that drops spans by `traceloop.entity.name` or `span.name`). The point of the fix is that a correct turn-level `input -> output` record now exists at all, which it did not before.
+Stripping the attributes in app code keeps the example self-contained; in a real deployment you would more often shape this at the pipeline layer (an OpenPipeline DQL processor or OTel Collector `transform` that matches the internal spans by `traceloop.entity.name` / `span.name`), which keeps the demo app free of view-specific logic.
 
 > [!NOTE]
-> This is a demonstration, so a few things are simplified from a real deployment: the evaluator is a stand-in that always returns `pass` (a real one would call an actual judge or metric), the fan-out is sequential rather than parallel with a synthesis step, the bizevent is sent per turn rather than batched, and the token comes from an env var rather than a secret manager. The background-worker pattern (evaluation off the request path, correlated by `trace_id` / `span_id`) mirrors how it would really be done.
+> This is a demonstration, so the multi-agent turn is simplified from a real deployment: the fan-out is sequential rather than parallel with a synthesis step, and the router/specialist stripping is gated to the `multiagent` story (one `STORY` runs per process) rather than matching a production span taxonomy.
 
 ## How to use
 
@@ -88,7 +88,6 @@ The router (`route_intent`) and specialist (`answer_agent`) calls still emit the
 - A running [OpenTelemetry Collector](#opentelemetry-collector) forwarding to Dynatrace
 - A Dynatrace environment with an API token that has the **`openTelemetryTrace.ingest`**, **`metrics.ingest`**, and **`logs.ingest`** scopes
 - Optional, for the guardrail story: set `BEDROCK_GUARDRAIL_ID` (and optionally `BEDROCK_GUARDRAIL_VERSION`, default `DRAFT`). When unset, the guardrail story is skipped
-- Optional, for the evaluation Business Event: set `DT_ENDPOINT` (for example `https://<env-id>.live.dynatrace.com`) and `DT_API_TOKEN` (token with the **`bizevents.ingest`** scope). When unset, `evaluator.submit()` falls back to an OTLP log
 
 ### Install dependencies
 
@@ -144,7 +143,7 @@ make run STORY=multiagent   # or a single story: converse | guardrails | invoke 
 
 The script runs continuously, replaying the selected story (or all four) every 5 seconds. Stop it with `Ctrl+C`.
 
-To confirm the turn-level correlation, open the Prompts view and filter to your service (`bedrock_example_app` by default, or your `OTEL_SERVICE_NAME` if you set one): the `multiagent_turn` agent span now appears as one row with the question as input and the answer as output. The `route_intent` and `answer_agent` steps remain as separate internal rows (suppress these at the pipeline layer if you want a clean conversation view), and the evaluation stays out of the chat stream (it appears on the Evaluations page as a bizevent when `DT_ENDPOINT` / `DT_API_TOKEN` are set, otherwise as a `gen_ai.evaluation` OTLP log).
+To confirm the turn-level correlation, open the Prompts view and filter to your service (`bedrock_example_app` by default, or your `OTEL_SERVICE_NAME` if you set one): the `multiagent_turn` agent span appears as one row with the question as input and the answer as output, and the internal `route_intent` / `answer_agent` model calls no longer appear as separate conversation rows (their `gen_ai.system` / `gen_ai.provider.name` are stripped).
 
 ### Verify in Dynatrace
 
@@ -160,8 +159,6 @@ fetch spans, from:now()-1h
 | File | Description |
 |---|---|
 | `main.py` | Fully instrumented entrypoint; auto-instruments Boto3, sets up Traceloop, and runs the four stories (converse, guardrails, invoke, multiagent) in a continuous loop, selectable via `STORY` |
-| `evaluator.py` | Out-of-band evaluator for the multi-agent turn; `submit()` queues the turn to a background worker and `_run()` ingests the verdict as a `gen_ai.evaluation.result` Business Event |
-| `evaluation_bizevent.json` | Static fields of the evaluation Business Event; `evaluator._run()` loads this and fills the per-run fields (score, verdict, question/answer, trace/span, run id) |
 | `converse.py` | Minimal standalone example using the Converse API (no instrumentation) |
 | `invoke.py` | Minimal standalone example using the Invoke API (no instrumentation) |
 | `guard_rail_metrics.py` | Fetches Bedrock Guardrail metrics from CloudWatch (intervention count, latency, text units) |
