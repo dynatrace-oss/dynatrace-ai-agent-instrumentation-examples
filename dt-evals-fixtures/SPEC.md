@@ -251,6 +251,15 @@ single-turn row is embedded as a **1-turn conversation** (one span, same
 multi-turn is genuine only where the source provides it — we never fabricate a
 conversation flow.
 
+**Grounding context / reference attributes** (verified against a real tenant):
+the fixture `context` and `reference` do not map to any standard OTel GenAI
+attribute, and the native instrumentation emits neither. They are stamped onto
+the spans as custom attributes `gen_ai.context` / `gen_ai.reference` (via the
+same SpanProcessor path as the conversation id). Because dt-evals ships no
+default context field, its config **must** map `spanFields.context:
+gen_ai.context` to consume them — a cross-repo contract recorded in
+`opentelemetry/SOURCES.md`.
+
 **Scaffolding the missing half of a turn** (resolved decision): some evaluators
 score only one side of a turn, and their source dataset provides only that side —
 input-scoring evaluators (`prompt-injection`, `user-frustration`) give only the

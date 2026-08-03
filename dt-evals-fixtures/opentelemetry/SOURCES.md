@@ -32,6 +32,27 @@ field on each case records the exact dataset, row, and (where used) the
 | user-frustration | IEMOCAP | [`AbstractTTS/IEMOCAP`](https://huggingface.co/datasets/AbstractTTS/IEMOCAP) | calm / frustrated user turn | response |
 | bias | StereoSet | [`McGill-NLP/stereoset`](https://huggingface.co/datasets/McGill-NLP/stereoset) | anti-stereotype / stereotype sentence | user |
 
+## Consuming these fixtures in dt-evals (span-field contract)
+
+The spans carry the standard `gen_ai.input.messages` / `gen_ai.output.messages`,
+which dt-evals reads by default. Grounding context and reference are emitted on
+**custom attributes** (there is no OTel GenAI standard for them, and dt-evals
+ships no default context field). To score the grounding evaluators, the dt-evals
+config must map them:
+
+```yaml
+scope:
+  spanFields:
+    context: gen_ai.context      # faithfulness, hallucination, context-relevance, summarization-quality
+    # reference: gen_ai.reference  # only if a reference-based evaluator needs it
+```
+
+Without `spanFields.context: gen_ai.context`, dt-evals runs those evaluators
+with no source, so their pass/fail cases will not score as intended. (Note: the
+instrumentation emits the system prompt as `gen_ai.system_instructions` — plural
+— while dt-evals' default is `gen_ai.system_instruction`; map it if a metric
+needs the system prompt.)
+
 ## Notes
 
 - **Genuine multi-turn** comes only from datasets that carry conversations —
