@@ -51,14 +51,9 @@ AsyncioInstrumentor().instrument()
 BotocoreInstrumentor().instrument()
 
 
-# In the multi-agent story the turn fans out into internal Bedrock model calls (router +
-# specialist). Those auto-instrumented model-call spans carry gen_ai.system / provider.name,
-# so they surface in the Prompts conversation view as extra half-rows next to the correct
-# turn-level agent span. Strip those two attributes from the internal model-call spans so
-# they drop out of the GenAI/conversation views (they stay in raw traces). The turn's own
-# agent span is created by Traceloop, not the Bedrock instrumentation, so it keeps
-# provider.name and still appears. Gated to the multiagent story so the other stories'
-# converse spans stay intact (one STORY runs per process).
+# Strip gen_ai.system / provider.name from the internal fan-out model-call spans so they
+# drop out of the conversation view, leaving only the turn-level agent span. Gated to the
+# multiagent story (one STORY runs per process).
 _STRIP_INTERNAL_GENAI = False
 _BEDROCK_SCOPE = "opentelemetry.instrumentation.bedrock"
 
@@ -202,8 +197,8 @@ def run_invoke_extra(client_context):
 
 
 
-# Multi-agent turn: one user turn fans out into several Bedrock calls, then the
-# turn is recorded on the agent span (see the README "Multi-agent turn" section).
+# Multi-agent turn: one user turn fans out into several Bedrock calls, recorded on the
+# agent span (see the README "Multi-agent turn" section).
 
 
 def _messages(role, text):
@@ -211,9 +206,8 @@ def _messages(role, text):
 
 
 def _stamp_turn_io(span, question, answer):
-    # Type the turn as an agent span (not a model call) and record it once via the
-    # message form. provider.name is honest here (the agent is Bedrock-backed) and
-    # is what makes the turn show up in the Prompts view.
+    # Record the turn on the agent span (message form only) so one clean input->output
+    # record exists; provider.name makes it show in the Prompts view.
     span.set_attribute("gen_ai.provider.name", "aws.bedrock")
     span.set_attribute("gen_ai.operation.kind", "agent")
     span.set_attribute("gen_ai.agent.name", "multiagent_turn")
@@ -248,9 +242,7 @@ def run_multiagent_turn(client_context, question):
     return answer
 
 
-# The example tells four independent stories. Keep them in one entrypoint (shared
-# instrumentation/Traceloop setup) but let a selector run one at a time so each produces
-# a focused trace. See the README "What this example demonstrates" table.
+# Four independent stories in one entrypoint; a selector runs one at a time for a focused trace.
 STORY_ORDER = ["converse", "guardrails", "invoke", "multiagent"]
 
 
@@ -265,9 +257,7 @@ def _run_story(name, client):
         run_invoke(client)
         run_invoke_extra(client)
     elif name == "multiagent":
-        # Multi-agent turn demonstrating the Prompts-view correlation fix. Strip gen_ai.system /
-        # provider.name from the internal fan-out model spans so only the turn-level agent span
-        # shows up in the conversation view (see _strip_internal_conversation_attrs).
+        # Enable internal-span stripping for this story (see _strip_internal_conversation_attrs).
         global _STRIP_INTERNAL_GENAI
         _STRIP_INTERNAL_GENAI = True
         run_multiagent_turn(client, "What is the policy for checking my account balance?")
