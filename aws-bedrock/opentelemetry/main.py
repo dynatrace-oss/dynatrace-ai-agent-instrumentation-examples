@@ -88,7 +88,7 @@ def _guardrail_config():
 def run_converse(client_context):
     logging.info("Calling Converse API with Boto3...")
     kwargs = {
-        "modelId": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "modelId": MODEL_ID,
         "messages": [
             {
                 "role": "user",
@@ -110,7 +110,7 @@ def run_converse_guardrail_trigger(client_context):
         return
     logging.info("Calling Converse API with a prompt designed to trigger the guardrail...")
     response = client_context.converse(
-        modelId="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        modelId=MODEL_ID,
         messages=[
             {
                 "role": "user",
@@ -128,7 +128,7 @@ def run_converse_guardrail_trigger(client_context):
 def run_invoke(client_context):
     logging.info("Calling Invoke API with Boto3...")
     response = client_context.invoke_model(
-        modelId="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        modelId=MODEL_ID,
         body=json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1024,
@@ -152,7 +152,7 @@ def run_invoke_extra(client_context):
 
     # Set the model ID, e.g., Titan Text Premier.
     #model_id = "amazon.titan-text-premier-v1:0"
-    model_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    model_id = MODEL_ID
 
     # Define the prompt for the model.
     prompt = "Describe the purpose of a 'hello world' program in one line."
@@ -202,18 +202,21 @@ def _stamp_turn_io(span, question, answer):
     span.set_attribute("gen_ai.output.messages", _messages("assistant", answer))
 
 
+def _converse_text(client_context, text):
+    resp = client_context.converse(
+        modelId=MODEL_ID, messages=[{"role": "user", "content": [{"text": text}]}])
+    return resp["output"]["message"]["content"][0]["text"]
+
+
 @task("route_intent")
 def route_intent(client_context, question):
-    resp = client_context.converse(modelId=MODEL_ID, messages=[{"role": "user", "content": [
-        {"text": 'Classify the intent. Reply ONLY JSON {"agent":..,"confidence":..}. ' + question}]}])
-    return resp["output"]["message"]["content"][0]["text"]
+    return _converse_text(client_context,
+        'Classify the intent. Reply ONLY JSON {"agent":..,"confidence":..}. ' + question)
 
 
 @task("answer_agent")
 def answer_agent(client_context, question):
-    resp = client_context.converse(modelId=MODEL_ID, messages=[
-        {"role": "user", "content": [{"text": question}]}])
-    return resp["output"]["message"]["content"][0]["text"]
+    return _converse_text(client_context, question)
 
 
 @agent("multiagent_turn")

@@ -45,16 +45,15 @@ def _run(question, answer, model, trace_id, span_id):
 
 def _ingest(event):
     # POST to {DT_ENDPOINT}/api/v2/bizevents/ingest (token scope bizevents.ingest);
-    # fall back to an OTLP log when unset so the local collector run still works.
+    # fall back to an OTLP log when unset or on failure so local runs still work.
     base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
     token = os.environ.get("DT_API_TOKEN", "")
-    if not (base and token):
-        logging.info("gen_ai.evaluation", extra=event)
-        return
-    try:
-        requests.post(f"{base}/api/v2/bizevents/ingest",
-                      headers={"Authorization": f"Api-Token {token}", "Content-Type": "application/json"},
-                      data=json.dumps(event), timeout=10).raise_for_status()
-    except Exception as e:
-        logging.error(f"eval bizevent ingest failed: {e}")
-        logging.info("gen_ai.evaluation", extra=event)
+    if base and token:
+        try:
+            requests.post(f"{base}/api/v2/bizevents/ingest",
+                          headers={"Authorization": f"Api-Token {token}", "Content-Type": "application/json"},
+                          data=json.dumps(event), timeout=10).raise_for_status()
+            return
+        except Exception as e:
+            logging.error(f"eval bizevent ingest failed: {e}")
+    logging.info("gen_ai.evaluation", extra=event)
