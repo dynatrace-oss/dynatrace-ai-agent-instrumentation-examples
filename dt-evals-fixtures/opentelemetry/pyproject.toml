@@ -8,3 +8,12 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

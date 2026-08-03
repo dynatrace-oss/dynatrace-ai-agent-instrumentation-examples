@@ -1,0 +1,87 @@
+"""Tracing setup for the fixtures app.
+
+Two things here that a plain Traceloop app does not need (both verified against
+langchain-core 1.5.3 / traceloop-sdk 0.62.1, see SPEC.md §3.6):
+
+1. LangChain must be instrumented **explicitly**. `Traceloop.init()` does not
+   auto-instrument it when only `langchain-core` (no `langchain` meta-package)
+   is installed, so a plain `model.invoke()` emits zero spans without this.
+
+2. `gen_ai.conversation.id` is set by us via a SpanProcessor reading a
+   contextvar. The native `config.configurable.thread_id` mapping only fires in
+   the LangGraph path, not for a plain chat-model invoke.
+"""
+
+import os
+
+# Must be set before traceloop / the instrumentation is imported.
+os.environ["TRACELOOP_TELEMETRY"] = "false"
+# Dynatrace ingests delta metrics only; export delta temporality from the SDK.
+os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
+# Capture message content as gen_ai.input.messages / gen_ai.output.messages
+# (off by default in the GenAI semconv).
+os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+
+import contextvars
+
+from opentelemetry import trace
+from opentelemetry.instrumentation.langchain import LangchainInstrumentor
+from opentelemetry.sdk.trace import SpanProcessor
+from traceloop.sdk import Traceloop
+
+GEN_AI_CONVERSATION_ID = "gen_ai.conversation.id"
+
+_conversation_id: contextvars.ContextVar = contextvars.ContextVar(
+    "fixture_conversation_id", default=None
+)
+
+
+class ConversationIdSpanProcessor(SpanProcessor):
+    """Stamp gen_ai.conversation.id onto every span started while a conversation
+    is active, so all turns of a conversation share the same id."""
+
+    def on_start(self, span, parent_context=None):
+        cid = _conversation_id.get()
+        if cid:
+            span.set_attribute(GEN_AI_CONVERSATION_ID, cid)
+
+    def on_end(self, span):
+        pass
+
+    def shutdown(self):
+        pass
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return True
+
+
+def set_conversation(conversation_id: str):
+    """Mark the active conversation id for spans started in this context."""
+    return _conversation_id.set(conversation_id)
+
+
+def reset_conversation(token) -> None:
+    _conversation_id.reset(token)
+
+
+def init_tracing(service_name: str, *, exporter=None, api_endpoint=None, headers=None) -> None:
+    """Initialize Traceloop, instrument LangChain, and install the conversation
+    processor.
+
+    Pass `exporter` for tests (in-memory, no tenant); pass `api_endpoint` +
+    `headers` to ship straight to a Dynatrace tenant.
+    """
+    kwargs = {"app_name": service_name, "disable_batch": True}
+    if exporter is not None:
+        kwargs["exporter"] = exporter
+    else:
+        kwargs["api_endpoint"] = api_endpoint
+        kwargs["headers"] = headers
+        kwargs["should_enrich_metrics"] = True
+    Traceloop.init(**kwargs)
+
+    if not LangchainInstrumentor().is_instrumented_by_opentelemetry:
+        LangchainInstrumentor().instrument()
+
+    trace.get_tracer_provider().add_span_processor(ConversationIdSpanProcessor())
