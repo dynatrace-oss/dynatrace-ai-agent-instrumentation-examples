@@ -11,7 +11,7 @@
 
 ## Verdict: PASS
 
-Span audit against the generic profile: all required attributes pass with **native (non-fallback)** modern attributes. Not `FULL` only because a few optional attributes are absent (AR-009, AR-010, AR-024, AR-042). The e2e test (`dt_evals_fixtures_opentelemetry_test.go`) uses `auditSpan` — it does **not** audit the GenAI client metrics, so AR-025/AR-044 delivery is unverified by the suite.
+Span audit against the generic profile: all required attributes pass with **native (non-fallback)** modern attributes. Not `FULL` only because a few optional attributes are absent (AR-009, AR-010, AR-024, AR-042). The e2e test (`dt_evals_fixtures_opentelemetry_test.go`) uses `auditSpanWithMetrics` and **asserts** the two GenAI client metrics (AR-025/AR-044) reach the tenant — so a green run confirms metric delivery over direct OTLP (no collector). The metric-backed rows below are marked ⚠️ until that first green run lands; flip them to ✅ once confirmed.
 
 | Check | Rule | Status | Detail |
 |-------|------|--------|--------|
@@ -90,7 +90,7 @@ Because the model is a `FakeListChatModel`, `detect_vendor_from_class` returns t
 
 ## What to fix / notes
 
-1. **Confirm metric delivery, or drop the metric claim.** The two GenAI client metrics are configured but unverified. Either extend the e2e audit to `auditSpanWithMetrics` (poll `gen_ai.client.operation.duration` / `gen_ai.client.token.usage` for `service.name == "dt-evals-fixtures"`), or document the latency/cost metric charts as best-effort. This is the single biggest open question for dashboard coverage.
+1. **Metric delivery — now asserted by the suite.** The e2e test uses `auditSpanWithMetrics` and polls both `gen_ai.client.operation.duration` (AR-025) and `gen_ai.client.token.usage` (AR-044) for `service.name == "dt-evals-fixtures"`. This resolves the previous open question: a green run proves the metrics reach the tenant over direct OTLP with no collector; a red run means the direct-OTLP metric path does not deliver and the app would need a collector (or the assertion relaxed to `auditSpan`).
 2. **Provider value.** If a realistic provider dimension matters for the fixtures, set `gen_ai.provider.name` (or `gen_ai.system`) explicitly in `FixtureSpanProcessor` to a chosen vendor (e.g. `openai`) instead of the `"langchain"` default. Otherwise document that the provider filter is intentionally the framework.
 3. **`gen_ai.agent.name` / `llm.request.type` / `gen_ai.request.temperature` absent** — expected for a plain chat invoke; only worth adding if the fixtures are extended to exercise agent or parameterized-request views.
 
