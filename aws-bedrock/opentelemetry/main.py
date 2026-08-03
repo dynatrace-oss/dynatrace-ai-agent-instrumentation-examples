@@ -230,19 +230,50 @@ def run_multiagent_turn(client_context, question):
     return answer
 
 
+# The example tells four independent stories. Keep them in one entrypoint (shared
+# instrumentation/Traceloop setup) but let a selector run one at a time so each produces
+# a focused trace. See the README "What this example demonstrates" table.
+STORY_ORDER = ["converse", "guardrails", "invoke", "multiagent"]
+
+
+def _run_story(name, client):
+    if name == "converse":
+        run_converse(client)
+    elif name == "guardrails":
+        if not _guardrail_config():
+            logging.warning("story 'guardrails' selected but BEDROCK_GUARDRAIL_ID is unset; nothing to trigger")
+        run_converse_guardrail_trigger(client)
+    elif name == "invoke":
+        run_invoke(client)
+        run_invoke_extra(client)
+    elif name == "multiagent":
+        # Multi-agent turn demonstrating the Prompts-view correlation fix.
+        run_multiagent_turn(client, "What is the policy for checking my account balance?")
+
+
+def _selected_stories():
+    # CLI arg wins over the STORY env var; both accept a single name, a comma-separated
+    # list, or "all" (the default). e.g. `python main.py guardrails` or `STORY=converse,invoke`.
+    raw = os.environ.get("STORY", "all")
+    positional = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if positional:
+        raw = positional[0]
+    if raw.strip() in ("", "all"):
+        return STORY_ORDER
+    names = [n.strip() for n in raw.split(",") if n.strip()]
+    unknown = [n for n in names if n not in STORY_ORDER]
+    if unknown:
+        raise SystemExit(f"unknown story {unknown}; choose from {STORY_ORDER} or 'all'")
+    return names
+
+
 @workflow("aws_bedrock_agent")
 def run_workflow():
     logging.info("Starting the Workflow...")
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
-    run_converse(client)
-    run_converse_guardrail_trigger(client)
-    run_invoke(client)
-    # run_call_with_service_tier()
-    run_invoke_extra(client)
-
-    # Multi-agent turn demonstrating the Prompts-view correlation fix.
-    run_multiagent_turn(client, "What is the policy for checking my account balance?")
+    for story in _selected_stories():
+        _run_story(story, client)
 
 @agent("aws_bedrock_agent")
 def run_agent():
