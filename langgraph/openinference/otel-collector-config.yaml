@@ -1,0 +1,75 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
+  # The built-in "openinference" source maps model, provider, token usage, tool,
+  # agent and session attributes, and reconstructs the flattened
+  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
+  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
+  # so the exported spans carry only gen_ai.* fields.
+  gen_ai_normalizer:
+    sources:
+      - name: openinference
+        remove_originals: true
+
+  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
+  # emit gen_ai.response.model (OpenInference has no separate response-model
+  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
+  # so mirror the request model when the response has not set one.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+
+  # Extracts Azure OpenAI content-filter results embedded in the output.value
+  # JSON blob.
+  #
+  # Azure OpenAI wraps the model response and content-filter metadata together in
+  # output.value. Two sets of filter results are promoted to dedicated attributes:
+  #   - llm_output.prompt_filter_results: per-prompt verdicts from Azure content
+  #     filtering (hate, self-harm, sexual, violence, jailbreak, etc.)
+  #   - generations[0][0].generation_info.content_filter_results: per-completion
+  #     content filter verdicts returned alongside the generated text
+  #
+  # INPUT  (OpenInference / Azure OpenAI via LangChain):
+  #   output.value  (JSON string)
+  #     ├── llm_output.prompt_filter_results
+  #     └── generations[0][0].generation_info.content_filter_results
+  #
+  # OUTPUT:
+  #   gen_ai.prompt.prompt_filter_results      — serialised prompt-filter array
+  #   gen_ai.completion.content_filter_results — serialised completion-filter object
+  #
+  # NOTE: This processor must appear before gen_ai_normalizer in the pipeline.
+  transform/output_prompt_results:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.output_value"], ParseJSON(attributes["output.value"])) where attributes["output.value"] != nil
+          - set(attributes["gen_ai.prompt.prompt_filter_results"], String(attributes["temp.output_value"]["llm_output"]["prompt_filter_results"])) where attributes["temp.output_value"]["llm_output"]["prompt_filter_results"] != nil
+          - set(attributes["gen_ai.completion.content_filter_results"], String(attributes["temp.output_value"]["generations"][0][0]["generation_info"]["content_filter_results"])) where attributes["temp.output_value"]["generations"][0][0]["generation_info"]["content_filter_results"] != nil
+          - delete_key(attributes, "temp.output_value")
+
+
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp_http/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/output_prompt_results, gen_ai_normalizer, transform/response_model]
+      exporters: [debug, otlp_http/dynatrace]

@@ -1,0 +1,13 @@
+[project]
+name = "langgraph-openinference-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "openinference-instrumentation-langchain>=0.1.0",
+    "opentelemetry-sdk>=1.0.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+]
