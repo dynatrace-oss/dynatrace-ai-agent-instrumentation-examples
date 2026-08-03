@@ -15,8 +15,9 @@ Derived from `dt-evals-fixtures/SPEC.md`. Work lives in
      `gen_ai.input.messages` holds the accumulated history. Verified with an
      in-memory exporter (no tenant).
 
-2. **Wire `app.py` + `/ingest` to the new modules** — FastAPI app calls
-   `init_tracing` from env, `/ingest` replays fixtures via `ingest.py`.
+2. **Wire `app.py` + `/ingest` to the new modules** ✅ *(done — commit 232398b)*
+   — FastAPI app calls `init_tracing` from env, `/ingest` replays fixtures via
+   `ingest.py`.
 
 3. **Fixtures-well-formed validation test** — unique names, valid `targets`
    against the 14 evaluators, `expect` ∈ {pass,fail}, required context/reference
