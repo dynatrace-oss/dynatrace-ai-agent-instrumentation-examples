@@ -24,8 +24,11 @@ atexit.register(lambda: _POOL.shutdown(wait=True))
 def submit(span, question, answer, model):
     """Queue an evaluation for the turn and return immediately."""
     ctx = span.get_span_context()
-    _POOL.submit(_run, question, answer, model,
-                 format(ctx.trace_id, "032x"), format(ctx.span_id, "016x"))
+    fut = _POOL.submit(_run, question, answer, model,
+                       format(ctx.trace_id, "032x"), format(ctx.span_id, "016x"))
+    # Futures swallow worker exceptions; surface them so a failed eval is visible.
+    fut.add_done_callback(
+        lambda f: f.exception() and logging.error(f"evaluation worker failed: {f.exception()!r}"))
 
 
 def _run(question, answer, model, trace_id, span_id):
@@ -53,7 +56,10 @@ def _ingest(event):
             requests.post(f"{base}/api/v2/bizevents/ingest",
                           headers={"Authorization": f"Api-Token {token}", "Content-Type": "application/json"},
                           data=json.dumps(event), timeout=10).raise_for_status()
+            logging.info("eval bizevent ingested (span_id=%s)", event["span_id"])
             return
         except Exception as e:
             logging.error(f"eval bizevent ingest failed: {e}")
+    else:
+        logging.warning("DT_ENDPOINT/DT_API_TOKEN not set; eval logged, not ingested as bizevent")
     logging.info("gen_ai.evaluation", extra=event)
