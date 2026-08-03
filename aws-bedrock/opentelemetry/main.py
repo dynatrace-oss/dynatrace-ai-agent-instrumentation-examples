@@ -201,27 +201,24 @@ def run_invoke_extra(client_context):
 def _stamp_turn_io(user_question, final_answer):
     """Stamp the whole user turn onto the current (workflow) span.
 
-    Sets both attribute forms so the Prompts view has a canonical turn record:
-      - flat form (gen_ai.prompt.N / gen_ai.completion.N) that current OpenLLMetry
-        Bedrock spans already use and the Prompts view reads today;
-      - message form (gen_ai.input.messages / gen_ai.output.messages) from the
-        Dynatrace semantic dictionary.
-    gen_ai.operation.name=chat is the dictionary-defined value for a chat turn.
+    Sets the message form (gen_ai.input.messages / gen_ai.output.messages) from
+    the Dynatrace semantic dictionary plus gen_ai.operation.name=chat, giving the
+    Prompts view one canonical turn record. Only the message form is used: the
+    Prompts renderer appends both the flat form (gen_ai.prompt.N /
+    gen_ai.completion.0) and the message form, so setting both would render the
+    same turn twice.
     """
     span = _ot_trace.get_current_span()
     # The AI Observability app treats a span as a GenAI span only when
     # gen_ai.system OR gen_ai.provider.name is set (its DQL_AI_SPANS_FILTER).
     # The @workflow span has neither by default, so without these markers the
     # stamped turn record below would be filtered out of the Prompts view.
-    span.set_attribute("gen_ai.system", "anthropic")
-    span.set_attribute("gen_ai.provider.name", "anthropic")
+    span.set_attribute("gen_ai.system", "aws.bedrock")
+    span.set_attribute("gen_ai.provider.name", "aws.bedrock")
     span.set_attribute("gen_ai.operation.name", "chat")
-    # flat form (read by the Prompts view today)
-    span.set_attribute("gen_ai.prompt.0.role", "user")
-    span.set_attribute("gen_ai.prompt.0.content", user_question)
-    span.set_attribute("gen_ai.completion.0.role", "assistant")
-    span.set_attribute("gen_ai.completion.0.content", final_answer)
-    # message form (semantic dictionary)
+    # Use ONLY the message form (semantic dictionary). The Prompts renderer
+    # appends both the flat form (gen_ai.prompt.N / completion.0) and the message
+    # form, so setting both would render the same turn twice.
     span.set_attribute(
         "gen_ai.input.messages",
         json.dumps([{"role": "user",
