@@ -38,10 +38,10 @@ Agents that fan a single user turn out into several Bedrock calls (a router, one
 
 | Fix | Function | What it does |
 |---|---|---|
-| **Turn-level correlation** | `_stamp_turn_io()` | Stamps the whole turn onto the `@workflow` span so one clean `input -> output` record exists. Sets both the flat form (`gen_ai.prompt.0.*` / `gen_ai.completion.0.*`) the Prompts view reads today and the message form (`gen_ai.input.messages` / `gen_ai.output.messages`) from the Dynatrace semantic dictionary, plus `gen_ai.operation.name=chat`. |
+| **Turn-level correlation** | `_stamp_turn_io()` | Stamps the whole turn onto the `@workflow` span so one clean `input -> output` record exists. Sets both the flat form (`gen_ai.prompt.0.*` / `gen_ai.completion.0.*`) the Prompts view reads today and the message form (`gen_ai.input.messages` / `gen_ai.output.messages`) from the Dynatrace semantic dictionary, plus `gen_ai.operation.name=chat`. It also sets `gen_ai.system` / `gen_ai.provider.name`, because the AI Observability app only treats a span as a GenAI span when one of those is present (`isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)`); without them the `@workflow` span is filtered out of the Prompts view. |
 | **Evaluation as a separate signal** | `evaluate_answer()` | Emits the judge verdict as a `gen_ai.evaluation` event through the OTLP logs pipeline instead of running it as a `converse` call. A judge run as a chat span is indistinguishable from a real reply and pollutes the Prompts/conversation view. In production, ingest this as a Dynatrace Business Event so it lands on the AI Observability Evaluations page. |
 
-The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` spans, so you can see the internal steps alongside the single correct turn record on the `multiagent_turn` workflow span, and filter the internal steps out at the pipeline layer if desired.
+The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` spans. The Prompts view shows every span that passes the GenAI filter, so after this fix you get **three rows** for the turn: the single correct `multiagent_turn` record plus the two internal steps. The app has no built-in "hide internal steps" concept, so suppressing the router/specialist rows is a pipeline-layer concern (for example an OpenPipeline rule that drops spans by `traceloop.entity.name` or `span.name`). The point of the fix is that a correct turn-level `input -> output` record now exists at all, which it did not before.
 
 ## How to use
 
@@ -106,7 +106,7 @@ make run
 
 The script runs continuously, calling both the Converse and Invoke APIs and the multi-agent turn every 5 seconds. Stop it with `Ctrl+C`.
 
-To confirm the turn-level correlation, open the Prompts view and filter to service `bedrock_example_app`: the `multiagent_turn` workflow span appears as one row with the question as input and the answer as output, while `route_intent` and `answer_agent` remain separate internal rows and the evaluation stays out of the chat stream (in logs as `gen_ai.evaluation`).
+To confirm the turn-level correlation, open the Prompts view and filter to service `bedrock_example_app`: the `multiagent_turn` workflow span now appears as one row with the question as input and the answer as output. The `route_intent` and `answer_agent` steps remain as separate internal rows (suppress these at the pipeline layer if you want a clean conversation view), and the evaluation stays out of the chat stream (in logs as `gen_ai.evaluation`).
 
 ### Verify in Dynatrace
 
