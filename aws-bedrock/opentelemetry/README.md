@@ -78,6 +78,16 @@ The router (`route_intent`) and specialist (`answer_agent`) calls still emit the
 > [!NOTE]
 > This is a demonstration, so a few things are simplified from a real deployment: the evaluator is a stand-in that always returns `pass` (a real one would call an actual judge or metric), the fan-out is sequential rather than parallel with a synthesis step, the bizevent is sent per turn rather than batched, and the token comes from an env var rather than a secret manager. The background-worker pattern (evaluation off the request path, correlated by `trace_id` / `span_id`) mirrors how it would really be done.
 
+### Which path should I use to emit evaluations?
+
+This example hand-builds the `gen_ai.evaluation.result` bizevent and posts it directly, because the "judge" is a self-contained stand-in and we want zero extra dependencies. That is one of three valid paths:
+
+| Your evaluator | Use | Notes |
+|---|---|---|
+| A supported framework (Ragas, DeepEval, MLflow, Langfuse) | [`dt-ai-ingest`](https://github.com/dynatrace-oss/dt-evals) `dt.export(result, …)` | The library's adapters map each framework's native result object to the bizevent schema for you. |
+| A custom evaluator, but you still want the library | `dt-ai-ingest` `build_eval_result_event(...)` + `DynatraceClient.send_bizevents([...])` | You get its auth, retry/backoff, and chunked ingest. The generic builder does not emit `dt.eval.run_id` or `gen_ai.evaluation.input.question` / `.input.answer`, so pass those via `extra={...}` if you want run grouping and Prompts-tab rendering. |
+| A custom or stand-in evaluator, hand-instrumented | Build the flat dict and `POST /api/v2/bizevents/ingest` directly (what `evaluator.py` does) | Right for a self-contained example, or when the library is not available in that context. In this case `dt.eval.run_id` and the input fields are entirely on you. |
+
 ## How to use
 
 ### Prerequisites
