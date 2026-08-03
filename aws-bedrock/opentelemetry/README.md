@@ -78,9 +78,6 @@ The router (`route_intent`) and specialist (`answer_agent`) calls still emit the
 > [!NOTE]
 > This is a demonstration, so a few things are simplified from a real deployment: the evaluator is a stand-in that always returns `pass` (a real one would call an actual judge or metric), the fan-out is sequential rather than parallel with a synthesis step, the bizevent is sent per turn rather than batched, and the token comes from an env var rather than a secret manager. The background-worker pattern (evaluation off the request path, correlated by `trace_id` / `span_id`) mirrors how it would really be done.
 
-> [!NOTE]
-> Because evaluation runs asynchronously, the evaluation bizevent is ingested a short time after the turn completes (worker dispatch plus Business Events ingest latency). Expect the evaluation to appear on the trace a few seconds to a minute after the trace itself; this lag is inherent to out-of-band evaluation, not a correlation bug.
-
 ## How to use
 
 ### Prerequisites
