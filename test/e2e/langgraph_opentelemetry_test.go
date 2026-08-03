@@ -78,7 +78,7 @@ func TestLangGraphOpenTelemetryOpenAI(t *testing.T) {
 | filter contains(`+"`gen_ai.input.messages`"+`, "launch codes")
 | limit 1`))
 
-	auditSpan(t, "langgraph/opentelemetry/openai", "opentelemetry", GenericProfile,
+	auditSpan(t, "langgraph-openai", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "langgraph/opentelemetry/openai"
 | filter isNotNull(gen_ai.request.model)
@@ -93,7 +93,7 @@ func TestLangGraphOpenTelemetryBedrock(t *testing.T) {
 
 	makeRequest(t, "langgraph/opentelemetry/bedrock", "request")
 
-	auditSpan(t, "langgraph/opentelemetry/bedrock", "opentelemetry", GenericProfile,
+	auditSpan(t, "langgraph-bedrock", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "langgraph/opentelemetry/bedrock"
 | filter isNotNull(gen_ai.request.model)
