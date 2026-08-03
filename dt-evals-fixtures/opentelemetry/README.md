@@ -41,7 +41,7 @@ field in `fixtures.json`).
   "expect": "fail",                       // asserted direction: "pass" | "fail"
   "context": "…",                         // optional: for faithfulness/hallucination/…
   "reference": "…",                       // optional: for factual-accuracy
-  "model": "gpt-4.1",                     // optional: sets gen_ai.request.model
+  "model": "gpt-4o-mini",                 // optional: sets gen_ai.request.model
   "usage": {"input_tokens": 12, "output_tokens": 8},  // optional
   "turns": [
     {"user": "…", "response": "…"},       // each turn -> one span
