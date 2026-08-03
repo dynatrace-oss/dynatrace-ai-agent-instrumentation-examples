@@ -19,9 +19,9 @@ Derived from `dt-evals-fixtures/SPEC.md`. Work lives in
    — FastAPI app calls `init_tracing` from env, `/ingest` replays fixtures via
    `ingest.py`.
 
-3. **Fixtures-well-formed validation test** — unique names, valid `targets`
-   against the 14 evaluators, `expect` ∈ {pass,fail}, required context/reference
-   present where the evaluator needs it.
+3. **Fixtures-well-formed validation test** ✅ *(done — commit b0e14eb)* — unique
+   names, valid `targets` against the 14 evaluators, `expect` ∈ {pass,fail},
+   required context/reference present where the evaluator needs it.
 
 4. **`build_fixtures.py` — toxicity (hh-rlhf, real multi-turn)** — read from HF
    cache, curate a deterministic pass/fail subset, parse `Human:`/`Assistant:`
