@@ -22,9 +22,11 @@ from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
+from opentelemetry import trace as _ot_trace
 import requests
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
+MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -179,6 +181,116 @@ def run_invoke_extra(client_context):
 
 
 
+# ---------------------------------------------------------------------------
+# Multi-agent turn: reproduces the "Prompts view mis-correlates input/output"
+# scenario reported by customers instrumenting Bedrock agents with OpenLLMetry,
+# and shows the two fixes.
+#
+# THE PROBLEM: a single user turn fans out into several Bedrock calls (router,
+# answer agent, an eval/judge). OpenLLMetry stamps gen_ai.* on each *model call*
+# span, but NOT on the traceloop @workflow/@agent span. The Prompts view pairs
+# input->output per gen_ai span, so intermediate calls produce half-rows and no
+# single span holds "user question -> final answer".
+#
+# FIX 1 (_stamp_turn_io): put the whole turn on the workflow span so exactly one
+#        clean input->output record exists.
+# FIX 2 (evaluate_answer): emit the judge result as a separate evaluation signal
+#        instead of running it as a chat span that looks like a real reply.
+# ---------------------------------------------------------------------------
+
+def _stamp_turn_io(user_question, final_answer):
+    """Stamp the whole user turn onto the current (workflow) span.
+
+    Sets both attribute forms so the Prompts view has a canonical turn record:
+      - flat form (gen_ai.prompt.N / gen_ai.completion.N) that current OpenLLMetry
+        Bedrock spans already use and the Prompts view reads today;
+      - message form (gen_ai.input.messages / gen_ai.output.messages) from the
+        Dynatrace semantic dictionary.
+    gen_ai.operation.name=chat is the dictionary-defined value for a chat turn.
+    """
+    span = _ot_trace.get_current_span()
+    span.set_attribute("gen_ai.operation.name", "chat")
+    # flat form (read by the Prompts view today)
+    span.set_attribute("gen_ai.prompt.0.role", "user")
+    span.set_attribute("gen_ai.prompt.0.content", user_question)
+    span.set_attribute("gen_ai.completion.0.role", "assistant")
+    span.set_attribute("gen_ai.completion.0.content", final_answer)
+    # message form (semantic dictionary)
+    span.set_attribute(
+        "gen_ai.input.messages",
+        json.dumps([{"role": "user",
+                     "parts": [{"type": "text", "content": user_question}]}]),
+    )
+    span.set_attribute(
+        "gen_ai.output.messages",
+        json.dumps([{"role": "assistant",
+                     "parts": [{"type": "text", "content": final_answer}]}]),
+    )
+
+
+@task("route_intent")
+def route_intent(client_context, question):
+    """Internal router call -> emits its own gen_ai span (NOT a user turn)."""
+    resp = client_context.converse(
+        modelId=MODEL_ID,
+        messages=[{"role": "user", "content": [{
+            "text": "You are an intent classifier. Reply ONLY with a JSON like "
+                    '{"agent":"<name>","confidence":<0-1>}. Message: ' + question
+        }]}],
+    )
+    return resp["output"]["message"]["content"][0]["text"]
+
+
+@task("answer_agent")
+def answer_agent(client_context, question):
+    """Specialist agent call -> emits its own gen_ai span (NOT a user turn)."""
+    resp = client_context.converse(
+        modelId=MODEL_ID,
+        messages=[{"role": "user", "content": [{"text": question}]}],
+    )
+    return resp["output"]["message"]["content"][0]["text"]
+
+
+def evaluate_answer(question, answer):
+    """LLM-as-judge, emitted as an EVALUATION signal -- not a chat span.
+
+    A judge implemented as a normal Bedrock converse call is indistinguishable
+    from a user-facing reply and pollutes the Prompts/conversation view. The
+    Dynatrace convention is a separate evaluation-result signal.
+
+    Here we emit it as a structured event via the OTLP logs pipeline so it stays
+    OUT of the chat stream and is trivially testable against the local collector.
+    In production, ingest this as a Dynatrace Business Event (bizevent) so it
+    lands on the AI Observability Evaluations page rather than in Prompts.
+    """
+    # Deterministic stand-in verdict; swap for a real judge call if desired.
+    passed = bool(answer and len(answer.strip()) > 0)
+    logging.info(
+        "gen_ai.evaluation",
+        extra={
+            "event.name": "gen_ai.evaluation",
+            "gen_ai.operation.name": "chat",
+            "gen_ai.evaluation.name": "non_empty_answer",
+            "gen_ai.evaluation.score": 1.0 if passed else 0.0,
+            "gen_ai.evaluation.passed": passed,
+            "gen_ai.evaluation.question": question,
+            "gen_ai.evaluation.answer": answer,
+        },
+    )
+    return passed
+
+
+@workflow("multiagent_turn")
+def run_multiagent_turn(client_context, question):
+    logging.info("Starting a multi-agent turn...")
+    route_intent(client_context, question)          # internal call -> own gen_ai span
+    answer = answer_agent(client_context, question)  # internal call -> own gen_ai span
+    _stamp_turn_io(question, answer)                 # FIX 1: one correct turn record
+    evaluate_answer(question, answer)                # FIX 2: eval as separate signal
+    print(answer)
+    return answer
+
+
 @workflow("aws_bedrock_agent")
 def run_workflow():
     logging.info("Starting the Workflow...")
@@ -189,6 +301,9 @@ def run_workflow():
     run_invoke(client)
     # run_call_with_service_tier()
     run_invoke_extra(client)
+
+    # Multi-agent turn demonstrating the Prompts-view correlation fix.
+    run_multiagent_turn(client, "What is the policy for checking my account balance?")
 
 @agent("aws_bedrock_agent")
 def run_agent():
