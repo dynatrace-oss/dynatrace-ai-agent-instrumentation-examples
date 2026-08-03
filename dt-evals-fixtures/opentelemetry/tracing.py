@@ -31,22 +31,32 @@ from opentelemetry.sdk.trace import SpanProcessor
 from traceloop.sdk import Traceloop
 
 GEN_AI_CONVERSATION_ID = "gen_ai.conversation.id"
+# Grounding context / source text (RAG). The OTel GenAI semconv has no standard
+# attribute for this, and dt-evals ships no default context field — so this is a
+# contract: the dt-evals config must map spanFields.context to this attribute.
+GEN_AI_CONTEXT = "gen_ai.context"
+GEN_AI_REFERENCE = "gen_ai.reference"
 
-_conversation_id: contextvars.ContextVar = contextvars.ContextVar(
-    "fixture_conversation_id", default=None
+_span_attrs: contextvars.ContextVar = contextvars.ContextVar(
+    "fixture_span_attrs", default=None
 )
 
 _initialized = False
 
 
-class ConversationIdSpanProcessor(SpanProcessor):
-    """Stamp gen_ai.conversation.id onto every span started while a conversation
-    is active, so all turns of a conversation share the same id."""
+class FixtureSpanProcessor(SpanProcessor):
+    """Stamp fixture-driven attributes (conversation id, grounding context,
+    reference) onto every span started while a case is active. The native OTel
+    GenAI path emits none of these for a plain chat invoke, so we add them here
+    from a contextvar (SPEC.md §3.5/§3.6)."""
 
     def on_start(self, span, parent_context=None):
-        cid = _conversation_id.get()
-        if cid:
-            span.set_attribute(GEN_AI_CONVERSATION_ID, cid)
+        attrs = _span_attrs.get()
+        if not attrs:
+            return
+        for key, value in attrs.items():
+            if value is not None:
+                span.set_attribute(key, value)
 
     def on_end(self, span):
         pass
@@ -58,13 +68,13 @@ class ConversationIdSpanProcessor(SpanProcessor):
         return True
 
 
-def set_conversation(conversation_id: str):
-    """Mark the active conversation id for spans started in this context."""
-    return _conversation_id.set(conversation_id)
+def set_span_attributes(attrs: dict):
+    """Mark the fixture attributes for spans started in this context."""
+    return _span_attrs.set(attrs)
 
 
-def reset_conversation(token) -> None:
-    _conversation_id.reset(token)
+def reset_span_attributes(token) -> None:
+    _span_attrs.reset(token)
 
 
 def init_tracing(service_name: str, *, exporter=None, api_endpoint=None, headers=None) -> None:
@@ -93,5 +103,5 @@ def init_tracing(service_name: str, *, exporter=None, api_endpoint=None, headers
     if not LangchainInstrumentor().is_instrumented_by_opentelemetry:
         LangchainInstrumentor().instrument()
 
-    trace.get_tracer_provider().add_span_processor(ConversationIdSpanProcessor())
+    trace.get_tracer_provider().add_span_processor(FixtureSpanProcessor())
     _initialized = True

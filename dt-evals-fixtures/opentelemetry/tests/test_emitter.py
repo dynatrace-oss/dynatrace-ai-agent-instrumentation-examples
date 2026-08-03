@@ -74,3 +74,29 @@ def test_single_turn_shorthand_normalizes_to_one_turn(exporter):
         {"name": "clean-geo", "user": "Capital of France?", "response": "Paris."},
     )
     assert len(spans) == 1
+
+
+def test_context_and_reference_are_emitted_as_span_attributes(exporter):
+    spans = _emit(
+        exporter,
+        {
+            "name": "faithful-x",
+            "targets": ["faithfulness"],
+            "context": "The sky is green in this world.",
+            "reference": "green",
+            "user": "What colour is the sky here?",
+            "response": "Green.",
+        },
+    )
+    assert len(spans) == 1
+    attrs = spans[0].attributes
+    assert attrs.get("gen_ai.context") == "The sky is green in this world."
+    assert attrs.get("gen_ai.reference") == "green"
+
+
+def test_no_context_attribute_when_fixture_has_none(exporter):
+    spans = _emit(
+        exporter,
+        {"name": "no-ctx", "user": "hi", "response": "yo"},
+    )
+    assert "gen_ai.context" not in spans[0].attributes
