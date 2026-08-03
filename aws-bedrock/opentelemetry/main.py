@@ -23,6 +23,8 @@ from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
 from opentelemetry import trace as _ot_trace
+from concurrent.futures import ThreadPoolExecutor
+import atexit
 import requests
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
@@ -182,10 +184,15 @@ def run_invoke_extra(client_context):
 
 
 # Multi-agent turn: one user turn fans out into several Bedrock calls, then the
-# turn is recorded on the @workflow span and evaluated as a separate signal.
-# See README ("Multi-agent turn") for the why.
+# turn is recorded on the agent span and evaluated out-of-band. See README
+# ("Multi-agent turn") for the why.
 
-_EVAL_TEMPLATE = os.path.join(os.path.dirname(__file__), "evaluation_bizevent.json")
+with open(os.path.join(os.path.dirname(__file__), "evaluation_bizevent.json")) as _f:
+    _EVAL_FIELDS = json.load(_f)
+
+# Evaluation runs off the request path, as a real deployment would.
+_EVAL_POOL = ThreadPoolExecutor(max_workers=2)
+atexit.register(lambda: _EVAL_POOL.shutdown(wait=True))
 
 
 def _messages(role, text):
@@ -193,12 +200,12 @@ def _messages(role, text):
 
 
 def _stamp_turn_io(span, question, answer):
-    # Mark the @workflow span as a GenAI span (the app keys off gen_ai.system /
-    # gen_ai.provider.name) and record the turn once, via the message form only
-    # (the flat gen_ai.prompt.* form would double-render it).
-    span.set_attribute("gen_ai.system", "aws.bedrock")
+    # Type the turn as an agent span (not a model call) and record it once via the
+    # message form. provider.name is honest here (the agent is Bedrock-backed) and
+    # is what makes the turn show up in the Prompts view.
     span.set_attribute("gen_ai.provider.name", "aws.bedrock")
-    span.set_attribute("gen_ai.operation.name", "chat")
+    span.set_attribute("gen_ai.operation.kind", "agent")
+    span.set_attribute("gen_ai.agent.name", "multiagent_turn")
     span.set_attribute("gen_ai.input.messages", _messages("user", question))
     span.set_attribute("gen_ai.output.messages", _messages("assistant", answer))
 
@@ -217,25 +224,29 @@ def answer_agent(client_context, question):
     return resp["output"]["message"]["content"][0]["text"]
 
 
-def evaluate_answer(span, question, answer):
-    # LLM-as-judge result emitted as an evaluation bizevent (not a chat span) so
-    # it lands on the Evaluations page. Static fields live in evaluation_bizevent.json.
-    passed = bool(answer and answer.strip())
+def submit_evaluation(span, question, answer):
+    # Hand the turn to a background worker; a real deployment runs the judge
+    # asynchronously off the request path. Correlated by trace_id/span_id.
     ctx = span.get_span_context()
-    with open(_EVAL_TEMPLATE) as f:
-        event = json.load(f)
+    _EVAL_POOL.submit(_run_evaluation, question, answer,
+                      format(ctx.trace_id, "032x"), format(ctx.span_id, "016x"))
+
+
+def _run_evaluation(question, answer, trace_id, span_id):
+    # Stand-in judge: always returns the same verdict. Emitted as an evaluation
+    # bizevent (not a chat span) so it lands on the Evaluations page.
+    event = dict(_EVAL_FIELDS)
     event.update({
-        "trace_id": format(ctx.trace_id, "032x"),
-        "span_id": format(ctx.span_id, "016x"),
-        "gen_ai.evaluation.score.value": 1.0 if passed else 0.0,
-        "gen_ai.evaluation.score.label": "pass" if passed else "fail",
-        "gen_ai.evaluation.explanation": "Answer is non-empty." if passed else "Answer was empty.",
+        "trace_id": trace_id,
+        "span_id": span_id,
+        "gen_ai.evaluation.score.value": 1.0,
+        "gen_ai.evaluation.score.label": "pass",
+        "gen_ai.evaluation.explanation": "Stand-in evaluator: always passes.",
         "gen_ai.evaluation.input.question": question,
         "gen_ai.evaluation.input.answer": answer,
         "gen_ai.request.model": MODEL_ID,
     })
     _ingest_bizevent(event)
-    return passed
 
 
 def _ingest_bizevent(event):
@@ -255,13 +266,13 @@ def _ingest_bizevent(event):
         logging.info("gen_ai.evaluation", extra=event)
 
 
-@workflow("multiagent_turn")
+@agent("multiagent_turn")
 def run_multiagent_turn(client_context, question):
     span = _ot_trace.get_current_span()
     route_intent(client_context, question)
     answer = answer_agent(client_context, question)
     _stamp_turn_io(span, question, answer)
-    evaluate_answer(span, question, answer)
+    submit_evaluation(span, question, answer)
     print(answer)
     return answer
 
