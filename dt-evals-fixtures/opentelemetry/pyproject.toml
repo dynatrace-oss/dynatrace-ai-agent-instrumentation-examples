@@ -12,6 +12,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
+    # build_fixtures.py only — sources real dataset rows. Not needed at runtime
+    # (fixtures.json is committed), so kept out of the app's dependencies.
+    "datasets>=3.0.0",
 ]
 
 [tool.pytest.ini_options]
