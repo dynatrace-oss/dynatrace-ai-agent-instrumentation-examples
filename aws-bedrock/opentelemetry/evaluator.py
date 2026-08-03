@@ -10,12 +10,23 @@ import atexit
 import json
 import logging
 import os
+import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 import requests
 
 with open(os.path.join(os.path.dirname(__file__), "evaluation_bizevent.json")) as _f:
     _FIELDS = json.load(_f)
+
+# The app is run-centric: the Evaluations page keys its schema on dt.eval.run_id, so a
+# bizevent with no run_id never appears there. Stamp one per process so all of this run's
+# turns group together, and mark it "demo-standin" so it's obvious these come from the
+# example's stand-in judge, not a real dt-evals CLI run (run-<ISO8601>-<hex>).
+_RUN_ID = "run-demo-standin-{ts}-{rand}".format(
+    ts=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S"),
+    rand=uuid.uuid4().hex[:8],
+)
 
 _POOL = ThreadPoolExecutor(max_workers=2)
 atexit.register(lambda: _POOL.shutdown(wait=True))
@@ -36,6 +47,7 @@ def _run(question, answer, model, trace_id, span_id):
     event.update({
         "trace_id": trace_id,
         "span_id": span_id,
+        "dt.eval.run_id": _RUN_ID,
         "gen_ai.evaluation.score.value": 1.0,
         "gen_ai.evaluation.score.label": "pass",
         "gen_ai.evaluation.explanation": "Stand-in evaluator: always passes.",
