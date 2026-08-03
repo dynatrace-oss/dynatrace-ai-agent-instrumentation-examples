@@ -10,6 +10,7 @@ from tenacity import sleep
 from traceloop.sdk import Traceloop
 import logging
 import json
+from datetime import datetime, timezone
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -22,6 +23,8 @@ from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
 from opentelemetry import trace as _ot_trace
+
+import evaluator
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
 MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -179,7 +182,7 @@ def run_invoke_extra(client_context):
 
 
 # Multi-agent turn: one user turn fans out into several Bedrock calls, recorded on the
-# agent span (see the README "Multi-agent turn" section).
+# agent span and evaluated out-of-band (see the README "Multi-agent turn" section).
 
 
 def _messages(role, text):
@@ -216,9 +219,13 @@ def answer_agent(client_context, question):
 @agent("multiagent_turn")
 def run_multiagent_turn(client_context, question):
     span = _ot_trace.get_current_span()
+    started = datetime.now(timezone.utc)
     route_intent(client_context, question)
     answer = answer_agent(client_context, question)
     _stamp_turn_io(span, question, answer)
+    # Pass the turn's wall-clock window so the eval bizevent can carry the span's time range.
+    ended = datetime.now(timezone.utc)
+    evaluator.submit(span, question, answer, MODEL_ID, started, ended)
     print(answer)
     return answer
 
