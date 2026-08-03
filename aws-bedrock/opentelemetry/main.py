@@ -54,6 +54,9 @@ BotocoreInstrumentor().instrument()
 # Strip gen_ai.system / provider.name from the internal fan-out model-call spans so they
 # drop out of the conversation view, leaving only the turn-level agent span. Gated to the
 # multiagent story (one STORY runs per process).
+# More generally: call this to hide any tool/intermediate prompt you don't want surfaced in
+# the AI app -- match the span (by scope, name, or attribute) and drop its gen_ai.* keys so
+# it fails the app's GenAI filter while staying in the raw trace.
 _STRIP_INTERNAL_GENAI = False
 _BEDROCK_SCOPE = "opentelemetry.instrumentation.bedrock"
 
