@@ -30,18 +30,18 @@ Derived from `dt-evals-fixtures/SPEC.md`. Work lives in
 5. **`build_fixtures.py` — fluency (soda_eval, real multi-turn)** ✅ *(done — commit 6fd3a07)*
 
 6. **`build_fixtures.py` — single-turn evaluators** wrapped as 1-turn
-   conversations. ◑ *Partly done — commit HEAD:* faithfulness, hallucination,
-   relevance, factual-accuracy, answer-completeness (5 QA-style, real
-   question+answer). **Blocked, needs a decision:** the rest have no natural
-   (user, response) pair in the dataset —
-   - input-scoring (dataset has only the user input): prompt-injection, user-frustration
-   - text-only (dataset has only the text to judge, no user prompt): pii-leakage,
-     summarization-quality, bias
-   The missing half can't be sourced without either a synthetic scaffold or a
-   mismatched real response — a spec boundary decision (§8 "never hand-author").
+   conversations. ✅ *(done)* — QA-style (faithfulness, hallucination, relevance,
+   factual-accuracy, answer-completeness) plus scaffolded evaluators where the
+   dataset provides only one side (pii-leakage, summarization-quality,
+   prompt-injection). Decision resolved: the non-evaluated half is a fixed
+   scaffold (SPEC §3.7/§8).
 
-7. **Download missing HF datasets** (gooaq, SBIC, daloopa, IEMOCAP-gated) and
-   add their evaluators.
+7. **Download missing HF datasets** ✅ *(done)* — gooaq (context-relevance),
+   daloopa (conciseness), IEMOCAP (user-frustration) downloaded; SBIC's HF loader
+   is deprecated so StereoSet (cached) covers bias. All 14 evaluators covered.
 
-8. **`SOURCES.md` + README + Makefile `build-fixtures` target**; per-dataset
-   attribution/license.
+8. **`SOURCES.md` + README + Makefile `build-fixtures` target** ✅ *(done)* —
+   per-dataset attribution + licensing note.
+
+**Status: all tasks complete. fixtures.json = 28 cases across all 14 dt-evals
+judge evaluators (2 pass/fail each). 31 tests passing.**
