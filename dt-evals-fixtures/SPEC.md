@@ -251,6 +251,18 @@ single-turn row is embedded as a **1-turn conversation** (one span, same
 multi-turn is genuine only where the source provides it — we never fabricate a
 conversation flow.
 
+**Scaffolding the missing half of a turn** (resolved decision): some evaluators
+score only one side of a turn, and their source dataset provides only that side —
+input-scoring evaluators (`prompt-injection`, `user-frustration`) give only the
+user input; text-only datasets (`pii-leakage`, `summarization-quality`, `bias`)
+give only the text to judge, with no user prompt. A GenAI chat span needs both
+sides. Rule: **the evaluated half is always real dataset content; the
+non-evaluated half is a fixed, generic scaffold string** (e.g. `user:
+"Summarize the following article."` for summarization, or `assistant: "Sure, I
+can help with that."` for prompt-injection). Scaffolds are fixed (deterministic)
+and recorded as `"scaffold": true` in the case `source` so provenance stays
+honest. This is the one sanctioned exception to "never hand-author" (§8).
+
 **Conversion step:** a small script reads the chosen rows from the cache / HF,
 **curates a deterministic subset** (hand-pick clear pass/fail exemplars — e.g.
 `hh-rlhf` row 0 is not a clean "pass"), parses them into the `turns` schema
@@ -347,8 +359,10 @@ dt-evals-fixtures/
 - Never introduce run-to-run variability (random values, timestamps in content,
   real model output).
 - Never target `drift` for deterministic assertion.
-- Never hand-author example prompt/response content — it must come from a real
-  dataset (§3.7).
+- Never hand-author the **evaluated** half of a turn — it must come from a real
+  dataset (§3.7). The one exception: the **non-evaluated** half may be a fixed
+  generic scaffold when the source dataset provides only one side, marked
+  `"scaffold": true` in the case source.
 - Never fabricate a multi-turn flow — multi-turn only where the source dataset
   genuinely provides conversations.
 
