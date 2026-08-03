@@ -130,6 +130,151 @@ def build_fluency_cases(dataset, rows: dict[str, list[int]] = SODA_FLUENCY_ROWS)
     return cases
 
 
+# --- single-turn evaluators (real rows wrapped as 1-turn conversations) -----
+#
+# Each real (question, answer) row becomes a one-turn conversation. Genuine
+# multi-turn only comes from datasets that carry conversations (toxicity,
+# fluency); here the source is single-turn, so the case is single-turn — the
+# content is still 100% real (SPEC.md §3.3/§3.7).
+
+
+def _single_turn_case(
+    name, target, expect, user, response, *, context=None, reference=None, source=None
+) -> dict:
+    turn = {"user": user, "response": response, "expect": expect, "targets": [target]}
+    case = {
+        "name": name,
+        "system": DEFAULT_SYSTEM,
+        "targets": [target],
+        "expect": expect,
+        "turns": [turn],
+    }
+    if context is not None:
+        case["context"] = context
+    if reference is not None:
+        case["reference"] = reference
+    if source is not None:
+        case["source"] = source
+    return case
+
+
+def _find_index(dataset, predicate, limit: int = 60000) -> int:
+    """First row index matching `predicate` (deterministic, reproducible)."""
+    for i in range(min(len(dataset), limit)):
+        if predicate(dataset[i]):
+            return i
+    raise LookupError("no row matched the predicate")
+
+
+def build_faithfulness_cases(dataset, row: int = 0) -> list[dict]:
+    """FaithEval-counterfactual: answer supported by the (counterfactual) context
+    is faithful (pass); another choice is not grounded in it (fail)."""
+    rec = dataset[row]
+    choices = rec["choices"]
+    if isinstance(choices, str):
+        choices = json.loads(choices)
+    labels, texts = choices["label"], choices["text"]
+    key = rec["answerKey"]
+    faithful = texts[labels.index(key)]
+    unfaithful = next(t for l, t in zip(labels, texts) if l != key)
+    src = {
+        "dataset": "Salesforce/FaithEval-counterfactual-v1.0",
+        "row": row,
+        "field": "choices",
+    }
+    return [
+        _single_turn_case(
+            f"faithfulness-faitheval-{row}-pass", "faithfulness", "pass",
+            rec["question"], faithful, context=rec["context"], source=src,
+        ),
+        _single_turn_case(
+            f"faithfulness-faitheval-{row}-fail", "faithfulness", "fail",
+            rec["question"], unfaithful, context=rec["context"], source=src,
+        ),
+    ]
+
+
+def build_hallucination_cases(dataset) -> list[dict]:
+    """FinQA: is_correct==1 is grounded (pass), ==0 is hallucinated (fail)."""
+
+    def case(idx: int, expect: str) -> dict:
+        r = dataset[idx]
+        return _single_turn_case(
+            f"hallucination-finqa-{idx}-{expect}", "hallucination", expect,
+            r["query"], str(r["llm_response"]), context=r["context"],
+            source={
+                "dataset": "Cleanlab/FinQA-hallucination-detection",
+                "row": idx,
+                "field": "llm_response",
+            },
+        )
+
+    return [
+        case(_find_index(dataset, lambda r: r["is_correct"] == 1), "pass"),
+        case(_find_index(dataset, lambda r: r["is_correct"] == 0), "fail"),
+    ]
+
+
+def build_relevance_cases(dataset) -> list[dict]:
+    """HelpSteer2: high helpfulness is relevant (pass), low is not (fail)."""
+
+    def case(idx: int, expect: str) -> dict:
+        r = dataset[idx]
+        return _single_turn_case(
+            f"relevance-helpsteer2-{idx}-{expect}", "relevance", expect,
+            r["prompt"], r["response"],
+            source={"dataset": "nvidia/HelpSteer2", "row": idx, "field": "response"},
+        )
+
+    return [
+        case(_find_index(dataset, lambda r: r["helpfulness"] >= 4), "pass"),
+        case(_find_index(dataset, lambda r: r["helpfulness"] <= 1), "fail"),
+    ]
+
+
+def build_factual_accuracy_cases(dataset, row: int = 0) -> list[dict]:
+    """TruthfulQA: the best answer is accurate (pass); an incorrect answer is
+    not (fail). The best answer is the reference."""
+    r = dataset[row]
+    best = r["Best Answer"]
+    incorrect = next(
+        s.strip() for s in r["Incorrect Answers"].split(";") if s.strip()
+    )
+    src = {"dataset": "domenicrosati/TruthfulQA", "row": row}
+    return [
+        _single_turn_case(
+            f"factual-accuracy-truthfulqa-{row}-pass", "factual-accuracy", "pass",
+            r["Question"], best, reference=best, source={**src, "field": "Best Answer"},
+        ),
+        _single_turn_case(
+            f"factual-accuracy-truthfulqa-{row}-fail", "factual-accuracy", "fail",
+            r["Question"], incorrect, reference=best,
+            source={**src, "field": "Incorrect Answers"},
+        ),
+    ]
+
+
+def build_answer_completeness_cases(dataset) -> list[dict]:
+    """Magneto: a COMPLETE answer passes, an INCOMPLETE one fails."""
+
+    def case(idx: int, expect: str) -> dict:
+        r = dataset[idx]
+        return _single_turn_case(
+            f"answer-completeness-magneto-{idx}-{expect}", "answer-completeness", expect,
+            r["question"], r["answer"],
+            source={
+                "dataset": "Magneto/qa-dataset-llm-judge-flattened",
+                "row": idx,
+                "field": "evaluation_completeness",
+            },
+        )
+
+    return [
+        case(_find_index(dataset, lambda r: r["evaluation_completeness"] == "COMPLETE"), "pass"),
+        case(_find_index(dataset, lambda r: r["evaluation_completeness"] == "INCOMPLETE"), "fail"),
+    ]
+
+
 def _load_hhrlhf():
     from datasets import Dataset
 
@@ -166,9 +311,39 @@ def _load_soda():
     return Dataset.from_file(matches[0])
 
 
+def _load(cache_dir: str, human_name: str):
+    """Load the (train-preferred) arrow file for a cached HF dataset."""
+    from datasets import Dataset
+
+    matches = glob.glob(
+        str(Path.home() / ".cache/huggingface/datasets" / cache_dir / "**/*.arrow"),
+        recursive=True,
+    )
+    if not matches:
+        raise FileNotFoundError(
+            f"{human_name} not found in the HF cache. Download it first with "
+            f"datasets.load_dataset(...)."
+        )
+    train = [m for m in matches if "train" in m.lower()]
+    return Dataset.from_file(sorted(train or matches)[0])
+
+
 def build_all() -> dict:
     cases = build_toxicity_cases(_load_hhrlhf())
     cases += build_fluency_cases(_load_soda())
+    cases += build_faithfulness_cases(
+        _load("Salesforce___faith_eval-counterfactual-v1.0", "FaithEval")
+    )
+    cases += build_hallucination_cases(
+        _load("Cleanlab___fin_qa-hallucination-detection", "FinQA")
+    )
+    cases += build_relevance_cases(_load("nvidia___help_steer2", "HelpSteer2"))
+    cases += build_factual_accuracy_cases(
+        _load("domenicrosati___truthful_qa", "TruthfulQA")
+    )
+    cases += build_answer_completeness_cases(
+        _load("Magneto___qa-dataset-llm-judge-flattened", "Magneto")
+    )
     return {"service_name": DEFAULT_SERVICE_NAME, "cases": cases}
 
 
