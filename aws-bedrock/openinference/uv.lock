@@ -280,7 +280,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-bedrock"
-version = "0.1.40"
+version = "0.1.44"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dacite" },
@@ -292,9 +292,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/98/4b/2a31ddac9044beac5596f2fac923966794b134e59b48fc8871f4638b60fe/openinference_instrumentation_bedrock-0.1.40.tar.gz", hash = "sha256:cfec1e3f387cabb647d5f2ce7cda4919bf5a534d043391bddcd942a6f9d9b795", size = 227102, upload-time = "2026-05-22T21:10:43.314Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/0b/755f041e0e649ec1b35def0b4fa9455cb8f1e687d2ed20be2a986cadd982/openinference_instrumentation_bedrock-0.1.44.tar.gz", hash = "sha256:aca3d74944e02f2bbc5ce59f17dba6485e882e06f8e24ec590a7d85259648c69", size = 236046, upload-time = "2026-07-30T16:38:22.764Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/b3/4a23ddb98b5cff1da9a00b604df4978b8cf2bee54678c3803757f325f3c7/openinference_instrumentation_bedrock-0.1.40-py3-none-any.whl", hash = "sha256:822451f4f14a63347f77afc8dc1bb764c13682904757e8fa92ffcfb0395470d0", size = 66257, upload-time = "2026-05-22T21:10:42.002Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/5b/f4cc97ee8360fc40d569f14bb8e4479d6c5381766dcb02cc11c918128978/openinference_instrumentation_bedrock-0.1.44-py3-none-any.whl", hash = "sha256:13c583f87589da3475864492a86ce84ba4b459b78031694d75ceca511002fbd6", size = 70094, upload-time = "2026-07-30T16:38:21.404Z" },
 ]
 
 [[package]]
