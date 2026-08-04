@@ -6,7 +6,7 @@ dependencies = [
     "litellm[proxy]>=1.95.0",
     # litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, which
     # FastAPI removed in 0.140.7 — cap below it until litellm drops that import.
-    "fastapi>=0.140.0,<0.140.7",
+    "fastapi>=0.141.1,<0.141.2",
     "uvicorn>=0.50.0",
     "traceloop-sdk>=0.62.0",
     "opentelemetry-sdk>=1.43.0",
