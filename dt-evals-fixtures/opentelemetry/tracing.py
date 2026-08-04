@@ -1,7 +1,7 @@
 """Tracing setup for the fixtures app.
 
-Two things here that a plain Traceloop app does not need (both verified against
-langchain-core 1.5.3 / traceloop-sdk 0.62.1, see SPEC.md §3.6):
+Two things here that a plain Traceloop app does not need (both verified
+empirically against langchain-core 1.5.3 / traceloop-sdk 0.62.1):
 
 1. LangChain must be instrumented **explicitly**. `Traceloop.init()` does not
    auto-instrument it when only `langchain-core` (no `langchain` meta-package)
@@ -50,7 +50,7 @@ class FixtureSpanProcessor(SpanProcessor):
     """Stamp fixture-driven attributes (conversation id, grounding context,
     reference) onto every span started while a case is active. The native OTel
     GenAI path emits none of these for a plain chat invoke, so we add them here
-    from a contextvar (SPEC.md §3.5/§3.6)."""
+    from a contextvar."""
 
     def on_start(self, span, parent_context=None):
         attrs = _span_attrs.get()

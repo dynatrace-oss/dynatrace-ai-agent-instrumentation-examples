@@ -2,7 +2,7 @@
 
 A plain `FakeListChatModel` leaves `gen_ai.request.model` as "unknown" and emits
 no `gen_ai.usage.*`, because the instrumentation reads both from the
-`ChatResult.llm_output` dict on `on_llm_end` (verified, SPEC.md §3.4/§3.6).
+`ChatResult.llm_output` dict on `on_llm_end` (verified empirically).
 Populating `llm_output` here makes the emitted spans carry the fixture-driven
 model and usage. A span processor cannot do this — the instrumentation overwrites
 the model name on `on_llm_end`.

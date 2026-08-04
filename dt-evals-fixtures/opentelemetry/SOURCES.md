@@ -1,6 +1,6 @@
 # Dataset sources & attribution
 
-Fixture content comes from two sources (see `../SPEC.md` §3.7):
+Fixture content comes from two sources:
 
 - **9 evaluators** are built from established evaluation datasets whose license
   permits public redistribution of small excerpts (MIT / Apache-2.0 / CC-BY-4.0).
@@ -101,3 +101,20 @@ Attribution is provided under each dataset's license terms. The stated license
 covers the dataset packaging; a couple of these re-package third-party source
 text (SummEval → CNN/DailyMail; FinQA → SEC filings), of which only small
 excerpts appear here. If you spot a licensing concern, please open an issue.
+
+## Datasets considered and rejected
+
+These were the natural sources for five evaluators, but none of them can be
+redistributed from a public Apache-2.0 repo. Each was replaced with self-authored
+content. Recorded here so the licensing check does not have to be repeated.
+
+| Dataset | Evaluator | Why not |
+|---------|-----------|---------|
+| IEMOCAP | user-frustration | Gated, and non-commercial use only |
+| StereoSet | bias | CC-BY-SA — the share-alike clause conflicts with Apache-2.0 |
+| Magneto QA | answer-completeness | No license stated |
+| gooaq / zilliz | context-relevance | No clear license |
+| FaithEval | faithfulness | Research use only |
+
+Nothing from these datasets is committed. SBIC was also considered for bias, but
+its HuggingFace loader is deprecated.

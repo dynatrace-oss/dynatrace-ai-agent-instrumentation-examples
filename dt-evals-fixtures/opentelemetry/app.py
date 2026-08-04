@@ -10,7 +10,7 @@ against them as a regression baseline.
 
 Multi-turn conversations are emitted as one span per turn, linked by a shared
 `gen_ai.conversation.id` — the same shape a production chatbot produces. See
-../SPEC.md for the full design.
+README.md for the fixture format and SOURCES.md for content sources.
 """
 
 import os

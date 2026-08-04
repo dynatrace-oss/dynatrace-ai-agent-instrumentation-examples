@@ -3,7 +3,7 @@
 Each turn is a separate `model.invoke()` — so a separate span / trace — sharing
 the case's conversation id. Every turn resends the accumulated history
 (system + prior user/assistant turns + current user), mirroring how a production
-chatbot resends context on each request (SPEC.md §3.5).
+chatbot resends context on each request.
 """
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage

@@ -65,3 +65,10 @@ def test_assert_valid_raises_on_bad_case():
 def test_shipped_fixtures_are_well_formed():
     _, cases = load_fixtures(FIXTURES_JSON)
     assert validate_cases(cases) == []
+
+
+def test_shipped_service_name_matches_e2e_contract():
+    """The Go e2e suite hardcodes this in its DQL filter and metric lookup, so a
+    rename here would surface only as a nightly timeout with no spans found."""
+    service_name, _ = load_fixtures(FIXTURES_JSON)
+    assert service_name == "dt-evals-fixtures"

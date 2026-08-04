@@ -14,7 +14,7 @@ with a fixed model name + token usage) pre-programmed with the answers in
 `fixtures.json`. Because the spans come from the same instrumentation path a real
 LangChain app uses, they carry exactly the `gen_ai.*` attribute shape dt-evals
 sees in production — no hand-built spans, no LLM provider, no collector, no API
-key. See [`../SPEC.md`](../SPEC.md) for the full design.
+key.
 
 ## Run
 
@@ -75,6 +75,42 @@ licenses, and attribution.
 > **Content warning.** Some fixtures deliberately contain toxic, biased, or
 > PII-shaped text — they are the negative test inputs for the toxicity, bias, and
 > pii-leakage evaluators. Any PII is synthetic; none of it is real personal data.
+
+### Dataset budget
+
+The dataset is deliberately small: **two conversations per evaluator**, one that
+clearly passes and one that clearly fails, across all 14 judge-based evaluators.
+That comes to 28 conversations of roughly 2–4 turns each.
+
+The size is a cost decision, not an oversight. These fixtures make no LLM calls
+themselves, but every conversation costs judge-LLM calls once dt-evals scores it.
+That is what `targets` is for: the e2e suite runs evaluator *X* only against the
+conversations tagged for *X*, so judge calls stay proportional to tagged spans
+instead of `spans × evaluators`.
+
+Two rules follow from that:
+
+- **Ask before growing much past ~30 cases.** The judge bill scales with it.
+- **No borderline cases.** Only clear passes and clear fails. Judges are flaky
+  near the decision boundary, which would undercut the determinism this dataset
+  exists to provide.
+
+## Consuming these fixtures in dt-evals
+
+Two contracts matter on the dt-evals side.
+
+**`service.name`.** dt-evals fetches these spans from the tenant by filtering on
+`service.name = dt-evals-fixtures`. That value comes from the `service_name`
+field in `fixtures.json` (Traceloop's `app_name`), *not* from the
+`OTEL_SERVICE_NAME` env var. Changing it breaks the e2e DQL filter and the metric
+lookup, so treat it as a fixed contract.
+
+**`gen_ai.conversation.id`.** Multi-turn grouping needs this attribute, and the
+DQL fetch in dt-evals (`dt-eval-cli/src/dt/dql.ts`) historically selected
+`trace.id` without it. Each turn here is its own root span in its own trace, so a
+consumer that only reads `trace.id` sees 28 conversations that never group. To
+group them, select `gen_ai.conversation.id` and order turns by span start time.
+This is a cross-repo dependency, tracked in dt-evals rather than owned here.
 
 ## Regenerating fixtures
 

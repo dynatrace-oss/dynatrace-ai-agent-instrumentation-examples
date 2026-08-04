@@ -3,7 +3,7 @@
 Checks well-formedness, not dataset completeness: names are unique and non-empty,
 turns carry content, and — where present — `targets` name real dt-evals
 evaluators, `expect` is pass/fail, and evaluators that need extra inputs
-(`context` / `reference`) have them. See SPEC.md §3.1/§7.
+(`context` / `reference`) have them.
 """
 
 from fixtures import Case

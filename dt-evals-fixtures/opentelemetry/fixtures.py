@@ -3,7 +3,7 @@
 A fixture case is an ordered list of `turns` (one span per turn). Single-turn
 cases may use the `system`/`user`/`response` shorthand, which is normalized to a
 one-turn conversation. The conversation id is a stable UUIDv5 of the case name
-so the same conversation keeps the same id across runs (SPEC.md §3.2/§3.5).
+so the same conversation keeps the same id across runs.
 """
 
 import json

@@ -1,4 +1,4 @@
-"""Build fixtures.json from evaluation datasets (SPEC.md §3.7).
+"""Build fixtures.json from evaluation datasets.
 
 Content comes from two sources, by design:
 
@@ -179,7 +179,7 @@ def build_fluency_cases(dataset, rows: dict[str, list[int]] = SODA_FLUENCY_ROWS)
 # Each real (question, answer) row becomes a one-turn conversation. Genuine
 # multi-turn only comes from datasets that carry conversations (toxicity,
 # fluency); here the source is single-turn, so the case is single-turn — the
-# content is still 100% real (SPEC.md §3.3/§3.7).
+# content is still 100% real.
 
 
 def _single_turn_case(
@@ -203,7 +203,7 @@ def _single_turn_case(
 
 
 # Fixed scaffolds for the non-evaluated half of a turn, used only when the
-# source dataset provides just one side (SPEC.md §3.7). The evaluated half is
+# source dataset provides just one side. The evaluated half is
 # always real; scaffolded cases record "scaffold" in their source.
 _SCAFFOLD_ANSWER = "Sure, I can help with that. Here is the information you requested."
 _SCAFFOLD_FRUSTRATION_ANSWER = (
