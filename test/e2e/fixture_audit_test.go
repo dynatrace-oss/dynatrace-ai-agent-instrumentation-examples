@@ -428,6 +428,43 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	logAuditResult(t, report, spanCount)
 }
 
+// auditSpanMerged is like auditSpan but polls for one anchor span per DQL in dqls,
+// independently, then merges every span from every anchor's trace into a single
+// picture before evaluating the profile. Use this when an attribute pair can only
+// ever appear on different anchor spans in the same test run — e.g. a cache WRITE
+// on one call and a cache READ on a later call — so a single-anchor auditSpan would
+// only ever see one of the two, never both. Each dql must independently narrow down
+// to its own anchor (e.g. by filtering on the specific attribute it is meant to
+// surface); running them one at a time avoids PollUntilSpans returning early with
+// fewer results than expected (it returns as soon as it sees any record, not once a
+// target count is reached, so a single query with `limit N` can't reliably wait for
+// N distinct spans).
+func auditSpanMerged(t *testing.T, sdk, instrumentation string, p Profile, dqls []string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	var allSpans []map[string]interface{}
+	for _, dql := range dqls {
+		records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+		if err != nil {
+			t.Fatalf("poll DT spans: %v", err)
+		}
+		if len(records) == 0 {
+			t.Fatalf("no spans returned from DT for query: %s", dql)
+		}
+		assertNotErrorSpan(t, records[0])
+		allSpans = append(allSpans, fetchTraceSpans(t, ctx, records[0])...)
+	}
+
+	report := buildReport(sdk, instrumentation, p, mergeSpans(allSpans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+	logAuditResult(t, report, len(allSpans))
+}
+
 // spanPollTimeout is how long to poll Dynatrace for an anchor span before
 // failing. Defaults to 8 minutes to absorb slow app startup (dependency install,
 // collector image pull, first LLM call). Override with the E2E_SPAN_POLL_TIMEOUT
