@@ -71,7 +71,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
 | [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
 | [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
-| [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | — |
+| [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
