@@ -121,11 +121,6 @@ async def chat_completions(request: ChatCompletionRequest):
     else:
         set_conversation_id(str(uuid.uuid4()))
 
-    # Extract system message to populate gen_ai.system_instructions span attribute
-    system_message = next((m.content for m in request.messages if m.role == "system"), None)
-    if system_message:
-        kwargs["system_instructions"] = system_message
-        kwargs["additional_drop_params"] = ["system_instructions"]
 
     attrs = {"model": request.model}
     logger.info("chat request: model=%s", request.model)
