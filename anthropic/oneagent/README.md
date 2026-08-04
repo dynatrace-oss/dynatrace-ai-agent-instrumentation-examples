@@ -39,3 +39,14 @@ Demonstrates tracing Anthropic Bedrock SDK API calls with Dynatrace via OneAgent
 ## Smartscape service entity
 
 OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.
+
+## Prompt caching
+
+The system prompt (`style_guide.py`) is a fixed haiku style guide and seasonal-word
+almanac, not a one-line instruction. Bedrock only creates a prompt-cache checkpoint
+once the cached block clears a per-model minimum token count — 4,096 tokens for
+`claude-haiku-4-5` — so the block needs to be genuinely long, and it must stay
+byte-identical across requests for a cache hit. The first request after startup (or
+after the cache's 5-minute TTL expires) writes the cache; subsequent requests within
+that window read from it. Send two requests back to back (e.g. `make request` twice)
+to see both a write and a read.

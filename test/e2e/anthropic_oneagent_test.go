@@ -6,6 +6,11 @@ import (
 
 func TestAnthropicOneAgent(t *testing.T) {
 	startApp(t, "anthropic/oneagent")
+	// Two calls in a row: the system prompt's cache_control block is byte-identical
+	// across requests, so the first call only writes the Bedrock prompt cache and the
+	// second reads from it (well within the 5-minute TTL). A single call would only
+	// ever produce a cache WRITE, never a READ.
+	triggerHaiku(t, true)
 	triggerHaiku(t, true)
 
 	auditSpan(t, "anthropic", "oneagent", GenericProfile,

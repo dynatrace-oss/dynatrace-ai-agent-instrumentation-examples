@@ -2,6 +2,8 @@ import os
 
 import anthropic
 
+from style_guide import HAIKU_STYLE_GUIDE
+
 
 def setup_instrumentation() -> None:
     import oneagent
@@ -24,7 +26,18 @@ def write_haiku(topic: str) -> str:
     message = _get_client().messages.create(
         model=os.environ.get("ANTHROPIC_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         max_tokens=256,
-        system="You are a haiku poet. Write a haiku (5-7-5 syllables) about the given topic. Reply with only the haiku, no extra text.",
+        # HAIKU_STYLE_GUIDE is a fixed reference block (style rules + kigo almanac) rather
+        # than a one-line instruction: Bedrock only creates a cache checkpoint once the
+        # cached prefix clears a per-model minimum token count (4,096 tokens for
+        # claude-haiku-4-5), and a short instruction never gets close. Keeping the block
+        # byte-identical across calls is what lets repeated requests hit the cache.
+        system=[
+            {
+                "type": "text",
+                "text": HAIKU_STYLE_GUIDE,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=[{"role": "user", "content": f"Topic: {topic}"}],
     )
     return message.content[0].text
