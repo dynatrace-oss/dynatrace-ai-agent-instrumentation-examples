@@ -7,7 +7,7 @@ Goal: make SDK/framework comparisons deterministic and consistent.
 
 ## What This Baseline Is
 
-`sdk-comparison-baseline.json` (v1.3.1) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
+`sdk-comparison-baseline.json` (v1.3.2) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
 
 It contains:
 - Core pass/fail rules (`must_have_any`, `must_have_all`)
@@ -54,6 +54,7 @@ Each profile maps to a specific dashboard in `genai-observability/documents/`. U
 |---|---|---|
 | `generic` | `abmodelversioning.dashboard.json` | Provider-agnostic; any OTel-compliant SDK. Covers all_genai_views, prompts, cost, latency, service_health. |
 | `openai` | `openai.dashboard.json` | Extends generic + OpenAI prompt-caching attributes (AR-022, AR-023). |
+| `anthropic` | `bedrock.dashboard.json` | Extends generic + Anthropic prompt-caching token attributes (AR-052, AR-053). No dedicated anthropic dashboard exists yet; reuses bedrock.dashboard.json, which only visualises the derived AR-045 metric, not AR-052/AR-053 directly. |
 | `azure` | `azureai.dashboard.json` | Extends generic + Azure content filter attributes (AR-015, AR-016). |
 | `bedrock` | `bedrock.dashboard.json` | Extends generic + Bedrock guardrail, caching, and contextual grounding attributes. |
 | `google` | `google.dashboard.json` | Extends generic; no additional provider-specific attributes required. |
@@ -63,7 +64,7 @@ Each profile maps to a specific dashboard in `genai-observability/documents/`. U
 ## Recommended AI Output Shape
 
 Use this structure in reports:
-- `profile`: `generic | azure | bedrock | openai | google | nvidia | kong`
+- `profile`: `generic | azure | bedrock | openai | anthropic | google | nvidia | kong`
 - `dashboard_targeted`: dashboard filename from profile mapping above
 - `result`: `PASS | FAIL | PARTIAL`
 - `failed_required`: list
@@ -102,7 +103,7 @@ Model overview:
 
 Profile precedence:
 - If a scenario override exists in `profile_selection.scenario_overrides`, run/skip profiles from the override.
-- Otherwise, evaluate by selected profile (`generic`, `azure`, `bedrock`, `openai`, `google`, `nvidia`, `kong`).
+- Otherwise, evaluate by selected profile (`generic`, `azure`, `bedrock`, `openai`, `anthropic`, `google`, `nvidia`, `kong`).
 
 ### Core & Service
 
@@ -170,13 +171,15 @@ Profile precedence:
 | `gen_ai.guardrail.id` | AR-050 | provider-specific (bedrock) | guardrail_overview_cards — unique guardrail identifier, extracted from `llm.invocation_parameters` by collector processor |
 | `gen_ai.guardrail.version` | AR-051 | provider-specific (bedrock) | guardrail_overview_cards — guardrail version (e.g. `DRAFT` or a pinned numeric version) |
 
-### Caching (OpenAI / Bedrock)
+### Caching (OpenAI / Bedrock / Anthropic)
 
 | Attribute | Rule ID | Required Level | Used By Visuals |
 |---|---|---|---|
 | `gen_ai.prompt_caching` | AR-022 | provider-specific (openai, bedrock) | cached_vs_non_cached_chart — span attribute; values: `read` for cache hit |
 | `gen_ai.cache.type` | AR-023 | provider-specific (openai, bedrock) | cached_vs_non_cached_chart — span attribute; values: `read`, `write` |
 | `gen_ai.prompt.caching` | AR-045 | provider-specific (bedrock) | bedrock_cache_tiles — **metric** (distinct from AR-022); used as `timeseries sum(gen_ai.prompt.caching)` filtered by `gen_ai.cache.type` to compute cache-read/write token savings |
+| `gen_ai.usage.prompt_caching.read_tokens` | AR-052 | provider-specific (anthropic, bedrock) | Not yet visualised directly by any dashboard — raw per-span input to the AR-045 metric. Live-verified on `anthropic/oneagent` against the `ixq6468h` sprint tenant (2026-08-04). |
+| `gen_ai.usage.prompt_caching.write_tokens` | AR-053 | provider-specific (anthropic, bedrock) | Same as AR-052 but for cache writes. |
 
 ### Evaluation Results
 
@@ -357,6 +360,11 @@ These rules model app behavior better than a flat required/optional list.
 ### OpenAI profile (→ openai.dashboard.json)
 - Must pass generic profile first.
 - Then also require OpenAI provider-specific attributes (AR-022, AR-023).
+
+### Anthropic profile (→ bedrock.dashboard.json, reused)
+- Must pass generic profile first.
+- Then also check the optional Anthropic prompt-caching token attributes (AR-052, AR-053) — only one of the two is ever present on a given span (a request either writes the cache or reads from it, never both).
+- No dedicated anthropic dashboard exists yet; neither AR-052 nor AR-053 is directly visualised — they are the raw per-span inputs the AR-045 metric is computed from.
 
 ### Google profile (→ google.dashboard.json)
 - Must pass generic profile first.

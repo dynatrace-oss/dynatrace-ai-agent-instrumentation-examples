@@ -156,6 +156,23 @@ func init() {
 	}
 }
 
+// AnthropicProfile extends generic with Anthropic (native and Bedrock) prompt-caching
+// attributes. Only one of the two ever populates on a given span — a request either
+// writes the cache or reads from it, never both — so both are optional rather than
+// required.
+var AnthropicProfile Profile
+
+func init() {
+	AnthropicProfile = Profile{
+		Name:     "anthropic",
+		Required: append([]AttributeCheck{}, genericRequired...),
+		Optional: append(append([]AttributeCheck{}, genericOptional...),
+			AttributeCheck{Name: "gen_ai.usage.prompt_caching.read_tokens", RuleID: "AR-052"},
+			AttributeCheck{Name: "gen_ai.usage.prompt_caching.write_tokens", RuleID: "AR-053"},
+		),
+	}
+}
+
 // AzureProfile extends generic with Azure content filter attributes.
 var AzureProfile Profile
 

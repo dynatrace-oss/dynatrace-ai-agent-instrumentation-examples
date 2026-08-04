@@ -13,7 +13,7 @@ func TestAnthropicOneAgent(t *testing.T) {
 	triggerHaiku(t, true)
 	triggerHaiku(t, true)
 
-	auditSpan(t, "anthropic", "oneagent", GenericProfile,
+	auditSpan(t, "anthropic", "oneagent", AnthropicProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "anthropic/oneagent"
 | filter (gen_ai.provider.name == "anthropic" or gen_ai.system == "anthropic") and dt.openpipeline.source == "oneagent"
