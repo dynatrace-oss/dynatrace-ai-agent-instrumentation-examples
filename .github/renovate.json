@@ -6,7 +6,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Makefile$"],
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/"
+      ],
       "matchStrings": [
         "ghcr\\.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:(?<currentValue>[^\\s]+)"
       ],
@@ -15,7 +17,9 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Makefile$"],
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/"
+      ],
       "matchStrings": [
         "ghcr\\.io/observiq/bindplane-agent:(?<currentValue>[^\\s]+)"
       ],
