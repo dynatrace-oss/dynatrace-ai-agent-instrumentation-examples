@@ -32,9 +32,6 @@ COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
 # Must be set before the OTLP metric exporter is constructed in Traceloop.init below.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
-# Capture prompt/response content as span attributes (OFF by default in LiteLLM Otel v2, since it may contain sensitive data)
-os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "span_only")
-
 # Optional LLM provider keys — set in environment to enable each provider
 # Grok (xAI): use model prefix "xai/", e.g. "xai/grok-2-latest"
 # Groq:       use model prefix "groq/", e.g. "groq/llama-3.3-70b-versatile"
@@ -123,6 +120,11 @@ async def chat_completions(request: ChatCompletionRequest):
         set_conversation_id(request.conversation_id)
     else:
         set_conversation_id(str(uuid.uuid4()))
+
+    # Extract system message to populate gen_ai.system_instructions span attribute
+    system_message = next((m.content for m in request.messages if m.role == "system"), None)
+    if system_message:
+        kwargs["system_instructions"] = system_message
 
     attrs = {"model": request.model}
     logger.info("chat request: model=%s", request.model)
