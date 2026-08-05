@@ -3,12 +3,14 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // runMakeTarget runs a Makefile target in the given app directory (e.g. "request"
@@ -268,12 +270,29 @@ func triggerMCPAgent(t *testing.T) {
 	}
 }
 
-// triggerCSAgent POSTs an airline question to /chat on localhost:8000.
-func triggerCSAgent(t *testing.T) {
+// triggerCSAgent POSTs two airline questions to /chat on localhost:8000, reusing
+// the same conversation_id. Each turn is its own request and therefore its own
+// trace, so two turns are what exercise cross-trace stitching via
+// gen_ai.conversation.id (and the previous-turn span link). Returns the shared
+// conversation id so the caller can assert the turns stitched together.
+func triggerCSAgent(t *testing.T) string {
+	t.Helper()
+
+	conversationID := fmt.Sprintf("e2e-cs-%d", time.Now().UnixNano())
+	postCSTurn(t, conversationID, "What is the baggage allowance for economy class?")
+	postCSTurn(t, conversationID, "And can I change my seat to a window seat?")
+	return conversationID
+}
+
+// postCSTurn POSTs a single chat turn for the given conversation to /chat.
+func postCSTurn(t *testing.T, conversationID, message string) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/chat"
 
-	b, _ := json.Marshal(map[string]string{"message": "What is the baggage allowance for economy class?"})
+	b, _ := json.Marshal(map[string]string{
+		"conversation_id": conversationID,
+		"message":         message,
+	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
