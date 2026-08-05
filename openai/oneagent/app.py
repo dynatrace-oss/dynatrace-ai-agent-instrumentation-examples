@@ -21,7 +21,7 @@ def health():
 
 
 @app.post("/haiku", response_class=PlainTextResponse)
-async def haiku(body: HaikuRequest) -> str:
+async def haiku(body: HaikuRequest | None = None) -> str:
     import asyncio
     api_version = os.getenv("OPENAI_API_VERSION")
     if api_version:
@@ -36,7 +36,8 @@ async def haiku(body: HaikuRequest) -> str:
             api_key=os.getenv("OPENAI_API_KEY"),
         )
 
-    user_message = f"Write a haiku about {body.topic}." if body.topic else "Write a haiku."
+    topic = body.topic if body else None
+    user_message = f"Write a haiku about {topic}." if topic else "Write a haiku."
 
     def _call() -> str:
         try:
