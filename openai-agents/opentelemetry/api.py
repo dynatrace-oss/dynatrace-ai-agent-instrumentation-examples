@@ -60,20 +60,33 @@ tracer = trace.get_tracer("openai-agents")
 # =========================
 # Each chat turn arrives as its own request and therefore its own trace. To stitch
 # a whole conversation back together we (1) set a stable gen_ai.conversation.id on
-# the turn's root span, (2) publish it to OTel baggage in /chat so the agent/model/
-# tool child spans created by the Agents SDK + Traceloop inherit it (via the span
-# processor below), and (3) link each turn's trace to the previous turn's.
-from opentelemetry import baggage, context as otel_context
+# the turn's root span, (2) stamp that same id onto the agent/model/tool child spans
+# created by the Agents SDK + Traceloop, and (3) link each turn's trace to the
+# previous turn's.
+#
+# The whole turn runs in one process, so (2) only needs *in-process* propagation:
+# a contextvar set in /chat, read by the span processor below at span start. No OTel
+# baggage — baggage carries values across service boundaries (into outgoing request
+# headers), which this single service neither needs nor should leak to third parties.
+import contextvars
+
 from opentelemetry.sdk.trace import SpanProcessor as _SpanProcessor
 
 GEN_AI_CONVERSATION_ID = "gen_ai.conversation.id"
 
+# Holds the current turn's conversation id for the span processor to read. contextvars
+# propagate to the same async task and its awaited coroutines, so the spans the Agents
+# SDK opens during Runner.run inherit it.
+_conversation_id_var: contextvars.ContextVar = contextvars.ContextVar(
+    "gen_ai_conversation_id", default=None
+)
+
 
 class _ConversationIdSpanProcessor(_SpanProcessor):
-    """Stamp gen_ai.conversation.id from baggage onto every span at start."""
+    """Stamp gen_ai.conversation.id from the contextvar onto every span at start."""
 
     def on_start(self, span, parent_context=None):
-        conv_id = baggage.get_baggage(GEN_AI_CONVERSATION_ID, parent_context)
+        conv_id = _conversation_id_var.get()
         if conv_id:
             span.set_attribute(GEN_AI_CONVERSATION_ID, conv_id)
 
@@ -330,11 +343,9 @@ async def chat_endpoint(req: ChatRequest):
         old_context = state["context"].model_dump().copy()
         guardrail_checks: List[GuardrailCheck] = []
 
-        # Publish the conversation id to baggage so every child span created during
-        # the agent run (model calls, tool calls, guardrails) inherits it.
-        _conv_token = otel_context.attach(
-            baggage.set_baggage(GEN_AI_CONVERSATION_ID, conversation_id)
-        )
+        # Make the conversation id visible in-process so every child span created
+        # during the agent run (model calls, tool calls, guardrails) inherits it.
+        _conv_token = _conversation_id_var.set(conversation_id)
         try:
             result = await Runner.run(current_agent, state["input_items"], context=state["context"])
         except InputGuardrailTripwireTriggered as e:
@@ -370,7 +381,7 @@ async def chat_endpoint(req: ChatRequest):
                 guardrails=guardrail_checks,
             )
         finally:
-            otel_context.detach(_conv_token)
+            _conversation_id_var.reset(_conv_token)
 
         messages: List[MessageResponse] = []
         events: List[AgentEvent] = []
