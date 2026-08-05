@@ -1,5 +1,4 @@
 boto3
 fastapi
 uvicorn[standard]
-opentelemetry-sdk
-opentelemetry-exporter-otlp-proto-http
+opentelemetry-api
