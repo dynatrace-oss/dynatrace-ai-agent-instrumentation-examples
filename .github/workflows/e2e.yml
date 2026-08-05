@@ -152,14 +152,15 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          # aws-bedrock-agentcore/oneagent-opentelemetry: no real harness exists in this
-          # AWS account yet, hence MOCK_AGENTCORE. The app has no OTel SDK
-          # exporter of its own -- it relies entirely on OneAgent's
-          # "OpenTelemetry (Python)" opt-in to capture its manually created
-          # span -- so no OTLP endpoint env vars are needed here. Harmless
-          # no-op for every other suite in this matrix, which doesn't read
-          # this variable name.
+          # aws-bedrock-agentcore/oneagent-opentelemetry: no real harness exists
+          # in this AWS account yet, hence MOCK_AGENTCORE. The span itself has
+          # no OTel SDK exporter -- it relies entirely on OneAgent's
+          # "OpenTelemetry (Python)" opt-in -- but the metrics ARE exported
+          # directly via a real SDK MeterProvider, hence the metrics endpoint.
+          # Harmless no-op for every other suite in this matrix, which doesn't
+          # read these variable names.
           MOCK_AGENTCORE: ${{ matrix.needs_mock_agentcore && 'true' || '' }}
+          OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: ${{ matrix.needs_mock_agentcore && format('{0}/api/v2/otlp/v1/metrics', secrets.DT_ENDPOINT) || '' }}
         run: |
           set -euo pipefail
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
