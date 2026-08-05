@@ -1,4 +1,0 @@
-boto3
-fastapi
-uvicorn[standard]
-opentelemetry-api

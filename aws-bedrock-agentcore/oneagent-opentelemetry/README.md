@@ -1,4 +1,4 @@
-# Amazon Bedrock AgentCore — managed harness (`invoke_harness`) + OpenTelemetry
+# Amazon Bedrock AgentCore — managed harness (`invoke_harness`) + OneAgent/OpenTelemetry
 
 PoC for a specific, common scenario: your service is the **caller** of a fully-managed
 [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html)
@@ -24,27 +24,34 @@ This demo requires **OneAgent installed on the host**, plus one tenant setting t
 > Docs: [OneAgent and OpenTelemetry — configuration, Python prerequisites](https://docs.dynatrace.com/docs/ingest-from/dynatrace-oneagent/oneagent-and-opentelemetry/configuration#prereq--python)
 
 Without this setting, OneAgent never intercepts the manually created span in `main.py` at all —
-and since this app has no OTel SDK exporter of its own (see below), that span is then silently
-dropped, not merely disconnected. There is no fallback path.
+and since this app has no OTel SDK *span* exporter of its own (see below), that span is then
+silently dropped, not merely disconnected. There is no fallback path for the span. The metrics
+(see below) need their own OTLP endpoint + API token regardless of this setting.
 
 ## How it works
 
 A FastAPI orchestrator (`server.py` / `main.py`) calls `boto3.client("bedrock-agentcore").invoke_harness(...)`,
-wrapped in a span created via the **plain OpenTelemetry API** — `opentelemetry.trace.get_tracer(...)`,
-`start_as_current_span(...)`, `set_attribute(...)` — following the
-[GenAI semantic conventions](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/opentelemetry):
+wrapped in a span following the
+[GenAI semantic conventions](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/opentelemetry).
+**Traces and metrics are deliberately instrumented differently** — see why below:
 
 ```
 FastAPI orchestrator (async handler -> asyncio.to_thread)
   └─ OneAgent auto-instruments "POST /invoke" (HTTP entry span)
-       └─ span "invoke_harness" (gen_ai.* attributes) -- plain OTel API, no SDK, no exporter
+       └─ span "invoke_harness" (gen_ai.* attributes)     -- plain OTel API, no SDK, no exporter
             └─ client.invoke_harness(harnessArn=..., traceParent=..., ...)
                  └─ streamed response: contentBlockDelta* -> messageStop -> metadata
+  └─ gen_ai.client.token.usage / gen_ai.client.operation.duration metrics -- real OTel SDK
+       MeterProvider + OTLP exporter, pointed directly at Dynatrace
 ```
 
-**Deliberately no `opentelemetry-sdk`, no exporter, no `TracerProvider`.** An earlier version of
-this PoC configured its own OTLP exporter pointed directly at Dynatrace. That turned out to be
-actively wrong here, not just redundant — see "Why there's no OTel SDK in this app" below.
+The span also carries `gen_ai.input.messages` / `gen_ai.output.messages` (the prompt sent and the
+harness's assembled response text), using the same message-form shape as
+[`aws-bedrock/opentelemetry`](../../aws-bedrock/opentelemetry)'s `_stamp_turn_io()` —
+`json.dumps([{"role": ..., "parts": [{"type": "text", "content": ...}]}])`. Only the message form
+is set (not the flat `gen_ai.prompt.N`/`gen_ai.completion.0` form), since the Prompts view renders
+both if present, duplicating the same turn. This is what makes the actual prompt/response text
+show up in the AI Observability app's Prompts view, not just token counts and metadata.
 
 Three things about `invoke_harness` itself this demo verifies concretely (checked against the
 `bedrock-agentcore` botocore service model, `2024-02-28`), which weren't obvious from AWS's docs
@@ -65,30 +72,42 @@ alone:
    simpler than the AWS sample repo's approach for `invoke_agent_runtime`, which needs a
    boto3 event hook to inject headers manually.
 
-## Why there's no OTel SDK in this app
+## Why traces and metrics are instrumented differently
 
-Found empirically while building the CI verification below: once OneAgent's `OpenTelemetry (Python)` opt-in is
-enabled, **OneAgent intercepts `start_as_current_span()` calls directly** and creates its own
-correctly-correlated span for them — as a real child of the incoming HTTP request, sharing
-OneAgent's own trace ID. This happens purely from the plain `opentelemetry-api` calls; no SDK,
-no `TracerProvider`, no exporter needed on the app's side at all.
+**The span** is created via the plain `opentelemetry-api` only — no SDK, no exporter, no
+`TracerProvider`. Found empirically while building the CI verification below: once OneAgent's
+`OpenTelemetry (Python)` opt-in is enabled, **OneAgent intercepts `start_as_current_span()`
+calls directly** and creates its own correctly-correlated span for them — a real child of the
+incoming HTTP request, sharing OneAgent's own trace ID. This happens purely from the plain API
+calls; no SDK, no `TracerProvider`, no exporter needed on the app's side at all.
 
-Configuring the app's *own* SDK `TracerProvider` + OTLP exporter **on top of that does not get
+Configuring the app's *own* SDK `TracerProvider` + span exporter **on top of that does not get
 replaced or blocked** — it runs in parallel, as a second, fully independent pipeline. The result,
 confirmed directly in Dynatrace: the exact same `invoke_harness()` call produced **two separate
 span records**, 0.7ms apart — one correctly correlated (`dt.openpipeline.source: oneagent`, same
 trace as OneAgent's `POST /invoke`), and one disconnected duplicate (`dt.openpipeline.source:
 /api/v2/otlp/v1/traces`, its own unrelated trace ID), because the app's own SDK pipeline has no
-visibility into OneAgent's separately-tracked context.
+visibility into OneAgent's separately-tracked context. Dropping the app's own span exporter
+entirely and relying only on the API removes the duplicate and keeps the correlated copy.
 
-Dropping the app's own exporter entirely and relying only on the API removes the duplicate and
-keeps the correlated copy — which is what this version of the app does.
+**The metrics** (`gen_ai.client.token.usage`, `gen_ai.client.operation.duration`) take the
+*opposite* approach: exported directly via a real SDK `MeterProvider` + OTLP exporter
+(`main.py`'s `setup_metrics_instrumentation()`). This looks inconsistent with the span, but
+isn't: Dynatrace's PPX pipeline has a builtin mechanism (tracked internally as AI-351) that
+*derives* these same two metrics server-side from OneAgent-sourced span attributes — which
+would make a self-exported copy genuinely redundant and double-counted, exactly like the span
+duplication above, if it were active. It wasn't, on the tenant this was tested against: after
+the span-only version of this app ran with zero metrics exporter, we waited 24+ minutes and
+queried Dynatrace directly — zero `gen_ai.client.*` datapoints appeared for this service the
+entire time. With no competing mechanism actually producing the metric, exporting it directly
+carries none of the duplication risk the span had, and it's the only way to get the data at all
+on this tenant. (The two earlier-observed datapoints, at the very start of this investigation,
+most likely came from an even-earlier version of this app that still had its own metrics
+exporter running — not from AI-351.)
 
-**Tradeoff:** this app now produces literally zero telemetry without OneAgent (and that opt-in
-setting) present. If you need this code to also work standalone against a plain OTel Collector —
-e.g. for local development without OneAgent — that requires reintroducing an SDK/exporter behind
-a flag, and you'd need to decide how to avoid reproducing the same duplication when OneAgent
-*is* also present.
+**Tradeoff:** the span produces zero data without OneAgent (and its opt-in) present — there's no
+fallback exporter for it. The metrics work independently of OneAgent, as long as the OTLP
+endpoint + token are configured.
 
 ## What this does *not* solve
 
@@ -119,8 +138,10 @@ deliberately uses the officially documented mechanism instead.
 ## Running this demo
 
 Requires OneAgent installed on the host with the `OpenTelemetry (Python) [Opt-In]` feature
-enabled (see [Dynatrace prerequisites](#dynatrace-prerequisites) above) — without it, this app
-produces no telemetry at all, regardless of mock vs. real mode below.
+enabled (see [Dynatrace prerequisites](#dynatrace-prerequisites) above) for the span — without
+it, no span data at all, regardless of mock vs. real mode below. The metrics need
+`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` / `DT_API_TOKEN` set (see `.env.sample`) independently of
+OneAgent.
 
 ### Mock mode (no AWS credentials, no deployed harness)
 
@@ -141,6 +162,7 @@ harness.
 cp .env.sample .env
 # set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / HARNESS_ARN
 # set MOCK_AGENTCORE=false
+# set OTEL_EXPORTER_OTLP_METRICS_ENDPOINT / DT_API_TOKEN for your Dynatrace environment
 make install
 make run
 make request
@@ -162,7 +184,7 @@ timeseries sum(gen_ai.client.token.usage), by:{gen_ai.token.type}, from:-1h
 
 ## CI: verifying OneAgent captures and correlates the manual span
 
-`test/e2e/aws_bedrock_agentcore_opentelemetry_test.go` (`TestAWSBedrockAgentCoreOpenTelemetryOneAgent`)
+`test/e2e/aws_bedrock_agentcore_oneagent_opentelemetry_test.go` (`TestAWSBedrockAgentCoreOneAgentOpenTelemetry`)
 runs this demo in CI with OneAgent installed on the runner (with the opt-in feature enabled on
 the tenant), against the real e2e-test Dynatrace tenant, with `MOCK_AGENTCORE=true` (no
 AgentCore harness exists in this AWS account yet — see below). It asserts:
@@ -171,14 +193,14 @@ AgentCore harness exists in this AWS account yet — see below). It asserts:
    (baseline attribute audit via the shared `GenericProfile`).
 2. **The trace contains at least 2 spans** (OneAgent's own HTTP entry span + the manually
    created `invoke_harness` span) **and every span in it is OneAgent-sourced** — this app has
-   no other export path, so a non-OneAgent-sourced span, or the manual span missing/on its own
-   trace, means OneAgent silently failed to capture it.
+   no other span export path, so a non-OneAgent-sourced span, or the manual span missing/on its
+   own trace, means OneAgent silently failed to capture it.
 3. **No disconnected duplicate exists** — a regression check specifically for the bug described
    above (an earlier version of this app produced exactly this: a second `invoke_harness` span,
    same name, different trace, non-`oneagent` source).
-4. `gen_ai.client.operation.duration` reports data for the service — this also answers whether
-   OneAgent's opt-in captures *metric* instruments the same way it captures spans, which wasn't
-   confirmed independently of this test.
+4. `gen_ai.client.operation.duration` reports data for the service — via the app's own SDK
+   metrics exporter (see "Why traces and metrics are instrumented differently" above), not via
+   OneAgent.
 
 This setup only exercises OneAgent's *unrelated* auto-instrumentation (FastAPI) plus its
 OpenTelemetry interception of the manual span — because `MOCK_AGENTCORE=true` means no real
@@ -206,3 +228,9 @@ has (or lacks) its own dedicated sensor for that service. That remains open belo
   span, or whether that restriction only governs which spans can start a *new* trace — the CI
   test above confirms our `CLIENT`-kind span gets captured in practice, but the exact boundary
   of that default isn't independently confirmed from the docs alone.
+- Why AI-351's span-derived metric extraction isn't producing data for this span on the tested
+  tenant — could be the governing feature flags being off (they default to `false`; see the
+  ai-observability-workspace's internal notes on AI-351/PPX for the exact flag names), or some
+  other unmet matching condition. Not investigated further once direct metric export was
+  confirmed to work; worth revisiting if the duplication risk described above ever needs
+  reconsidering.

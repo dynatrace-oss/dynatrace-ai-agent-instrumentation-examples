@@ -152,7 +152,7 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          # aws-bedrock-agentcore/opentelemetry: no real harness exists in this
+          # aws-bedrock-agentcore/oneagent-opentelemetry: no real harness exists in this
           # AWS account yet, hence MOCK_AGENTCORE. The app has no OTel SDK
           # exporter of its own -- it relies entirely on OneAgent's
           # "OpenTelemetry (Python)" opt-in to capture its manually created

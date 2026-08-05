@@ -7,19 +7,21 @@ import (
 	"time"
 )
 
-// TestAWSBedrockAgentCoreOpenTelemetryOneAgent verifies that a manually
-// created span (gen_ai.* attributes around Bedrock AgentCore's
-// invoke_harness, created via the plain OpenTelemetry API -- no SDK, no
-// exporter, no TracerProvider; see main.py's docstring) gets correctly
-// correlated into the same trace as OneAgent's own auto-instrumented HTTP
-// entry span, and that both deliver data the AI Observability app reads
-// (spans + gen_ai.client.* metrics).
+// TestAWSBedrockAgentCoreOneAgentOpenTelemetry verifies this demo's hybrid
+// instrumentation: a manually created span (gen_ai.* attributes around
+// Bedrock AgentCore's invoke_harness, created via the plain OpenTelemetry
+// API -- no SDK, no exporter, no TracerProvider; see main.py's docstring)
+// gets correctly correlated into the same trace as OneAgent's own
+// auto-instrumented HTTP entry span, while the accompanying
+// gen_ai.client.* metrics are exported directly via a real OTel SDK
+// MeterProvider/OTLP exporter (metrics only -- deliberately asymmetric with
+// the span; see main.py for why).
 //
-// This depends on OneAgent's "OpenTelemetry (Python)" opt-in feature being
-// enabled on the tenant (Settings > OneAgent features) -- see the PoC
-// README's "Dynatrace prerequisites" section. Without it, OneAgent never
-// intercepts the manually created span at all, and it is silently dropped
-// (this app has no exporter of its own to fall back to).
+// The span side depends on OneAgent's "OpenTelemetry (Python)" opt-in
+// feature being enabled on the tenant (Settings > OneAgent features) -- see
+// the PoC README's "Dynatrace prerequisites" section. Without it, OneAgent
+// never intercepts the manually created span at all, and it is silently
+// dropped (this app has no span exporter of its own to fall back to).
 //
 // MOCK_AGENTCORE=true is set for this suite (see e2e.yml /
 // compute-e2e-matrix.sh): no AgentCore harness is available in this AWS
@@ -27,10 +29,10 @@ import (
 // like a real InvokeHarness response. This means the test cannot confirm
 // whether OneAgent has its own dedicated sensor for the bedrock-agentcore
 // boto3 client -- no real botocore call to that service happens.
-func TestAWSBedrockAgentCoreOpenTelemetryOneAgent(t *testing.T) {
-	const service = "aws-bedrock-agentcore/opentelemetry-oneagent"
+func TestAWSBedrockAgentCoreOneAgentOpenTelemetry(t *testing.T) {
+	const service = "aws-bedrock-agentcore/oneagent-opentelemetry"
 
-	startApp(t, "aws-bedrock-agentcore/opentelemetry")
+	startApp(t, "aws-bedrock-agentcore/oneagent-opentelemetry")
 	triggerAgentCoreHarness(t)
 
 	dql := fmt.Sprintf(`fetch spans, from: now()-10m
@@ -54,19 +56,19 @@ func TestAWSBedrockAgentCoreOpenTelemetryOneAgent(t *testing.T) {
 
 	spans := fetchTraceSpans(t, ctx, records[0])
 
-	report := buildReport("aws-bedrock-agentcore", "opentelemetry-oneagent", GenericProfile, mergeSpans(spans))
+	report := buildReport("aws-bedrock-agentcore", "oneagent-opentelemetry", GenericProfile, mergeSpans(spans))
 	report.Note = "MOCK_AGENTCORE=true: no AgentCore harness available in this AWS account; " +
 		"invoke_harness replaced by an in-process fake stream shaped like a real response. " +
-		"This app has no OTel SDK exporter of its own -- OneAgent's \"OpenTelemetry (Python)\" " +
+		"This app has no OTel SDK span exporter of its own -- OneAgent's \"OpenTelemetry (Python)\" " +
 		"opt-in feature captures the manually created span directly and correlates it into " +
-		"OneAgent's own trace."
+		"OneAgent's own trace. Metrics (checked below) are exported separately via a real SDK exporter."
 	writeReport(t, report)
 	logAuditResult(t, report, len(spans))
 
 	// The actual "does the combination work" check: the manually created span
 	// must be correlated (same trace) with OneAgent's own HTTP entry span, and
 	// every span in the trace must be OneAgent-sourced -- there is no other
-	// export path in this app, so any non-OneAgent-sourced span, or a
+	// span export path in this app, so any non-OneAgent-sourced span, or a
 	// same-named span on a *different* trace, would mean OneAgent silently
 	// failed to capture it (dropped, not merely disconnected).
 	if len(spans) < 2 {
@@ -76,13 +78,13 @@ func TestAWSBedrockAgentCoreOpenTelemetryOneAgent(t *testing.T) {
 	}
 	for _, span := range spans {
 		if src := fmt.Sprint(span["dt.openpipeline.source"]); src != "oneagent" {
-			t.Errorf("expected every span in this trace to be OneAgent-sourced (no other export path "+
-				"exists in this app), found span %q with dt.openpipeline.source=%q", span["span.name"], src)
+			t.Errorf("expected every span in this trace to be OneAgent-sourced (no other span export "+
+				"path exists in this app), found span %q with dt.openpipeline.source=%q", span["span.name"], src)
 		}
 	}
 
 	// A regression check for the specific bug this test caught before the fix:
-	// an earlier version of this app also configured its own OTel SDK
+	// an earlier version of this app also configured its own OTel SDK span
 	// exporter, which produced a *second*, disconnected copy of the same
 	// invoke_harness span (same name, different trace, non-oneagent source).
 	// Confirm that duplicate is really gone, not just currently absent.
@@ -91,9 +93,12 @@ func TestAWSBedrockAgentCoreOpenTelemetryOneAgent(t *testing.T) {
 | filter span.name == "invoke_harness"
 | filter dt.openpipeline.source != "oneagent"`, service))
 
-	// The metric the AI Observability app's cost/latency charts read. Whether
-	// OneAgent's OpenTelemetry (Python) opt-in also captures metric
-	// instruments (not just spans) the same way is exactly what this
-	// assertion tells us -- unconfirmed before this test.
+	// The metric the AI Observability app's cost/latency charts read. Unlike
+	// the span, this app exports it via a real OTel SDK MeterProvider/OTLP
+	// exporter (main.py's setup_metrics_instrumentation()) -- confirmed
+	// empirically that PPX's span-derived metric extraction, which covers
+	// this same pair of metrics for OneAgent-sourced spans, was not
+	// producing data for this span on the tested tenant (waited 24+ minutes,
+	// zero datapoints), so direct export is the only path that works here.
 	assertGenAIDurationMetric(t, service)
 }

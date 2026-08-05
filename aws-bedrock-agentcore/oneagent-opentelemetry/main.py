@@ -8,28 +8,46 @@ Bedrock calls from the inside), this demo represents a caller that does NOT
 own the harness's execution: it only has a `harnessArn` and the boto3
 `bedrock-agentcore` client. There is nothing to install OneAgent into on the
 harness side, so the caller manually creates a `gen_ai.*`-conventioned span
-(and matching metrics) around the `invoke_harness` call itself, using only
-the plain OpenTelemetry *API* (no SDK, no exporter, no TracerProvider).
+(and matching metrics) around the `invoke_harness` call itself.
 
-That is deliberate, not incomplete: with OneAgent's "OpenTelemetry (Python)"
-opt-in enabled (see README), OneAgent intercepts these API calls directly and
-correlates the resulting span into its own PurePath -- correctly, as a child
-of the incoming HTTP request. Configuring this app's own SDK
-TracerProvider/exporter on top of that (an earlier version of this PoC did)
-does not get replaced or blocked by OneAgent; it runs in parallel, producing
-a second, disconnected copy of the same span via a separate pipeline (proven
-empirically -- see the README). Using only the API and letting OneAgent do
-the capturing avoids that duplication entirely. The tradeoff: this app now
-produces zero telemetry without OneAgent (and that opt-in) present -- see the
-README's "Dynatrace prerequisites" section.
+Traces and metrics are deliberately handled differently here:
+
+- The SPAN is created via the plain OpenTelemetry *API* only -- no SDK, no
+  exporter, no TracerProvider. With OneAgent's "OpenTelemetry (Python)"
+  opt-in enabled (see README), OneAgent intercepts start_as_current_span()
+  calls directly and correlates the resulting span into its own PurePath, as
+  a real child of the incoming HTTP request. Configuring this app's own SDK
+  TracerProvider/exporter on top of that (an earlier version of this PoC
+  did) does not get replaced or blocked by OneAgent -- it runs in parallel,
+  producing a second, disconnected copy of the same span via a separate
+  pipeline (proven empirically -- see the README). Using only the API here
+  avoids that duplication.
+- The METRICS (gen_ai.client.token.usage / gen_ai.client.operation.duration)
+  ARE exported via a real SDK MeterProvider + OTLP exporter (see
+  setup_metrics_instrumentation() below), unlike the span. Confirmed
+  empirically (see README): PPX's span-derived metric extraction, which
+  covers this same pair of metrics for OneAgent-sourced *spans* (and would
+  have made a self-exported copy here genuinely redundant/double-counted),
+  is not actually producing data for this span on the tested tenant --
+  waited 24+ minutes with zero datapoints. Exporting metrics directly is the
+  only way to get them, and does not carry the same duplication risk the
+  span did, because nothing else is currently producing them.
 """
 
+import json
 import os
 import time
 import uuid
 
 import boto3
 from opentelemetry import metrics, trace
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics import Counter, Histogram, MeterProvider
+from opentelemetry.sdk.metrics.export import (
+    AggregationTemporality,
+    PeriodicExportingMetricReader,
+)
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
 MOCK_AGENTCORE = os.getenv("MOCK_AGENTCORE", "false").lower() == "true"
@@ -44,25 +62,64 @@ DEFAULT_MODEL_ID = os.getenv("HARNESS_MODEL_ID", "us.anthropic.claude-haiku-4-5-
 
 _harness_client = None
 
-# opentelemetry-api's get_tracer()/get_meter()/create_counter()/create_histogram()
-# are always safe to call -- with no TracerProvider/MeterProvider configured
-# (this app never calls set_tracer_provider()/set_meter_provider()), they
-# return no-op proxies by default. OneAgent's Python OpenTelemetry support
-# intercepts the start_as_current_span() call itself, so it captures real span
-# data as long as OneAgent is present with that feature enabled, regardless of
-# whether these proxies are backed by a real SDK.
+# opentelemetry-api's get_tracer() is always safe to call -- with no
+# TracerProvider configured (this app never calls set_tracer_provider()), it
+# returns a no-op proxy by default. OneAgent's Python OpenTelemetry support
+# intercepts the start_as_current_span() call itself, so it captures real
+# span data as long as OneAgent is present with that feature enabled,
+# regardless of whether this proxy is backed by a real SDK.
 _tracer = trace.get_tracer(__name__)
-_meter = metrics.get_meter(__name__)
-# Whether OneAgent also captures metric instruments the same way it captures
-# spans is not yet confirmed -- see the README's "open questions" section.
-# These mirror gen_ai.client.token.usage / gen_ai.client.operation.duration,
-# the metrics the AI Observability app's cost/latency charts read.
-_token_usage_counter = _meter.create_counter(
-    "gen_ai.client.token.usage", unit="{token}", description="Number of tokens used in GenAI operations"
-)
-_operation_duration_histogram = _meter.create_histogram(
-    "gen_ai.client.operation.duration", unit="s", description="GenAI operation duration"
-)
+_meter = None
+_token_usage_counter = None
+_operation_duration_histogram = None
+
+
+def setup_metrics_instrumentation():
+    """Wires up a real OTLP/HTTP *metrics* pipeline pointed at Dynatrace.
+
+    Deliberately metrics-only -- see the module docstring for why the span
+    stays on the plain API with no exporter. Dynatrace's OTLP metric ingest
+    only accepts delta temporality, so the reader is configured accordingly
+    -- otherwise cumulative sums get rejected with HTTP 400 (same gotcha the
+    aws-bedrock/opentelemetry demo documents).
+    """
+    global _meter, _token_usage_counter, _operation_duration_histogram
+
+    service_name = os.getenv("OTEL_SERVICE_NAME", "aws-bedrock-agentcore-example")
+    resource = Resource.create({"service.name": service_name})
+
+    metric_exporter = OTLPMetricExporter(
+        endpoint=os.environ["OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"],
+        headers={"Authorization": f"Api-Token {os.environ['DT_API_TOKEN']}"},
+        preferred_temporality={
+            Counter: AggregationTemporality.DELTA,
+            Histogram: AggregationTemporality.DELTA,
+        },
+    )
+    meter_provider = MeterProvider(
+        resource=resource,
+        metric_readers=[PeriodicExportingMetricReader(metric_exporter, export_interval_millis=5000)],
+    )
+    metrics.set_meter_provider(meter_provider)
+
+    _meter = metrics.get_meter(__name__)
+    # These mirror gen_ai.client.token.usage / gen_ai.client.operation.duration,
+    # the metrics the AI Observability app's cost/latency charts read.
+    _token_usage_counter = _meter.create_counter(
+        "gen_ai.client.token.usage", unit="{token}", description="Number of tokens used in GenAI operations"
+    )
+    _operation_duration_histogram = _meter.create_histogram(
+        "gen_ai.client.operation.duration", unit="s", description="GenAI operation duration"
+    )
+
+
+def _messages(role: str, text: str) -> str:
+    # Matches the message-form shape used elsewhere in this repo
+    # (aws-bedrock/opentelemetry's _stamp_turn_io()) for gen_ai.input.messages /
+    # gen_ai.output.messages -- only the message form is set (not the flat
+    # gen_ai.prompt.N/completion.0 form), since the Prompts view renders both
+    # if both are present, duplicating the same turn.
+    return json.dumps([{"role": role, "parts": [{"type": "text", "content": text}]}])
 
 
 def _get_harness_client():
@@ -120,6 +177,7 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
         span.set_attribute("gen_ai.conversation.id", session_id)
         span.set_attribute("gen_ai.request.model", DEFAULT_MODEL_ID)
         span.set_attribute("aws.bedrock_agentcore.harness_arn", harness_arn)
+        span.set_attribute("gen_ai.input.messages", _messages("user", prompt))
 
         # InvokeHarness accepts W3C trace-context fields as first-class
         # request parameters (they map to the traceparent/tracestate/baggage
@@ -177,9 +235,11 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
 
             duration_s = time.monotonic() - start
             latency_ms = latency_ms_total
+            response_text = "".join(text_parts)
             if metadata_event_count > 1:
                 span.set_attribute("aws.bedrock_agentcore.metadata_event_count", metadata_event_count)
 
+            span.set_attribute("gen_ai.output.messages", _messages("assistant", response_text))
             if input_tokens is not None:
                 span.set_attribute("gen_ai.usage.input_tokens", input_tokens)
             if output_tokens is not None:
@@ -198,7 +258,7 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
 
             span.set_status(Status(StatusCode.OK))
             return {
-                "text": "".join(text_parts),
+                "text": response_text,
                 "usage": {"inputTokens": input_tokens, "outputTokens": output_tokens},
                 "harness_latency_ms": latency_ms,
                 "stop_reason": stop_reason,

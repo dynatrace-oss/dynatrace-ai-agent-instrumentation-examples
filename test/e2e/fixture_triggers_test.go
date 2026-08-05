@@ -137,9 +137,9 @@ func triggerAgent(t *testing.T) {
 }
 
 // triggerAgentCoreHarness POSTs a topic to /invoke on localhost:8000
-// (aws-bedrock-agentcore/opentelemetry). MOCK_AGENTCORE=true in that app's
-// environment replays a synthetic InvokeHarness stream instead of calling AWS,
-// so this trigger works without real harness credentials.
+// (aws-bedrock-agentcore/oneagent-opentelemetry). MOCK_AGENTCORE=true in that
+// app's environment replays a synthetic InvokeHarness stream instead of
+// calling AWS, so this trigger works without real harness credentials.
 func triggerAgentCoreHarness(t *testing.T) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/invoke"
