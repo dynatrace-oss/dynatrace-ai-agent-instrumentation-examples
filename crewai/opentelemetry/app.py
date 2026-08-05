@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import os
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
@@ -58,7 +59,8 @@ async def haiku() -> str:
         result = crew.kickoff()
         return str(result)
 
-    return await asyncio.to_thread(_call)
+    ctx = contextvars.copy_context()
+    return await asyncio.get_event_loop().run_in_executor(None, ctx.run, _call)
 
 
 if __name__ == "__main__":

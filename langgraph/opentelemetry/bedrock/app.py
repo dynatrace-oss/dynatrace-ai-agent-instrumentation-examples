@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import os
 from typing import TypedDict
 
@@ -95,7 +96,8 @@ async def haiku(req: HaikuRequest | None = None) -> str:
         result = graph.invoke({"topic": topic, "haiku": ""})
         return str(result["haiku"])
 
-    return await asyncio.to_thread(_call)
+    ctx = contextvars.copy_context()
+    return await asyncio.get_event_loop().run_in_executor(None, ctx.run, _call)
 
 
 if __name__ == "__main__":
