@@ -41,17 +41,18 @@ processors:
   # JSON blob.
   #
   # Azure OpenAI wraps the model response and content-filter metadata together in
-  # output.value. The prompt_filter_results array captures per-prompt filter
-  # verdicts (hate, self-harm, sexual, violence, etc.) returned by Azure content
-  # filtering. This processor promotes that array to a dedicated span attribute
-  # so it is queryable in Dynatrace DQL without parsing the full output blob.
+  # output.value. Two kinds of filter results are promoted to dedicated span
+  # attributes so they are queryable in Dynatrace DQL without parsing the full
+  # output blob:
   #
   # INPUT  (OpenInference / Azure OpenAI):
   #   output.value  (JSON string)
-  #     └── prompt_filter_results  — array of per-prompt content-filter results
+  #     ├── prompt_filter_results  — array of per-prompt content-filter results
+  #     └── choices[0].content_filter_results  — per-completion filter verdicts
   #
   # OUTPUT:
-  #   gen_ai.prompt.prompt_filter_results  — serialised filter-result array
+  #   gen_ai.prompt.prompt_filter_results      — serialised prompt-level results
+  #   gen_ai.completion.content_filter_results — serialised completion-level results
   #
   # NOTE: This processor must appear before gen_ai_normalizer in the pipeline.
   transform/output_prompt_results:
@@ -61,6 +62,7 @@ processors:
         statements:
           - set(attributes["temp.output_value"], ParseJSON(attributes["output.value"])) where attributes["output.value"] != nil
           - set(attributes["gen_ai.prompt.prompt_filter_results"], String(attributes["temp.output_value"]["prompt_filter_results"])) where attributes["temp.output_value"]["prompt_filter_results"] != nil
+          - set(attributes["gen_ai.completion.content_filter_results"], String(attributes["temp.output_value"]["choices"][0]["content_filter_results"])) where attributes["temp.output_value"]["choices"] != nil
           - delete_key(attributes, "temp.output_value")
 
   # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
