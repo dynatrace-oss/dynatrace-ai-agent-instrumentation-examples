@@ -4,6 +4,7 @@ from typing import TypedDict
 
 from openinference.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry import trace
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -12,6 +13,7 @@ _service_name = os.environ.get("OTEL_SERVICE_NAME", "langgraph/openinference")
 _resource = Resource.create({SERVICE_NAME: _service_name})
 _tracer_provider = trace_sdk.TracerProvider(resource=_resource)
 _tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
+trace.set_tracer_provider(_tracer_provider)
 LangChainInstrumentor().instrument(tracer_provider=_tracer_provider)
 
 from fastapi import FastAPI
