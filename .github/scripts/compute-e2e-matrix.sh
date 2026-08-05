@@ -19,7 +19,8 @@ OA_ALL='[
   {"name":"aws-bedrock-agents-oneagent","app_dir":"aws-bedrock-agents/oneagent","test_file":"test/e2e/aws_bedrock_agents_oneagent_test.go","test_run":"TestAWSBedrockAgentsOneAgent","otel_service_name":"aws-bedrock-agents/oneagent", "oneagent_warmup_seconds":"60"},
   {"name":"mistral-oneagent","app_dir":"mistral/oneagent","test_file":"test/e2e/mistral_test.go","test_run":"TestMistralOneAgent","otel_service_name":"mistral/oneagent","model":"mistral-small-latest"},
   {"name":"langgraph-oneagent","app_dir":"langgraph/oneagent","test_file":"test/e2e/langgraph_oneagent_test.go","test_run":"TestLangGraphOneAgent","otel_service_name":"langgraph/oneagent"},
-  {"name":"aws-bedrock-agentcore-opentelemetry-oneagent","app_dir":"aws-bedrock-agentcore/opentelemetry","test_file":"test/e2e/aws_bedrock_agentcore_opentelemetry_test.go","test_run":"TestAWSBedrockAgentCoreOpenTelemetryOneAgent","otel_service_name":"aws-bedrock-agentcore/opentelemetry-oneagent","needs_otlp_endpoint":true,"oneagent_warmup_seconds":"60"}
+  {"name":"aws-bedrock-agentcore-opentelemetry-oneagent","app_dir":"aws-bedrock-agentcore/opentelemetry","test_file":"test/e2e/aws_bedrock_agentcore_opentelemetry_test.go","test_run":"TestAWSBedrockAgentCoreOpenTelemetryOneAgent","otel_service_name":"aws-bedrock-agentcore/opentelemetry-oneagent","needs_otlp_endpoint":true,"oneagent_warmup_seconds":"60"},
+  {"name":"aws-bedrock-agentcore-oneagent-baseline","app_dir":"aws-bedrock-agentcore/opentelemetry","test_file":"test/e2e/aws_bedrock_agentcore_oneagent_baseline_test.go","test_run":"TestAWSBedrockAgentCoreOneAgentBaseline","otel_service_name":"aws-bedrock-agentcore/opentelemetry-oneagent","needs_otlp_endpoint":true,"oneagent_warmup_seconds":"60"}
 ]'
 
 OC_ALL='[

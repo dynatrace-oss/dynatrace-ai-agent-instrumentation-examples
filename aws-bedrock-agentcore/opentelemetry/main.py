@@ -39,11 +39,27 @@ GEN_AI_PROVIDER = "aws.bedrock_agentcore"
 # unset for that reason; see the README's "known gaps" section.
 DEFAULT_MODEL_ID = os.getenv("HARNESS_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
-_tracer = None
-_meter = None
-_token_usage_counter = None
-_operation_duration_histogram = None
 _harness_client = None
+
+# DIAGNOSTIC BRANCH (experiment/agentcore-oneagent-baseline): the OTel API's
+# get_tracer()/get_meter()/create_counter()/create_histogram() calls are always
+# safe -- they return no-op proxies bound to the default no-op provider when no
+# real TracerProvider/MeterProvider has been configured yet. Creating them
+# unconditionally at import time (rather than only inside setup_instrumentation)
+# lets this experiment skip calling setup_instrumentation() entirely -- i.e.
+# never call trace.set_tracer_provider()/metrics.set_meter_provider() -- while
+# every downstream span/metric call in invoke_harness() below still runs
+# harmlessly as a no-op, isolating exactly one variable: does OneAgent's own
+# instrumentation fire when the app never establishes its own OTel SDK
+# provider, vs. the real PoC where it does?
+_tracer = trace.get_tracer(__name__)
+_meter = metrics.get_meter(__name__)
+_token_usage_counter = _meter.create_counter(
+    "gen_ai.client.token.usage", unit="{token}", description="Number of tokens used in GenAI operations"
+)
+_operation_duration_histogram = _meter.create_histogram(
+    "gen_ai.client.operation.duration", unit="s", description="GenAI operation duration"
+)
 
 
 def setup_instrumentation():
@@ -53,9 +69,10 @@ def setup_instrumentation():
     metric reader is configured accordingly -- otherwise cumulative sums get
     rejected with HTTP 400 (same gotcha the aws-bedrock/opentelemetry demo
     documents).
-    """
-    global _tracer, _meter, _token_usage_counter, _operation_duration_histogram
 
+    Not called on this diagnostic branch (see server.py) -- that is the whole
+    point of the experiment.
+    """
     service_name = os.getenv("OTEL_SERVICE_NAME", "aws-bedrock-agentcore-example")
     resource = Resource.create({"service.name": service_name})
 
@@ -81,22 +98,6 @@ def setup_instrumentation():
         metric_readers=[PeriodicExportingMetricReader(metric_exporter, export_interval_millis=5000)],
     )
     metrics.set_meter_provider(meter_provider)
-
-    _tracer = trace.get_tracer(__name__)
-    _meter = metrics.get_meter(__name__)
-    # These two metric names/shapes intentionally mirror gen_ai.client.token.usage /
-    # gen_ai.client.operation.duration, which is what the AI Observability app's
-    # cost and latency charts read. Setting span attributes alone is not enough:
-    # the app's PPX pipeline only *derives* these metrics from spans for
-    # OneAgent-sourced telemetry -- for OTel-sourced telemetry (this demo), the
-    # app expects the metrics to be emitted directly, the same way the
-    # Traceloop-based aws-bedrock/opentelemetry demo does it.
-    _token_usage_counter = _meter.create_counter(
-        "gen_ai.client.token.usage", unit="{token}", description="Number of tokens used in GenAI operations"
-    )
-    _operation_duration_histogram = _meter.create_histogram(
-        "gen_ai.client.operation.duration", unit="s", description="GenAI operation duration"
-    )
 
 
 def _get_harness_client():
