@@ -122,12 +122,37 @@ timeseries sum(gen_ai.client.token.usage), by:{gen_ai.token.type}, from:-1h
 | filter gen_ai.provider.name == "aws.bedrock_agentcore"
 ```
 
+## CI: verifying OneAgent + OTel SDK coexistence
+
+`test/e2e/aws_bedrock_agentcore_opentelemetry_test.go` (`TestAWSBedrockAgentCoreOpenTelemetryOneAgent`)
+runs this demo in CI with OneAgent *also* installed on the runner, against the real e2e-test
+Dynatrace tenant, with `MOCK_AGENTCORE=true` (no AgentCore harness exists in this AWS account
+yet — see below). It asserts:
+
+1. The manually created `gen_ai.provider.name == "aws.bedrock_agentcore"` span lands correctly
+   (baseline attribute audit via the shared `GenericProfile`).
+2. **The actual "does the combination work" check**: within the *same trace*, there is also a
+   span with `dt.openpipeline.source == "oneagent"` — proving OneAgent's own auto-instrumentation
+   of the FastAPI/Starlette layer and this app's manually created OTel SDK span end up correlated
+   in one trace, rather than on two disjoint traces (or OneAgent dropping the request — see the
+   sync-route thread-context bug this repo has hit before).
+3. `gen_ai.client.operation.duration` reports data for the service (confirms the metrics path,
+   not just spans).
+
+This setup only exercises OneAgent's *unrelated* auto-instrumentation (FastAPI) coexisting with
+our manual span — because `MOCK_AGENTCORE=true` means no real botocore call to the
+`bedrock-agentcore` service ever happens, it cannot answer whether OneAgent has (or lacks) its
+own dedicated sensor for that service. That remains open below.
+
 ## Open questions for a real deployment
 
 - Confirm whether OneAgent's existing Bedrock GenAI sensor already covers the
   `bedrock-agentcore` boto3 client / `invoke_harness` before assuming manual instrumentation
   is required at all — it's a different botocore service ID than `bedrock-runtime`, so
-  coverage isn't guaranteed just because the plain Bedrock sensor exists.
+  coverage isn't guaranteed just because the plain Bedrock sensor exists. **Not testable without
+  a real harness** (this account currently lacks the AWS permissions to create one) — the CI
+  combo test above uses `MOCK_AGENTCORE=true`, which never makes a real `bedrock-agentcore` API
+  call, so it cannot exercise this.
 - Confirm what the Dynatrace Bedrock AgentCore Hub extension actually ingests for a
   fully-managed-harness caller (CloudWatch-sourced built-in telemetry vs. requiring
   ADOT-in-agent-code, which isn't available to a caller who doesn't own the harness).

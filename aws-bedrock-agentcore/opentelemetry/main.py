@@ -31,6 +31,13 @@ from opentelemetry.trace import SpanKind, Status, StatusCode
 
 MOCK_AGENTCORE = os.getenv("MOCK_AGENTCORE", "false").lower() == "true"
 GEN_AI_PROVIDER = "aws.bedrock_agentcore"
+# Matches the model already validated elsewhere in this repo (aws-bedrock/*).
+# Passed as a per-invocation override so the caller genuinely knows the
+# requested model -- InvokeHarness's response never reports which model the
+# harness actually used, so gen_ai.request.model can only be set from what we
+# asked for, not confirmed from the response. gen_ai.response.model is left
+# unset for that reason; see the README's "known gaps" section.
+DEFAULT_MODEL_ID = os.getenv("HARNESS_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 _tracer = None
 _meter = None
@@ -131,6 +138,7 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
         span.set_attribute("gen_ai.provider.name", GEN_AI_PROVIDER)
         span.set_attribute("gen_ai.agent.name", harness_arn.split("/")[-1])
         span.set_attribute("gen_ai.conversation.id", session_id)
+        span.set_attribute("gen_ai.request.model", DEFAULT_MODEL_ID)
         span.set_attribute("aws.bedrock_agentcore.harness_arn", harness_arn)
 
         # InvokeHarness accepts W3C trace-context fields as first-class
@@ -151,6 +159,7 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
                     harnessArn=harness_arn,
                     runtimeSessionId=session_id,
                     traceParent=trace_parent,
+                    model={"bedrockModelConfig": {"modelId": DEFAULT_MODEL_ID}},
                     messages=[{"role": "user", "content": [{"text": prompt}]}],
                 )
                 stream = response["stream"]

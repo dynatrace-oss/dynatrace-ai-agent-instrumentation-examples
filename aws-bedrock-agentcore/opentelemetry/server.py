@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -7,7 +8,14 @@ from main import run_orchestrator, setup_instrumentation
 
 setup_instrumentation()
 
-app = FastAPI(title="aws-bedrock-agentcore-opentelemetry")
+# Must match the service.name set on the OTel Resource in main.py
+# (OTEL_SERVICE_NAME, same default). When OneAgent is also installed on the
+# host, it derives a Smartscape SERVICE entity's service.name from this
+# FastAPI title -- keeping the two in sync is what lets a query scoped to one
+# service.name find both OneAgent's own spans and this app's manually created
+# OTel spans in the same trace.
+_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "aws-bedrock-agentcore-example")
+app = FastAPI(title=_SERVICE_NAME)
 
 
 class InvokeRequest(BaseModel):

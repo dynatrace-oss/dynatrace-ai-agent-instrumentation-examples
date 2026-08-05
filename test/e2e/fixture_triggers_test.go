@@ -136,6 +136,33 @@ func triggerAgent(t *testing.T) {
 	}
 }
 
+// triggerAgentCoreHarness POSTs a topic to /invoke on localhost:8000
+// (aws-bedrock-agentcore/opentelemetry). MOCK_AGENTCORE=true in that app's
+// environment replays a synthetic InvokeHarness stream instead of calling AWS,
+// so this trigger works without real harness credentials.
+func triggerAgentCoreHarness(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/invoke"
+
+	b, _ := json.Marshal(map[string]string{"topic": "plan a weekend in Seattle"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /invoke: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /invoke returned %d: %s", resp.StatusCode, body)
+	}
+}
+
 // triggerAgentGuardrail POSTs a football-topic task to /agent on
 // localhost:8000 to trip the demo's Bedrock guardrail (a topic-denial policy
 // on "football"). No-op when BEDROCK_GUARDRAIL_ID is unset.
