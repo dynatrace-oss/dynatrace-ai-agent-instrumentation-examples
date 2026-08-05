@@ -268,9 +268,12 @@ async def chat_endpoint(req: ChatRequest):
     # Resolve the conversation identity BEFORE opening the span. Each turn is its
     # own trace, so stitching a multi-turn conversation together needs both a stable
     # conversation_id (reused across turns) and a span link back to the prior turn.
-    existing_state = conversation_store.get(req.conversation_id) if req.conversation_id else None
+    # Honor a caller-supplied conversation_id so a client can keep one stable id
+    # across turns; mint one only when the caller doesn't provide it. (Previously an
+    # unknown caller id was discarded and replaced per turn, so turns never stitched.)
+    conversation_id: str = req.conversation_id or uuid4().hex
+    existing_state = conversation_store.get(conversation_id)
     is_new = existing_state is None
-    conversation_id: str = uuid4().hex if is_new else req.conversation_id  # type: ignore
 
     # Link this turn's trace back to the previous turn's root span, when known.
     turn_links: List[trace.Link] = []
