@@ -111,12 +111,26 @@ def _mock_stream(prompt: str):
     demo's instrumentation path can be exercised without AWS credentials or a
     deployed harness. Event names/fields match the botocore bedrock-agentcore
     2024-02-28 service model (InvokeHarnessStreamOutput / HarnessMetadataEvent).
+
+    Simulates two agent-loop iterations (e.g. a tool call followed by the
+    final answer), each with its own metadata event -- the schema does not
+    guarantee a single metadata event per invocation (the harness supports
+    maxIterations), so this exercises the multi-metadata accumulation path in
+    invoke_harness() rather than only the single-iteration case.
     """
     text = f"(mock harness response to: {prompt!r})"
     yield {"messageStart": {"role": "assistant"}}
+
+    # Iteration 1: a simulated tool call.
     yield {"contentBlockStart": {"contentBlockIndex": 0}}
-    yield {"contentBlockDelta": {"contentBlockIndex": 0, "delta": {"text": text}}}
+    yield {"contentBlockDelta": {"contentBlockIndex": 0, "delta": {"text": "(mock tool call)"}}}
     yield {"contentBlockStop": {"contentBlockIndex": 0}}
+    yield {"metadata": {"usage": {"inputTokens": 30, "outputTokens": 8, "totalTokens": 38}, "metrics": {"latencyMs": 400}}}
+
+    # Iteration 2: the final answer.
+    yield {"contentBlockStart": {"contentBlockIndex": 1}}
+    yield {"contentBlockDelta": {"contentBlockIndex": 1, "delta": {"text": text}}}
+    yield {"contentBlockStop": {"contentBlockIndex": 1}}
     yield {"messageStop": {"stopReason": "end_turn"}}
     yield {
         "metadata": {
@@ -165,8 +179,10 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
                 stream = response["stream"]
 
             text_parts = []
-            usage = {}
-            latency_ms = None
+            input_tokens = None
+            output_tokens = None
+            latency_ms_total = None
+            metadata_event_count = 0
             stop_reason = None
 
             for event in stream:
@@ -177,13 +193,26 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
                 elif "messageStop" in event:
                     stop_reason = event["messageStop"].get("stopReason")
                 elif "metadata" in event:
+                    # The harness runs an internal agent loop (maxIterations),
+                    # and the schema does not guarantee a single metadata event
+                    # per invocation -- accumulate rather than overwrite, so a
+                    # multi-iteration call reports total usage, not just
+                    # whichever iteration's event happened to arrive last.
+                    metadata_event_count += 1
                     meta = event["metadata"]
-                    usage = meta.get("usage", {}) or {}
-                    latency_ms = (meta.get("metrics", {}) or {}).get("latencyMs")
+                    event_usage = meta.get("usage", {}) or {}
+                    event_metrics = meta.get("metrics", {}) or {}
+                    if event_usage.get("inputTokens") is not None:
+                        input_tokens = (input_tokens or 0) + event_usage["inputTokens"]
+                    if event_usage.get("outputTokens") is not None:
+                        output_tokens = (output_tokens or 0) + event_usage["outputTokens"]
+                    if event_metrics.get("latencyMs") is not None:
+                        latency_ms_total = (latency_ms_total or 0) + event_metrics["latencyMs"]
 
             duration_s = time.monotonic() - start
-            input_tokens = usage.get("inputTokens")
-            output_tokens = usage.get("outputTokens")
+            latency_ms = latency_ms_total
+            if metadata_event_count > 1:
+                span.set_attribute("aws.bedrock_agentcore.metadata_event_count", metadata_event_count)
 
             if input_tokens is not None:
                 span.set_attribute("gen_ai.usage.input_tokens", input_tokens)
@@ -204,7 +233,7 @@ def invoke_harness(prompt: str, session_id: str) -> dict:
             span.set_status(Status(StatusCode.OK))
             return {
                 "text": "".join(text_parts),
-                "usage": usage,
+                "usage": {"inputTokens": input_tokens, "outputTokens": output_tokens},
                 "harness_latency_ms": latency_ms,
                 "stop_reason": stop_reason,
                 "trace_id": format(span_ctx.trace_id, "032x"),
