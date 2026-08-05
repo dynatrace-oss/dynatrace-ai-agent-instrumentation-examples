@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -41,6 +42,14 @@ func TestMain(m *testing.M) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", runAttr)
 
 	dtClient = dynatrace.New(mustEnv("DT_APPS_ENDPOINT"), mustEnv("DT_API_TOKEN"))
+
+	// Pre-create the reports directory so the upload-artifact step always finds
+	// it, even when a test fails before auditSpan has a chance to write a report.
+	reportsDir := filepath.Join(repoRoot(), "test", "e2e", "reports")
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not create reports dir: %v\n", err)
+	}
+
 	os.Exit(m.Run())
 }
 
