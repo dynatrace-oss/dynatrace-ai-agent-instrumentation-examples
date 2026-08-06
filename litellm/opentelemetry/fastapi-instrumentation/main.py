@@ -2,6 +2,7 @@ import litellm
 import logging
 import os
 import time
+import uuid
 from fastapi import FastAPI, HTTPException
 from litellm.integrations.opentelemetry import OpenTelemetry as LiteLLMOTel
 from opentelemetry import metrics
@@ -13,6 +14,7 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from pydantic import BaseModel
 from typing import Optional
 from traceloop.sdk import Traceloop
+from traceloop.sdk.tracing.tracing import set_conversation_id
 
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
@@ -102,6 +104,7 @@ class ChatCompletionRequest(BaseModel):
     messages: list[ChatMessage]
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    conversation_id: Optional[str] = None
 
 
 @app.post("/chat/completions")
@@ -113,6 +116,11 @@ async def chat_completions(request: ChatCompletionRequest):
         kwargs["max_tokens"] = request.max_tokens
     if request.temperature is not None:
         kwargs["temperature"] = request.temperature
+    if request.conversation_id:
+        set_conversation_id(request.conversation_id)
+    else:
+        set_conversation_id(str(uuid.uuid4()))
+
 
     attrs = {"model": request.model}
     logger.info("chat request: model=%s", request.model)

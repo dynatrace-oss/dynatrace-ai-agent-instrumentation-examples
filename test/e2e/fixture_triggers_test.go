@@ -326,8 +326,10 @@ func triggerLiteLLMChat(t *testing.T) {
 	b, _ := json.Marshal(map[string]interface{}{
 		"model": model,
 		"messages": []map[string]string{
+			{"role": "system", "content": "You are an expert in observability and monitoring."},
 			{"role": "user", "content": "Write a haiku about observability"},
 		},
+		"temperature": 1.0,
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
