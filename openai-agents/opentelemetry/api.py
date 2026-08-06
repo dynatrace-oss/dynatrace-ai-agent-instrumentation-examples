@@ -55,6 +55,53 @@ _logging.getLogger().addHandler(_otel_log_handler)
 from opentelemetry import trace
 tracer = trace.get_tracer("openai-agents")
 
+# =========================
+# Conversation-id propagation
+# =========================
+# Each chat turn arrives as its own request and therefore its own trace. To stitch
+# a whole conversation back together we (1) set a stable gen_ai.conversation.id on
+# the turn's root span, (2) stamp that same id onto the agent/model/tool child spans
+# created by the Agents SDK + Traceloop, and (3) link each turn's trace to the
+# previous turn's.
+#
+# The whole turn runs in one process, so (2) only needs *in-process* propagation:
+# a contextvar set in /chat, read by the span processor below at span start. No OTel
+# baggage — baggage carries values across service boundaries (into outgoing request
+# headers), which this single service neither needs nor should leak to third parties.
+import contextvars
+
+from opentelemetry.sdk.trace import SpanProcessor as _SpanProcessor
+
+GEN_AI_CONVERSATION_ID = "gen_ai.conversation.id"
+
+# Holds the current turn's conversation id for the span processor to read. contextvars
+# propagate to the same async task and its awaited coroutines, so the spans the Agents
+# SDK opens during Runner.run inherit it.
+_conversation_id_var: contextvars.ContextVar = contextvars.ContextVar(
+    "gen_ai_conversation_id", default=None
+)
+
+
+class _ConversationIdSpanProcessor(_SpanProcessor):
+    """Stamp gen_ai.conversation.id from the contextvar onto every span at start."""
+
+    def on_start(self, span, parent_context=None):
+        conv_id = _conversation_id_var.get()
+        if conv_id:
+            span.set_attribute(GEN_AI_CONVERSATION_ID, conv_id)
+
+    def on_end(self, span):
+        pass
+
+    def shutdown(self):
+        pass
+
+    def force_flush(self, timeout_millis: int = 30000):
+        return True
+
+
+trace.get_tracer_provider().add_span_processor(_ConversationIdSpanProcessor())
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -227,15 +274,37 @@ def health():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(req: ChatRequest):
-    with tracer.start_as_current_span(name="/chat", kind=trace.SpanKind.SERVER) as span:
-        """
-        Main chat endpoint for agent orchestration.
-        Handles conversation state, agent routing, and guardrail checks.
-        """
+    """
+    Main chat endpoint for agent orchestration.
+    Handles conversation state, agent routing, and guardrail checks.
+    """
+    # Resolve the conversation identity BEFORE opening the span. Each turn is its
+    # own trace, so stitching a multi-turn conversation together needs both a stable
+    # conversation_id (reused across turns) and a span link back to the prior turn.
+    # Honor a caller-supplied conversation_id so a client can keep one stable id
+    # across turns; mint one only when the caller doesn't provide it. (Previously an
+    # unknown caller id was discarded and replaced per turn, so turns never stitched.)
+    conversation_id: str = req.conversation_id or uuid4().hex
+    existing_state = conversation_store.get(conversation_id)
+    is_new = existing_state is None
+
+    # Link this turn's trace back to the previous turn's root span, when known.
+    turn_links: List[trace.Link] = []
+    if existing_state is not None:
+        prev_ctx = existing_state.get("last_span_context")
+        if prev_ctx is not None:
+            turn_links.append(
+                trace.Link(prev_ctx, attributes={"gen_ai.conversation.link": "previous_turn"})
+            )
+
+    with tracer.start_as_current_span(
+        name="/chat", kind=trace.SpanKind.SERVER, links=turn_links
+    ) as span:
+        # gen_ai.conversation.id ties every turn of this chat together.
+        span.set_attribute(GEN_AI_CONVERSATION_ID, conversation_id)
+
         # Initialize or retrieve conversation state
-        is_new = not req.conversation_id or conversation_store.get(req.conversation_id) is None
         if is_new:
-            conversation_id: str = uuid4().hex
             ctx = create_initial_context()
             current_agent_name = triage_agent.name
             state: Dict[str, Any] = {
@@ -249,6 +318,7 @@ async def chat_endpoint(req: ChatRequest):
                 ctx.account_number,
             )
             if req.message.strip() == "":
+                state["last_span_context"] = span.get_span_context()
                 conversation_store.save(conversation_id, state)
                 return ChatResponse(
                     conversation_id=conversation_id,
@@ -260,8 +330,7 @@ async def chat_endpoint(req: ChatRequest):
                     guardrails=[],
                 )
         else:
-            conversation_id = req.conversation_id  # type: ignore
-            state = conversation_store.get(conversation_id)
+            state = existing_state
 
         current_agent = _get_agent_by_name(state["current_agent"])
         logger.info(
@@ -274,6 +343,9 @@ async def chat_endpoint(req: ChatRequest):
         old_context = state["context"].model_dump().copy()
         guardrail_checks: List[GuardrailCheck] = []
 
+        # Make the conversation id visible in-process so every child span created
+        # during the agent run (model calls, tool calls, guardrails) inherits it.
+        _conv_token = _conversation_id_var.set(conversation_id)
         try:
             result = await Runner.run(current_agent, state["input_items"], context=state["context"])
         except InputGuardrailTripwireTriggered as e:
@@ -308,6 +380,8 @@ async def chat_endpoint(req: ChatRequest):
                 agents=_build_agents_list(),
                 guardrails=guardrail_checks,
             )
+        finally:
+            _conversation_id_var.reset(_conv_token)
 
         messages: List[MessageResponse] = []
         events: List[AgentEvent] = []
@@ -421,6 +495,8 @@ async def chat_endpoint(req: ChatRequest):
 
         state["input_items"] = result.to_input_list()
         state["current_agent"] = current_agent.name
+        # Record this turn's root span so the next turn can link back to it.
+        state["last_span_context"] = span.get_span_context()
         conversation_store.save(conversation_id, state)
         logger.info(
             "Chat turn complete: conversation_id=%s current_agent=%s messages=%d events=%d",
