@@ -26,7 +26,7 @@ push: ## Build and push container image to registry
 request: ## POST /haiku to localhost:$(PORT)
 	curl -s -X POST http://localhost:$(PORT)/haiku \
 	  -H 'Content-Type: application/json' \
-	  -d '{"topic":"e2e test"}' | python3 -m json.tool
+	  -d '{"topic":"e2e test"}'
 
 request-trigger-guardrail: ## POST a jailbreak prompt to localhost:$(PORT) (triggers Azure content filter)
 	curl -s -X POST http://localhost:$(PORT)/haiku \
