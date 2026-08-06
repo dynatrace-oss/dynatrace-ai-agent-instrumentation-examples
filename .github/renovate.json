@@ -50,6 +50,12 @@
       "groupName": "github actions"
     },
     {
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["python"],
+      "allowedVersions": "<3.14",
+      "groupName": "python runtime"
+    },
+    {
       "matchManagers": ["gomod"],
       "groupName": "go modules"
     },
