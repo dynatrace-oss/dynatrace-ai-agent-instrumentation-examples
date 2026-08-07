@@ -38,6 +38,8 @@ All three are Histogram instruments at Development stability in the [GenAI metri
 
 Each connector also emits a `<namespace>.calls` counter, and `spanmetrics` has no config key to disable it. Those three counters are not spec metrics and nothing queries them, so a `filter/drop_derived_calls` processor drops them on the metrics pipeline before export. It matches the three names exactly rather than a `*.calls` pattern, so it cannot swallow the `inference_calls` / `tool_calls` metrics below.
 
+`make run-collector` reports as `service.name = microsoft-agent-framework-collector`, so its data stays separate from the direct-export run and the e2e suite can assert the derived metrics unambiguously.
+
 The collector needs the Bindplane distro image (see `COLLECTOR_IMAGE` in the Makefile) and holds the Dynatrace token itself, so the app sends no `Authorization` header when routed through it.
 
 > [!NOTE]

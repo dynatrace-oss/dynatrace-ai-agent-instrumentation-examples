@@ -26,7 +26,9 @@ run: ## Run the agent app, exporting straight to Dynatrace
 
 run-collector: ## Start the OTel Collector, then run the app exporting through it
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
-	OTEL_COLLECTOR_ENDPOINT=http://localhost:4318 uv run python3 app.py
+	OTEL_COLLECTOR_ENDPOINT=http://localhost:4318 \
+	  OTEL_SERVICE_NAME=microsoft-agent-framework-collector \
+	  uv run python3 app.py
 
 stop: ## Stop and remove the OTel collector container
 	docker stop $(COLLECTOR_CONTAINER) && docker rm $(COLLECTOR_CONTAINER)
