@@ -1,10 +1,11 @@
 {
-  "version": "1.3.2",
+  "version": "1.4.0",
   "scope": "current-state",
-  "date": "2026-08-04",
+  "date": "2026-08-07",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.4.0 (2026-08-07): Add AR-054/AR-055/AR-056 for the GenAI agent, tool and workflow duration metrics (gen_ai.invoke_agent.duration, gen_ai.execute_tool.duration, gen_ai.invoke_workflow.duration). All three are Development-stability semconv metrics that no instrumentation library emits under these names, so demos derive them from spans via a collector span_metrics connector or an OpenPipeline metric extractor (AI-352). Recorded as optional with an empty used_by: no AI Observability view consumes them yet, so they are semconv coverage tracking rather than a dashboard dependency and are deliberately not added to any profile metrics list, where absence would fail the audit.",
     "1.3.2 (2026-08-04): Add gen_ai.usage.prompt_caching.read_tokens (AR-052) and gen_ai.usage.prompt_caching.write_tokens (AR-053) as optional attributes in a new caching-anthropic group; new anthropic profile (extends generic) in the e2e audit fixture. Live-verified against the ixq6468h sprint tenant on the anthropic/oneagent demo (AnthropicBedrock client + cache_control). Note: not yet visualised directly on any dashboard — these are the raw per-span inputs PPX's gen_ai.prompt.caching metric (AR-045) is computed from, not something a dashboard tile reads itself.",
     "1.3.1 (2026-07-28): Add gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) as provider-specific required attributes in the guardrails-bedrock group. Extracted from llm.invocation_parameters by the collector transform/llm-invocation-params processor (OpenInference path). Added to GuardrailProfile required checks in the e2e audit fixture.",
     "1.3.0 (2026-07-24): Add a per-profile metrics list. Move AR-025 (gen_ai.client.operation.duration) and AR-044 (gen_ai.client.token.usage) out of the generic optional_attributes into generic.metrics; they are verified as OTel metrics via timeseries existence, not as span attributes. The e2e suite now records metric-existence results in the generated per-SDK reports.",
@@ -215,6 +216,9 @@
       "gen_ai.guardrail.grounding_type": "AR-046",
       "gen_ai.usage.prompt_caching.read_tokens": "AR-052",
       "gen_ai.usage.prompt_caching.write_tokens": "AR-053",
+      "gen_ai.invoke_agent.duration": "AR-054",
+      "gen_ai.execute_tool.duration": "AR-055",
+      "gen_ai.invoke_workflow.duration": "AR-056",
       "span.status_code": "AR-047",
       "gen_ai.model": "AR-048",
       "event.type": "AR-049",
@@ -1101,6 +1105,42 @@
       "owned_by": "provider_sdk",
       "used_by": [],
       "note": "Per-span count of tokens written to the Anthropic/Bedrock prompt cache on a cache miss/first write. Not directly visualised by any dashboard today — see AR-052. Live-verified on the anthropic/oneagent demo against the ixq6468h sprint tenant on 2026-08-04."
+    },
+    {
+      "name": "gen_ai.invoke_agent.duration",
+      "rule_id": "AR-054",
+      "required_level": "optional",
+      "group": "agent-performance",
+      "type": "metric",
+      "providers": ["generic"],
+      "owned_by": "collector_processor",
+      "used_by": [],
+      "dimensions": ["gen_ai.agent.name", "gen_ai.operation.name"],
+      "note": "Duration of one GenAI agent invocation. Histogram, seconds, Development stability in the GenAI metrics semconv. No instrumentation library emits it under this name, so demos derive it from the invoke_agent span: a span_metrics connector on the collector path, a samplingAwareHistogramMetric extractor on the OpenPipeline path. used_by is empty on purpose — no AI Observability view consumes it yet, so it is coverage tracking, not a dashboard dependency, and must not gate a profile."
+    },
+    {
+      "name": "gen_ai.execute_tool.duration",
+      "rule_id": "AR-055",
+      "required_level": "optional",
+      "group": "agent-performance",
+      "type": "metric",
+      "providers": ["generic"],
+      "owned_by": "collector_processor",
+      "used_by": [],
+      "dimensions": ["gen_ai.tool.name", "gen_ai.operation.name"],
+      "note": "Duration of one GenAI tool execution. Histogram, seconds, Development stability in the GenAI metrics semconv. Derived from the execute_tool span the same two ways as AR-054. Not consumed by any AI Observability view yet."
+    },
+    {
+      "name": "gen_ai.invoke_workflow.duration",
+      "rule_id": "AR-056",
+      "required_level": "optional",
+      "group": "agent-performance",
+      "type": "metric",
+      "providers": ["generic"],
+      "owned_by": "collector_processor",
+      "used_by": [],
+      "dimensions": ["gen_ai.operation.name"],
+      "note": "Duration of one GenAI workflow run. Histogram, seconds, Development stability in the GenAI metrics semconv. Only derivable where the framework actually opens a workflow span: of the demos surveyed for AI-352 only microsoft-agent-framework does. aws-strands has no workflow primitive and the google-adk demo has no Workflow node, so neither emits it and neither should be audited for it. Not consumed by any AI Observability view yet."
     }
   ],
   "non_sdk_fields": [

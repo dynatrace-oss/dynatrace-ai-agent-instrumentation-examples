@@ -129,6 +129,9 @@ Profile precedence:
 | `gen_ai.token.type` | AR-024 | recommended | cost_dashboard — splits cost lanes; values: `input`, `output`, `cache_read`, `cache_creation` |
 | `gen_ai.client.operation.duration` | AR-025 | required | latency_charts — p99 and mean latency (OTel histogram metric) |
 | `gen_ai.client.token.usage` | AR-044 | recommended | cost_dashboard — OTel counter metric; used as `timeseries sum(gen_ai.client.token.usage)` filtered by `gen_ai.token.type` dimension. Distinct from the span attributes AR-006/AR-007. Missing → all cost tiles show $0 silently. |
+| `gen_ai.invoke_agent.duration` | AR-054 | optional | _(no view yet)_ — agent invocation duration; OTel histogram in seconds. Derived from the `invoke_agent` span by a collector `span_metrics` connector or an OpenPipeline extractor; no library emits it under this name. |
+| `gen_ai.execute_tool.duration` | AR-055 | optional | _(no view yet)_ — tool execution duration; derived from the `execute_tool` span the same two ways as AR-054. |
+| `gen_ai.invoke_workflow.duration` | AR-056 | optional | _(no view yet)_ — workflow run duration; only derivable where the framework opens a workflow span (of the AI-352 demos, only microsoft-agent-framework does). |
 
 ### Operations & Agents
 
@@ -387,3 +390,4 @@ These rules model app behavior better than a flat required/optional list.
 - Always check `changelog` in `sdk-comparison-baseline.json` to confirm you are reading the current version before running a comparison.
 - For AR-020 and AR-021: their absence from a Bedrock SDK does NOT degrade any current dashboard. Report them as `dashboard_gaps` (SDK should emit them; dashboard does not yet visualise them) rather than `silent_failures`.
 - `gen_ai.client.token.usage` (AR-044) is a metric, not a span attribute. Its presence cannot be inferred from span traces alone — it requires a metrics pipeline (e.g. `should_enrich_metrics=True` in Traceloop, or a custom `MeterProvider`).
+- The agent duration metrics (AR-054, AR-055, AR-056) are metrics too, and are **optional with an empty `used_by`** on purpose. No AI Observability view consumes them yet — they are tracked here as semconv coverage, not as a dashboard dependency. Do **not** add them to a profile's `metrics` list: every key in a profile metric list is mandatory and absence fails the audit, so gating on them would fail every demo that does not derive them. AR-056 in particular is only derivable where the framework actually opens a workflow span.
