@@ -6,6 +6,7 @@ import uuid
 from agent_framework import Agent, WorkflowBuilder, tool
 from agent_framework.observability import configure_otel_providers
 from agent_framework.openai import OpenAIChatCompletionClient
+from agent_metrics import CALL_COUNT_MIDDLEWARE
 from dotenv import load_dotenv
 from opentelemetry import _logs as otel_logs
 from opentelemetry import metrics as otel_metrics
@@ -141,6 +142,7 @@ async def main() -> None:
         ),
         tools=[get_service_health],
         default_options=default_options,
+        middleware=CALL_COUNT_MIDDLEWARE,
     )
 
     poet = Agent(
@@ -152,6 +154,7 @@ async def main() -> None:
             "diagnosis you are given into a single haiku."
         ),
         default_options=default_options,
+        middleware=CALL_COUNT_MIDDLEWARE,
     )
 
     workflow = (
