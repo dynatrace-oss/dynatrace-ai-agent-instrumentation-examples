@@ -49,6 +49,39 @@ func startApp(t *testing.T, appDir string) {
 	})
 }
 
+// startAppWithTarget runs make install then starts make <target> in
+// <repoRoot>/<appDir>, waiting for the HTTP readiness endpoint like startApp.
+// Use for HTTP apps that need a non-default make target (e.g. "run-collector").
+func startAppWithTarget(t *testing.T, appDir, target string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot(), appDir)
+
+	install := exec.Command("make", "install")
+	install.Dir = dir
+	install.Env = []string{
+		"PATH=" + os.Getenv("PATH"),
+		"HOME=" + os.Getenv("HOME"),
+	}
+	install.Stdout = os.Stdout
+	install.Stderr = os.Stderr
+	if err := install.Run(); err != nil {
+		t.Fatalf("make install in %s: %v", appDir, err)
+	}
+
+	app, err := process.StartWithTarget(dir, target)
+	if err != nil {
+		t.Fatalf("start app %s (%s): %v", appDir, target, err)
+	}
+	t.Cleanup(func() {
+		if err := app.Stop(); err != nil {
+			t.Logf("warning: stop app %s: %v", appDir, err)
+		}
+		if err := exec.Command("make", "-C", dir, "stop").Run(); err != nil {
+			t.Logf("warning: make stop in %s: %v", appDir, err)
+		}
+	})
+}
+
 // startCLIApp runs make install then starts make run in <repoRoot>/<appDir>
 // without waiting for an HTTP readiness endpoint. The app emits telemetry
 // autonomously; use assertGenAISpan to wait for spans.

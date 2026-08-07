@@ -1,0 +1,178 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # app.py pins service.name on the Resource, and an explicit Resource attribute
+  # beats OTEL_SERVICE_NAME, so the app cannot be told from the outside to report
+  # under a different name. This change is pipeline-only (no app source edits), so
+  # the rename happens here instead. It matters because the e2e metric assertion
+  # isolates by service.name + time window: without it the collector run and the
+  # direct-export run would share "google-adk-samples" and a derived metric could
+  # be satisfied by the wrong run.
+  #
+  # Applied on every pipeline below — including the metrics branches feeding the
+  # connectors, since span_metrics carries the span's Resource onto the metric.
+  resource/service_name:
+    attributes:
+      - key: service.name
+        value: google-adk-collector
+        action: upsert
+
+  # ADK never puts gen_ai.response.model on a span. It sets gen_ai.request.model
+  # (google/adk/telemetry/tracing.py, trace_call_llm) and records the response
+  # model only as a *metric* attribute, from response.model_version, in
+  # google/adk/telemetry/_metrics.py. AR-005 requires the span attribute — it
+  # drives the model quick filter, the service explorer table and the overview
+  # charts — so it is mirrored from the request model here.
+  #
+  # This is an approximation: the request model is what was asked for, not
+  # necessarily what answered (an alias like "gemini-2.0-flash" can resolve to a
+  # dated build). ADK does not expose the resolved version on the span, so the
+  # request model is the closest available value, and it is the same mirroring the
+  # aws-strands and langfuse configs already do.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # Paths carry the explicit "span." context prefix: a bare attributes[...]
+          # still works but the collector rewrites it at startup and logs
+          # "one or more paths were modified to include their context prefix".
+          - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
+
+  # One filter per metric branch. Each drops every span that is not the one the
+  # metric is defined over, so span_metrics derives a duration from that span type
+  # alone. The export pipeline below is untouched, so all spans still reach
+  # Distributed Tracing regardless of what these drop.
+  #
+  # Google ADK 2.3.0 already sets gen_ai.operation.name to the spec operation
+  # names, so no name-rewriting transform is needed: base_agent.run_async wraps
+  # every agent (root and sub-agents reached through AgentTool) in an
+  # "invoke_agent <name>" span with gen_ai.operation.name = "invoke_agent", and
+  # the function-call flow wraps each tool in "execute_tool <name>" with
+  # gen_ai.operation.name = "execute_tool" (google/adk/telemetry/_instrumentation.py,
+  # tracing.trace_agent_invocation / tracing.trace_tool_call). A span missing the
+  # attribute — every "generate_content" LLM span, for instance — compares unequal
+  # here and is therefore dropped, which is what we want.
+  #
+  # What ADK does NOT give us is a spec-named metric: it records its own
+  # gen_ai.agent.invocation.duration / gen_ai.tool.execution.duration histograms
+  # (google/adk/telemetry/_metrics.py) under names that predate the GenAI semconv.
+  # Those still flow through untouched; the connectors below add the spec-named
+  # equivalents alongside them.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/execute_tool:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "execute_tool"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram, and the connector has no config key to turn that off (only
+  # exclude_dimensions / aggregation_cardinality_limit, which trim cardinality
+  # rather than drop the metric). Neither is a GenAI spec metric and nothing
+  # queries them, so they are dropped here before export.
+  #
+  # Names are matched exactly rather than by a "*.calls" pattern so this cannot
+  # swallow gen_ai.invoke_agent.inference_calls / .tool_calls, which ARE spec
+  # metrics and would arrive on the same pipeline if the app ever recorded them.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.execute_tool.calls"
+
+connectors:
+  # Two span_metrics instances, one per metric. The connector always names its
+  # histogram "duration", so the spec metric name is produced by the namespace:
+  # namespace "gen_ai.invoke_agent" -> metric "gen_ai.invoke_agent.duration".
+  # Both are Histogram/seconds at Development stability per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # There is deliberately no gen_ai.invoke_workflow.duration here. ADK only opens
+  # an "invoke_workflow" span for a google.adk.workflow.Workflow node
+  # (google/adk/telemetry/node_tracing.py), and this demo is a plain LlmAgent with
+  # two AgentTool sub-agents — no Workflow, hence no span, hence nothing honest to
+  # derive the metric from. Emitting it would mean inventing a span boundary.
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # The root agent's span covers the whole research run — several Gemini calls
+      # plus two sub-agent tool calls — so the top of the range has to be generous.
+      explicit:
+        buckets: [250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    # gen_ai.request.model and gen_ai.provider.name are intentionally absent:
+    # ADK does not set them on the invoke_agent span (trace_agent_invocation skips
+    # inference fields, pending their removal from the span in the semconv), so
+    # asking for them would only add empty dimensions.
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  span_metrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # Every tool here is an AgentTool, i.e. a nested LLM agent rather than a
+      # local function call, so these run on the same seconds scale as an LLM call
+      # — not the millisecond scale a function-tool demo would use.
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.tool.type
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource/service_name, transform/response_model, batch]
+      exporters: [otlphttp/dynatrace]
+
+    # One metrics branch per span type. Kept separate from the export pipeline
+    # above so a filter here can never drop a span from Distributed Tracing.
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/execute_tool_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/execute_tool, batch]
+      exporters: [span_metrics/execute_tool]
+
+    # ADK's native metrics (gen_ai.client.* and its own gen_ai.agent.* /
+    # gen_ai.tool.* histograms) arrive on [otlp]; the two derived duration metrics
+    # arrive on their connectors. All forwarded together.
+    metrics:
+      receivers: [otlp, span_metrics/invoke_agent, span_metrics/execute_tool]
+      processors:
+        [resource/service_name, filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]
