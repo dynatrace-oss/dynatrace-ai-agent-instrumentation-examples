@@ -18,6 +18,12 @@ var genAIClientMetrics = []string{
 // metrics. No instrumentation library emits them today, so they are derived from
 // the corresponding spans by collector spanmetrics connectors — only demos run
 // through such a collector will have them.
+var genAIAgentDurationMetrics = []string{
+	"gen_ai.invoke_agent.duration",
+	"gen_ai.execute_tool.duration",
+	"gen_ai.invoke_workflow.duration",
+}
+
 // genAIAgentCallCountMetrics are the per-invocation call-count metrics. They
 // cannot be derived from spans (they are distributions over invocations, not
 // totals), so a demo has to record them in-process — they are therefore present
@@ -27,11 +33,14 @@ var genAIAgentCallCountMetrics = []string{
 	"gen_ai.invoke_agent.tool_calls",
 }
 
-var genAIAgentDurationMetrics = []string{
-	"gen_ai.invoke_agent.duration",
-	"gen_ai.execute_tool.duration",
-	"gen_ai.invoke_workflow.duration",
-}
+// genAIAgentMetrics is every GenAI agent/tool/workflow metric in the semconv,
+// for demos that emit the whole set. Use the two narrower lists above where only
+// one group is expected — a demo exporting straight to Dynatrace has the call
+// counts but not the collector-derived durations.
+var genAIAgentMetrics = append(
+	append([]string{}, genAIAgentDurationMetrics...),
+	genAIAgentCallCountMetrics...,
+)
 
 // pollMetricExists polls Dynatrace until the given OTel metric has at least one
 // non-zero data point for the service, or the 5-minute timeout elapses. It

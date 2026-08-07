@@ -14,10 +14,10 @@ func TestMicrosoftAgentFrameworkOpenTelemetryCollector(t *testing.T) {
 	// be satisfied by the other run.
 	startCLIAppWithTarget(t, "microsoft-agent-framework/opentelemetry", "run-collector")
 
-	// This path carries all three groups: the natively emitted gen_ai.client.*
-	// metrics, the in-process call counts, and the three collector-derived durations.
-	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentCallCountMetrics...)
-	metrics = append(metrics, genAIAgentDurationMetrics...)
+	// This path carries the full set: the natively emitted gen_ai.client.* metrics
+	// plus every GenAI agent/tool/workflow metric — the in-process call counts and
+	// the three collector-derived durations.
+	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentMetrics...)
 
 	auditSpanWithMetrics(t, "microsoft-agent-framework", "opentelemetry-collector", GenericProfile,
 		`fetch spans, from: now()-10m
