@@ -1,10 +1,11 @@
 {
-  "version": "1.3.0",
+  "version": "1.3.2",
   "scope": "current-state",
-  "date": "2026-06-17",
+  "date": "2026-08-04",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.3.2 (2026-08-04): Add gen_ai.usage.prompt_caching.read_tokens (AR-052) and gen_ai.usage.prompt_caching.write_tokens (AR-053) as optional attributes in a new caching-anthropic group; new anthropic profile (extends generic) in the e2e audit fixture. Live-verified against the ixq6468h sprint tenant on the anthropic/oneagent demo (AnthropicBedrock client + cache_control). Note: not yet visualised directly on any dashboard — these are the raw per-span inputs PPX's gen_ai.prompt.caching metric (AR-045) is computed from, not something a dashboard tile reads itself.",
     "1.3.1 (2026-07-28): Add gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) as provider-specific required attributes in the guardrails-bedrock group. Extracted from llm.invocation_parameters by the collector transform/llm-invocation-params processor (OpenInference path). Added to GuardrailProfile required checks in the e2e audit fixture.",
     "1.3.0 (2026-07-24): Add a per-profile metrics list. Move AR-025 (gen_ai.client.operation.duration) and AR-044 (gen_ai.client.token.usage) out of the generic optional_attributes into generic.metrics; they are verified as OTel metrics via timeseries existence, not as span attributes. The e2e suite now records metric-existence results in the generated per-SDK reports.",
     "1.2.1 (2026-06-17): Add VR-021 (conversation_thread view rule): gen_ai.conversation.id (AR-041) is set by AgentTelemetryLayer on invoke_agent spans only; ChatTelemetryLayer does not forward options to _get_span_attributes so inner chat spans never carry this attribute. Add span_scope note to AR-041. Update AR-041 note in attributes.",
@@ -43,6 +44,13 @@
           "extends": "generic",
           "additional_required_attributes": ["AR-017", "AR-018", "AR-019"],
           "additional_optional_attributes": ["AR-020", "AR-021", "AR-040", "AR-045", "AR-046"]
+        },
+        "anthropic": {
+          "dashboard": "bedrock.dashboard.json",
+          "description": "Anthropic (native and via Bedrock) provider profile. Includes all generic checks plus the raw prompt-caching token attributes; no dedicated anthropic dashboard exists yet, so this reuses bedrock.dashboard.json, which only visualises the derived gen_ai.prompt.caching metric (AR-045), not AR-052/AR-053 directly.",
+          "extends": "generic",
+          "additional_required_attributes": [],
+          "additional_optional_attributes": ["AR-052", "AR-053"]
         },
         "google": {
           "dashboard": "google.dashboard.json",
@@ -205,6 +213,8 @@
       "gen_ai.client.token.usage": "AR-044",
       "gen_ai.prompt.caching": "AR-045",
       "gen_ai.guardrail.grounding_type": "AR-046",
+      "gen_ai.usage.prompt_caching.read_tokens": "AR-052",
+      "gen_ai.usage.prompt_caching.write_tokens": "AR-053",
       "span.status_code": "AR-047",
       "gen_ai.model": "AR-048",
       "event.type": "AR-049",
@@ -1069,6 +1079,28 @@
       "owned_by": "collector_processor",
       "used_by": ["guardrail_overview_cards"],
       "note": "Version of the AWS Bedrock Guardrail applied to the request."
+    },
+    {
+      "name": "gen_ai.usage.prompt_caching.read_tokens",
+      "rule_id": "AR-052",
+      "required_level": "optional",
+      "group": "caching-anthropic",
+      "type": "span_attribute",
+      "providers": ["anthropic", "bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": [],
+      "note": "Per-span count of tokens read from the Anthropic/Bedrock prompt cache on a cache hit. Not directly visualised by any dashboard today — this and AR-053 are the raw per-span inputs PPX's gen_ai.prompt.caching metric (AR-045) is computed from. Live-verified on the anthropic/oneagent demo (AnthropicBedrock client with a cache_control-marked system block) against the ixq6468h sprint tenant on 2026-08-04."
+    },
+    {
+      "name": "gen_ai.usage.prompt_caching.write_tokens",
+      "rule_id": "AR-053",
+      "required_level": "optional",
+      "group": "caching-anthropic",
+      "type": "span_attribute",
+      "providers": ["anthropic", "bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": [],
+      "note": "Per-span count of tokens written to the Anthropic/Bedrock prompt cache on a cache miss/first write. Not directly visualised by any dashboard today — see AR-052. Live-verified on the anthropic/oneagent demo against the ixq6468h sprint tenant on 2026-08-04."
     }
   ],
   "non_sdk_fields": [
