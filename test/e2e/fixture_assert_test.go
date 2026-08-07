@@ -34,7 +34,7 @@ func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
 // metric reports data for the given service (5-minute timeout), failing the test
 // otherwise. This is the metric the AI Observability app charts
 // (timeseries avg(gen_ai.client.operation.duration)); the OTel Collector path
-// emits it via the spanmetrics connector in otel-collector-config.yaml, and the
+// emits it via the span_metrics connector in otel-collector-config.yaml, and the
 // OpenPipeline path via the samplingAwareHistogramMetric processor in
 // openpipeline-langfuse.yaml. Both carry service.name as a dimension.
 //
