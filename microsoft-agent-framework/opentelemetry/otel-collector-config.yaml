@@ -1,0 +1,154 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # One filter per metric branch. Each drops every span that is not the one the
+  # metric is defined over, so spanmetrics derives a duration from that span type
+  # alone. The export pipeline below is untouched, so all spans still reach
+  # Distributed Tracing regardless of what these drop.
+  #
+  # Microsoft Agent Framework sets gen_ai.operation.name to "invoke_agent" on the
+  # agent span and "execute_tool" on the tool span (see OtelAttr.AGENT_INVOKE_OPERATION
+  # / TOOL_EXECUTION_OPERATION in agent_framework/observability.py). A span missing the
+  # attribute compares unequal here and is therefore dropped, which is what we want.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/execute_tool:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "execute_tool"
+
+  # Each spanmetrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram, and the connector has no config key to turn that off (only
+  # exclude_dimensions / aggregation_cardinality_limit, which trim cardinality
+  # rather than drop the metric). None of the three is a GenAI spec metric and
+  # nothing queries them, so they are dropped here before export.
+  #
+  # Names are matched exactly rather than by a "*.calls" pattern so this cannot
+  # swallow gen_ai.invoke_agent.inference_calls / .tool_calls, which ARE spec
+  # metrics and arrive on the same pipeline.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.execute_tool.calls"
+        - name == "gen_ai.invoke_workflow.calls"
+
+  # The framework does NOT tag workflow spans with a gen_ai.operation.name — its
+  # workflow tracer emits a span literally named "workflow.run"
+  # (OtelAttr.WORKFLOW_RUN_SPAN). So this branch keys on the span name instead, and
+  # the connector below is what gives the result its spec-conformant metric name.
+  filter/invoke_workflow:
+    error_mode: ignore
+    traces:
+      span:
+        - name != "workflow.run"
+
+connectors:
+  # Three spanmetrics instances, one per metric. The connector always names its
+  # histogram "duration", so the spec metric name is produced by the namespace:
+  # namespace "gen_ai.invoke_agent" -> metric "gen_ai.invoke_agent.duration".
+  # All three are Histogram/seconds at Development stability per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  spanmetrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.provider.name
+      - name: gen_ai.request.model
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  spanmetrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # Tool calls are local function calls here, so the buckets are far tighter
+      # than the LLM-call buckets above; the seconds-scale ones would all land in
+      # the first bucket and tell you nothing.
+      explicit:
+        buckets: [1ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 1s, 5s]
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  spanmetrics/invoke_workflow:
+    namespace: gen_ai.invoke_workflow
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # A workflow spans every agent in the chain, so it runs longer than any
+      # single LLM call.
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    metrics_flush_interval: 15s
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]
+
+    # One metrics branch per span type. Kept separate from the export pipeline
+    # above so a filter here can never drop a span from Distributed Tracing.
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [filter/invoke_agent, batch]
+      exporters: [spanmetrics/invoke_agent]
+
+    traces/execute_tool_metrics:
+      receivers: [otlp]
+      processors: [filter/execute_tool, batch]
+      exporters: [spanmetrics/execute_tool]
+
+    traces/invoke_workflow_metrics:
+      receivers: [otlp]
+      processors: [filter/invoke_workflow, batch]
+      exporters: [spanmetrics/invoke_workflow]
+
+    # The framework's native gen_ai.client.* metrics arrive on [otlp]; the three
+    # derived duration metrics arrive on their connectors. All forwarded together.
+    metrics:
+      receivers:
+        [
+          otlp,
+          spanmetrics/invoke_agent,
+          spanmetrics/execute_tool,
+          spanmetrics/invoke_workflow,
+        ]
+      processors: [filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]
+
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]
