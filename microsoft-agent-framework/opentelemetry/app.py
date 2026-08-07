@@ -16,6 +16,14 @@ from opentelemetry import trace as otel_trace
 # logger only, so anything logged outside that namespace never becomes a log record.
 # Logging under a child of it is what puts the demo's own messages on the logs pipeline,
 # trace-correlated with the spans they were emitted inside.
+#
+# What gets logged here is deliberately limited to lifecycle events — which workflow ran,
+# which agents, which tool, how many outputs. The conversation itself is NOT logged: prompts
+# and completions already travel as span attributes (gen_ai.input.messages /
+# gen_ai.output.messages, set by enable_sensitive_data=True below), which is the form the
+# Dynatrace GenAI app actually queries. Logging them again would duplicate sensitive content
+# into a second signal with its own retention and permission rules, for no analytical gain.
+# The transcript still goes to the console via print() for the human running the demo.
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
 _log = logging.getLogger("agent_framework.demo")
 _log.setLevel(logging.INFO)
@@ -92,6 +100,9 @@ def _configure_dynatrace_otlp() -> None:
 @tool(description="Return the current golden signals for a monitored service.")
 def get_service_health(service: str) -> str:
     """Return a canned golden-signal reading for the given service."""
+    # Tool name only, not the argument: the argument is model-generated and is already
+    # on the execute_tool span. This log record correlates to that span by trace ID.
+    _log.info("tool invoked: get_service_health")
     return (
         f"service={service} error_rate=4.2% p95_latency=1180ms "
         f"throughput=310rpm saturation=0.71"
@@ -161,10 +172,21 @@ async def main() -> None:
     )
 
     prompt = "How healthy is the checkout-service right now?"
-    _log.info("User: %s", prompt)
+    print(f"User: {prompt}")
+    _log.info(
+        "workflow starting: %s (agents=%s, model=%s, conversation_id=%s)",
+        "observability-diagnosis-workflow",
+        "observability-analyst-agent -> observability-haiku-agent",
+        model,
+        conversation_id,
+    )
+
     result = await workflow.run(prompt)
-    for output in result.get_outputs():
-        _log.info("Assistant: %s", output)
+
+    outputs = result.get_outputs()
+    for output in outputs:
+        print(f"Assistant: {output}")
+    _log.info("workflow completed: %d output(s)", len(outputs))
 
     # Explicitly flush and shut down providers before exit so BatchSpanProcessor,
     # PeriodicExportingMetricReader and BatchLogRecordProcessor finish their work
