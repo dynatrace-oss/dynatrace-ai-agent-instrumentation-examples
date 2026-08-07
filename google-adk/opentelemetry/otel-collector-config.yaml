@@ -25,6 +25,28 @@ processors:
         value: google-adk-collector
         action: upsert
 
+  # ADK never puts gen_ai.response.model on a span. It sets gen_ai.request.model
+  # (google/adk/telemetry/tracing.py, trace_call_llm) and records the response
+  # model only as a *metric* attribute, from response.model_version, in
+  # google/adk/telemetry/_metrics.py. AR-005 requires the span attribute — it
+  # drives the model quick filter, the service explorer table and the overview
+  # charts — so it is mirrored from the request model here.
+  #
+  # This is an approximation: the request model is what was asked for, not
+  # necessarily what answered (an alias like "gemini-2.0-flash" can resolve to a
+  # dated build). ADK does not expose the resolved version on the span, so the
+  # request model is the closest available value, and it is the same mirroring the
+  # aws-strands and langfuse configs already do.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # Paths carry the explicit "span." context prefix: a bare attributes[...]
+          # still works but the collector rewrites it at startup and logs
+          # "one or more paths were modified to include their context prefix".
+          - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
+
   # One filter per metric branch. Each drops every span that is not the one the
   # metric is defined over, so span_metrics derives a duration from that span type
   # alone. The export pipeline below is untouched, so all spans still reach
@@ -131,7 +153,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resource/service_name, batch]
+      processors: [resource/service_name, transform/response_model, batch]
       exporters: [otlphttp/dynatrace]
 
     # One metrics branch per span type. Kept separate from the export pipeline
