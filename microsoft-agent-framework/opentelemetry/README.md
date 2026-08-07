@@ -40,6 +40,17 @@ Each connector also emits a `<namespace>.calls` counter, and `spanmetrics` has n
 
 `make run-collector` reports as `service.name = microsoft-agent-framework-collector`, so its data stays separate from the direct-export run and the e2e suite can assert the derived metrics unambiguously.
 
+### Agent call-count metrics
+
+`gen_ai.invoke_agent.inference_calls` and `gen_ai.invoke_agent.tool_calls` are Histograms of the calls made *during a single agent invocation*, so they cannot be derived at the collector: counting `chat` / `execute_tool` spans gives a running total, not a distribution over invocations. They are recorded in-process instead, by the framework middleware in `agent_metrics.py`, and are exported on both the direct and collector paths.
+
+| Metric | Recorded by | Unit |
+|--------|-------------|------|
+| `gen_ai.invoke_agent.inference_calls` | `chat_middleware`, closed out per invocation | `{inference_call}` |
+| `gen_ai.invoke_agent.tool_calls` | `function_middleware`, closed out per invocation | `{tool_call}` |
+
+Microsoft Agent Framework does not emit these itself as of 1.13.0. A chat or tool call made outside an agent invocation is not counted, matching the metrics' per-invocation definition.
+
 The collector needs the Bindplane distro image (see `COLLECTOR_IMAGE` in the Makefile) and holds the Dynatrace token itself, so the app sends no `Authorization` header when routed through it.
 
 > [!NOTE]
@@ -106,6 +117,6 @@ make stop   # tears the collector down again
 |--------|----------|----------------|
 | Traces | `/api/v2/otlp/v1/traces` | `gen_ai.agent.name`, `gen_ai.input/output.messages`, token counts |
 | Logs | `/api/v2/otlp/v1/logs` | application log records under the `agent_framework` logger, correlated to spans by trace ID; `log.source` set by the collector |
-| Metrics | `/api/v2/otlp/v1/metrics` | `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`; with `make run-collector` also `gen_ai.invoke_agent.duration`, `gen_ai.execute_tool.duration`, `gen_ai.invoke_workflow.duration` |
+| Metrics | `/api/v2/otlp/v1/metrics` | `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, `gen_ai.invoke_agent.inference_calls`, `gen_ai.invoke_agent.tool_calls`; with `make run-collector` also `gen_ai.invoke_agent.duration`, `gen_ai.execute_tool.duration`, `gen_ai.invoke_workflow.duration` |
 
 Metrics are exported with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`, which Dynatrace requires.
