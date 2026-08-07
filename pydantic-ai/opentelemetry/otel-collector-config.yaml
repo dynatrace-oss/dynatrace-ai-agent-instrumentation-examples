@@ -12,7 +12,7 @@ processors:
   # Keep only the nested LLM-call spans for the metrics branch. pydantic-ai sets
   # gen_ai.response.model on the model-call spans; the demo's outer
   # "music_agent.ask" wrapper span sets only gen_ai.request.model. Keying on
-  # response.model targets the LLM call alone, so spanmetrics does not also derive
+  # response.model targets the LLM call alone, so span_metrics does not also derive
   # a (wrong, retry-spanning) duration from the wrapper span. The export pipeline
   # is untouched, so all spans still reach Distributed Tracing.
   filter/genai_only:
@@ -25,7 +25,7 @@ connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
   # from the LLM span durations — pydantic-ai emits the token metric natively but
   # NOT this one. Same connector the langfuse demo uses.
-  spanmetrics:
+  span_metrics:
     namespace: gen_ai.client.operation
     # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
@@ -54,13 +54,13 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [debug, otlp_http/dynatrace]
-    # Second branch: keep only LLM spans and feed the spanmetrics connector.
+    # Second branch: keep only LLM spans and feed the span_metrics connector.
     traces/genai_metrics:
       receivers: [otlp]
       processors: [filter/genai_only, batch]
-      exporters: [spanmetrics]
+      exporters: [span_metrics]
     # pydantic-ai's native gen_ai.client.token.usage arrives on [otlp]; the derived
-    # gen_ai.client.operation.duration arrives on [spanmetrics]. Both forwarded.
+    # gen_ai.client.operation.duration arrives on [span_metrics]. Both forwarded.
     metrics:
-      receivers: [otlp, spanmetrics]
+      receivers: [otlp, span_metrics]
       exporters: [otlp_http/dynatrace]

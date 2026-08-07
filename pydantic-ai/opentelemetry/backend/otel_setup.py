@@ -17,7 +17,7 @@ def setup_otel(service_name: str = "pydantic-ai-music-agent"):
     #    duration metric must be backfilled server-side (openpipeline-pydantic-ai.yaml).
     #  - Collector: set OTEL_COLLECTOR_ENDPOINT (e.g. http://localhost:4318) to route
     #    through the local OTel Collector, which derives gen_ai.client.operation.duration
-    #    from the LLM spans (spanmetrics) and forwards everything to Dynatrace. The
+    #    from the LLM spans (span_metrics) and forwards everything to Dynatrace. The
     #    collector holds the DT token, so no Authorization header is sent from the app.
     collector_endpoint = os.environ.get("OTEL_COLLECTOR_ENDPOINT", "").rstrip("/")
 

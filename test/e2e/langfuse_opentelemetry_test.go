@@ -12,7 +12,7 @@ func TestLangfuseOpenTelemetry(t *testing.T) {
 
 	// The AI Observability app charts both gen_ai.client.operation.duration and
 	// gen_ai.client.token.usage; the collector path derives duration via the
-	// built-in spanmetrics connector and token usage via signal_to_metrics, both
+	// built-in span_metrics connector and token usage via signal_to_metrics, both
 	// wired in otel-collector-config.yaml.
 	auditSpanWithMetrics(t, "langfuse", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m

@@ -78,7 +78,7 @@ connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
   # from the LLM span durations — same connector the langfuse demo uses. namespace +
   # the connector's "duration" histogram => gen_ai.client.operation.duration.
-  spanmetrics:
+  span_metrics:
     namespace: gen_ai.client.operation
     # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
@@ -133,7 +133,7 @@ connectors:
           - key: gen_ai.provider.name
           - key: gen_ai.operation.name
       # service.name is a resource attribute included by default — no
-      # include_resource_attributes filter needed, same as spanmetrics.
+      # include_resource_attributes filter needed, same as span_metrics.
 
 exporters:
   debug:
@@ -155,7 +155,7 @@ service:
     traces/genai_metrics:
       receivers: [otlp]
       processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only]
-      exporters: [spanmetrics, signal_to_metrics]
+      exporters: [span_metrics, signal_to_metrics]
     metrics:
-      receivers: [spanmetrics, signal_to_metrics]
+      receivers: [span_metrics, signal_to_metrics]
       exporters: [otlp_http/dynatrace]
