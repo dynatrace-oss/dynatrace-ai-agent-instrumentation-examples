@@ -180,11 +180,13 @@ processing:
     # measurement: "field" (same fix as openpipeline-langfuse.yaml, PR #166).
     # Scoped to the three span types that feed a duration metric below: the LLM call
     # (chat), the agent invocation, and the tool execution. Cycle spans are excluded
-    # — no metric is defined over them.
+    # — no metric is defined over them. Keyed on gen_ai.operation.name rather than
+    # the span name because OpenPipeline matcher queries do not allow startsWith();
+    # step 2 above guarantees the field is set by the time this processor runs.
     # ============================================================================
     - id: "strands-duration-seconds"
       enabled: true
-      matcher: 'span.name == "chat" OR startsWith(span.name, "invoke_agent ") OR startsWith(span.name, "execute_tool ")'
+      matcher: '`gen_ai.operation.name` == "chat" OR `gen_ai.operation.name` == "invoke_agent" OR `gen_ai.operation.name` == "execute_tool"'
       type: "dql"
       description: "Compute span duration in seconds (span duration is nanoseconds)"
       dql:
@@ -236,10 +238,13 @@ metricExtraction:
     # identical to that collector config so the two export paths produce the same
     # series and a dashboard cannot tell them apart.
     #
-    # Matchers key on the span name prefix rather than gen_ai.operation.name
-    # because Strands puts the agent/tool name in the span name
-    # ("invoke_agent Weather Agent"), and the prefix is the stable part. Both read
-    # duration_seconds, materialized in the processing step above — the
+    # Matchers key on gen_ai.operation.name, the same attribute the collector's
+    # filter processors use, so both paths select exactly the same spans. Strands
+    # sets it natively to the spec enum; the span name cannot be used instead
+    # because it carries the agent/tool name ("invoke_agent Weather Agent") and
+    # OpenPipeline matcher queries do NOT allow startsWith() — the Settings API
+    # rejects the pipeline with "The function `startsWith()` isn't enabled".
+    # Both read duration_seconds, materialized in the processing step above — the
     # metric-extraction "duration" measurement emits MICROSECONDS, but these
     # metrics are defined in SECONDS.
     #
@@ -249,7 +254,7 @@ metricExtraction:
     # ============================================================================
     - id: "strands-invoke-agent-duration-metric"
       enabled: true
-      matcher: 'startsWith(span.name, "invoke_agent ")'
+      matcher: '`gen_ai.operation.name` == "invoke_agent"'
       type: "samplingAwareHistogramMetric"
       description: "Extract gen_ai.invoke_agent.duration from Strands agent spans"
       samplingAwareHistogramMetric:
@@ -272,7 +277,7 @@ metricExtraction:
 
     - id: "strands-execute-tool-duration-metric"
       enabled: true
-      matcher: 'startsWith(span.name, "execute_tool ")'
+      matcher: '`gen_ai.operation.name` == "execute_tool"'
       type: "samplingAwareHistogramMetric"
       description: "Extract gen_ai.execute_tool.duration from Strands tool spans"
       samplingAwareHistogramMetric:

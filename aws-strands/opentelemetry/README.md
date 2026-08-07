@@ -195,8 +195,8 @@ Strands emits `gen_ai.*` span attributes and its own `strands.*` metrics, but no
 |---|---|---|
 | `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on `chat` spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs | two `samplingAwareValueMetric` extractors, one per direction |
-| `gen_ai.invoke_agent.duration` (s) | `span_metrics` connector, on `invoke_agent` spans | `samplingAwareHistogramMetric` extractor, on `invoke_agent ` spans |
-| `gen_ai.execute_tool.duration` (s) | `span_metrics` connector, on `execute_tool` spans | `samplingAwareHistogramMetric` extractor, on `execute_tool ` spans |
+| `gen_ai.invoke_agent.duration` (s) | `span_metrics` connector, on `invoke_agent` spans | `samplingAwareHistogramMetric` extractor, on `invoke_agent` spans |
+| `gen_ai.execute_tool.duration` (s) | `span_metrics` connector, on `execute_tool` spans | `samplingAwareHistogramMetric` extractor, on `execute_tool` spans |
 
 **Option A** derives all four metrics in the collector. `gen_ai.client.token.usage` needs the `signaltometrics` connector, which ships in the **Bindplane** collector (`ghcr.io/observiq/bindplane-agent`) but **not** in the Dynatrace collector distro — this is why the Makefile pins the Bindplane image. Requires the token's `metrics.ingest` scope. All metrics use delta temporality (Dynatrace rejects cumulative).
 
