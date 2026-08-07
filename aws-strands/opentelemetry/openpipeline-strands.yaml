@@ -7,8 +7,16 @@
 #
 # Deploy in your Dynatrace tenant (Settings → OpenPipeline → Spans), then add
 # a routing entry:
-#   Matcher:  gen_ai.provider.name == "strands-agents"
+#   Matcher:  gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"
 #   Pipeline: strands-agents-ai-spans
+#
+# The matcher is scoped to the OpenPipeline run's own service.name, not just to
+# the provider. Strands sets gen_ai.provider.name itself and the collector does
+# not strip it, so a provider-only matcher would also route the collector demo's
+# spans (service.name "aws-strands/opentelemetry") into this pipeline — and the
+# metric extractors below would then derive gen_ai.invoke_agent.duration a second
+# time for spans the collector already produced it for. `make run-openpipeline`
+# is what sets the distinct service name.
 #
 # Note: Strands 1.x with gen_ai_latest_experimental emits gen_ai.provider.name
 # (not gen_ai.system). Use gen_ai.provider.name in the routing matcher.

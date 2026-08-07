@@ -148,7 +148,8 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `strands-agents-ai-spans`, and add the processors from [`openpipeline-strands.yaml`](./openpipeline-strands.yaml).
 4. Go to the **Routing** tab and add an entry:
-   - Matcher: `gen_ai.provider.name == "strands-agents"`
+   - Matcher: `gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"`
+   - The `service.name` half of the matcher is what keeps this pipeline off the collector run's spans; without it the metric extractors would double-derive the agent durations. See the header of [`openpipeline-strands.yaml`](./openpipeline-strands.yaml).
    - Pipeline: `strands-agents-ai-spans`
 
 ### Step 2: Run the app
@@ -177,7 +178,7 @@ make run-openpipeline
 | `gen_ai.usage.prompt_tokens` | `gen_ai.usage.input_tokens` | Renamed to current OTel GenAI naming |
 | `gen_ai.usage.completion_tokens` | `gen_ai.usage.output_tokens` | Renamed |
 | _(mirrored from request model)_ | `gen_ai.response.model` | Strands does not emit a separate response model field |
-| `gen_ai.provider.name` | `gen_ai.provider.name` | Emitted as `"strands-agents"` by Strands 1.x (latest conventions); passed through and used as the routing/matcher key |
+| `gen_ai.provider.name` | `gen_ai.provider.name` | Emitted as `"strands-agents"` by Strands 1.x (latest conventions); passed through and used as part of the routing matcher, together with `service.name` |
 | `span.name` | `gen_ai.operation.name` / `gen_ai.operation.kind` | `"Model invoke"` → kind `task`, name `chat`; `"Tool: <n>"` → kind `tool`; `"Cycle <n>"` → kind `task`; agent span → kind `agent` |
 | `tool.name` | `gen_ai.tool.name` | OpenPipeline only |
 | `tool.parameters` | `gen_ai.tool.call.arguments` | OpenPipeline only |
@@ -222,7 +223,7 @@ The two agent duration metrics need no application change: Strands already sets 
 **Spans in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.provider.name` to be set; added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml`.
-- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.provider.name == "strands-agents"`, pipeline `strands-agents-ai-spans`.
+- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"`, pipeline `strands-agents-ai-spans`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
