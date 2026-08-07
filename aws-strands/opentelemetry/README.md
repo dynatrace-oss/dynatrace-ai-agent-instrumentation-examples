@@ -37,7 +37,7 @@ With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note bel
 - Shows the full agentic trace in the Dynatrace AI Observability app including tool calls, cycle spans, model invocations, token usage, and message content.
 
 > [!NOTE]
-> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. Both options below re-create the two metrics the app needs — `gen_ai.client.token.usage` and `gen_ai.client.operation.duration` — from the Strands spans: Option A in the collector (`span_metrics` + `signaltometrics` connectors), which also derives the `gen_ai.invoke_agent.duration` / `gen_ai.execute_tool.duration` agent metrics, Option B server-side in OpenPipeline (span-to-metric extraction). See [Metrics](#metrics).
+> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. Both options below re-create the two metrics the app needs — `gen_ai.client.token.usage` and `gen_ai.client.operation.duration` — from the Strands spans: Option A in the collector (`span_metrics` + `signaltometrics` connectors), Option B server-side in OpenPipeline (span-to-metric extraction). Both options additionally derive the `gen_ai.invoke_agent.duration` / `gen_ai.execute_tool.duration` agent metrics. See [Metrics](#metrics).
 
 ---
 
@@ -194,8 +194,8 @@ Strands emits `gen_ai.*` span attributes and its own `strands.*` metrics, but no
 |---|---|---|
 | `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on `chat` spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs | two `samplingAwareValueMetric` extractors, one per direction |
-| `gen_ai.invoke_agent.duration` (s) | `span_metrics` connector, on `invoke_agent` spans | not derived |
-| `gen_ai.execute_tool.duration` (s) | `span_metrics` connector, on `execute_tool` spans | not derived |
+| `gen_ai.invoke_agent.duration` (s) | `span_metrics` connector, on `invoke_agent` spans | `samplingAwareHistogramMetric` extractor, on `invoke_agent ` spans |
+| `gen_ai.execute_tool.duration` (s) | `span_metrics` connector, on `execute_tool` spans | `samplingAwareHistogramMetric` extractor, on `execute_tool ` spans |
 
 **Option A** derives all four metrics in the collector. `gen_ai.client.token.usage` needs the `signaltometrics` connector, which ships in the **Bindplane** collector (`ghcr.io/observiq/bindplane-agent`) but **not** in the Dynatrace collector distro — this is why the Makefile pins the Bindplane image. Requires the token's `metrics.ingest` scope. All metrics use delta temporality (Dynatrace rejects cumulative).
 
@@ -203,7 +203,7 @@ The two agent duration metrics need no application change: Strands already sets 
 
 **`gen_ai.invoke_workflow.duration` is deliberately not emitted.** Strands has no workflow primitive — its tracer only produces agent, chat, tool and event-loop-cycle spans — so there is no span this demo could honestly derive a workflow duration from. See the [`microsoft-agent-framework`](../../microsoft-agent-framework/opentelemetry) demo for a framework that does have real workflow spans. Likewise, the per-invocation call counts `gen_ai.invoke_agent.inference_calls` / `.tool_calls` are not emitted here: they are distributions over invocations, not span durations, so they cannot be derived at the collector at all.
 
-**Option B** derives the two client metrics server-side from the ingested spans via the metric-extraction processors in [`openpipeline-strands.yaml`](openpipeline-strands.yaml) — no collector required. The token metric uses the two-extractor pattern (one extractor per direction, both writing `gen_ai.client.token.usage` with a constant `gen_ai.token.type` dimension). The agent duration metrics are collector-only.
+**Option B** derives the two client metrics server-side from the ingested spans via the metric-extraction processors in [`openpipeline-strands.yaml`](openpipeline-strands.yaml) — no collector required. The token metric uses the two-extractor pattern (one extractor per direction, both writing `gen_ai.client.token.usage` with a constant `gen_ai.token.type` dimension). The agent and tool duration metrics are extracted here too, with the same dimensions the collector uses, so both options produce the same series.
 
 ---
 
