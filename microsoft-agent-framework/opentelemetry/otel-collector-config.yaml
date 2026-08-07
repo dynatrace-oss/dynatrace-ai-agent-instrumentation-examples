@@ -10,7 +10,7 @@ processors:
     timeout: 5s
 
   # One filter per metric branch. Each drops every span that is not the one the
-  # metric is defined over, so spanmetrics derives a duration from that span type
+  # metric is defined over, so span_metrics derives a duration from that span type
   # alone. The export pipeline below is untouched, so all spans still reach
   # Distributed Tracing regardless of what these drop.
   #
@@ -30,7 +30,7 @@ processors:
       span:
         - attributes["gen_ai.operation.name"] != "execute_tool"
 
-  # Each spanmetrics instance emits a "<namespace>.calls" counter alongside its
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
   # histogram, and the connector has no config key to turn that off (only
   # exclude_dimensions / aggregation_cardinality_limit, which trim cardinality
   # rather than drop the metric). None of the three is a GenAI spec metric and
@@ -57,15 +57,32 @@ processors:
       span:
         - name != "workflow.run"
 
+  # Dynatrace does not synthesize log.source for OTLP log ingest — OneAgent derives
+  # it from the log file path, but an OTLP sender has to supply it, and without it
+  # the log records land with the field empty. It identifies a log stream and should
+  # be stable for one logical source, so the emitting scope name is used
+  # (agent_framework for the framework's own records, agent_framework.demo for the
+  # demo's), falling back to the demo name for records that carry no scope.
+  #
+  # Note log.source is a permission-relevant field in Dynatrace, so changing this
+  # value later can change which bucket/permissions the records fall under.
+  transform/log_source:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(log.attributes["log.source"], instrumentation_scope.name) where log.attributes["log.source"] == nil and instrumentation_scope.name != nil and instrumentation_scope.name != ""
+          - set(log.attributes["log.source"], "microsoft-agent-framework/opentelemetry") where log.attributes["log.source"] == nil
+
 connectors:
-  # Three spanmetrics instances, one per metric. The connector always names its
+  # Three span_metrics instances, one per metric. The connector always names its
   # histogram "duration", so the spec metric name is produced by the namespace:
   # namespace "gen_ai.invoke_agent" -> metric "gen_ai.invoke_agent.duration".
   # All three are Histogram/seconds at Development stability per the GenAI semconv
   # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
   #
   # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
-  spanmetrics/invoke_agent:
+  span_metrics/invoke_agent:
     namespace: gen_ai.invoke_agent
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
     histogram:
@@ -79,7 +96,7 @@ connectors:
       - name: gen_ai.operation.name
     metrics_flush_interval: 15s
 
-  spanmetrics/execute_tool:
+  span_metrics/execute_tool:
     namespace: gen_ai.execute_tool
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
     histogram:
@@ -94,7 +111,7 @@ connectors:
       - name: gen_ai.operation.name
     metrics_flush_interval: 15s
 
-  spanmetrics/invoke_workflow:
+  span_metrics/invoke_workflow:
     namespace: gen_ai.invoke_workflow
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
     histogram:
@@ -123,17 +140,17 @@ service:
     traces/invoke_agent_metrics:
       receivers: [otlp]
       processors: [filter/invoke_agent, batch]
-      exporters: [spanmetrics/invoke_agent]
+      exporters: [span_metrics/invoke_agent]
 
     traces/execute_tool_metrics:
       receivers: [otlp]
       processors: [filter/execute_tool, batch]
-      exporters: [spanmetrics/execute_tool]
+      exporters: [span_metrics/execute_tool]
 
     traces/invoke_workflow_metrics:
       receivers: [otlp]
       processors: [filter/invoke_workflow, batch]
-      exporters: [spanmetrics/invoke_workflow]
+      exporters: [span_metrics/invoke_workflow]
 
     # The framework's native gen_ai.client.* metrics arrive on [otlp]; the three
     # derived duration metrics arrive on their connectors. All forwarded together.
@@ -141,14 +158,14 @@ service:
       receivers:
         [
           otlp,
-          spanmetrics/invoke_agent,
-          spanmetrics/execute_tool,
-          spanmetrics/invoke_workflow,
+          span_metrics/invoke_agent,
+          span_metrics/execute_tool,
+          span_metrics/invoke_workflow,
         ]
       processors: [filter/drop_derived_calls, batch]
       exporters: [otlphttp/dynatrace]
 
     logs:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/log_source, batch]
       exporters: [otlphttp/dynatrace]

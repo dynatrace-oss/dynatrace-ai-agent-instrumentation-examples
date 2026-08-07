@@ -20,7 +20,7 @@ The framework self-instruments via OTel natively. Running the workflow produces 
 
 Prompt and completion content (`gen_ai.input.messages` / `gen_ai.output.messages`) are set as span attributes when `enable_sensitive_data=True`, so they travel with traces and do not depend on the logs endpoint.
 
-Logs are exported too, and are trace-correlated so they appear on the span they were emitted inside. One caveat worth knowing: `configure_otel_providers()` attaches its OTel logging handler to the **`agent_framework` logger only**, so anything logged outside that namespace never becomes a log record. The demo logs under `agent_framework.demo` for that reason — copy that pattern if you add logging of your own.
+Logs are exported too, and are trace-correlated so they appear on the span they were emitted inside. Dynatrace does not synthesize `log.source` for OTLP log ingest, so records arrive with that field empty; `make run-collector` fills it in with a `transform` processor, using the emitting scope name. On a plain `make run` the field stays empty. Note `log.source` is permission-relevant in Dynatrace. One caveat worth knowing: `configure_otel_providers()` attaches its OTel logging handler to the **`agent_framework` logger only**, so anything logged outside that namespace never becomes a log record. The demo logs under `agent_framework.demo` for that reason — copy that pattern if you add logging of your own.
 
 Latency (`gen_ai.client.operation.duration`) and token type (`gen_ai.token.type`) are emitted as OTel **metrics** and require a separate metrics endpoint to populate the latency and cost dashboard views in Dynatrace.
 
@@ -105,7 +105,7 @@ make stop   # tears the collector down again
 | Signal | Endpoint | Key attributes |
 |--------|----------|----------------|
 | Traces | `/api/v2/otlp/v1/traces` | `gen_ai.agent.name`, `gen_ai.input/output.messages`, token counts |
-| Logs | `/api/v2/otlp/v1/logs` | application log records under the `agent_framework` logger, correlated to spans by trace ID |
+| Logs | `/api/v2/otlp/v1/logs` | application log records under the `agent_framework` logger, correlated to spans by trace ID; `log.source` set by the collector |
 | Metrics | `/api/v2/otlp/v1/metrics` | `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`; with `make run-collector` also `gen_ai.invoke_agent.duration`, `gen_ai.execute_tool.duration`, `gen_ai.invoke_workflow.duration` |
 
 Metrics are exported with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`, which Dynatrace requires.
