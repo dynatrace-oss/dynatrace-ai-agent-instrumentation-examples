@@ -5,7 +5,7 @@ This sample instruments a [Microsoft Agent Framework](https://github.com/microso
 ## What this sample does
 
 - Runs a two-agent workflow against Azure OpenAI: an analyst agent calls a tool to read a service's golden signals, then a poet agent turns the diagnosis into a haiku
-- Exports **traces** and **metrics** directly to Dynatrace via OTLP HTTP
+- Exports **traces**, **metrics** and **logs** directly to Dynatrace via OTLP HTTP
 - Emits `gen_ai.agent.name`, `gen_ai.conversation.id`, `gen_ai.request.temperature`, prompt and completion content, token usage, and latency out of the box
 - Optionally routes through a local OTel Collector that derives the GenAI **agent, tool and workflow duration metrics** from the spans
 
@@ -18,7 +18,9 @@ The framework self-instruments via OTel natively. Running the workflow produces 
 - **`execute_tool`** span — from the function-invocation layer, carries `gen_ai.tool.name`
 - **`chat`** span — from `ChatTelemetryLayer`, carries token counts, model, prompt/completion content
 
-Prompt and completion content (`gen_ai.input.messages` / `gen_ai.output.messages`) are set as span attributes when `enable_sensitive_data=True`, so they travel with traces and require no separate logs endpoint.
+Prompt and completion content (`gen_ai.input.messages` / `gen_ai.output.messages`) are set as span attributes when `enable_sensitive_data=True`, so they travel with traces and do not depend on the logs endpoint.
+
+Logs are exported too, and are trace-correlated so they appear on the span they were emitted inside. One caveat worth knowing: `configure_otel_providers()` attaches its OTel logging handler to the **`agent_framework` logger only**, so anything logged outside that namespace never becomes a log record. The demo logs under `agent_framework.demo` for that reason — copy that pattern if you add logging of your own.
 
 Latency (`gen_ai.client.operation.duration`) and token type (`gen_ai.token.type`) are emitted as OTel **metrics** and require a separate metrics endpoint to populate the latency and cost dashboard views in Dynatrace.
 
@@ -48,6 +50,7 @@ The collector needs the Bindplane distro image (see `COLLECTOR_IMAGE` in the Mak
 - A Dynatrace API token with:
   - `openTelemetryTrace.ingest` — for traces and prompts
   - `metrics.ingest` — for latency charts and cost dashboard
+  - `logs.ingest` — for the application log records
 - An Azure OpenAI endpoint and key
 
 ## Environment
@@ -100,6 +103,7 @@ make stop   # tears the collector down again
 | Signal | Endpoint | Key attributes |
 |--------|----------|----------------|
 | Traces | `/api/v2/otlp/v1/traces` | `gen_ai.agent.name`, `gen_ai.input/output.messages`, token counts |
+| Logs | `/api/v2/otlp/v1/logs` | application log records under the `agent_framework` logger, correlated to spans by trace ID |
 | Metrics | `/api/v2/otlp/v1/metrics` | `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`; with `make run-collector` also `gen_ai.invoke_agent.duration`, `gen_ai.execute_tool.duration`, `gen_ai.invoke_workflow.duration` |
 
 Metrics are exported with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`, which Dynatrace requires.

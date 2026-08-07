@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import uuid
 
@@ -6,8 +7,18 @@ from agent_framework import Agent, WorkflowBuilder, tool
 from agent_framework.observability import configure_otel_providers
 from agent_framework.openai import OpenAIChatCompletionClient
 from dotenv import load_dotenv
+from opentelemetry import _logs as otel_logs
 from opentelemetry import metrics as otel_metrics
 from opentelemetry import trace as otel_trace
+
+
+# configure_otel_providers() attaches its OTel LoggingHandler to the "agent_framework"
+# logger only, so anything logged outside that namespace never becomes a log record.
+# Logging under a child of it is what puts the demo's own messages on the logs pipeline,
+# trace-correlated with the spans they were emitted inside.
+logging.basicConfig(level=logging.WARNING, format="%(message)s")
+_log = logging.getLogger("agent_framework.demo")
+_log.setLevel(logging.INFO)
 
 
 def _require_env(name: str) -> str:
@@ -35,6 +46,9 @@ def _configure_dynatrace_otlp() -> None:
     #    gen_ai.execute_tool.duration and gen_ai.invoke_workflow.duration from the spans
     #    (spanmetrics) and forwards everything to Dynatrace. The collector holds the DT
     #    token, so no Authorization header is sent from the app.
+    #
+    # Traces, metrics and logs are all exported on both paths; the collector already has
+    # a logs pipeline, so routing through it needs no extra config.
     collector_endpoint = os.getenv("OTEL_COLLECTOR_ENDPOINT", "").rstrip("/")
 
     os.environ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
@@ -42,6 +56,7 @@ def _configure_dynatrace_otlp() -> None:
     if collector_endpoint:
         traces_endpoint = f"{collector_endpoint}/v1/traces"
         metrics_endpoint = f"{collector_endpoint}/v1/metrics"
+        logs_endpoint = f"{collector_endpoint}/v1/logs"
         auth_header = ""
     else:
         dt_endpoint = _require_env("DT_ENDPOINT").rstrip("/")
@@ -51,12 +66,19 @@ def _configure_dynatrace_otlp() -> None:
         traces_endpoint = f"{dt_endpoint}/api/v2/otlp/v1/traces"
         # Metrics — gen_ai.client.operation.duration (latency charts) and gen_ai.token.type (cost lanes)
         metrics_endpoint = f"{dt_endpoint}/api/v2/otlp/v1/metrics"
+        # Logs — the framework's own log records, correlated to the spans above by trace ID
+        logs_endpoint = f"{dt_endpoint}/api/v2/otlp/v1/logs"
 
+    # configure_otel_providers() builds a provider per signal from these; setting the
+    # logs endpoint is all that is needed for it to stand up a LoggerProvider and an
+    # OTLP log exporter alongside the trace and metric ones.
     os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = traces_endpoint
     os.environ["OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"] = metrics_endpoint
+    os.environ["OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"] = logs_endpoint
     if auth_header:
         os.environ["OTEL_EXPORTER_OTLP_TRACES_HEADERS"] = auth_header
         os.environ["OTEL_EXPORTER_OTLP_METRICS_HEADERS"] = auth_header
+        os.environ["OTEL_EXPORTER_OTLP_LOGS_HEADERS"] = auth_header
 
     # Dynatrace requires delta temporality; the SDK default (cumulative) returns 400.
     os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
@@ -139,14 +161,19 @@ async def main() -> None:
     )
 
     prompt = "How healthy is the checkout-service right now?"
-    print(f"User: {prompt}")
+    _log.info("User: %s", prompt)
     result = await workflow.run(prompt)
     for output in result.get_outputs():
-        print(f"Assistant: {output}")
+        _log.info("Assistant: %s", output)
 
-    # Explicitly flush and shut down providers before exit so BatchSpanProcessor and
-    # PeriodicExportingMetricReader finish their work before atexit hooks fire.
-    for provider in (otel_trace.get_tracer_provider(), otel_metrics.get_meter_provider()):
+    # Explicitly flush and shut down providers before exit so BatchSpanProcessor,
+    # PeriodicExportingMetricReader and BatchLogRecordProcessor finish their work
+    # before atexit hooks fire.
+    for provider in (
+        otel_trace.get_tracer_provider(),
+        otel_metrics.get_meter_provider(),
+        otel_logs.get_logger_provider(),
+    ):
         if hasattr(provider, "force_flush"):
             provider.force_flush()
         if hasattr(provider, "shutdown"):
