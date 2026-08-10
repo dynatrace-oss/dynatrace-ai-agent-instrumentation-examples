@@ -1,0 +1,141 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # Traceloop.init(app_name="crewai") pins service.name on the Resource, so the
+  # app cannot be told from the outside to report under a different name. The
+  # e2e metric assertion isolates by service.name + time window, so without this
+  # rename a `make run` and a `make run-collector` pass would share "crewai" and
+  # a derived metric could be satisfied by the wrong run.
+  #
+  # Applied on every pipeline below, including the metric branches: span_metrics
+  # carries the span's Resource onto the metric.
+  resource/service_name:
+    attributes:
+      - key: service.name
+        value: crewai-collector
+        action: upsert
+
+  # The metric branches key on traceloop.span.kind and span name, NOT on
+  # gen_ai.operation.name — because opentelemetry-instrumentation-crewai 0.62.1
+  # sets gen_ai.operation.name = "invoke_agent" on three nested span types at
+  # once (instrumentation.py): the crew kickoff ("crewai.workflow"), the agent
+  # execution ("<role>.agent", traceloop.span.kind = agent) and the task
+  # execution ("<description>.task", traceloop.span.kind = task).
+  #
+  # Those three are nested — kickoff contains agent contains task — so a filter
+  # on the enum alone would fold all three boundaries into one histogram and
+  # record roughly the same wall-clock three times. Keying on the kind gives one
+  # data point per real agent execution.
+  #
+  # The enum is deliberately NOT rewritten here. It is wrong on the kickoff and
+  # task spans (neither is an agent invocation), but that is an upstream
+  # labelling bug; correcting it in a demo collector would hide it and would
+  # diverge from what the same SDK reports everywhere else.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["traceloop.span.kind"] != "agent"
+
+  # The crew kickoff span is the workflow boundary: one Crew.kickoff() run over
+  # all its agents and tasks. It carries no traceloop.span.kind at all, so it is
+  # matched by its (fixed, SDK-assigned) span name — the same span-name keying
+  # the microsoft-agent-framework config uses for "workflow.run".
+  filter/invoke_workflow:
+    error_mode: ignore
+    traces:
+      span:
+        - name != "crewai.workflow"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram and offers no config key to disable it. Neither is a GenAI spec
+  # metric and nothing queries them. Matched by exact name so this cannot
+  # swallow the spec's inference_calls / tool_calls.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.invoke_workflow.calls"
+
+connectors:
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.invoke_agent" -> gen_ai.invoke_agent.duration.
+  # Both are Histogram/seconds at Development stability per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # A CrewAI agent execution is an LLM call plus agent-loop overhead.
+      explicit:
+        buckets: [250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    # The agent span is the one place the instrumentor sets both the agent
+    # identity and the model (wrap_agent_execute_task), so these dimensions are
+    # populated rather than empty.
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.request.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  span_metrics/invoke_workflow:
+    namespace: gen_ai.invoke_workflow
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # The kickoff span spans every agent and task in the crew, so it runs
+      # longer than any single agent execution.
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    dimensions:
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource/service_name, batch]
+      exporters: [otlphttp/dynatrace]
+
+    # One metrics branch per span type. Kept separate from the export pipeline
+    # above so a filter here can never drop a span from Distributed Tracing.
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/invoke_workflow_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/invoke_workflow, batch]
+      exporters: [span_metrics/invoke_workflow]
+
+    metrics:
+      receivers: [otlp, span_metrics/invoke_agent, span_metrics/invoke_workflow]
+      processors: [resource/service_name, filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]
+
+    logs:
+      receivers: [otlp]
+      processors: [resource/service_name, batch]
+      exporters: [otlphttp/dynatrace]

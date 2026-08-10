@@ -29,6 +29,21 @@ This example MCP server exposes a weather forecast tool that returns mock weathe
 
 The MCP server reads the same `DT_API_TOKEN` and `OTEL_ENDPOINT` environment variables as the AI agent.
 
+### Derived agent and tool metrics
+
+`make run-collector` runs both processes behind a local OpenTelemetry Collector (`otel-collector-config.yaml`) that derives two GenAI semconv metrics from the spans, with no change to either service:
+
+| Metric | Derived from |
+|---|---|
+| `gen_ai.invoke_agent.duration` | the graph run (`gen_ai.operation.name = invoke_agent`) |
+| `gen_ai.execute_tool.duration` | each tool span (`gen_ai.operation.name = execute_tool`) |
+
+Nothing has to be rewritten to make this work: `opentelemetry-instrumentation-langchain` already labels the outermost chain span `invoke_agent` and every LangChain tool span `execute_tool`, with `gen_ai.tool.name` set. Both the locally defined `get_city` tool and the weather tool reached over MCP are LangChain tools by the time the agent calls them, so `gen_ai.tool.name` separates the local lookup from the MCP round trip on the same metric.
+
+Both are Histograms in seconds, exported with delta temporality because Dynatrace OTLP metric ingest rejects cumulative metrics. Neither process needs a code change --- both already read `OTEL_ENDPOINT`, so `make run-collector` only points them at the collector instead of at Dynatrace.
+
+The collector renames the agent's `service.name` to `mcp-agent-demo-collector` so a collector run stays distinguishable from a direct-export run. The MCP server keeps `weather-mcp-server`: the cross-service trace between the two is the point of the demo, and a blanket rename would collapse them into one service.
+
 ## How to use
 
 ### Prerequisites
@@ -57,6 +72,7 @@ export AZURE_OPENAI_DEPLOYMENT=<YOUR_DEPLOYMENT>
 ```bash
 make install        # install all dependencies (agent + MCP server)
 make run            # start both the MCP server and the agent API on port 8000
+make run-collector  # or: start both behind a collector that derives the agent metrics
 make request        # send a test weather request (in a second terminal)
 ```
 
