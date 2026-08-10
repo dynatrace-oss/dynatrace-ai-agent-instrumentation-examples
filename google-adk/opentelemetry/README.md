@@ -2,7 +2,28 @@
 
 Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents; one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`, and ADK also records the OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`.
 
+Optionally, `make run-collector` routes the app through a local OTel Collector that derives the GenAI **agent and tool duration metrics** from the spans.
+
 ![Google ADK: AI Observability Prompt View](./assets/google-adk-prompt-view.png)
+
+### Derived agent and tool metrics
+
+ADK's own spans already carry the semconv operation names: `base_agent.run_async` opens an `invoke_agent <name>` span with `gen_ai.operation.name = "invoke_agent"` for the coordinator and for each sub-agent reached through `AgentTool`, and the function-call flow opens an `execute_tool <name>` span with `gen_ai.operation.name = "execute_tool"`. What ADK does not emit is the spec-named *metrics*; it records its own `gen_ai.agent.invocation.duration` and `gen_ai.tool.execution.duration` histograms, which predate the GenAI semconv. `make run-collector` adds the spec-named equivalents with two `span_metrics` connectors:
+
+| Metric | Derived from | Unit |
+|--------|--------------|------|
+| `gen_ai.invoke_agent.duration` | spans with `gen_ai.operation.name == "invoke_agent"` | `s` |
+| `gen_ai.execute_tool.duration` | spans with `gen_ai.operation.name == "execute_tool"` | `s` |
+
+Both are Histogram instruments at Development stability in the [GenAI metrics semconv](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+
+`gen_ai.invoke_workflow.duration` is deliberately not produced. ADK only opens an `invoke_workflow` span for a `google.adk.workflow.Workflow` node, and this demo is a plain `LlmAgent` with two `AgentTool` sub-agents; there is no such span to derive it from.
+
+Each connector also emits a `<namespace>.calls` counter that `span_metrics` cannot be told to suppress. Neither counter is a spec metric, so a `filter/drop_derived_calls` processor drops them on the metrics pipeline before export, matching the two names exactly rather than a `*.calls` pattern.
+
+`make run-collector` reports as `service.name = google-adk-collector` — the app pins `service.name` on its Resource, so a `resource` processor in the collector does the rename. That keeps the collector run's data separate from the direct-export run, which is what lets the e2e suite assert the derived metrics unambiguously.
+
+The collector needs the Bindplane distro image (see `COLLECTOR_IMAGE` in the Makefile) and holds the Dynatrace token itself, so on this path the app exports to `http://localhost:4318` instead of the tenant.
 
 ## Prerequisites
 
@@ -25,14 +46,18 @@ Demonstrates tracing and metering a multi-agent Google ADK application with Dyna
 | `GOOGLE_API_KEY` | Yes | None | Google AI Studio API key (`aistudio.google.com/apikey`) |
 | `MODEL` | No | `gemini-3.1-flash-lite` | Gemini model to use |
 | `DT_API_TOKEN` | Yes | None | Dynatrace API token with `openTelemetryTrace.ingest` and `metrics.ingest` scopes |
-| `OTEL_ENDPOINT` | Yes | None | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`) |
+| `OTEL_ENDPOINT` | Yes | None | Dynatrace OTLP endpoint (`https://<env>.live.dynatrace.com/api/v2/otlp`). `make run-collector` overrides it with `http://localhost:4318` |
+| `DT_ENDPOINT` | Only for `run-collector` | None | Dynatrace tenant URL (`https://<env>.live.dynatrace.com`), used by the collector for egress |
 
 ## Makefile Targets
 
 | Target | Description |
 |--------|-------------|
 | `make install` | Install Python dependencies |
-| `make run` | Run app locally on port 8000 |
+| `make run` | Run app locally on port 8000, exporting straight to Dynatrace |
+| `make run-collector` | Run app on port 8000 through a local OTel Collector, adding the derived duration metrics |
+| `make stop` | Stop and remove the collector container |
+| `make logs` | Tail collector logs |
 | `make request` | POST /research to localhost:8000 |
 | `make help` | Show all available targets |
 

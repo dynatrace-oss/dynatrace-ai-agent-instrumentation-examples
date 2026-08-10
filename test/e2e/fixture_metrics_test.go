@@ -14,14 +14,18 @@ var genAIClientMetrics = []string{
 	"gen_ai.client.operation.duration",
 }
 
-// genAIAgentDurationMetrics are the GenAI agent, tool and workflow duration
-// metrics. No instrumentation library emits them today, so they are derived from
-// the corresponding spans by collector spanmetrics connectors — only demos run
+// genAIAgentDurationMetrics are the GenAI agent and tool duration metrics. No
+// instrumentation library emits them today, so they are derived from the
+// corresponding spans by collector span_metrics connectors — only demos run
 // through such a collector will have them.
+//
+// gen_ai.invoke_workflow.duration is deliberately NOT in this shared list: it
+// only exists for frameworks that have a real workflow span, so demos that have
+// one append it themselves rather than every collector demo being asserted
+// against a metric it cannot honestly emit.
 var genAIAgentDurationMetrics = []string{
 	"gen_ai.invoke_agent.duration",
 	"gen_ai.execute_tool.duration",
-	"gen_ai.invoke_workflow.duration",
 }
 
 // pollMetricExists polls Dynatrace until the given OTel metric has at least one
