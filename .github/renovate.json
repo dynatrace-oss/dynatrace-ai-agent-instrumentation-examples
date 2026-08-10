@@ -29,13 +29,31 @@
   ],
   "prHourlyLimit": 20,
   "lockFileMaintenance": {
-    "enabled": false
+    "description": "Refresh committed lockfiles on a schedule. Without this, a transitive dependency is frozen at whatever resolved when the lock was written, because renovate only ever updates *declared* constraints. That is how mcp/opentelemetry stayed on traceloop-sdk 0.47.3 while every sibling demo ran 0.62.x. It also matters after a bump lands: traceloop-sdk requires its opentelemetry-instrumentation-* packages unversioned, so moving the sdk pin alone leaves the old instrumentation resolutions in place.",
+    "enabled": true,
+    "schedule": ["before 6am on monday"],
+    "commitMessageAction": "refresh",
+    "groupName": "lockfile refresh"
   },
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
       "prConcurrentLimit": 2,
       "prPriority": -1
+    },
+    {
+      "description": "Pin Python ranges to exact versions. A '>=' floor is satisfied by every later release, so renovate sees nothing to update and the demo silently freezes at whatever its lockfile resolved. Pinning converts any such constraint to '==' in a PR, after which every subsequent release raises one.",
+      "matchManagers": ["pep621", "pip_requirements"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Keep the openllmetry family moving together. traceloop-sdk and its opentelemetry-instrumentation-* packages share one version line, and demo collector configs depend on their attribute behaviour, so they should be reviewed as a single change rather than drifting apart.",
+      "matchManagers": ["pep621", "pip_requirements"],
+      "matchPackageNames": [
+        "traceloop-sdk",
+        "opentelemetry-instrumentation-**"
+      ],
+      "groupName": "traceloop (openllmetry)"
     },
     {
       "matchManagers": ["pip_requirements", "pep621"],
