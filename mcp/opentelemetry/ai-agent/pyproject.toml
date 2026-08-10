@@ -10,7 +10,7 @@ dependencies = [
     "langchain-openai>=0.3.35",
     "langgraph>=0.6.10",
     "langsmith[otel]>=0.4.34",
-    "traceloop-sdk>=0.47.3",
+    "traceloop-sdk==0.62.3",
     "fastapi>=0.115.0",
     "uvicorn>=0.34.0",
 ]
