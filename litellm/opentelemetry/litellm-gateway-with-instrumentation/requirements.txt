@@ -157,7 +157,7 @@ tiktoken==0.13.0
 tokenizers==0.23.1
 tomlkit==0.15.1
 tqdm==4.70.0
-traceloop-sdk==0.62.1
+traceloop-sdk==0.62.3
 typer==0.27.1
 typing-inspection==0.4.2
 typing_extensions==4.16.0

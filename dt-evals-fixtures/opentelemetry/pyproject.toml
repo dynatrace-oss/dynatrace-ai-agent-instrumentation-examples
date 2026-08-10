@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "langchain-core>=0.3.0",
-    "traceloop-sdk==0.62.1",
+    "traceloop-sdk==0.62.3",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
 ]
