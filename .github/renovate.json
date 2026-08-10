@@ -96,6 +96,13 @@
       "matchManagers": ["npm"],
       "matchFileNames": ["openai-agents/opentelemetry/ui/**"],
       "groupName": "npm dependencies (openai-agents)"
+    },
+    {
+      "description": "litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, removed in FastAPI 0.140.7. Keep renovate below it until litellm drops that import.",
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["litellm/opentelemetry/**"],
+      "matchDepNames": ["fastapi"],
+      "allowedVersions": "<0.140.7"
     }
   ]
 }

@@ -6,12 +6,12 @@ annotated-types==0.8.0
 anyio==4.14.2
 asgiref==3.12.1
 attrs==26.1.0
-boto3==1.43.61
-boto3-stubs==1.43.61
-botocore==1.43.61
+boto3==1.43.63
+boto3-stubs==1.43.63
+botocore==1.43.63
 botocore-stubs==1.43.14
 certifi==2026.7.22
-cffi==2.1.0
+cffi==2.1.1
 charset-normalizer==3.4.9
 click==8.4.2
 colorama==0.4.6
@@ -114,7 +114,7 @@ types-s3transfer==0.16.0
 typing-inspection==0.4.2
 typing_extensions==4.16.0
 urllib3==2.7.0
-uvicorn==0.52.0
+uvicorn==0.52.1
 wrapt==2.3.0
 yarl==1.24.5
 zipp==4.1.0
