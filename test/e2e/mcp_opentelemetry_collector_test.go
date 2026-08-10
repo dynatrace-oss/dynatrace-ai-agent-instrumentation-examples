@@ -18,11 +18,15 @@ func TestMCPOpenTelemetryCollector(t *testing.T) {
 	startAppWithTarget(t, "mcp/opentelemetry", "run-collector")
 	triggerMCPAgent(t)
 
-	// No collector-side rewriting is involved: opentelemetry-instrumentation-langchain
-	// labels the graph run "invoke_agent" and every LangChain tool span
-	// "execute_tool" itself. Both the local @tool("get_city") and the weather tool
-	// reached over MCP are LangChain tools by the time the agent calls them, so the
-	// ReAct loop produces at least one execute_tool span per request.
+	// This demo pins traceloop-sdk 0.47.3, whose langchain instrumentation sets no
+	// gen_ai.* attributes on chain or tool spans at all — only traceloop.span.kind.
+	// The collector derives the operation name from that kind before filtering; see
+	// the demo's otel-collector-config.yaml. (The langgraph demos pin ~0.62.x, where
+	// the library sets the enum itself, so their configs need no such transform.)
+	//
+	// Both the local @tool("get_city") and the weather tool reached over MCP are
+	// LangChain tools by the time the agent calls them, so the ReAct loop produces
+	// at least one execute_tool span per request.
 	metrics := []string{
 		"gen_ai.invoke_agent.duration",
 		"gen_ai.execute_tool.duration",
