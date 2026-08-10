@@ -7,6 +7,28 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # The boto3 converse API takes multi-part message content
+  # (messages[].content is a list of blocks), so the BedrockInstrumentor emits
+  # llm.input_messages.N.message.contents.J.message_content.text and leaves the
+  # flat llm.input_messages.N.message.content unset. gen_ai_normalizer's
+  # openinference source only reads the flat key, so gen_ai.input.messages /
+  # gen_ai.output.messages come out empty. Backfill the flat key from the first
+  # text part before normalization; the normalizer then builds the structured
+  # gen_ai.*.messages as usual. OTTL cannot iterate, so indices are enumerated —
+  # this demo sends one user message and gets one assistant message back, the
+  # extra indices only cover multi-turn variants.
+  transform/openinference_message_content:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["llm.input_messages.0.message.content"], attributes["llm.input_messages.0.message.contents.0.message_content.text"]) where attributes["llm.input_messages.0.message.content"] == nil and attributes["llm.input_messages.0.message.contents.0.message_content.text"] != nil
+          - set(attributes["llm.input_messages.1.message.content"], attributes["llm.input_messages.1.message.contents.0.message_content.text"]) where attributes["llm.input_messages.1.message.content"] == nil and attributes["llm.input_messages.1.message.contents.0.message_content.text"] != nil
+          - set(attributes["llm.input_messages.2.message.content"], attributes["llm.input_messages.2.message.contents.0.message_content.text"]) where attributes["llm.input_messages.2.message.content"] == nil and attributes["llm.input_messages.2.message.contents.0.message_content.text"] != nil
+          - set(attributes["llm.input_messages.3.message.content"], attributes["llm.input_messages.3.message.contents.0.message_content.text"]) where attributes["llm.input_messages.3.message.content"] == nil and attributes["llm.input_messages.3.message.contents.0.message_content.text"] != nil
+          - set(attributes["llm.output_messages.0.message.content"], attributes["llm.output_messages.0.message.contents.0.message_content.text"]) where attributes["llm.output_messages.0.message.content"] == nil and attributes["llm.output_messages.0.message.contents.0.message_content.text"] != nil
+          - set(attributes["llm.output_messages.1.message.content"], attributes["llm.output_messages.1.message.contents.0.message_content.text"]) where attributes["llm.output_messages.1.message.content"] == nil and attributes["llm.output_messages.1.message.contents.0.message_content.text"] != nil
+
   # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
   # The built-in "openinference" source maps model, provider, token usage, tool,
   # agent and session attributes, and reconstructs the flattened
@@ -112,14 +134,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, batch]
+      processors: [transform/openinference_message_content, gen_ai_normalizer, transform/response_model, batch]
       exporters: [otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
+      processors: [transform/openinference_message_content, gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]
