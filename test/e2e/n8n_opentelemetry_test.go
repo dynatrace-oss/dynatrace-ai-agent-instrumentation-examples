@@ -35,30 +35,33 @@ const (
 // its Gemini credential through the n8n CLI, fires the webhook, and audits the
 // resulting trace.
 //
-// Run isolation is timestamp-based, not test.run.id-based: n8n builds its own
-// resource and does not read OTEL_RESOURCE_ATTRIBUTES, exactly like the OneAgent
-// suites. scopedDQL's isNull(test.run.id) branch covers this.
+// Run isolation is by unique service.name, not scopedDQL: n8n builds its own
+// OTel resource and does not read OTEL_RESOURCE_ATTRIBUTES, so test.run.id is
+// absent, and its spans do not satisfy scopedDQL's timestamp fallback either, so
+// applying it silently discards every span. See n8nServiceName.
 func TestN8NOpenTelemetry(t *testing.T) {
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 	if apiKey == "" {
 		t.Skip("GOOGLE_API_KEY not set — n8n suite needs a real Gemini key for the AI Agent node")
 	}
 
+	service := n8nServiceName(t)
+
 	startN8NStack(t)
 	seedN8NWorkflow(t, apiKey)
 	triggerN8NWebhook(t)
 
 	// Anchor on service.name alone rather than on a gen_ai.* attribute or a span
-	// name: the LLM attributes live on the agent's child spans, and auditSpan
+	// name: the LLM attributes live on the agent's child spans, and the audit
 	// expands the anchor to every span in its trace before evaluating the
 	// profile. Keeping the anchor broad means a failure here says "no n8n spans
 	// reached the tenant" and nothing else, which is the fact worth failing on.
-	auditSpan(t, "n8n", "opentelemetry", GenericProfile,
-		fmt.Sprintf(`fetch spans, from: now()-10m
+	auditN8NSpan(t, "opentelemetry",
+		fmt.Sprintf(`fetch spans, from: now()-30m
 | filter service.name == "%s"
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`, n8nServiceName()),
+| limit 1`, service), false,
 		"n8n emits native OTel traces; gen_ai.* attributes come from the AI Agent node's child spans.")
 
 	// n8n's agent tracing (N8N_AGENTS_TRACING_ENABLED) emits the gen_ai.* spans.
@@ -67,28 +70,67 @@ func TestN8NOpenTelemetry(t *testing.T) {
 	// the workflow anchor's trace above would never reach them. Optional so the
 	// suite still reports on a version whose agent tracing behaves differently.
 	t.Run("agent-tracing", func(t *testing.T) {
-		auditSpanOptional(t, "n8n", "opentelemetry-agent", GenericProfile,
-			fmt.Sprintf(`fetch spans, from: now()-10m
+		auditN8NSpan(t, "opentelemetry-agent",
+			fmt.Sprintf(`fetch spans, from: now()-30m
 | filter service.name == "%s"
 | filter isNotNull(gen_ai.request.model) or isNotNull(gen_ai.provider.name) or isNotNull(gen_ai.system)
 | sort timestamp desc
-| limit 1`, n8nServiceName()))
+| limit 1`, service), true)
 	})
 
 	// The collector's transform/n8n statements rename the workflow root span to
 	// workflow.execute/<workflow.id>. Asserted separately, and after the audit,
 	// so a rename regression does not cost us the attribute report.
-	assertSpanExistsWithin(t, scopedDQL(fmt.Sprintf(`fetch spans, from: now()-10m
+	assertSpanExistsWithin(t, fmt.Sprintf(`fetch spans, from: now()-30m
 | filter service.name == "%s"
 | filter span.name == "workflow.execute/%s"
-| limit 1`, n8nServiceName(), n8nWorkflowID)), 5*time.Minute)
+| limit 1`, service, n8nWorkflowID), 5*time.Minute)
 }
 
-// n8nServiceName is the service.name n8n stamps on its spans. It must match
-// DT_SERVICE_NAME in the compose env, because the collector's transform/n8n
-// statements are all gated on that value.
-func n8nServiceName() string {
-	return envOr("DT_SERVICE_NAME", "n8n")
+// n8nServiceName returns the service.name for this run and exports it as
+// DT_SERVICE_NAME so the Makefile bakes it into .env, where both n8n (which
+// stamps it on its spans) and the collector (which gates every transform/n8n
+// statement on it) pick it up.
+//
+// It is unique per run because that is this suite's only workable isolation
+// mechanism. scopedDQL cannot isolate n8n spans: n8n builds its own OTel
+// resource, so test.run.id is absent, and its spans do not satisfy the
+// timestamp fallback either, which silently filtered out every span. A unique
+// service.name isolates concurrent runs exactly, and lets the queries below run
+// unscoped.
+func n8nServiceName(t *testing.T) string {
+	t.Helper()
+	name := fmt.Sprintf("n8n-e2e-%s", testRunID)
+	t.Setenv("DT_SERVICE_NAME", name)
+	return name
+}
+
+// auditN8NSpan is auditSpan without scopedDQL. It reuses the shared report
+// pipeline so the output is identical to every other suite; only the run
+// isolation differs, and the caller's DQL carries it via the unique
+// service.name. optional skips instead of failing when no anchor is found.
+func auditN8NSpan(t *testing.T, instrumentation string, dql string, optional bool, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil || len(records) == 0 {
+		if optional {
+			t.Skipf("no n8n/%s spans found: %v", instrumentation, err)
+			return
+		}
+		t.Fatalf("poll DT spans: %v", err)
+	}
+	assertNotErrorSpan(t, records[0])
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport("n8n", instrumentation, GenericProfile, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+	logAuditResult(t, report, len(spans))
 }
 
 // startN8NStack brings up postgres, n8n and the collector via make, and
@@ -284,6 +326,9 @@ func logN8NSpansInTenant(t *testing.T) {
 			"DT_APPS_ENDPOINT point at the same tenant)")
 		return
 	}
+	// Rows here while the audit above found nothing means the audit's own filters
+	// are wrong, not the ingest path: compare service.name against DT_SERVICE_NAME.
+	t.Logf("diagnostic: expected service.name %q", os.Getenv("DT_SERVICE_NAME"))
 	for _, r := range records {
 		t.Logf("diagnostic: stored n8n span %v", r)
 	}

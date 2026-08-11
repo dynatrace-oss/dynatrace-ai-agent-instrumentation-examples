@@ -5,6 +5,9 @@ WEBHOOK_PATH ?= e2e-trigger
 
 # CI exports the tenant as DT_ENDPOINT; the compose stack reads DT_ENVIRONMENT_URL.
 DT_ENVIRONMENT_URL ?= $(DT_ENDPOINT)
+# Both n8n (service.name on its spans) and the collector (which gates every
+# transform/n8n statement on that value) read this, so they must agree.
+DT_SERVICE_NAME ?= n8n
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -12,7 +15,8 @@ help: ## Show available targets
 .env:
 	@if [ -n "$(DT_API_TOKEN)" ] && [ -n "$(DT_ENVIRONMENT_URL)" ]; then \
 		sed -e "s|^DT_ENVIRONMENT_URL=.*|DT_ENVIRONMENT_URL=$(DT_ENVIRONMENT_URL)|" \
-		    -e "s|^DT_API_TOKEN=.*|DT_API_TOKEN=$(DT_API_TOKEN)|" .env.sample > .env; \
+		    -e "s|^DT_API_TOKEN=.*|DT_API_TOKEN=$(DT_API_TOKEN)|" \
+		    -e "s|^DT_SERVICE_NAME=.*|DT_SERVICE_NAME=$(DT_SERVICE_NAME)|" .env.sample > .env; \
 	else \
 		cp .env.sample .env; \
 		echo "warning: DT_ENVIRONMENT_URL / DT_API_TOKEN not set — edit .env before running"; \
