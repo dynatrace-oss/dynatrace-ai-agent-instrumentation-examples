@@ -19,6 +19,9 @@ const (
 	n8nBaseURL     = "http://127.0.0.1:5678"
 	n8nWebhookPath = "e2e-trigger"
 	n8nCredID      = "e2eGeminiCred01"
+	// n8nWorkflowID must match the "id" in workflows/Webhook-AI-Workflow.json;
+	// publish:workflow addresses the workflow by id.
+	n8nWorkflowID = "e2eAIWorkflow01"
 )
 
 // TestN8NOpenTelemetry exercises the self-hosted n8n demo end to end.
@@ -116,7 +119,10 @@ func seedN8NWorkflow(t *testing.T, apiKey string) {
 
 	execInN8N(t, dir, "n8n", "import:credentials", "--input=/tmp/credentials.json")
 	execInN8N(t, dir, "n8n", "import:workflow", "--input=/tmp/workflow.json")
-	execInN8N(t, dir, "n8n", "update:workflow", "--all", "--active=true")
+	// publish:workflow replaces "update:workflow --all --active=true", which is
+	// deprecated and silently publishes nothing. The workflow's "active": true
+	// flag in the JSON is not enough on its own either.
+	execInN8N(t, dir, "n8n", "publish:workflow", "--id="+n8nWorkflowID)
 
 	if err := runIn(dir, "docker", "compose", "restart", "n8n"); err != nil {
 		t.Fatalf("restart n8n: %v", err)

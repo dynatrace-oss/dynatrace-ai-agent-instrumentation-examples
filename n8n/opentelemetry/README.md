@@ -191,6 +191,10 @@ docker compose exec -T n8n n8n import:workflow --input=/tmp/workflow.json
 ```
 
 ```bash
+docker compose exec -T n8n n8n publish:workflow --id=e2eAIWorkflow01
+```
+
+```bash
 make request
 ```
 
