@@ -61,6 +61,20 @@ func TestN8NOpenTelemetry(t *testing.T) {
 | limit 1`, n8nServiceName()),
 		"n8n emits native OTel traces; gen_ai.* attributes come from the AI Agent node's child spans.")
 
+	// n8n's agent tracing (N8N_AGENTS_TRACING_ENABLED) emits the gen_ai.* spans.
+	// Audited separately because they may not be children of the node.execute
+	// span: if they arrive under their own scope or their own trace, expanding
+	// the workflow anchor's trace above would never reach them. Optional so the
+	// suite still reports on a version whose agent tracing behaves differently.
+	t.Run("agent-tracing", func(t *testing.T) {
+		auditSpanOptional(t, "n8n", "opentelemetry-agent", GenericProfile,
+			fmt.Sprintf(`fetch spans, from: now()-10m
+| filter service.name == "%s"
+| filter isNotNull(gen_ai.request.model) or isNotNull(gen_ai.provider.name) or isNotNull(gen_ai.system)
+| sort timestamp desc
+| limit 1`, n8nServiceName()))
+	})
+
 	// The collector's transform/n8n statements rename the workflow root span to
 	// workflow.execute/<workflow.id>. Asserted separately, and after the audit,
 	// so a rename regression does not cost us the attribute report.
@@ -91,7 +105,10 @@ func startN8NStack(t *testing.T) {
 		// exported" from "the collector could not reach Dynatrace". Dump both logs
 		// before teardown so a failed run is diagnosable without a second run.
 		if t.Failed() {
-			if err := runIn(dir, "docker", "compose", "logs", "--tail=400", "n8n", "collector"); err != nil {
+			// At detailed verbosity one span costs ~15 log lines plus its resource
+			// block, so a small tail shows only the final batch and makes it easy to
+			// conclude an attribute is absent when it was simply scrolled past.
+			if err := runIn(dir, "docker", "compose", "logs", "--tail=2000", "n8n", "collector"); err != nil {
 				t.Logf("warning: could not collect container logs: %v", err)
 			}
 			logN8NSpansInTenant(t)
