@@ -47,18 +47,26 @@ func TestN8NOpenTelemetry(t *testing.T) {
 	seedN8NWorkflow(t, apiKey)
 	triggerN8NWebhook(t)
 
-	// Anchor on the workflow root span rather than on a gen_ai.* attribute: the
-	// LLM attributes live on the agent's child spans, and auditSpan expands the
-	// anchor to every span in its trace before evaluating the profile. Anchoring
-	// on the root also proves the collector's transform/n8n rename fired.
+	// Anchor on service.name alone rather than on a gen_ai.* attribute or a span
+	// name: the LLM attributes live on the agent's child spans, and auditSpan
+	// expands the anchor to every span in its trace before evaluating the
+	// profile. Keeping the anchor broad means a failure here says "no n8n spans
+	// reached the tenant" and nothing else, which is the fact worth failing on.
 	auditSpan(t, "n8n", "opentelemetry", GenericProfile,
 		fmt.Sprintf(`fetch spans, from: now()-10m
 | filter service.name == "%s"
-| filter startsWith(span.name, "workflow.execute")
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`, n8nServiceName()),
 		"n8n emits native OTel traces; gen_ai.* attributes come from the AI Agent node's child spans.")
+
+	// The collector's transform/n8n statements rename the workflow root span to
+	// workflow.execute/<workflow.id>. Asserted separately, and after the audit,
+	// so a rename regression does not cost us the attribute report.
+	assertSpanExistsWithin(t, scopedDQL(fmt.Sprintf(`fetch spans, from: now()-10m
+| filter service.name == "%s"
+| filter span.name == "workflow.execute/%s"
+| limit 1`, n8nServiceName(), n8nWorkflowID)), 5*time.Minute)
 }
 
 // n8nServiceName is the service.name n8n stamps on its spans. It must match
@@ -77,6 +85,15 @@ func startN8NStack(t *testing.T) {
 	dir := filepath.Join(repoRoot(), n8nAppDir)
 
 	t.Cleanup(func() {
+		// n8n and the collector are both black boxes here: if no spans reach the
+		// tenant there is nothing in the Go test output to distinguish "n8n never
+		// exported" from "the collector could not reach Dynatrace". Dump both logs
+		// before teardown so a failed run is diagnosable without a second run.
+		if t.Failed() {
+			if err := runIn(dir, "docker", "compose", "logs", "--tail=200", "n8n", "collector"); err != nil {
+				t.Logf("warning: could not collect container logs: %v", err)
+			}
+		}
 		if err := runIn(dir, "make", "-e", "stop"); err != nil {
 			t.Logf("warning: make stop in %s: %v", n8nAppDir, err)
 		}
