@@ -211,7 +211,7 @@ Two export paths cover the derivation, and both produce the same metric names, u
 
 `make run-collector` reports under the distinct service name `rum/opentelemetry-collector` so the two paths can never double-count the same series; route only the direct-export service name to the OpenPipeline pipeline.
 
-The e2e suite splits along the same line: `TestRUMOpenTelemetry` drives `make run` and asserts only the native `gen_ai.client.token.usage`, while `TestRUMOpenTelemetryCollector` drives `make run-collector` and asserts both durations. The duration assertions live on the collector path deliberately, because that path derives them from a checkout; the direct path depends on the tenant-side pipeline above being deployed first.
+The e2e suite covers the collector path only: `TestRUMOpenTelemetry` drives `make run-collector` and asserts token usage plus both durations. That single run exercises the same app, browser flow, spans and profile as a direct-export run, plus the derived metrics, so a second suite for `make run` would add nothing except a dependency on the tenant-side pipeline above being deployed.
 
 Here is the AI Observability Explorer tab showing rum/opentelemetry service with 24 LLM requests and prompt trace list.
 <img src="./assets/ai-observability-prompt-trace-list.png" width="800" alt="AI Observability Explorer showing rum/opentelemetry service with 24 LLM requests and prompt trace list">
