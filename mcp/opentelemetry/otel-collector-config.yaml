@@ -32,17 +32,20 @@ processors:
         statements:
           - set(attributes["service.name"], "mcp-agent-demo-collector") where attributes["service.name"] == "mcp-agent-demo"
 
-  # This demo pins traceloop-sdk 0.47.3, and at that version
-  # opentelemetry-instrumentation-langchain sets **no** gen_ai.* attributes on
-  # chain or tool spans at all: _create_task_span writes only
-  # traceloop.span.kind and traceloop.entity.name. (The spec enum, gen_ai.tool.name
-  # and gen_ai.tool.type only arrive around 0.62.x, which is what the langgraph
-  # demos pin — so their configs filter on the enum directly and need no
-  # transform. Do not copy this block there, and re-check it if this demo is ever
-  # bumped: the transform is guarded, so it would degrade to a no-op rather than
-  # break, but the filters would then be matching values the library sets itself.)
+  # This block was written when the demo pinned traceloop-sdk 0.47.3, where
+  # opentelemetry-instrumentation-langchain set **no** gen_ai.* attributes on
+  # chain or tool spans at all: _create_task_span wrote only traceloop.span.kind
+  # and traceloop.entity.name. The demo now pins 0.62.3, which sets the spec enum,
+  # gen_ai.tool.name and gen_ai.tool.type itself — so every statement below is a
+  # no-op today and the filters match values the library assigns.
   #
-  # So the enum has to be derived here from the span kind:
+  # It is kept rather than deleted because it costs nothing when guarded and it is
+  # the only thing standing between a future downgrade, or a demo copied from this
+  # one at an older pin, and a config that silently derives zero metrics. Every
+  # statement is guarded on == nil for exactly that reason: never overwrite an enum
+  # the instrumentation set, or a tool name leaks into a low-cardinality dimension.
+  #
+  # The mapping, for the versions where it does fire:
   #
   # - "workflow" is the outermost chain, which the instrumentation picks by
   #   nesting depth (parent_run_id is None), not by semantics. Here that root is
@@ -54,7 +57,7 @@ processors:
   # - "task" is left unmapped — a nested runnable is not a spec operation.
   #
   # gen_ai.tool.name is mirrored from traceloop.entity.name because the metric
-  # dimension needs it and 0.47.3 never sets it; without this the tool histogram
+  # dimension needs it and pre-0.62 never set it; without this the tool histogram
   # would carry an empty name and the local lookup could not be told from the MCP
   # round trip.
   transform/traceloop_operation_name:
@@ -147,10 +150,11 @@ service:
     # One metrics branch per span type. Kept separate from the export pipeline
     # above so a filter here can never drop a span from Distributed Tracing.
     #
-    # transform/traceloop_operation_name must precede the filters: at the pinned
-    # library version it is what puts gen_ai.operation.name on the span in the
-    # first place, so without it these filters match nothing and no metric is
-    # produced at all.
+    # transform/traceloop_operation_name must precede the filters: on any library
+    # version that does not set gen_ai.operation.name itself, it is what puts the
+    # attribute on the span, and without it the filters match nothing and no metric
+    # is produced at all. At the current 0.62.3 pin it is a no-op — ordering still
+    # matters the moment that stops being true.
     traces/invoke_agent_metrics:
       receivers: [otlp]
       processors:
