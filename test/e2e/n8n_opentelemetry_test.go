@@ -64,16 +64,22 @@ func TestN8NOpenTelemetry(t *testing.T) {
 | limit 1`, service), false,
 		"n8n emits native OTel traces; gen_ai.* attributes come from the AI Agent node's child spans.")
 
-	// n8n's agent tracing (N8N_AGENTS_TRACING_ENABLED) emits the gen_ai.* spans.
-	// Audited separately because they may not be children of the node.execute
-	// span: if they arrive under their own scope or their own trace, expanding
-	// the workflow anchor's trace above would never reach them. Optional so the
-	// suite still reports on a version whose agent tracing behaves differently.
+	// n8n's agent tracing (N8N_AGENTS_TRACING_ENABLED, n8n >= 2.33.0) emits the
+	// gen_ai.* data as spans of its own rather than as attributes on
+	// node.execute: "<agent name>.generate" or ".stream" roots, with
+	// "execute_tool <tool name>" children. transform/n8n does not rewrite those
+	// names, so they arrive as-is.
+	//
+	// Audited separately and anchored on those names as well as on gen_ai.*,
+	// because if they land in their own trace then expanding the workflow
+	// anchor's trace above would never reach them. Optional: a version or node
+	// typeVersion whose agent runtime is not instrumented emits none of this, and
+	// that is a finding to report rather than a reason to fail the suite.
 	t.Run("agent-tracing", func(t *testing.T) {
 		auditN8NSpan(t, "opentelemetry-agent",
 			fmt.Sprintf(`fetch spans, from: now()-30m
 | filter service.name == "%s"
-| filter isNotNull(gen_ai.request.model) or isNotNull(gen_ai.provider.name) or isNotNull(gen_ai.system)
+| filter endsWith(span.name, ".generate") or endsWith(span.name, ".stream") or startsWith(span.name, "execute_tool") or isNotNull(gen_ai.operation.name) or isNotNull(gen_ai.request.model)
 | sort timestamp desc
 | limit 1`, service), true)
 	})
