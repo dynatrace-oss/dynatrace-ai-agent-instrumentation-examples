@@ -9,9 +9,18 @@ import (
 
 // genAIClientMetrics are the two core OTel GenAI client metrics the AI
 // Observability app charts (cost and latency).
+//
+// Exported individually as well, because a demo can honestly emit one without the
+// other: pydantic-ai emits token usage natively but no duration metric at all, so
+// a direct-export run asserts genAIClientTokenUsageMetric alone.
+const (
+	genAIClientTokenUsageMetric        = "gen_ai.client.token.usage"
+	genAIClientOperationDurationMetric = "gen_ai.client.operation.duration"
+)
+
 var genAIClientMetrics = []string{
-	"gen_ai.client.token.usage",
-	"gen_ai.client.operation.duration",
+	genAIClientTokenUsageMetric,
+	genAIClientOperationDurationMetric,
 }
 
 // genAIAgentDurationMetrics are the GenAI agent and tool duration metrics. No
