@@ -90,7 +90,7 @@ func startN8NStack(t *testing.T) {
 		// exported" from "the collector could not reach Dynatrace". Dump both logs
 		// before teardown so a failed run is diagnosable without a second run.
 		if t.Failed() {
-			if err := runIn(dir, "docker", "compose", "logs", "--tail=200", "n8n", "collector"); err != nil {
+			if err := runIn(dir, "docker", "compose", "logs", "--tail=400", "n8n", "collector"); err != nil {
 				t.Logf("warning: could not collect container logs: %v", err)
 			}
 		}
