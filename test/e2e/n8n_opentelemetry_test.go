@@ -210,10 +210,18 @@ func waitN8NReady(t *testing.T, timeout time.Duration) {
 	t.Fatalf("n8n not ready on /healthz after %v", timeout)
 }
 
+// copyIntoN8N copies a file into the n8n container and hands it to the node
+// user. docker compose cp preserves the source mode and uid, and these files are
+// written 0600 by the runner's uid, so without the chown the n8n CLI (running as
+// node) fails to read them with EACCES.
 func copyIntoN8N(t *testing.T, dir, src, dest string) {
 	t.Helper()
 	if err := runIn(dir, "docker", "compose", "cp", src, "n8n:"+dest); err != nil {
 		t.Fatalf("copy %s into n8n container: %v", src, err)
+	}
+	if err := runIn(dir, "docker", "compose", "exec", "-T", "-u", "root", "n8n",
+		"chown", "node:node", dest); err != nil {
+		t.Fatalf("chown %s in n8n container: %v", dest, err)
 	}
 }
 
