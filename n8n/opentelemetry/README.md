@@ -136,6 +136,18 @@ processors:
 docker compose up
 ```
 
+Or use the Makefile, which generates `.env` from `.env.sample` (picking up `DT_ENVIRONMENT_URL` and `DT_API_TOKEN` from your shell when they are set) and waits for n8n to report healthy:
+
+```bash
+make run
+```
+
+Other targets: `make install` (pull images), `make logs`, `make stop` (tear down and remove volumes), and `make request` (fire the webhook workflow described below).
+
+### Configure OpenTelemetry without the UI
+
+The `N8N_OTEL_*` variables in `.env.sample` configure exactly what the **Settings > OpenTelemetry** page configures, so a fresh instance exports traces on first boot with no manual step. See the [n8n OpenTelemetry environment variables](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/opentelemetry). This is the path the nightly e2e suite uses; to configure it interactively instead, comment out `N8N_OTEL_ENABLED` in `.env` and follow the UI steps below.
+
 ### n8n Configuration
 
 After the installation is complete:
@@ -169,6 +181,20 @@ After the installation is complete:
   - The updated Gemini model (successful executions)
 
 This ensures that Dynatrace receives a representative dataset containing successful and failed workflow executions, traces, metrics, logs, and LLM usage telemetry.
+
+### Headless webhook workflow
+
+`workflows/Webhook-AI-Workflow.json` is a smaller variant of the sample above with a **Webhook** trigger instead of a chat trigger, so it can be driven from a script or from CI without opening the UI. Import it and its Gemini credential through the n8n CLI, restart n8n so it registers the production webhook, then call it:
+
+```bash
+docker compose exec -T n8n n8n import:workflow --input=/tmp/workflow.json
+```
+
+```bash
+make request
+```
+
+The nightly e2e suite (`test/e2e/n8n_opentelemetry_test.go`) automates exactly this sequence and audits the resulting trace against the shared GenAI attribute baseline.
 
 ### Verify in Dynatrace
 
