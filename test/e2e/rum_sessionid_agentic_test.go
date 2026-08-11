@@ -34,7 +34,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 	// gen_ai.invoke_workflow.duration — single agent, no workflow primitive. The
 	// per-invocation call counts (inference_calls / tool_calls) cannot be derived
 	// from spans at all.
-	metrics := append(append([]string{}, genAIClientMetrics...), "gen_ai.invoke_agent.duration")
+	metrics := append(append([]string{}, genAIClientMetrics...), genAIInvokeAgentDurationMetric)
 
 	auditSpanWithMetrics(t, "rum", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m

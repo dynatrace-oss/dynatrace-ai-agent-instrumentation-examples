@@ -23,9 +23,20 @@ var genAIClientMetrics = []string{
 // only exists for frameworks that have a real workflow span, so demos that have
 // one append it themselves rather than every collector demo being asserted
 // against a metric it cannot honestly emit.
+//
+// The two are also exported individually, because a demo can honestly emit one
+// without the other: an agent with no registered tools starts no execute_tool
+// span, so it asserts genAIInvokeAgentDurationMetric alone rather than
+// hardcoding the key a second time.
+const (
+	genAIInvokeAgentDurationMetric    = "gen_ai.invoke_agent.duration"
+	genAIExecuteToolDurationMetric    = "gen_ai.execute_tool.duration"
+	genAIInvokeWorkflowDurationMetric = "gen_ai.invoke_workflow.duration"
+)
+
 var genAIAgentDurationMetrics = []string{
-	"gen_ai.invoke_agent.duration",
-	"gen_ai.execute_tool.duration",
+	genAIInvokeAgentDurationMetric,
+	genAIExecuteToolDurationMetric,
 }
 
 // pollMetricExists polls Dynatrace until the given OTel metric has at least one
