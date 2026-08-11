@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -93,6 +94,7 @@ func startN8NStack(t *testing.T) {
 			if err := runIn(dir, "docker", "compose", "logs", "--tail=400", "n8n", "collector"); err != nil {
 				t.Logf("warning: could not collect container logs: %v", err)
 			}
+			logN8NSpansInTenant(t)
 		}
 		if err := runIn(dir, "make", "-e", "stop"); err != nil {
 			t.Logf("warning: make stop in %s: %v", n8nAppDir, err)
@@ -237,6 +239,39 @@ func waitN8NReady(t *testing.T, timeout time.Duration) {
 // user. docker compose cp preserves the source mode and uid, and these files are
 // written 0600 by the runner's uid, so without the chown the n8n CLI (running as
 // node) fails to read them with EACCES.
+// logN8NSpansInTenant asks the tenant what it actually stored for n8n, without
+// the service.name filter or the run-isolation filter that the audit query
+// applies. The collector's debug exporter can prove a span left the collector,
+// but only the tenant can say whether it was stored and under which
+// service.name, which is the one thing a failed audit cannot distinguish.
+func logN8NSpansInTenant(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	const dql = `fetch spans, from: now()-30m
+| filter isNotNull(n8n.workflow.id)
+| fields timestamp, span.name, service.name, n8n.workflow.id, test.run.id
+| sort timestamp desc
+| limit 5`
+
+	records, err := dtClient.Execute(ctx, dql)
+	if err != nil {
+		t.Logf("diagnostic query failed: %v", err)
+		return
+	}
+	if len(records) == 0 {
+		t.Logf("diagnostic: tenant has no spans carrying n8n.workflow.id in the last 30m, " +
+			"so the spans were accepted by the OTLP endpoint but not stored (check the " +
+			"token's openpipeline:traces:ingest scope and that DT_ENDPOINT and " +
+			"DT_APPS_ENDPOINT point at the same tenant)")
+		return
+	}
+	for _, r := range records {
+		t.Logf("diagnostic: stored n8n span %v", r)
+	}
+}
+
 func copyIntoN8N(t *testing.T, dir, src, dest string) {
 	t.Helper()
 	if err := runIn(dir, "docker", "compose", "cp", src, "n8n:"+dest); err != nil {

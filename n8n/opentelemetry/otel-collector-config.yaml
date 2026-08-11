@@ -73,14 +73,8 @@ service:
     metrics:
       receivers: [prometheus]
       processors: [resource/n8n_metrics,cumulativetodelta,batch]
-      # TEMPORARY (diagnostic, revert before merge): metrics debug output floods the
-      # log and buries the trace debug output we actually need to read.
-      exporters: [otlphttp/dynatrace]
+      exporters: [debug, otlphttp/dynatrace]
     traces:
       receivers: [otlp]
       processors: [transform/n8n]
-      # TEMPORARY (diagnostic, revert before merge): the debug exporter is the only
-      # way to tell "n8n exported no spans" apart from "spans arrived but the e2e
-      # DQL misses them". It also prints the real resource attributes and span
-      # names, which is what the query needs to match.
-      exporters: [debug, otlphttp/dynatrace]
+      exporters: [otlphttp/dynatrace]
