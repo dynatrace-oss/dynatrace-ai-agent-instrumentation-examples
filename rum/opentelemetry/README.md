@@ -183,6 +183,34 @@ Independently of `getSessionId()`, Dynatrace always propagates `dt.rum.session.i
 | Token usage | pydantic-ai + backend span | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
 | User feedback | `/api/feedback` OTel span | `feedback.rating`, `feedback.question` |
 
+### GenAI metrics
+
+pydantic-ai emits `gen_ai.client.token.usage` natively as an OTLP metric, but it does not emit any duration metric, so the AI Observability latency tiles stay empty out of the box. Both duration metrics below are derived from the spans this demo already produces:
+
+| Metric | Derived from | Where |
+|---|---|---|
+| `gen_ai.client.token.usage` | emitted natively by pydantic-ai | no derivation needed |
+| `gen_ai.client.operation.duration` | the pydantic-ai model-call span (`chat <model>`, the only span carrying `gen_ai.response.model`) | `span_metrics/client_operation` connector, or the `rum-operation-duration-metric` extractor |
+| `gen_ai.invoke_agent.duration` | pydantic-ai's agent-run span (`gen_ai.operation.name == "invoke_agent"`, set natively since instrumentation version 3) | `span_metrics/invoke_agent` connector, or the `rum-invoke-agent-duration-metric` extractor |
+
+Both derivations key on span attributes rather than span names, so the hand-rolled `music_agent.ask` HTTP wrapper span (which sets only `gen_ai.request.model` and also covers the demo's provider-fallback retries) is never turned into a duration and nothing is double-counted.
+
+Two metrics from the GenAI semconv are deliberately **not** derived here:
+
+- `gen_ai.execute_tool.duration` — the agent registers no tools, so pydantic-ai never starts an `execute_tool` span. Deriving it would publish an always-empty series.
+- `gen_ai.invoke_workflow.duration` — this is a single agent with no workflow primitive. The only candidate span is the HTTP wrapper, and aliasing that to a workflow would re-report the agent duration under a second name.
+
+The per-invocation call counts (`gen_ai.invoke_agent.inference_calls` / `.tool_calls`) cannot be derived from spans at all; they need framework hooks in application code.
+
+Two export paths cover the derivation, and both produce the same metric names, units (seconds) and dimensions:
+
+| Path | Command | How the durations are produced |
+|---|---|---|
+| Direct to Dynatrace (default) | `make run` | Deploy [`openpipeline-rum.yaml`](./openpipeline-rum.yaml) in your tenant (**Settings → OpenPipeline → Spans**) and route `service.name == "rum/opentelemetry"` to it |
+| Through a local collector | `make run-collector` | [`otel-collector-config.yaml`](./otel-collector-config.yaml) derives both with `span_metrics` connectors and forwards everything to Dynatrace |
+
+`make run-collector` reports under the distinct service name `rum/opentelemetry-collector` so the two paths can never double-count the same series; route only the direct-export service name to the OpenPipeline pipeline.
+
 Here is the AI Observability Explorer tab showing rum/opentelemetry service with 24 LLM requests and prompt trace list.
 <img src="./assets/ai-observability-prompt-trace-list.png" width="800" alt="AI Observability Explorer showing rum/opentelemetry service with 24 LLM requests and prompt trace list">
 
