@@ -181,9 +181,10 @@ func init() {
 		Name: "azure",
 		Required: append(append([]AttributeCheck{}, genericRequired...),
 			AttributeCheck{Name: "gen_ai.prompt.prompt_filter_results", RuleID: "AR-015"},
+		),
+		Optional: append(append([]AttributeCheck{}, genericOptional...),
 			AttributeCheck{Name: "gen_ai.completion.content_filter_results", RuleID: "AR-016"},
 		),
-		Optional: append([]AttributeCheck{}, genericOptional...),
 	}
 }
 
