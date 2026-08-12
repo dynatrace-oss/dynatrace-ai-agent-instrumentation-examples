@@ -159,7 +159,6 @@ connectors:
       - name: gen_ai.provider.name
       - name: gen_ai.request.model
       - name: gen_ai.operation.name
-      - name: service.name
     metrics_flush_interval: 15s
     histogram:
       explicit:
@@ -170,7 +169,6 @@ connectors:
       - name: gen_ai.provider.name
       - name: gen_ai.request.model
       - name: gen_ai.operation.name
-      - name: service.name
     metrics_flush_interval: 15s
     histogram:
       explicit:
@@ -180,7 +178,6 @@ connectors:
     dimensions:
       - name: gen_ai.tool.name
       - name: gen_ai.agent.name
-      - name: service.name
     metrics_flush_interval: 15s
     histogram:
       explicit:
@@ -189,7 +186,6 @@ connectors:
     namespace: gen_ai.invoke_workflow
     dimensions:
       - name: n8n.workflow.id
-      - name: service.name
     metrics_flush_interval: 15s
     histogram:
       explicit:
