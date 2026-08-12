@@ -54,6 +54,21 @@ processors:
             where IsMatch(name, "^node\\.execute$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["n8n.node.type"] != nil
+          # --- agent-tracing spans (N8N_AGENTS_TRACING_ENABLED): n8n emits these in
+          #     a separate, unlinked trace with no parent span. Promote the .generate /
+          #     .stream root spans to kind=SERVER + request.is_root_span so they are
+          #     discovered as service entry points in the Dynatrace AI Observability app.
+          #     Also set gen_ai.operation.name="chat" as a fallback: n8n may omit it. ---
+          - set(kind, 2)
+            where (endsWith(name, ".generate") or endsWith(name, ".stream"))
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+          - set(attributes["request.is_root_span"], true)
+            where (endsWith(name, ".generate") or endsWith(name, ".stream"))
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+          - set(attributes["gen_ai.operation.name"], "chat")
+            where (endsWith(name, ".generate") or endsWith(name, ".stream"))
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.operation.name"] == nil
 
 
 exporters:

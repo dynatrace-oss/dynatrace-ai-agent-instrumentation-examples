@@ -51,37 +51,38 @@ func TestN8NOpenTelemetry(t *testing.T) {
 	seedN8NWorkflow(t, apiKey)
 	triggerN8NWebhook(t)
 
+	// n8n's agent tracing (N8N_AGENTS_TRACING_ENABLED, n8n >= 2.33.0) emits
+	// gen_ai.* spans in a trace of their own, not connected to the workflow
+	// execution trace. Build the DQL once and reuse it in both the merged main
+	// audit and the dedicated agent-tracing sub-test.
+	agentTracingDQL := fmt.Sprintf(`fetch spans, from: now()-30m
+| filter service.name == "%s"
+| filter endsWith(span.name, ".generate") or endsWith(span.name, ".stream") or startsWith(span.name, "execute_tool") or isNotNull(gen_ai.operation.name) or isNotNull(gen_ai.request.model)
+| sort timestamp desc
+| limit 1`, service)
+
 	// Anchor on service.name alone rather than on a gen_ai.* attribute or a span
-	// name: the LLM attributes live on the agent's child spans, and the audit
-	// expands the anchor to every span in its trace before evaluating the
-	// profile. Keeping the anchor broad means a failure here says "no n8n spans
-	// reached the tenant" and nothing else, which is the fact worth failing on.
-	auditN8NSpan(t, "opentelemetry",
+	// name: the LLM attributes live on the agent-tracing spans, which arrive in a
+	// separate trace. auditN8NSpanMerged fetches the workflow trace first (keeping
+	// the anchor broad so a failure here means "no n8n spans reached the tenant"),
+	// then best-effort fetches the agent-tracing trace and merges both before
+	// evaluating the profile — so gen_ai.* attributes are visible even though they
+	// live in a different trace from workflow.execute/node.execute spans.
+	auditN8NSpanMerged(t, "opentelemetry",
 		fmt.Sprintf(`fetch spans, from: now()-30m
 | filter service.name == "%s"
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`, service), false,
-		"n8n emits native OTel traces; gen_ai.* attributes come from the AI Agent node's child spans.")
+| limit 1`, service),
+		[]string{agentTracingDQL}, false,
+		"n8n emits gen_ai.* attributes on agent-tracing spans (N8N_AGENTS_TRACING_ENABLED) in a separate trace; merged here for a complete profile picture.")
 
-	// n8n's agent tracing (N8N_AGENTS_TRACING_ENABLED, n8n >= 2.33.0) emits the
-	// gen_ai.* data as spans of its own rather than as attributes on
-	// node.execute: "<agent name>.generate" or ".stream" roots, with
-	// "execute_tool <tool name>" children. transform/n8n does not rewrite those
-	// names, so they arrive as-is.
-	//
-	// Audited separately and anchored on those names as well as on gen_ai.*,
-	// because if they land in their own trace then expanding the workflow
-	// anchor's trace above would never reach them. Optional: a version or node
+	// The agent-tracing sub-test produces a dedicated "opentelemetry-agent"
+	// report anchored solely on the gen_ai spans. Optional: a version or node
 	// typeVersion whose agent runtime is not instrumented emits none of this, and
 	// that is a finding to report rather than a reason to fail the suite.
 	t.Run("agent-tracing", func(t *testing.T) {
-		auditN8NSpan(t, "opentelemetry-agent",
-			fmt.Sprintf(`fetch spans, from: now()-30m
-| filter service.name == "%s"
-| filter endsWith(span.name, ".generate") or endsWith(span.name, ".stream") or startsWith(span.name, "execute_tool") or isNotNull(gen_ai.operation.name) or isNotNull(gen_ai.request.model)
-| sort timestamp desc
-| limit 1`, service), true)
+		auditN8NSpan(t, "opentelemetry-agent", agentTracingDQL, true)
 	})
 
 	// The collector's transform/n8n statements rename the workflow root span to
@@ -137,6 +138,47 @@ func auditN8NSpan(t *testing.T, instrumentation string, dql string, optional boo
 	}
 	writeReport(t, report)
 	logAuditResult(t, report, len(spans))
+}
+
+// auditN8NSpanMerged is like auditN8NSpan but also polls each DQL in extraDQLs
+// best-effort, fetches every resulting trace's spans, and merges them all before
+// evaluating GenericProfile. Use when gen_ai.* attributes live on spans in a
+// separate trace (n8n's N8N_AGENTS_TRACING_ENABLED emits a new, unlinked trace
+// per agent invocation) that would never be reached by expanding the workflow
+// anchor's trace.id alone. Extra DQLs are silently skipped when they return no
+// spans — they are always best-effort.
+func auditN8NSpanMerged(t *testing.T, instrumentation, dql string, extraDQLs []string, optional bool, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, dql, 15*time.Second)
+	if err != nil || len(records) == 0 {
+		if optional {
+			t.Skipf("no n8n/%s spans found: %v", instrumentation, err)
+			return
+		}
+		t.Fatalf("poll DT spans: %v", err)
+	}
+	assertNotErrorSpan(t, records[0])
+
+	allSpans := fetchTraceSpans(t, ctx, records[0])
+
+	for _, extra := range extraDQLs {
+		extraRecords, extraErr := dtClient.PollUntilSpans(ctx, extra, 15*time.Second)
+		if extraErr != nil || len(extraRecords) == 0 {
+			t.Logf("n8n/%s: no spans for extra DQL (best-effort, skipping): %v", instrumentation, extraErr)
+			continue
+		}
+		allSpans = append(allSpans, fetchTraceSpans(t, ctx, extraRecords[0])...)
+	}
+
+	report := buildReport("n8n", instrumentation, GenericProfile, mergeSpans(allSpans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+	logAuditResult(t, report, len(allSpans))
 }
 
 // startN8NStack brings up postgres, n8n and the collector via make, and
