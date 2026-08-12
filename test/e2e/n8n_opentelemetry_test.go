@@ -262,34 +262,65 @@ func waitN8NReady(t *testing.T, timeout time.Duration) {
 // applies. The collector's debug exporter can prove a span left the collector,
 // but only the tenant can say whether it was stored and under which
 // service.name, which is the one thing a failed audit cannot distinguish.
+//
+// Two distinct failure modes are diagnosed separately:
+//   - No spans at all for the expected service.name → ingest is broken
+//     (check token's openpipeline:traces:ingest scope and that DT_ENDPOINT
+//     and DT_APPS_ENDPOINT point at the same tenant).
+//   - Spans present but none carry n8n.workflow.id → n8n is sending spans
+//     but they are agent-tracing spans only (workflow execution spans are
+//     missing), or the workflow ID attribute was not set by this n8n version.
 func logN8NSpansInTenant(t *testing.T) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	const dql = `fetch spans, from: now()-30m
-| filter isNotNull(n8n.workflow.id)
-| fields timestamp, span.name, service.name, n8n.workflow.id, test.run.id
-| sort timestamp desc
-| limit 5`
+	service := os.Getenv("DT_SERVICE_NAME")
 
-	records, err := dtClient.Execute(ctx, dql)
+	// First check: does the tenant have ANY span from this service at all?
+	anySpanDQL := fmt.Sprintf(`fetch spans, from: now()-30m
+| filter service.name == "%s"
+| fields timestamp, span.name, service.name, n8n.workflow.id
+| sort timestamp desc
+| limit 5`, service)
+
+	anyRecords, err := dtClient.Execute(ctx, anySpanDQL)
 	if err != nil {
 		t.Logf("diagnostic query failed: %v", err)
 		return
 	}
-	if len(records) == 0 {
-		t.Logf("diagnostic: tenant has no spans carrying n8n.workflow.id in the last 30m, " +
-			"so the spans were accepted by the OTLP endpoint but not stored (check the " +
-			"token's openpipeline:traces:ingest scope and that DT_ENDPOINT and " +
-			"DT_APPS_ENDPOINT point at the same tenant)")
+	if len(anyRecords) == 0 {
+		// No spans at all from this service — ingest or routing is broken.
+		t.Logf("diagnostic: tenant has no spans at all for service.name=%q in the last 30m — "+
+			"spans were either rejected or not stored (check the token's "+
+			"openpipeline:traces:ingest scope and that DT_ENDPOINT and "+
+			"DT_APPS_ENDPOINT point at the same tenant)", service)
 		return
 	}
-	// Rows here while the audit above found nothing means the audit's own filters
-	// are wrong, not the ingest path: compare service.name against DT_SERVICE_NAME.
-	t.Logf("diagnostic: expected service.name %q", os.Getenv("DT_SERVICE_NAME"))
-	for _, r := range records {
-		t.Logf("diagnostic: stored n8n span %v", r)
+
+	// Spans exist for the service; check which ones carry n8n.workflow.id.
+	workflowDQL := fmt.Sprintf(`fetch spans, from: now()-30m
+| filter service.name == "%s"
+| filter isNotNull(n8n.workflow.id)
+| fields timestamp, span.name, service.name, n8n.workflow.id
+| sort timestamp desc
+| limit 5`, service)
+
+	wfRecords, err := dtClient.Execute(ctx, workflowDQL)
+	if err != nil {
+		t.Logf("diagnostic workflow-span query failed: %v", err)
+	}
+
+	t.Logf("diagnostic: expected service.name %q", service)
+	t.Logf("diagnostic: tenant has %d recent span(s) for this service (last 5 shown below)", len(anyRecords))
+	for _, r := range anyRecords {
+		t.Logf("diagnostic: stored span %v", r)
+	}
+	if len(wfRecords) == 0 {
+		t.Logf("diagnostic: none of those spans carry n8n.workflow.id — " +
+			"only agent-tracing spans reached the tenant, or n8n did not emit " +
+			"workflow.execute spans (check N8N_AGENTS_TRACING_ENABLED and that the " +
+			"AI Agent node typeVersion emits workflow execution spans)")
 	}
 }
 
