@@ -69,6 +69,11 @@ processors:
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.operation.name"] == nil
+          - set(attributes["gen_ai.provider.name"], attributes["gen_ai.system"])
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.system"] != nil
+            and attributes["gen_ai.provider.name"] == nil
 
 
 exporters:
