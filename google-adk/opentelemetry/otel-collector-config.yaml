@@ -46,7 +46,7 @@ processors:
           # still works but the collector rewrites it at startup and logs
           # "one or more paths were modified to include their context prefix".
           - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
-          - set(span.attributes["gen_ai.provider.name"], "gemini") where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.provider.name"] == nil
+          - set(span.attributes["gen_ai.provider.name"], "gemini") where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.provider.name"] == nil and span.attributes["gen_ai.system"] == nil
 
 
   # One filter per metric branch. Each drops every span that is not the one the
