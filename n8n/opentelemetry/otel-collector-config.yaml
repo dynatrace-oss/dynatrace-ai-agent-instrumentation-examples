@@ -54,11 +54,36 @@ processors:
             where IsMatch(name, "^node\\.execute$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["n8n.node.type"] != nil
+          # --- n8n does not set gen_ai.* on node.execute spans; derive gen_ai.provider.name
+          #     and gen_ai.operation.name from n8n.node.type so the AI Observability app
+          #     can discover LLM spans. Only the known node types used in this demo are
+          #     mapped; extend as needed for other providers. ---
+          - set(attributes["gen_ai.provider.name"], "google")
+            where IsMatch(name, "^node\\.execute/")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and IsMatch(attributes["n8n.node.type"], "GoogleGemini|GooglePalm|VertexAi")
+            and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "openai")
+            where IsMatch(name, "^node\\.execute/")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and IsMatch(attributes["n8n.node.type"], "lmChatOpenAi|lmOpenAi")
+            and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "anthropic")
+            where IsMatch(name, "^node\\.execute/")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and IsMatch(attributes["n8n.node.type"], "lmChatAnthropic")
+            and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.operation.name"], "chat")
+            where IsMatch(name, "^node\\.execute/")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.provider.name"] != nil
+            and attributes["gen_ai.operation.name"] == nil
           # --- agent-tracing spans (N8N_AGENTS_TRACING_ENABLED): n8n emits these in
           #     a separate, unlinked trace with no parent span. Promote the .generate /
           #     .stream root spans to kind=SERVER + request.is_root_span so they are
           #     discovered as service entry points in the Dynatrace AI Observability app.
-          #     Also set gen_ai.operation.name="chat" as a fallback: n8n may omit it. ---
+          #     Synthesize gen_ai.provider.name from gen_ai.system (if present) or fall
+          #     back to "google" for the Gemini demo workflow. ---
           - set(kind, 2)
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
@@ -73,6 +98,10 @@ processors:
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.system"] != nil
+            and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "google")
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.provider.name"] == nil
 
 
