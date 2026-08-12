@@ -509,7 +509,7 @@ func seedN8NWorkflowOpenAI(t *testing.T, apiKey string) {
 	if err := json.Unmarshal(raw, &wf); err != nil {
 		t.Fatalf("parse OpenAI workflow %s: %v", src, err)
 	}
-	if model := os.Getenv("OPENAI_MODEL"); model != "" {
+	if model := os.Getenv("MODEL"); model != "" {
 		nodes, _ := wf["nodes"].([]interface{})
 		for _, n := range nodes {
 			node, ok := n.(map[string]interface{})
