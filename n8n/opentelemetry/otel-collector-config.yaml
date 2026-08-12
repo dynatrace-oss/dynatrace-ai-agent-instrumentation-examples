@@ -60,13 +60,13 @@ processors:
           #     discovered as service entry points in the Dynatrace AI Observability app.
           #     Also set gen_ai.operation.name="chat" as a fallback: n8n may omit it. ---
           - set(kind, 2)
-            where (endsWith(name, ".generate") or endsWith(name, ".stream"))
+            where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
           - set(attributes["request.is_root_span"], true)
-            where (endsWith(name, ".generate") or endsWith(name, ".stream"))
+            where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
           - set(attributes["gen_ai.operation.name"], "chat")
-            where (endsWith(name, ".generate") or endsWith(name, ".stream"))
+            where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.operation.name"] == nil
 
@@ -92,4 +92,4 @@ service:
     traces:
       receivers: [otlp]
       processors: [transform/n8n]
-      exporters: [otlphttp/dynatrace]
+      exporters: [debug, otlphttp/dynatrace]
