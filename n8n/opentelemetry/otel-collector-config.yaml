@@ -82,22 +82,27 @@ processors:
           #     a separate, unlinked trace with no parent span. Promote the .generate /
           #     .stream root spans to kind=SERVER + request.is_root_span so they are
           #     discovered as service entry points in the Dynatrace AI Observability app.
-          #     Synthesize gen_ai.provider.name from gen_ai.system (if present) or fall
-          #     back to "google" for the Gemini demo workflow. ---
+          #     n8n sets gen_ai.request.model as "<provider>/<model>" (e.g.
+          #     "google/gemini-2.5-flash") but never sets gen_ai.provider.name or
+          #     gen_ai.system. Extract the provider prefix into gen_ai.provider.name
+          #     so the AI Observability app entry filter (isNotNull(gen_ai.provider.name))
+          #     is satisfied. Fall back to "google" only when model is absent. ---
           - set(kind, 2)
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
           - set(attributes["request.is_root_span"], true)
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
-          - set(attributes["gen_ai.operation.name"], "chat")
-            where IsMatch(name, "\\.(generate|stream)$")
-            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
-            and attributes["gen_ai.operation.name"] == nil
           - set(attributes["gen_ai.provider.name"], attributes["gen_ai.system"])
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.system"] != nil
+            and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], Split(attributes["gen_ai.request.model"], "/")[0])
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.request.model"] != nil
+            and IsMatch(attributes["gen_ai.request.model"], ".+/.+")
             and attributes["gen_ai.provider.name"] == nil
           - set(attributes["gen_ai.provider.name"], "google")
             where IsMatch(name, "\\.(generate|stream)$")
