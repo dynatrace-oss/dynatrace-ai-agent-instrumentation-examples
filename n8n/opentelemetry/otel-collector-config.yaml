@@ -108,6 +108,92 @@ processors:
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.provider.name"] == nil
+          # --- map n8n's gen_ai.prompt to gen_ai.input.messages so the AI Observability
+          #     app can display the prompt. Controlled by N8N_AGENTS_TRACING_RECORD_INPUTS
+          #     on the n8n side; absent when that flag is false. ---
+          - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"])
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.prompt"] != nil
+            and attributes["gen_ai.input.messages"] == nil
+          # --- n8n sets gen_ai.request.model as "<provider>/<model>" (e.g.
+          #     "google/gemini-2.5-flash"). Strip the provider prefix so the value
+          #     matches the bare model name the AI Observability app expects, then
+          #     copy it to gen_ai.response.model as a fallback (n8n never sets it).
+          #     Token usage (input/output tokens) is not emitted by n8n. ---
+          - set(attributes["gen_ai.request.model"], Split(attributes["gen_ai.request.model"], "/")[1])
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.request.model"] != nil
+            and IsMatch(attributes["gen_ai.request.model"], ".+/.+")
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"])
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["gen_ai.request.model"] != nil
+            and attributes["gen_ai.response.model"] == nil
+
+  # --- Filter processors used to route specific span types to their spanmetrics connector ---
+  filter/agent_spans:
+    error_mode: ignore
+    traces:
+      span:
+        - 'not IsMatch(name, ".*\\.(generate|stream)$")'
+  filter/tool_spans:
+    error_mode: ignore
+    traces:
+      span:
+        - 'not IsMatch(name, "^execute_tool")'
+  filter/workflow_spans:
+    error_mode: ignore
+    traces:
+      span:
+        - 'not IsMatch(name, "^workflow\\.execute")'
+
+
+connectors:
+  # Each connector instance produces {namespace}.duration from its filtered spans.
+  # gen_ai.client.token.usage is not produced: n8n does not emit token counts.
+  spanmetrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    dimensions:
+      - name: gen_ai.provider.name
+      - name: gen_ai.request.model
+      - name: gen_ai.operation.name
+      - name: service.name
+    metrics_flush_interval: 15s
+    histogram:
+      explicit:
+        buckets: [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60]
+  spanmetrics/client_operation:
+    namespace: gen_ai.client.operation
+    dimensions:
+      - name: gen_ai.provider.name
+      - name: gen_ai.request.model
+      - name: gen_ai.operation.name
+      - name: service.name
+    metrics_flush_interval: 15s
+    histogram:
+      explicit:
+        buckets: [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60]
+  spanmetrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.agent.name
+      - name: service.name
+    metrics_flush_interval: 15s
+    histogram:
+      explicit:
+        buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]
+  spanmetrics/invoke_workflow:
+    namespace: gen_ai.invoke_workflow
+    dimensions:
+      - name: n8n.workflow.id
+      - name: service.name
+    metrics_flush_interval: 15s
+    histogram:
+      explicit:
+        buckets: [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60]
 
 
 exporters:
@@ -124,11 +210,27 @@ service:
       receivers: [filelog]
       processors: [resource/n8n_logs,batch]
       exporters: [otlphttp/dynatrace]
-    metrics:
-      receivers: [prometheus]
-      processors: [resource/n8n_metrics,cumulativetodelta,batch]
-      exporters: [debug, otlphttp/dynatrace]
+    # Main traces pipeline: full transform + export to Dynatrace
     traces:
       receivers: [otlp]
       processors: [transform/n8n]
+      exporters: [debug, otlphttp/dynatrace]
+    # Per-span-type pipelines feeding spanmetrics connectors.
+    # Each receives from otlp independently (data is cloned), applies the same
+    # transform, then drops non-matching spans before the connector.
+    traces/agent_metrics:
+      receivers: [otlp]
+      processors: [transform/n8n, filter/agent_spans]
+      exporters: [spanmetrics/invoke_agent, spanmetrics/client_operation]
+    traces/tool_metrics:
+      receivers: [otlp]
+      processors: [transform/n8n, filter/tool_spans]
+      exporters: [spanmetrics/execute_tool]
+    traces/workflow_metrics:
+      receivers: [otlp]
+      processors: [transform/n8n, filter/workflow_spans]
+      exporters: [spanmetrics/invoke_workflow]
+    metrics:
+      receivers: [prometheus, spanmetrics/invoke_agent, spanmetrics/client_operation, spanmetrics/execute_tool, spanmetrics/invoke_workflow]
+      processors: [resource/n8n_metrics,cumulativetodelta,batch]
       exporters: [debug, otlphttp/dynatrace]
