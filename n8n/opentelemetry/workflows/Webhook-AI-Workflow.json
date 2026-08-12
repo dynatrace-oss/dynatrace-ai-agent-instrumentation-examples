@@ -21,7 +21,7 @@
       "id": "a1f0c2d4-0002-4a10-9b00-000000000002",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [60, 0],
       "parameters": {
         "promptType": "define",

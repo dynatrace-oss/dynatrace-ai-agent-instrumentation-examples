@@ -75,7 +75,11 @@ func TestN8NOpenTelemetry(t *testing.T) {
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`, service),
 		[]string{agentTracingDQL}, false,
-		"n8n emits gen_ai.* attributes on agent-tracing spans (N8N_AGENTS_TRACING_ENABLED) in a separate trace; merged here for a complete profile picture.")
+		"n8n platform gaps: gen_ai.request.model and gen_ai.response.model are only available on "+
+			"agent-tracing spans (N8N_AGENTS_TRACING_ENABLED, n8n >= 2.33.0); if those spans are "+
+			"absent (e.g. the AI Agent node typeVersion does not emit them), both attributes will be "+
+			"missing. gen_ai.usage.input_tokens and gen_ai.usage.output_tokens are never emitted by "+
+			"n8n — token usage is a known platform limitation with no workaround via the collector.")
 
 	// The agent-tracing sub-test produces a dedicated "opentelemetry-agent"
 	// report anchored solely on the gen_ai spans. Optional: a version or node
