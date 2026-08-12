@@ -23,6 +23,10 @@ const (
 	// n8nWorkflowID must match the "id" in workflows/Webhook-AI-Workflow.json;
 	// publish:workflow addresses the workflow by id.
 	n8nWorkflowID = "e2eAIWorkflow01"
+
+	n8nOpenAIWebhookPath = "e2e-trigger-openai"
+	n8nOpenAICredID      = "e2eOpenAICred01"
+	n8nOpenAIWorkflowID  = "e2eAIWorkflow02"
 )
 
 // TestN8NOpenTelemetry exercises the self-hosted n8n demo end to end.
@@ -75,11 +79,13 @@ func TestN8NOpenTelemetry(t *testing.T) {
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`, service),
 		[]string{agentTracingDQL}, false,
-		"n8n platform gaps: gen_ai.request.model and gen_ai.response.model are only available on "+
-			"agent-tracing spans (N8N_AGENTS_TRACING_ENABLED, n8n >= 2.33.0); if those spans are "+
-			"absent (e.g. the AI Agent node typeVersion does not emit them), both attributes will be "+
-			"missing. gen_ai.usage.input_tokens and gen_ai.usage.output_tokens are never emitted by "+
-			"n8n — token usage is a known platform limitation with no workaround via the collector.")
+		"n8n platform gaps (confirmed in n8n 2.35.1 with lmChatGoogleGemini): agent-tracing spans "+
+			"arrive but carry only gen_ai.operation.name. n8n does not set gen_ai.request.model, "+
+			"gen_ai.agent.name, gen_ai.conversation.id, gen_ai.prompt, or any token-usage attributes "+
+			"for the Gemini LangChain node integration. The collector transforms are in place for "+
+			"when n8n populates these attributes in a future version, but they cannot synthesize "+
+			"values that n8n never emits. Token usage (AR-006/AR-007) is a separate confirmed gap: "+
+			"n8n never records token counts in any span type.")
 
 	// The agent-tracing sub-test produces a dedicated "opentelemetry-agent"
 	// report anchored solely on the gen_ai spans. Optional: a version or node
@@ -96,6 +102,48 @@ func TestN8NOpenTelemetry(t *testing.T) {
 | filter service.name == "%s"
 | filter span.name == "workflow.execute/%s"
 | limit 1`, service, n8nWorkflowID), 5*time.Minute)
+}
+
+// TestN8NOpenTelemetryOpenAI runs the same audit against the OpenAI variant of
+// the workflow to check whether lmChatOpenAi emits richer gen_ai.* attributes
+// than lmChatGoogleGemini. Skipped when OPENAI_API_KEY is unset.
+// The n8n stack must already be running (TestN8NOpenTelemetry starts it); if
+// this test runs standalone it starts its own stack.
+func TestN8NOpenTelemetryOpenAI(t *testing.T) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		t.Skip("OPENAI_API_KEY not set — skipping OpenAI n8n variant")
+	}
+
+	service := n8nServiceName(t)
+
+	startN8NStack(t)
+	seedN8NWorkflowOpenAI(t, apiKey)
+	triggerN8NWebhookPath(t, n8nOpenAIWebhookPath)
+
+	agentTracingDQL := fmt.Sprintf(`fetch spans, from: now()-30m
+| filter service.name == "%s"
+| filter endsWith(span.name, ".generate") or endsWith(span.name, ".stream") or startsWith(span.name, "execute_tool") or isNotNull(gen_ai.operation.name) or isNotNull(gen_ai.request.model)
+| sort timestamp desc
+| limit 1`, service)
+
+	auditN8NSpanMerged(t, "opentelemetry-openai",
+		fmt.Sprintf(`fetch spans, from: now()-30m
+| filter service.name == "%s"
+| sort timestamp desc
+| filter isNull(span.status_code) or span.status_code != "error"
+| limit 1`, service),
+		[]string{agentTracingDQL}, false,
+		"OpenAI variant — testing whether lmChatOpenAi emits gen_ai.request.model and other attributes that lmChatGoogleGemini does not.")
+
+	t.Run("agent-tracing", func(t *testing.T) {
+		auditN8NSpan(t, "opentelemetry-openai-agent", agentTracingDQL, true)
+	})
+
+	assertSpanExistsWithin(t, fmt.Sprintf(`fetch spans, from: now()-30m
+| filter service.name == "%s"
+| filter span.name == "workflow.execute/%s"
+| limit 1`, service, n8nOpenAIWorkflowID), 5*time.Minute)
 }
 
 // n8nServiceName returns the service.name for this run and exports it as
@@ -297,12 +345,18 @@ func n8nWorkflowWithModel(t *testing.T) map[string]interface{} {
 	return wf
 }
 
-// triggerN8NWebhook POSTs a topic to the workflow's production webhook. The
-// workflow responds from its last node, so the call returns only once the AI
-// Agent has finished and the spans have been handed to the collector.
+// triggerN8NWebhook POSTs a topic to the Gemini workflow's production webhook.
 func triggerN8NWebhook(t *testing.T) {
 	t.Helper()
-	url := n8nBaseURL + "/webhook/" + n8nWebhookPath
+	triggerN8NWebhookPath(t, n8nWebhookPath)
+}
+
+// triggerN8NWebhookPath POSTs a topic to any workflow webhook by path. The
+// workflow responds from its last node, so the call returns only once the AI
+// Agent has finished and the spans have been handed to the collector.
+func triggerN8NWebhookPath(t *testing.T, path string) {
+	t.Helper()
+	url := n8nBaseURL + "/webhook/" + path
 
 	body, _ := json.Marshal(map[string]string{"topic": "observability"})
 	client := &http.Client{Timeout: 2 * time.Minute}
@@ -426,4 +480,59 @@ func runIn(dir, name string, args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// seedN8NWorkflowOpenAI imports the OpenAI credential and the OpenAI webhook
+// workflow, then publishes it. Restarting n8n is required to register the new
+// production webhook.
+func seedN8NWorkflowOpenAI(t *testing.T, apiKey string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot(), n8nAppDir)
+
+	creds := []map[string]interface{}{{
+		"id":   n8nOpenAICredID,
+		"name": "E2E OpenAI",
+		"type": "openAiApi",
+		"data": map[string]string{
+			"apiKey": apiKey,
+		},
+	}}
+	credPath := filepath.Join(t.TempDir(), "credentials.json")
+	writeJSON(t, credPath, creds)
+
+	src := filepath.Join(repoRoot(), n8nAppDir, "workflows", "Webhook-AI-Workflow-OpenAI.json")
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read OpenAI workflow %s: %v", src, err)
+	}
+	var wf map[string]interface{}
+	if err := json.Unmarshal(raw, &wf); err != nil {
+		t.Fatalf("parse OpenAI workflow %s: %v", src, err)
+	}
+	if model := os.Getenv("OPENAI_MODEL"); model != "" {
+		nodes, _ := wf["nodes"].([]interface{})
+		for _, n := range nodes {
+			node, ok := n.(map[string]interface{})
+			if !ok || node["type"] != "@n8n/n8n-nodes-langchain.lmChatOpenAi" {
+				continue
+			}
+			if params, ok := node["parameters"].(map[string]interface{}); ok {
+				params["model"] = model
+			}
+		}
+	}
+	wfPath := filepath.Join(t.TempDir(), "workflow.json")
+	writeJSON(t, wfPath, wf)
+
+	copyIntoN8N(t, dir, credPath, "/tmp/credentials-openai.json")
+	copyIntoN8N(t, dir, wfPath, "/tmp/workflow-openai.json")
+
+	execInN8N(t, dir, "n8n", "import:credentials", "--input=/tmp/credentials-openai.json")
+	execInN8N(t, dir, "n8n", "import:workflow", "--input=/tmp/workflow-openai.json")
+	execInN8N(t, dir, "n8n", "publish:workflow", "--id="+n8nOpenAIWorkflowID)
+
+	if err := runIn(dir, "docker", "compose", "restart", "n8n"); err != nil {
+		t.Fatalf("restart n8n for OpenAI workflow: %v", err)
+	}
+	waitN8NReady(t, 3*time.Minute)
 }
