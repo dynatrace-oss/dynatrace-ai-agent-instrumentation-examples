@@ -116,11 +116,16 @@ processors:
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and attributes["gen_ai.prompt"] != nil
             and attributes["gen_ai.input.messages"] == nil
-          # --- n8n sets gen_ai.request.model as "<provider>/<model>" (e.g.
-          #     "google/gemini-2.5-flash"). Strip the provider prefix so the value
-          #     matches the bare model name the AI Observability app expects, then
-          #     copy it to gen_ai.response.model as a fallback (n8n never sets it).
-          #     Token usage (input/output tokens) is not emitted by n8n. ---
+          # --- gen_ai.request.model: n8n may not set it (documented as "when known").
+          #     Fallback chain:
+          #       1. model_id (n8n non-standard parallel attribute, same "<provider>/<model>" format)
+          #       2. Strip "<provider>/" or "models/" prefix from whatever value is present.
+          #       3. Copy to gen_ai.response.model (n8n never sets it separately). ---
+          - set(attributes["gen_ai.request.model"], attributes["model_id"])
+            where IsMatch(name, "\\.(generate|stream)$")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and attributes["model_id"] != nil
+            and attributes["gen_ai.request.model"] == nil
           - set(attributes["gen_ai.request.model"], Split(attributes["gen_ai.request.model"], "/")[1])
             where IsMatch(name, "\\.(generate|stream)$")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
