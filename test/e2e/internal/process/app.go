@@ -39,6 +39,8 @@ func Start(dir string) (*App, error) {
 // StartWithTarget runs "make -e <target>" in dir as a background process and
 // waits for port 8000 to accept connections before returning. Use for HTTP apps
 // that need a non-default make target (e.g. "run-collector").
+// Uses a longer timeout than Start because collector targets pull a Docker image
+// on the first run (60-90s) before the app itself can start.
 func StartWithTarget(dir, target string) (*App, error) {
 	cmd := exec.Command("make", "-e", target)
 	cmd.Dir = dir
@@ -50,7 +52,7 @@ func StartWithTarget(dir, target string) (*App, error) {
 		return nil, fmt.Errorf("make %s: %w", target, err)
 	}
 	a := &App{cmd: cmd}
-	if err := a.waitReady(90 * time.Second); err != nil {
+	if err := a.waitReady(3 * time.Minute); err != nil {
 		_ = a.Stop()
 		return nil, err
 	}
