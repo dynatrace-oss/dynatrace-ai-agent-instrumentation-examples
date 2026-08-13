@@ -1,11 +1,13 @@
 import asyncio
 import os
+import uuid
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
 os.environ.setdefault("OTEL_SERVICE_NAME", "crewai")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
 from traceloop.sdk import Traceloop
+from traceloop.sdk.tracing.tracing import set_conversation_id
 
 # Export target. `make run-collector` sets OTEL_ENDPOINT to a local OTel
 # Collector, which derives the GenAI agent and workflow duration metrics from the
@@ -49,8 +51,11 @@ async def haiku() -> str:
         base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
+        temperature=0.7,
         is_litellm=True,
     )
+
+    set_conversation_id(str(uuid.uuid4()))
 
     def _call() -> str:
         poet = Agent(
