@@ -51,7 +51,7 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) && \
+	  $(COLLECTOR_IMAGE) --config=/etc/otel/config.yaml && \
 	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
 	echo "Collector logs -> collector.log" && \
 	for i in $$(seq 1 15); do \
