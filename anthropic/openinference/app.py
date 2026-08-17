@@ -12,7 +12,7 @@ from opentelemetry.sdk.resources import Resource, OTELResourceDetector, ProcessR
     get_aggregated_resources
 from opentelemetry.semconv.attributes import service_attributes
 
-MODEL: str = os.environ.get("MODEL", "claude-haiku-4-5-20251001")
+MODEL: str = os.environ.get("ANTHROPIC_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
 # For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
@@ -30,7 +30,12 @@ trace.set_tracer_provider(tracer_provider)
 AnthropicInstrumentor().instrument(tracer_provider=tracer_provider)
 
 if __name__ == "__main__":
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    # Same AWS Bedrock-hosted Claude access as anthropic/oneagent -- reuses the
+    # AWS credentials already configured for e2e CI rather than requiring a
+    # separate ANTHROPIC_API_KEY secret.
+    client = anthropic.AnthropicBedrock(
+        aws_region=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+    )
     with using_attributes(session_id=str(uuid.uuid4())):
         with client.messages.stream(
             model=MODEL,

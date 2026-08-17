@@ -1,9 +1,11 @@
 # OpenInference (Anthropic) + Dynatrace AI Observability
 
-Generate a haiku with Claude via the native Anthropic Messages API, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
+Generate a haiku with Claude via the Anthropic Python SDK's `AnthropicBedrock` client, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
 OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) -- this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format: the Bindplane collector's `genainormalizer` processor, or Dynatrace OpenPipeline.
 
-This mirrors [`openai/openinference`](../../openai/openinference/), swapping the OpenAI SDK + `openinference-instrumentation-openai` for the Anthropic SDK + [`openinference-instrumentation-anthropic`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-anthropic). Anthropic is otherwise only demoed via OneAgent auto-instrumentation ([`anthropic/oneagent`](../oneagent/), which calls Claude through AWS Bedrock) -- this is the first Anthropic example using the native Messages API plus manual OpenTelemetry/OpenInference instrumentation.
+This mirrors [`openai/openinference`](../../openai/openinference/), swapping the OpenAI SDK + `openinference-instrumentation-openai` for the Anthropic SDK + [`openinference-instrumentation-anthropic`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-anthropic). It calls Claude through AWS Bedrock -- same as [`anthropic/oneagent`](../oneagent/) -- so it reuses the AWS credentials already configured for e2e CI instead of requiring a separate Anthropic API key.
+
+**How this differs from `aws-bedrock/openinference`:** that example instruments at the `boto3`/`botocore` `invoke_model` level with `openinference-instrumentation-bedrock`, which is generic across every Bedrock-hosted model family. This example instruments at the Anthropic SDK level with `openinference-instrumentation-anthropic`, which understands the Messages API's request/response shape natively (message roles, content blocks, cache token breakdown) and produces richer, more precise `llm.*` attributes for Claude specifically -- at the cost of only working for Claude.
 
 ---
 
@@ -25,7 +27,7 @@ This mirrors [`openai/openinference`](../../openai/openinference/), swapping the
 
 ## What you'll build
 
-- Calls Claude to generate a haiku using the `anthropic` Python SDK, instrumented with `openinference-instrumentation-anthropic`.
+- Calls Claude (via AWS Bedrock) to generate a haiku using the `anthropic` Python SDK's `AnthropicBedrock` client, instrumented with `openinference-instrumentation-anthropic`.
 - Produces OpenTelemetry traces with OpenInference semantic conventions.
 - Normalizes OpenInference attributes to Dynatrace `gen_ai.*` format -- either via the Bindplane collector's `genainormalizer` processor or via Dynatrace OpenPipeline.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, and message content.
@@ -38,7 +40,7 @@ This mirrors [`openai/openinference`](../../openai/openinference/), swapping the
 - Docker installed and running (Option A only)
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- An [Anthropic API key](https://console.anthropic.com/settings/keys)
+- AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) with Anthropic model access enabled in Bedrock -- same requirement as [`anthropic/oneagent`](../oneagent/#prerequisites)
 
 ---
 
@@ -76,8 +78,10 @@ The app and scripts read credentials from environment variables. The easiest way
 DT_ENDPOINT=https://abc12345.live.dynatrace.com
 DT_API_TOKEN=dt0c01.****.*****
 
-ANTHROPIC_API_KEY=sk-ant-****************
-MODEL=claude-haiku-4-5-20251001   # optional, defaults to claude-haiku-4-5-20251001
+AWS_ACCESS_KEY_ID=****************
+AWS_SECRET_ACCESS_KEY=****************
+AWS_DEFAULT_REGION=us-east-1                                 # optional, defaults to us-east-1
+ANTHROPIC_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0   # optional, same default
 ```
 
 > **Note:** `DT_ENDPOINT` is your base tenant URL -- not the `/api/v2/otlp` path. Example: `https://abc12345.live.dynatrace.com`.
@@ -287,7 +291,7 @@ The Anthropic Messages API takes `system` as a separate top-level request parame
 
 ### No prompt-caching demo in this example
 
-Anthropic prompt caching (`cache_control` blocks) requires a system/context block long enough to clear a per-model minimum cacheable token count (`anthropic/oneagent`'s Bedrock-hosted Haiku demo needs 4,096 tokens -- see [`style_guide.py`](../oneagent/style_guide.py); check [Anthropic's prompt-caching docs](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) for the native-API minimum per model, which may differ from the Bedrock-hosted minimum). This example's one-line system prompt does not reach it. `anthropic/oneagent` demonstrates a cache write + read pair with a longer style-guide block if you want to see `gen_ai.prompt_caching` populated end-to-end; the mapping is present in both options here and will populate automatically if you extend `app.py` with a cacheable `system` block.
+Anthropic prompt caching (`cache_control` blocks) requires a system/context block long enough to clear a per-model minimum cacheable token count -- 4,096 tokens for `claude-haiku-4-5` on Bedrock (see [`anthropic/oneagent`'s `style_guide.py`](../oneagent/style_guide.py) and its [prompt-caching notes](../oneagent/README.md#prompt-caching)). This example's one-line system prompt does not reach it. `anthropic/oneagent` demonstrates a cache write + read pair with a longer style-guide block if you want to see `gen_ai.prompt_caching` populated end-to-end; the mapping is present in both options here and will populate automatically if you extend `app.py` with a cacheable `system` block.
 
 ---
 
@@ -297,10 +301,10 @@ Anthropic prompt caching (`cache_control` blocks) requires a system/context bloc
 - Confirm `DT_ENDPOINT` and `DT_API_TOKEN` are correctly set.
 - Confirm the token has `openTelemetryTrace.ingest` permission.
 - Option A: check collector logs with `make logs` or `docker logs bindplane-otel-collector-anthropic`.
-- Option B: run `python3 app.py` directly -- any auth error from Dynatrace or Anthropic will appear in the console output.
+- Option B: run `python3 app.py` directly -- any auth error from Dynatrace or AWS will appear in the console output.
 
-**`anthropic.AuthenticationError` on startup:**
-- Confirm `ANTHROPIC_API_KEY` is set and valid -- create one at https://console.anthropic.com/settings/keys.
+**AWS auth or `AccessDeniedException` on startup:**
+- Confirm `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set and valid, and that the account has Anthropic model access enabled in Bedrock for the target region -- see [`anthropic/oneagent`'s prerequisites](../oneagent/README.md#prerequisites).
 
 **Collector crashes on startup (Option A):**
 - Run `docker ps -a` and `docker logs bindplane-otel-collector-anthropic` to see the error.
