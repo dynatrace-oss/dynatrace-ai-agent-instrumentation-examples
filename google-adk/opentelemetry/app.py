@@ -5,6 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ADK's experimental semconv path writes gen_ai.input.messages,
+# gen_ai.output.messages and gen_ai.system_instructions as OTel span
+# attributes. Without the opt-in, ADK only writes content into GCP-internal
+# blobs (gcp.vertex.agent.llm_request/response), which are not OTel semconv.
+os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "SPAN_ONLY")
+
 from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
