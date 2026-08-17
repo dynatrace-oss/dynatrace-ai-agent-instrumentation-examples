@@ -1,5 +1,3 @@
-version: '3.8'
-
 volumes:
   db_storage:
   n8n_storage:
@@ -17,7 +15,6 @@ services:
       - POSTGRES_NON_ROOT_PASSWORD
     volumes:
       - db_storage:/var/lib/postgresql/data
-      - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 5s
@@ -26,7 +23,7 @@ services:
 
   n8n:
     env_file: .env
-    image: docker.n8n.io/n8nio/n8n
+    image: docker.n8n.io/n8nio/n8n:2.35.1
     restart: always
     environment:
       - DB_TYPE=postgresdb
@@ -35,15 +32,33 @@ services:
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
       - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+      # OpenTelemetry can also be configured from Settings > OpenTelemetry in the
+      # n8n UI. These variables configure the same thing headlessly, which is what
+      # the nightly e2e suite relies on.
+      - N8N_OTEL_ENABLED
+      - N8N_OTEL_EXPORTER_OTLP_ENDPOINT
+      - N8N_OTEL_EXPORTER_SERVICE_NAME=${DT_SERVICE_NAME}
+      - N8N_OTEL_TRACES_INCLUDE_NODE_SPANS
+      - N8N_OTEL_TRACES_PRODUCTION_ONLY
+      - N8N_AGENTS_TRACING_ENABLED
+      - N8N_AGENTS_TRACING_RECORD_INPUTS
+      - N8N_AGENTS_TRACING_RECORD_OUTPUTS
     ports:
       - 5678:5678
     links:
       - postgres
     volumes:
       - n8n_storage:/home/node/.n8n
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:5678/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 30
     depends_on:
       postgres:
         condition: service_healthy
+      collector:
+        condition: service_started
   collector:
     env_file: .env
     image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.31.0
