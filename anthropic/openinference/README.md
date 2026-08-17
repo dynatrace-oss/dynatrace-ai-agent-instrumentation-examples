@@ -1,5 +1,7 @@
 # OpenInference (Anthropic) + Dynatrace AI Observability
 
+![AI Observability -- anthropic/openinference service explorer](assets/explorer.png)
+
 Generate a haiku with Claude via the Anthropic Python SDK's `AnthropicBedrock` client, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
 OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) -- this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format: the Bindplane collector's `genainormalizer` processor, or Dynatrace OpenPipeline.
 
@@ -218,11 +220,10 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 ## Visualize in Dynatrace AI Observability
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
-2. Your haiku request appears in the Explorer tab as a span with model name, token usage, and message content.
-3. Open a span to inspect the full conversation and `gen_ai.*` attributes.
-4. You can also visualize the span from the **Distributed Tracing** app.
-
-> Screenshots pending -- see the PR description / ticket for status. Once captured, they'll be added under `assets/` and referenced here, mirroring `openai/openinference`.
+2. Your haiku request appears in the Explorer as the `anthropic/openinference` service, with model, token usage, and prompt trace populated -- no problems, no guardrail activations.
+   ![AI Observability -- anthropic/openinference service explorer](assets/explorer.png)
+3. Open the prompt trace to inspect the reconstructed conversation (`System prompt` / `Input`), trace metadata (model version, conversation ID), and the Agents Topology graph connecting the model, provider, and service.
+   ![AI Observability -- anthropic/openinference prompt trace detail](assets/haiku-prompt-detail.png)
 
 ---
 
@@ -278,6 +279,7 @@ The `genainormalizer` `openinference` source, as bundled in the pinned collector
 - `gen_ai.response.finish_reasons`
 - `gen_ai.prompt_caching` and `gen_ai.cache.type`
 - `gen_ai.system` (only `gen_ai.provider.name` is set)
+- `gen_ai.system_instructions` -- confirmed missing against a live run (`test/e2e/reports/anthropic-openinference.md`, AR-043); the synthesized system message is still present inside the reconstructed `gen_ai.input.messages`, just not lifted to this dedicated attribute
 
 To close any of these locally, add statements to the `transform/pre_normalize` processor in [`otel-collector-config.yaml`](otel-collector-config.yaml). Option B (OpenPipeline) already maps these server-side.
 
