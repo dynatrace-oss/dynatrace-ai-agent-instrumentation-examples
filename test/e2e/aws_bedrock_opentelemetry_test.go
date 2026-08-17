@@ -19,5 +19,24 @@ func TestAWSBedrockOpenTelemetry(t *testing.T) {
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
-		"aws-bedrock/opentelemetry", genAIClientMetrics)
+		"aws-bedrock/opentelemetry", awsBedrockOpenTelemetryMetrics())
+}
+
+// awsBedrockOpenTelemetryMetrics is the client metrics plus the two agent
+// durations this demo derives in its collector config.
+//
+// The demo is built from Traceloop decorators, so its agent and workflow spans
+// carry traceloop.span.kind and no gen_ai.operation.name; the collector's
+// transform/traceloop_operation_name maps the kind onto the spec enum and the
+// span_metrics connectors derive the durations from there.
+//
+// gen_ai.execute_tool.duration is absent because the demo has no @tool — its
+// only sub-boundaries are @task, which is not a spec operation. That is also
+// why genAIAgentDurationMetrics is not reused here: it assumes a tool span.
+func awsBedrockOpenTelemetryMetrics() []string {
+	metrics := append([]string{}, genAIClientMetrics...)
+	return append(metrics,
+		"gen_ai.invoke_agent.duration",
+		"gen_ai.invoke_workflow.duration",
+	)
 }

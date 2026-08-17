@@ -1,0 +1,185 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # Traceloop.init(app_name="openai-cs-agents") pins service.name on the
+  # Resource, so the app cannot be told from the outside to report under a
+  # different name. The e2e metric assertion isolates by service.name + time
+  # window, so without this rename a `make run` and a `make run-collector` pass
+  # would share "openai-cs-agents" and a derived metric could be satisfied by the
+  # wrong run.
+  #
+  # Applied on every pipeline below, including the metric branches: span_metrics
+  # carries the span's Resource onto the metric.
+  resource/service_name:
+    attributes:
+      - key: service.name
+        value: openai-cs-agents-collector
+        action: upsert
+
+  # opentelemetry-instrumentation-openai-agents sets the spec enum correctly on
+  # the agent span (_hooks.py, _start_agent_span -> "invoke_agent",
+  # gen_ai.agent.name) and on the function-tool span (_start_function_span ->
+  # "execute_tool", gen_ai.tool.name / .tool_type). The one gap is the root span
+  # it opens per trace in on_trace_start: "Agent Workflow" carries
+  # traceloop.span.kind = "workflow" and no gen_ai.operation.name at all.
+  #
+  # Map that kind onto the spec enum so the workflow duration has something to
+  # key on. Guarded with "== nil" so the enum the instrumentor already sets on
+  # agent, tool, handoff and chat spans is never overwritten — "handoff" in
+  # particular is a real, non-spec operation value worth keeping intact.
+  transform/traceloop_operation_name:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(span.attributes["gen_ai.operation.name"], "invoke_workflow") where span.attributes["traceloop.span.kind"] == "workflow" and span.attributes["gen_ai.operation.name"] == nil
+
+  # One filter per metric branch, each dropping every span that is not the one
+  # its metric is defined over. The export pipeline is untouched, so all spans
+  # still reach Distributed Tracing regardless of what these drop.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/execute_tool:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "execute_tool"
+
+  filter/invoke_workflow:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_workflow"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram and offers no config key to disable it. None is a GenAI spec metric
+  # and nothing queries them. Matched by exact name so this cannot swallow the
+  # spec's gen_ai.invoke_agent.inference_calls / .tool_calls.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.execute_tool.calls"
+        - name == "gen_ai.invoke_workflow.calls"
+
+connectors:
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.invoke_agent" -> gen_ai.invoke_agent.duration.
+  # All three are Histogram/seconds at Development stability per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # One agent turn: a model call, possibly a tool call, possibly a handoff.
+      explicit:
+        buckets: [250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  span_metrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # These are local Python function tools, not nested agents, so they run on
+      # a millisecond scale — hence a much lower range than the agent metric.
+      explicit:
+        buckets: [1ms, 5ms, 10ms, 50ms, 100ms, 500ms, 1s, 5s]
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.tool.type
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # The workflow span is the per-trace root the instrumentation opens, so it
+  # covers the whole customer-service turn: every agent, handoff and tool below
+  # it.
+  span_metrics/invoke_workflow:
+    namespace: gen_ai.invoke_workflow
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    # gen_ai.agent.name is absent on purpose: the workflow root spans several
+    # agents, so no single agent name is correct for it.
+    dimensions:
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors:
+        [resource/service_name, transform/traceloop_operation_name, batch]
+      exporters: [otlphttp/dynatrace]
+
+    # One metrics branch per span type. Kept separate from the export pipeline
+    # above so a filter here can never drop a span from Distributed Tracing.
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/execute_tool_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/execute_tool, batch]
+      exporters: [span_metrics/execute_tool]
+
+    # This branch needs the transform: the workflow span is the one span type
+    # whose enum the collector derives rather than the instrumentation setting it.
+    traces/invoke_workflow_metrics:
+      receivers: [otlp]
+      processors:
+        [
+          resource/service_name,
+          transform/traceloop_operation_name,
+          filter/invoke_workflow,
+          batch,
+        ]
+      exporters: [span_metrics/invoke_workflow]
+
+    metrics:
+      receivers:
+        [
+          otlp,
+          span_metrics/invoke_agent,
+          span_metrics/execute_tool,
+          span_metrics/invoke_workflow,
+        ]
+      processors: [resource/service_name, filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]
+
+    logs:
+      receivers: [otlp]
+      processors: [resource/service_name, batch]
+      exporters: [otlphttp/dynatrace]

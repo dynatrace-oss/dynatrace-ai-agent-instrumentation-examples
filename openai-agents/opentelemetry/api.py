@@ -17,10 +17,23 @@ headers = {"Authorization": f"Api-Token {token}"}
 _dt_base = os.environ.get("DT_ENDPOINT", "https://wkf10640.live.dynatrace.com").rstrip("/")
 DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
 
+# Export target. `make run-collector` sets OTEL_ENDPOINT so all three signals go
+# to a local OTel Collector, which derives the GenAI agent, tool and workflow
+# duration metrics from the spans. `make run` leaves it unset and the app exports
+# straight to Dynatrace.
+#
+# The Authorization header is sent either way, deliberately. OTEL_ENDPOINT is a
+# shared convention across these demos and is often already exported in a shell
+# or CI environment pointing at the Dynatrace OTLP URL, not at a collector.
+# Dropping the header whenever the variable happens to be set would turn that
+# into a 401 on a plain `make run`. A local collector simply ignores it.
+_collector = os.environ.get("OTEL_ENDPOINT", "").rstrip("/")
+OTLP_ENDPOINT = _collector or DT_OTLP_ENDPOINT
+
 from traceloop.sdk import Traceloop
 Traceloop.init(
     app_name="openai-cs-agents",
-    api_endpoint=DT_OTLP_ENDPOINT,
+    api_endpoint=OTLP_ENDPOINT,
     disable_batch=True,
     headers=headers,
     should_enrich_metrics=True,
@@ -43,7 +56,7 @@ _logger_provider = LoggerProvider(
 set_logger_provider(_logger_provider)
 
 _log_exporter = OTLPLogExporter(
-    endpoint=f"{DT_OTLP_ENDPOINT}/v1/logs",
+    endpoint=f"{OTLP_ENDPOINT}/v1/logs",
     headers=headers,
 )
 _logger_provider.add_log_record_processor(BatchLogRecordProcessor(_log_exporter))
