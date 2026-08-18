@@ -36,9 +36,107 @@ processors:
           - set(attributes["gen_ai.guardrail.id"], Split(attributes["aws.bedrock.guardrail.id"], ":")[0]) where attributes["aws.bedrock.guardrail.id"] != nil
           - set(attributes["gen_ai.guardrail.version"], Split(attributes["aws.bedrock.guardrail.id"], ":")[1]) where attributes["aws.bedrock.guardrail.id"] != nil
 
+  # Traceloop's @workflow / @agent / @task / @tool decorators
+  # (traceloop/sdk/decorators/base.py) tag a span with traceloop.span.kind and
+  # traceloop.entity.name only — they never set gen_ai.operation.name. Every
+  # GenAI semconv agent metric is defined over that enum, so without this mapping
+  # there is nothing for a metric to key on, and the spans stay invisible to any
+  # downstream filter that expects spec-shaped GenAI spans.
+  #
+  # Every statement is guarded with "== nil". Other instrumentors in the same
+  # process do set the enum correctly — opentelemetry-instrumentation-bedrock
+  # sets "chat" on the LLM spans — and clobbering it would push a
+  # high-cardinality value into a low-cardinality enum dimension.
+  #
+  # "task" is deliberately left unmapped. A Traceloop task is an arbitrary
+  # function boundary chosen by the app author, not a GenAI spec operation, and
+  # the enum has no value for it. Mapping it to execute_tool would invent a tool
+  # call that never happened.
+  transform/traceloop_operation_name:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(span.attributes["gen_ai.operation.name"], "invoke_agent") where span.attributes["traceloop.span.kind"] == "agent" and span.attributes["gen_ai.operation.name"] == nil
+          - set(span.attributes["gen_ai.operation.name"], "invoke_workflow") where span.attributes["traceloop.span.kind"] == "workflow" and span.attributes["gen_ai.operation.name"] == nil
+          # The decorators record the entity under traceloop.entity.name. The
+          # agent metric needs it as gen_ai.agent.name, which is also what the
+          # AI Observability app filters on. (@tool sets gen_ai.tool.name itself,
+          # so only the agent name needs mirroring — and this demo has no @tool.)
+          - set(span.attributes["gen_ai.agent.name"], span.attributes["traceloop.entity.name"]) where span.attributes["traceloop.span.kind"] == "agent" and span.attributes["gen_ai.agent.name"] == nil
+
+  # One filter per metric branch, each dropping every span that is not the one
+  # its metric is defined over. The export pipeline below is untouched, so all
+  # spans still reach Distributed Tracing regardless of what these drop.
+  #
+  # These run after transform/traceloop_operation_name in the same pipeline, so
+  # the enum they match on is the one derived above.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/invoke_workflow:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_workflow"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram and offers no config key to disable it. Neither counter is a GenAI
+  # spec metric and nothing queries them, so they are dropped before export.
+  # Matched by exact name rather than a "*.calls" pattern so this cannot swallow
+  # gen_ai.invoke_agent.inference_calls / .tool_calls, which ARE spec metrics.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.invoke_workflow.calls"
+
   batch:
     send_batch_size: 512
     timeout: 5s
+
+connectors:
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.invoke_agent" -> gen_ai.invoke_agent.duration.
+  # Both are Histogram/seconds at Development stability per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # Two very different agents share this metric: multiagent_turn is two
+      # Bedrock calls, while aws_bedrock_agent wraps the whole workflow. Hence
+      # the wide range rather than an LLM-call-shaped one.
+      explicit:
+        buckets: [250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s, 300s]
+    # gen_ai.request.model / gen_ai.provider.name are absent on purpose: the
+    # decorator spans carry no inference fields, so those would be empty
+    # dimensions.
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # There is exactly one @workflow in this demo (run_workflow), and it runs every
+  # selected STORY end to end — so this measures a full demo pass, not a single
+  # model interaction.
+  span_metrics/invoke_workflow:
+    namespace: gen_ai.invoke_workflow
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s, 300s]
+    dimensions:
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
 
 exporters:
   otlphttp/dynatrace:
@@ -50,11 +148,31 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/bedrock-guardrail-attrs, batch]
+      processors:
+        [
+          transform/bedrock-guardrail-attrs,
+          transform/traceloop_operation_name,
+          batch,
+        ]
       exporters: [otlphttp/dynatrace]
-    metrics:
+
+    # One metrics branch per span type. Kept separate from the export pipeline
+    # above so a filter here can never drop a span from Distributed Tracing.
+    traces/invoke_agent_metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors:
+        [transform/traceloop_operation_name, filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/invoke_workflow_metrics:
+      receivers: [otlp]
+      processors:
+        [transform/traceloop_operation_name, filter/invoke_workflow, batch]
+      exporters: [span_metrics/invoke_workflow]
+
+    metrics:
+      receivers: [otlp, span_metrics/invoke_agent, span_metrics/invoke_workflow]
+      processors: [filter/drop_derived_calls, batch]
       exporters: [otlphttp/dynatrace]
     logs:
       receivers: [otlp]

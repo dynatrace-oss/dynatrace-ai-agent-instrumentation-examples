@@ -7,6 +7,17 @@
 #   BASE_REF    - PR base branch (e.g. "main"), set only for pull_request events
 set -euo pipefail
 
+# INVARIANT: one suite entry == exactly one Go test function.
+#
+# The workflow runs `go test -run "^${TEST_RUN}$"`, anchored, so test_run must name
+# a function exactly. Before anchoring, an unanchored prefix match meant
+# TestGoogleADKOpenTelemetry also ran TestGoogleADKOpenTelemetryCollector, and
+# TestLangfuseOpenTelemetry also ran the Node and OpenPipeline suites (which have
+# their own entries, so they ran twice per PR). Keep test_run exact.
+#
+# test_file must be the file that defines that function: on pull requests a suite is
+# selected only if its app_dir or its test_file changed, so a stale path means edits
+# to the test silently run nothing.
 OA_ALL='[
   {"name":"aws-bedrock-oneagent","app_dir":"aws-bedrock/oneagent","test_file":"test/e2e/aws_bedrock_oneagent_test.go","test_run":"TestAWSBedrockOneAgent","otel_service_name":"aws-bedrock/oneagent"},
   {"name":"anthropic-oneagent","app_dir":"anthropic/oneagent","test_file":"test/e2e/anthropic_oneagent_test.go","test_run":"TestAnthropicOneAgent","otel_service_name":"anthropic/oneagent"},
@@ -33,16 +44,15 @@ OC_ALL='[
   {"name":"openai-agents-opentelemetry","app_dir":"openai-agents/opentelemetry","test_file":"test/e2e/openai_agents_opentelemetry_test.go","test_run":"TestOpenAIAgentsOpenTelemetry","otel_service_name":"openai-cs-agents"},
   {"name":"mcp-opentelemetry","app_dir":"mcp/opentelemetry","test_file":"test/e2e/mcp_opentelemetry_test.go","test_run":"TestMCPOpenTelemetry","otel_service_name":"mcp-agent-demo","node_version":"22"},
   {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_file":"test/e2e/litellm_opentelemetry_test.go","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway"},
-  {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetry","otel_service_name":"microsoft-agent-framework"},
-  {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_test.go","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"},
+  {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_collector_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetryCollector","otel_service_name":"microsoft-agent-framework-collector"},
+  {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_collector_test.go","test_run":"TestCrewAIOpenTelemetryCollector","otel_service_name":"crewai"},
   {"name":"langgraph-opentelemetry","app_dir":"langgraph/opentelemetry/openai","test_file":"test/e2e/langgraph_opentelemetry_test.go","test_run":"TestLangGraphOpenTelemetryOpenAI","otel_service_name":"langgraph/opentelemetry/openai"},
   {"name":"langgraph-opentelemetry-bedrock","app_dir":"langgraph/opentelemetry/bedrock","test_file":"test/e2e/langgraph_opentelemetry_test.go","test_run":"TestLangGraphOpenTelemetryBedrock","otel_service_name":"langgraph/opentelemetry/bedrock"},
   {"name":"langgraph-openinference","app_dir":"langgraph/openinference","test_file":"test/e2e/langgraph_openinference_test.go","test_run":"TestLangGraphOpenInference","otel_service_name":"langgraph/openinference"},
   {"name":"aws-strands-opentelemetry","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_test.go","test_run":"TestAWSStrandsOpenTelemetry","otel_service_name":"aws-strands/opentelemetry"},
   {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_openpipeline_test.go","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"},
-  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"^TestGoogleADKOpenTelemetry$","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
-  {"name":"google-adk-opentelemetry-collector","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_collector_test.go","test_run":"TestGoogleADKOpenTelemetryCollector","otel_service_name":"google-adk-collector","model":"gemini-3.1-flash-lite","needs_google":true},
-  {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry-collector","needs_playwright":true},
+  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_collector_test.go","test_run":"TestGoogleADKOpenTelemetryCollector","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true},
   {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"}
 ]'
 
