@@ -12,7 +12,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 
 # Used only by `make run-collector` to derive the GenAI agent and workflow
 # duration metrics from spans via the span_metrics connector.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.53.1
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.54.0
 override COLLECTOR_CONTAINER := crewai-otel-collector
 
 .PHONY: install run run-collector stop logs build push request help

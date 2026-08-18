@@ -10,7 +10,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 # gen_ai.client.token.usage from span attributes — that connector is NOT in the
 # Dynatrace collector distro, so this demo runs Bindplane. Pinned so a version
 # bump surfaces metric-derivation regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.106.0
 override COLLECTOR_CONTAINER := otel-collector
 
 # Downstream 'appointments' service the create_appointment tool calls.

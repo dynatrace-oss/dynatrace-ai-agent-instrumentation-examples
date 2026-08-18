@@ -6,7 +6,7 @@ PORT                ?= 8000
 DT_ENDPOINT         ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN        ?= dt0c01.*****
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.53.1
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.54.0
 override COLLECTOR_CONTAINER := langgraph-otel-collector
 
 .PHONY: install run build push request request-secret request-all stop logs help
