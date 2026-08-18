@@ -24,6 +24,20 @@ processors:
         value: openai-cs-agents-collector
         action: upsert
 
+  # Extracts the system-role entry from gen_ai.input.messages into the dedicated
+  # gen_ai.system_instructions attribute and removes it from the messages array to
+  # avoid duplication in the prompts view.
+  transform/system_instructions:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.input_messages"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil
+          - set(attributes["gen_ai.system_instructions"], attributes["temp.input_messages"][0]["parts"][0]["content"]) where attributes["temp.input_messages"][0]["role"] == "system"
+          - delete_index(attributes["temp.input_messages"], 0) where attributes["temp.input_messages"][0]["role"] == "system"
+          - set(attributes["gen_ai.input.messages"], attributes["temp.input_messages"]) where attributes["temp.input_messages"] != nil
+          - delete_key(attributes, "temp.input_messages") where attributes["temp.input_messages"] != nil
+
   # opentelemetry-instrumentation-openai-agents sets the spec enum correctly on
   # the agent span (_hooks.py, _start_agent_span -> "invoke_agent",
   # gen_ai.agent.name) and on the function-tool span (_start_function_span ->
@@ -140,7 +154,7 @@ service:
     traces:
       receivers: [otlp]
       processors:
-        [resource/service_name, transform/traceloop_operation_name, batch]
+        [resource/service_name, transform/system_instructions, transform/traceloop_operation_name, batch]
       exporters: [otlphttp/dynatrace]
 
     # One metrics branch per span type. Kept separate from the export pipeline
