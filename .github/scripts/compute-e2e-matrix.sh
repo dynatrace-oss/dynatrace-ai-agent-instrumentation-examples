@@ -35,6 +35,7 @@ OA_ALL='[
 OC_ALL='[
   {"name":"aws-bedrock-opentelemetry","app_dir":"aws-bedrock/opentelemetry","test_file":"test/e2e/aws_bedrock_opentelemetry_test.go","test_run":"TestAWSBedrockOpenTelemetry","otel_service_name":"aws-bedrock/opentelemetry"},
   {"name":"aws-bedrock-openinference","app_dir":"aws-bedrock/openinference","test_file":"test/e2e/aws_bedrock_openinference_test.go","test_run":"TestAWSBedrockOpenInference","otel_service_name":"aws-bedrock/openinference"},
+  {"name":"cohere-openinference","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_test.go","test_run":"TestCohereOpenInference","otel_service_name":"cohere/openinference"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},
   {"name":"langfuse-opentelemetry","app_dir":"langfuse/opentelemetry","test_file":"test/e2e/langfuse_opentelemetry_test.go","test_run":"TestLangfuseOpenTelemetry","otel_service_name":"langfuse"},
