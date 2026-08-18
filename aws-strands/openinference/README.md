@@ -7,9 +7,9 @@ Run a Personal Assistant Agent built on [Strands Agents](https://strandsagents.c
 >
 > Strands is different: it already has its own native OpenTelemetry integration that emits `gen_ai.*` attributes directly (see [`aws-strands/opentelemetry`](../opentelemetry)). `openinference-instrumentation-strands-agents` ships a [`SpanProcessor`](https://github.com/Arize-ai/openinference/blob/main/python/instrumentation/openinference-instrumentation-strands-agents/src/openinference/instrumentation/strands_agents/processor.py) — `StrandsAgentsToOpenInferenceProcessor` — that runs *after* Strands' own instrumentation and **mutates each span to add OpenInference `llm.*`/`tool.*`/`agent.*` attributes, without removing the `gen_ai.*` attributes Strands already set.** Both attribute sets coexist on the same span. That makes this example an interoperability demo (send one set of spans to both Dynatrace *and* an OpenInference-compliant backend like Arize Phoenix/AX) rather than a translation demo — see [Known gaps & limitations](#known-gaps--limitations).
 
-<!-- TODO before merging: run `make run` against a live tenant, capture screenshots of the
-     AI Observability Explorer/Prompts view and a span detail showing both gen_ai.* and
-     llm.* attributes, save them under assets/, and add ![...](assets/...) embeds here. -->
+![AI Observability: Explorer view with prompt trace for aws-strands/openinference](assets/prompts-view.png)
+
+![AI Observability: agentic trace and agents topology for aws-strands/openinference](assets/distributed-tracing.png)
 
 ---
 
