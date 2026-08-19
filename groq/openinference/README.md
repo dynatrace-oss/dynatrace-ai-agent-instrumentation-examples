@@ -270,7 +270,7 @@ Prompt caching (`gen_ai.prompt_caching` / `gen_ai.cache.type`) is not applicable
 
 ### No embeddings coverage
 
-`GroqInstrumentor` only wraps Groq's `chat.completions` endpoint (Groq has no embeddings API), so neither option's pipeline needs to handle `embedding.*` OpenInference attributes -- unlike [`openai/openinference`](../../openai/openinference/) or [`cohere/openinference`](../../cohere/openinference/).
+`GroqInstrumentor` only wraps Groq's `chat.completions` endpoint (Groq has no embeddings API), so neither option's pipeline needs to handle `embedding.*` OpenInference attributes -- unlike [`openai/openinference`](../../openai/openinference/), whose `OpenAIInstrumentor` also covers the embeddings endpoint.
 
 ### Full conversation message history (Option B)
 
