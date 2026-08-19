@@ -15,7 +15,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
-.PHONY: install run build push request stop logs help
+.PHONY: install run run-openpipeline build push request stop logs help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -23,10 +23,20 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start collector + app locally on port $(PORT)
+run: ## Start collector + app locally on port $(PORT)  [Option A — Bindplane collector]
 	@$(MAKE) _collector CONFIG=otelcol-config.yaml
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
+
+# ---------------------------------------------------------------------------
+# run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
+# Deploy the pipeline first: see "Option B" in README.md.
+# No OTEL_EXPORTER_OTLP_ENDPOINT override here — main.py's _otlp_exporter()
+# falls back to DT_ENDPOINT/DT_API_TOKEN and builds the OTLP-with-auth request
+# itself when the collector endpoint is unset.
+# ---------------------------------------------------------------------------
+run-openpipeline: ## Start app locally on port $(PORT)  [Option B — Dynatrace OpenPipeline, no collector]
+	uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
 
 build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 	docker buildx build --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) .
