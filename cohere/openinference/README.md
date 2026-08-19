@@ -134,10 +134,10 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `cohere-openinference-ai-spans`, and add processors matching the definitions in [`openpipeline-openinference.yaml`](openpipeline-openinference.yaml).
 4. Go to the **Routing** tab and add an entry:
-    - Matcher: `isNotNull(openinference.span.kind)`
+    - Matcher: `isNotNull(openinference.span.kind) AND service.name == "cohere/openinference-openpipeline"`
     - Pipeline: `cohere-openinference-ai-spans`
 
-> **Note:** The routing matcher uses `isNotNull(openinference.span.kind)` (a span attribute set by every OpenInference instrumentor). If you've already deployed one of the other OpenInference pipelines in this repo (e.g. `openai/openinference`'s `openinference-ai-spans`) on the same tenant, only one pipeline can own that matcher -- pick whichever demo you're actually running, or scope the routing matcher further (e.g. add `AND service.name == "cohere/openinference"`).
+> **Note:** OpenPipeline routing is first-match-wins, not fan-out. `isNotNull(openinference.span.kind)` alone (a span attribute set by every OpenInference instrumentor) would also match spans from any other OpenInference demo in this repo running on the same tenant -- e.g. `openai/openinference`'s `openinference-ai-spans` pipeline. Scoping the matcher with `service.name` (as above) keeps this demo's routing independent of whichever other OpenInference pipelines happen to be deployed -- the same pattern already used by this repo's other scoped routing entries (e.g. AWS Strands: `gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"`).
 
 ### Step 2 -- Run the app
 
