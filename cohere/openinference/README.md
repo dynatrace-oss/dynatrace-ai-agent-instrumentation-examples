@@ -55,6 +55,14 @@ The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.105.1` (Bindplane
 | `make logs` | Tail collector logs |
 | `make help` | Show all available targets |
 
+## Visualize in Dynatrace AI Observability
+
+1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
+2. Your haiku request appears in the Explorer tab, with model, token usage, and cost for the `cohere/openinference` service.
+   ![AI Observability — cohere/openinference service overview](assets/explorer-overview.png)
+3. Open a prompt trace to inspect the request/response content and the agents topology graph.
+   ![AI Observability — cohere/openinference prompt trace detail](assets/prompt-trace-detail.png)
+
 ## Attribute mapping reference
 
 The `gen_ai_normalizer` processor (source `openinference`) applies these translations, then `remove_originals` drops the source `llm.*` attributes. The collector config adds the `gen_ai.response.model` mirror.
