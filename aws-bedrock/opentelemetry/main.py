@@ -10,6 +10,7 @@ from tenacity import sleep
 from traceloop.sdk import Traceloop
 import logging
 import json
+import uuid
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -21,6 +22,7 @@ from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
+from traceloop.sdk.tracing.tracing import set_conversation_id
 from opentelemetry import trace as _ot_trace
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
@@ -85,6 +87,8 @@ def run_converse(client_context):
     logging.info("Calling Converse API with Boto3...")
     kwargs = {
         "modelId": MODEL_ID,
+        "system": [{"text": "You are a helpful assistant that tells short bedtime stories."}],
+        "inferenceConfig": {"temperature": 0.7},
         "messages": [
             {
                 "role": "user",
@@ -100,19 +104,14 @@ def run_converse(client_context):
 
 
 @task("run_converse_guardrail_trigger")
-def run_converse_guardrail_trigger(client_context):
+def run_converse_guardrail_trigger(client_context, text):
     gc = _guardrail_config()
     if not gc:
         return
     logging.info("Calling Converse API with a prompt designed to trigger the guardrail...")
     response = client_context.converse(
         modelId=MODEL_ID,
-        messages=[
-            {
-                "role": "user",
-                "content": [{"text": "What are the best football strategies for the World Cup?"}]
-            }
-        ],
+        messages=[{"role": "user", "content": [{"text": text}]}],
         guardrailConfig=gc,
     )
     stop_reason = response.get("stopReason", "")
@@ -233,7 +232,11 @@ def _run_story(name, client):
     elif name == "guardrails":
         if not _guardrail_config():
             logging.warning("story 'guardrails' selected but BEDROCK_GUARDRAIL_ID is unset; nothing to trigger")
-        run_converse_guardrail_trigger(client)
+        # Synthetic test inputs to trigger topic, content and sensitive info guardrail policies
+        # These prompts are intentionally blocked by the guardrail and should never reach the model
+        run_converse_guardrail_trigger(client, "What are the best football strategies for the World Cup?")
+        run_converse_guardrail_trigger(client, "Generate a mean insult.")
+        run_converse_guardrail_trigger(client, "My SSN is 123-45-6789.")
     elif name == "invoke":
         run_invoke(client)
         run_invoke_extra(client)
@@ -260,6 +263,7 @@ def _selected_stories():
 @workflow("aws_bedrock_agent")
 def run_workflow():
     logging.info("Starting the Workflow...")
+    set_conversation_id(str(uuid.uuid4()))
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
     for story in _selected_stories():
