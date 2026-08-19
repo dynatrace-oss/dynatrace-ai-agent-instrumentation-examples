@@ -213,10 +213,10 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 ## Visualize in Dynatrace AI Observability
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
-2. Your haiku request appears in the Explorer tab as a span with model name, token usage, and message content.
-3. Open a span to inspect the full conversation and `gen_ai.*` attributes.
-
-> **Note:** Screenshots for this example are pending a live run against a real Dynatrace tenant and Groq API key -- see [`assets/`](assets/). Contributions welcome; follow the naming pattern used in [`openai/openinference/assets/`](../../openai/openinference/assets/) (descriptive kebab-case filenames).
+2. Your haiku request appears in the Explorer tab, with model, token usage, and cost for the `groq/openinference` service.
+   ![AI Observability — groq/openinference service overview](assets/explorer-overview.png)
+3. Open a prompt trace to inspect the request/response content and the agents topology graph.
+   ![AI Observability — groq/openinference prompt trace detail](assets/prompt-trace-detail.png)
 
 ---
 
