@@ -58,6 +58,8 @@ def write_haiku(topic: str) -> str:
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": f"Topic: {topic}"},
         ],
+        temperature=1.0,
+        max_tokens=2000,
     )
     return response.message.content[0].text
 

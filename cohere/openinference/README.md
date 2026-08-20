@@ -190,7 +190,7 @@ Both options apply the same translations; the collector's `gen_ai_normalizer` (s
 
 `session.id` and `user.id` already match the OTel standard and pass through unchanged in both options.
 
-> **Note on request parameters:** CohereInstrumentor never emits `llm.temperature` / `llm.max_tokens` / `llm.top_p` as discrete span attributes — it only sets a single `llm.invocation_parameters` JSON string. Option B's `openinference-request-params` processor parses that blob rather than renaming flat fields. It also reads Cohere's nucleus-sampling kwarg by its actual name, `p` — `cohere.v2.client.V2Client.chat()` has no `top_p` parameter at all — and maps it to the standard `gen_ai.request.top_p`. None of the three are passed by this demo's `main.py` today, so they won't appear on the spans behind the screenshots above; the mapping is groundwork for when a caller does pass them.
+> **Note on request parameters:** CohereInstrumentor never emits `llm.temperature` / `llm.max_tokens` / `llm.top_p` as discrete span attributes — it only sets a single `llm.invocation_parameters` JSON string. Option B's `openinference-request-params` processor parses that blob rather than renaming flat fields. It also reads Cohere's nucleus-sampling kwarg by its actual name, `p` — `cohere.v2.client.V2Client.chat()` has no `top_p` parameter at all — and maps it to the standard `gen_ai.request.top_p`. This demo's `main.py` passes `temperature`/`max_tokens` on every request, so those two populate on the spans; `p` is not passed and stays unset unless a caller sets it.
 
 ---
 
