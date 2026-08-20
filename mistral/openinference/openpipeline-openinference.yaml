@@ -127,9 +127,18 @@ processing:
     # other OpenInference pipelines, e.g. openai's and groq's) never matches
     # anything and silently no-ops. Parse the JSON blob instead, the same way
     # otel-collector-config.yaml's transform/pre_normalize does via OTTL's
-    # ParseJSON — DQL's equivalent is jsonField(). Fields not present in the
-    # JSON (e.g. top_p, since this demo does not pass it) resolve to null and are
-    # simply absent from the exported span.
+    # ParseJSON. DQL's jsonField() function is NOT enabled in this OpenPipeline
+    # context (verified live: "the function jsonField() isn't enabled") — use
+    # the parse command with DPL's JSON matcher instead (the same mechanism
+    # openai/openinference/openpipeline-openinference.yaml's guardrail
+    # processor already relies on, there via a string pattern rather than the
+    # JSON matcher). Verified live against the mock backend that
+    # MistralAIInstrumentor serializes every chat.complete() kwarg into this
+    # JSON, including ones the caller never set — those come through as "",
+    # not an absent key (e.g. this demo doesn't pass top_p, and it shows up in
+    # the blob as "top_p": ""). A plain field lookup would carry that empty
+    # string into gen_ai.request.top_p verbatim, so each fieldsAdd below
+    # explicitly nulls out the empty-string case instead.
     # ============================================================================
     - id: "openinference-request-params"
       enabled: true
@@ -138,9 +147,11 @@ processing:
       description: "Extract temperature/max_tokens/top_p from the llm.invocation_parameters JSON blob"
       dql:
         script: |
-          fieldsAdd `gen_ai.request.temperature` = jsonField(`llm.invocation_parameters`, "temperature")
-          | fieldsAdd `gen_ai.request.max_tokens` = jsonField(`llm.invocation_parameters`, "max_tokens")
-          | fieldsAdd `gen_ai.request.top_p` = jsonField(`llm.invocation_parameters`, "top_p")
+          parse `llm.invocation_parameters`, "JSON:temp.invocation_params"
+          | fieldsAdd `gen_ai.request.temperature` = if(`temp.invocation_params`[temperature] != "", `temp.invocation_params`[temperature])
+          | fieldsAdd `gen_ai.request.max_tokens` = if(`temp.invocation_params`[max_tokens] != "", `temp.invocation_params`[max_tokens])
+          | fieldsAdd `gen_ai.request.top_p` = if(`temp.invocation_params`[top_p] != "", `temp.invocation_params`[top_p])
+          | fieldsRemove `temp.invocation_params`
 
     # ============================================================================
     # 6. MIRROR RESPONSE MODEL (OFFICIAL gen_ai.response.model)
