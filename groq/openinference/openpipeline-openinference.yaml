@@ -113,25 +113,14 @@ processing:
     # ============================================================================
     # 5. EXTRACT REQUEST PARAMETERS FROM llm.invocation_parameters (OFFICIAL gen_ai.request.*)
     # ============================================================================
-    # GroqInstrumentor (openinference-instrumentation-groq) never emits discrete
-    # llm.temperature / llm.max_tokens / llm.top_p span attributes — only a single
-    # llm.invocation_parameters JSON string. The fieldsRename this processor used
-    # to do (from those flat names) never matched anything and silently no-opped.
-    #
-    # Verified live against a real captured span (this repo's own e2e CI run for
-    # this PR, job 96067510639): GroqInstrumentor builds llm.invocation_parameters
-    # by binding every named parameter of groq.resources.chat.completions.create()
-    # with signature.bind(...).apply_defaults() — so kwargs the caller never set
-    # come through not as an absent key but as the literal Python repr of the
-    # SDK's `Omit` sentinel, e.g. "top_p": "<groq.Omit object at 0x...>". A plain
-    # field lookup would carry that garbage string into gen_ai.request.top_p, so
-    # each extraction below is guarded against it.
-    #
-    # DQL's jsonField() function is NOT enabled in this OpenPipeline context
-    # (confirmed live: "the function jsonField() isn't enabled") — use the parse
-    # command with DPL's JSON matcher instead, the same mechanism
-    # openai/openinference/openpipeline-openinference.yaml's guardrail processor
-    # already relies on (there via a string pattern rather than the JSON matcher).
+    # GroqInstrumentor never emits discrete llm.temperature / llm.max_tokens /
+    # llm.top_p span attributes — only a single llm.invocation_parameters JSON
+    # string built from every named parameter of chat.completions.create(). An
+    # unset kwarg comes through not as an absent key but as the literal repr of
+    # the SDK's Omit sentinel (e.g. "top_p": "<groq.Omit object at 0x...>"), so
+    # each extraction below is guarded against that string. Parse with DQL's
+    # parse command and DPL's JSON matcher — DQL's jsonField() is not enabled in
+    # this OpenPipeline context.
     # ============================================================================
     - id: "openinference-request-params"
       enabled: true
