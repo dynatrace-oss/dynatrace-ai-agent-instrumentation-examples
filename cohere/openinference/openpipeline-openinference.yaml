@@ -112,33 +112,9 @@ processing:
     # ============================================================================
     # 5. EXTRACT REQUEST PARAMETERS FROM llm.invocation_parameters (OFFICIAL gen_ai.request.*)
     # ============================================================================
-    # CohereInstrumentor (openinference-instrumentation-cohere) never emits
-    # discrete llm.temperature / llm.max_tokens / llm.top_p span attributes —
-    # only a single llm.invocation_parameters JSON string. The fieldsRename this
-    # processor used to do (from those flat names) never matched anything and
-    # silently no-opped.
-    #
-    # Two things verified directly against the actual packages (not assumed):
-    #   - CohereInstrumentor's _parse_args() explicitly filters out None and the
-    #     SDK's OMIT sentinel before building llm.invocation_parameters, so a
-    #     kwarg the caller never set is a genuinely absent key in the JSON — no
-    #     placeholder value to guard against here (unlike Groq's instrumentor,
-    #     which serializes unset kwargs as a garbage sentinel repr string).
-    #   - cohere.v2.client.V2Client.chat() has no `top_p` parameter at all — the
-    #     equivalent nucleus-sampling parameter is named `p`. The old fieldsRename
-    #     read from `llm.top_p`, which could never have matched for Cohere even if
-    #     the flat-attribute assumption had been correct. Reading `p` and mapping
-    #     it to gen_ai.request.top_p is the actually-correct translation.
-    #   - This demo (main.py) does not currently pass temperature/max_tokens/p, so
-    #     none of these three fields populate on today's spans — the extraction
-    #     is still correct groundwork for when/if the demo (or a future caller)
-    #     starts passing them.
-    #
-    # DQL's jsonField() function is NOT enabled in this OpenPipeline context
-    # (confirmed live: "the function jsonField() isn't enabled") — use the parse
-    # command with DPL's JSON matcher instead, the same mechanism
-    # openai/openinference/openpipeline-openinference.yaml's guardrail processor
-    # already relies on (there via a string pattern rather than the JSON matcher).
+    # CohereInstrumentor packs temperature/max_tokens/p into a single
+    # llm.invocation_parameters JSON string rather than discrete attributes.
+    # Cohere's chat() has no top_p parameter — the equivalent is p.
     # ============================================================================
     - id: "openinference-request-params"
       enabled: true
