@@ -185,9 +185,12 @@ Both options apply the same translations; the collector's `gen_ai_normalizer` (s
 | `session.id` | `gen_ai.conversation.id` |
 | `openinference.span.kind` | `gen_ai.operation.name` (`LLM`→`chat`, `EMBEDDING`→`embeddings`, `TOOL`→`execute_tool`, `AGENT`/`CHAIN`→`invoke_agent`, `RETRIEVER`→`retrieval`) |
 | `llm.input_messages.N.*` / `llm.output_messages.N.*` | `gen_ai.input.messages` / `gen_ai.output.messages` |
+| `llm.invocation_parameters` (JSON: `temperature`, `max_tokens`, `p`) | `gen_ai.request.temperature` / `gen_ai.request.max_tokens` / `gen_ai.request.top_p` |
 | _(both options)_ | `gen_ai.response.model` (mirrored from `gen_ai.request.model`) |
 
 `session.id` and `user.id` already match the OTel standard and pass through unchanged in both options.
+
+> **Note on request parameters:** CohereInstrumentor never emits `llm.temperature` / `llm.max_tokens` / `llm.top_p` as discrete span attributes — it only sets a single `llm.invocation_parameters` JSON string. Option B's `openinference-request-params` processor parses that blob rather than renaming flat fields. It also reads Cohere's nucleus-sampling kwarg by its actual name, `p` — `cohere.v2.client.V2Client.chat()` has no `top_p` parameter at all — and maps it to the standard `gen_ai.request.top_p`. None of the three are passed by this demo's `main.py` today, so they won't appear on the spans behind the screenshots above; the mapping is groundwork for when a caller does pass them.
 
 ---
 
@@ -213,7 +216,7 @@ The `gen_ai_normalizer` `openinference` source does not set the following attrib
 - `gen_ai.request.temperature` / `gen_ai.request.top_p` / `gen_ai.request.max_tokens`
 - `gen_ai.response.finish_reasons`
 
-To close these locally, add statements to the `transform` processor in [`otelcol-config.yaml`](otelcol-config.yaml). Option B (OpenPipeline) already maps these server-side.
+To close these locally, add statements to the `transform` processor in [`otelcol-config.yaml`](otelcol-config.yaml). Option B (OpenPipeline) already maps these server-side by parsing them out of the `llm.invocation_parameters` JSON blob (see the note under [Attribute mapping reference](#attribute-mapping-reference)) — there's no equivalent flat attribute for the collector's `transform` processor to rename.
 
 Prompt caching (`gen_ai.prompt_caching` / `gen_ai.cache.type`) is not applicable here — Cohere does not support prompt caching today.
 
