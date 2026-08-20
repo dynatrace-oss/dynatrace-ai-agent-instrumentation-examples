@@ -71,7 +71,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
 | [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | — | — |
 | [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
-| [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
+| [Mistral](./mistral/) | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
 | [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
 | [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
