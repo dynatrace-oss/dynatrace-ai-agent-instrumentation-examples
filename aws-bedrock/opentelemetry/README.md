@@ -41,10 +41,10 @@ The Traceloop decorators tag their spans with `traceloop.span.kind` but never se
 
 ## Guardrails
 
-`run_converse_guardrail_trigger()` sends a prompt that violates a configured [Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) (a denied-topics policy) so you can see a blocked request in Dynatrace. When `BEDROCK_GUARDRAIL_ID` is set, every Converse call attaches the guardrail with `trace: enabled`, and the instrumentation (`opentelemetry.instrumentation.bedrock`) maps the assessment onto the span:
+`run_converse_guardrail_trigger()` sends prompts that violate a configured [Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) so you can see blocked requests in Dynatrace. When `BEDROCK_GUARDRAIL_ID` is set, every Converse call attaches the guardrail with `trace: enabled`, and the instrumentation (`opentelemetry.instrumentation.bedrock`) maps the assessment onto the span:
 
 - `gen_ai.response.finish_reasons = ["content_filter"]` and an `Input blocked` output message
-- `gen_ai.bedrock.guardrail.activation`, `.input_filter`, `.topics`
+- `gen_ai.bedrock.guardrail.activation`, `.input_filter`, `.topics`, `.content`, `.sensitive_info`
 - `gen_ai.guardrail.id` / `.version`
 
 Set `BEDROCK_GUARDRAIL_ID` (and optionally `BEDROCK_GUARDRAIL_VERSION`, default `DRAFT`) to enable it; without it the guardrail story is skipped.
