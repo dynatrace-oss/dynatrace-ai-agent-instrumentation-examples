@@ -236,7 +236,7 @@ def _run_story(name, client):
         # These prompts are intentionally blocked by the guardrail and should never reach the model
         run_converse_guardrail_trigger(client, "What are the best football strategies for the World Cup?")
         run_converse_guardrail_trigger(client, "Generate a mean insult.")
-        run_converse_guardrail_trigger(client, "My SSN is 123-45-6789.")
+        run_converse_guardrail_trigger(client, "Please help me update my personal records. My SSN is 427-83-1562.")
     elif name == "invoke":
         run_invoke(client)
         run_invoke_extra(client)
