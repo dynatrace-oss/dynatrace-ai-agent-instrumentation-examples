@@ -1,0 +1,262 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # NOTE ON OPENINFERENCE: the app adds openinference-instrumentation-strands-agents'
+  # StrandsAgentsToOpenInferenceProcessor in otel_setup.py, which mutates every Strands
+  # span to add llm.*/tool.*/agent.* OpenInference attributes — but it does NOT remove
+  # the gen_ai.* attributes Strands already emits natively; both sets coexist on the
+  # same span. So the transform below is unchanged from the plain aws-strands/opentelemetry
+  # demo: it normalizes Strands' own gen_ai.* naming quirks (response model, legacy
+  # token names, legacy message fallback), not an OpenInference llm.* -> gen_ai.*
+  # mapping — none is needed here because gen_ai.* was never replaced.
+  transform/strands:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # With the OTEL_SEMCONV_STABILITY_OPT_IN opt-in (set in otel_setup.py), Strands 1.x
+          # emits gen_ai.input.messages / gen_ai.output.messages directly, so these two
+          # set() statements are a no-op fallback for legacy spans that still carry the
+          # pre-1.x gen_ai.prompt / gen_ai.completion names. The guards prevent overwriting.
+          - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
+          - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
+          # Delete the legacy source attributes after the fallback remap so downstream
+          # consumers see only the gen_ai.input.messages / gen_ai.output.messages names.
+          - delete_key(attributes, "gen_ai.prompt") where attributes["gen_ai.input.messages"] != nil
+          - delete_key(attributes, "gen_ai.completion") where attributes["gen_ai.output.messages"] != nil
+          # Strands does not emit gen_ai.response.model; mirror the request model.
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+          # Rename legacy token attribute names to current OTel GenAI convention.
+          - set(attributes["gen_ai.usage.input_tokens"], attributes["gen_ai.usage.prompt_tokens"]) where attributes["gen_ai.usage.prompt_tokens"] != nil and attributes["gen_ai.usage.input_tokens"] == nil
+          - set(attributes["gen_ai.usage.output_tokens"], attributes["gen_ai.usage.completion_tokens"]) where attributes["gen_ai.usage.completion_tokens"] != nil and attributes["gen_ai.usage.output_tokens"] == nil
+          - delete_key(attributes, "gen_ai.usage.prompt_tokens") where attributes["gen_ai.usage.input_tokens"] != nil
+          - delete_key(attributes, "gen_ai.usage.completion_tokens") where attributes["gen_ai.usage.output_tokens"] != nil
+
+  # Keep only the LLM-call spans for the metrics branch, so the derived client
+  # metrics cover LLM calls only, not the agent/tool/cycle spans. The export
+  # pipeline is left untouched so all spans still reach Distributed Tracing.
+  #
+  # Keyed on gen_ai.operation.name == "chat" (Tracer.start_model_invoke_span in
+  # strands/telemetry/tracer.py) rather than on gen_ai.request.model, because the
+  # agent span also carries gen_ai.request.model when the agent is constructed
+  # with a model id — filtering on the model attribute would fold whole-agent
+  # durations into gen_ai.client.operation.duration and roughly double the token
+  # sums below.
+  filter/genai_only:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "chat"
+
+  # One filter per derived agent metric. Each drops every span that is not the one
+  # the metric is defined over, so span_metrics derives a duration from that span
+  # type alone. Spans missing the attribute compare unequal and are dropped too,
+  # which is what we want.
+  #
+  # Strands sets gen_ai.operation.name natively: "invoke_agent" on the agent span
+  # and "execute_tool" on the tool span (see Tracer.start_agent_span /
+  # start_tool_call_span in strands/telemetry/tracer.py). No application change is
+  # needed for either. Strands also emits "execute_event_loop_cycle" spans, which
+  # are an internal reasoning-loop construct with no GenAI semconv metric, so no
+  # metric is derived from them.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/execute_tool:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "execute_tool"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram, and the connector has no config key to turn that off (only
+  # exclude_dimensions / aggregation_cardinality_limit, which trim cardinality
+  # rather than drop the metric). None of these is a GenAI spec metric and nothing
+  # queries them, so they are dropped here before export.
+  #
+  # Names are matched exactly rather than by a "*.calls" pattern, so this cannot
+  # accidentally swallow the spec metrics gen_ai.invoke_agent.inference_calls /
+  # .tool_calls if a later change starts emitting them on the same pipeline.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.client.operation.calls"
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.execute_tool.calls"
+
+connectors:
+  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
+  # from the LLM span durations — same connector the langfuse demo uses. Strands'
+  # native metrics live under strands.* names, so this recreates the semconv one.
+  #
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.client.operation" ->
+  # "gen_ai.client.operation.duration".
+  span_metrics/client_operation:
+    namespace: gen_ai.client.operation
+    # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # Agent duration: gen_ai.invoke_agent.duration (Histogram/seconds, Development
+  # stability in the GenAI semconv —
+  # https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  # No instrumentation library emits it today, so it is derived here from the
+  # Strands agent span.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # An agent invocation covers the whole event loop — every LLM call plus every
+      # tool call — so it runs longer than any single chat span.
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.provider.name
+      - name: gen_ai.request.model
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # Tool duration: gen_ai.execute_tool.duration, derived from the Strands tool span.
+  span_metrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # Tool calls here are local Python functions plus one HTTP hop to the
+      # appointments service, so the buckets are far tighter than the agent ones
+      # above; seconds-scale buckets would all land in the first bucket and tell
+      # you nothing.
+      explicit:
+        buckets: [1ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 1s, 5s]
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # NOTE: gen_ai.invoke_workflow.duration is deliberately NOT derived here. Strands
+  # has no workflow primitive — strands/telemetry/tracer.py only starts agent,
+  # chat, tool and event-loop-cycle spans — and this demo is a single agent, so
+  # there is no span that honestly represents a workflow.
+
+  # Token usage: Strands emits token counts as span attributes (renamed to
+  # gen_ai.usage.* above), not as the semconv metric. Re-create
+  # gen_ai.client.token.usage with two sum defs sharing one metric name; the
+  # gen_ai.token.type dimension is synthesized per direction via default_value.
+  # signaltometrics emits delta per batch, which Dynatrace requires. This needs
+  # the Bindplane collector (signaltometrics is not in the Dynatrace collector
+  # distro) — see the COLLECTOR_IMAGE in the Makefile.
+  signaltometrics:
+    spans:
+      - name: gen_ai.client.token.usage
+        description: GenAI input token usage
+        unit: "1"
+        # include_resource_attributes is per-metric (not a connector-level key);
+        # setting it here keeps service.name on the output metric.
+        include_resource_attributes:
+          - key: service.name
+        attributes:
+          - key: gen_ai.token.type
+            default_value: input
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+          - key: gen_ai.provider.name
+          - key: gen_ai.operation.name
+        conditions:
+          - attributes["gen_ai.usage.input_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.input_tokens"])
+          monotonic: true
+      - name: gen_ai.client.token.usage
+        description: GenAI output token usage
+        unit: "1"
+        include_resource_attributes:
+          - key: service.name
+        attributes:
+          - key: gen_ai.token.type
+            default_value: output
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+          - key: gen_ai.provider.name
+          - key: gen_ai.operation.name
+        conditions:
+          - attributes["gen_ai.usage.output_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.output_tokens"])
+          monotonic: true
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/strands, batch]
+      exporters: [otlphttp/dynatrace]
+    # Second branch of the same spans: transform, keep only LLM spans, and feed
+    # the client metric connectors. Kept separate from the export pipeline so the
+    # filter here never drops spans from Distributed Tracing.
+    traces/genai_metrics:
+      receivers: [otlp]
+      processors: [transform/strands, filter/genai_only, batch]
+      exporters: [span_metrics/client_operation, signaltometrics]
+
+    # One branch per derived agent metric, same pattern: a filter narrows the
+    # spans to the single type the metric is defined over, and the connector's
+    # namespace produces the spec metric name. transform/strands runs first so
+    # these see the same normalized attributes as the export pipeline.
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [transform/strands, filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/execute_tool_metrics:
+      receivers: [otlp]
+      processors: [transform/strands, filter/execute_tool, batch]
+      exporters: [span_metrics/execute_tool]
+
+    # Strands' native strands.* metrics arrive on [otlp]; the derived semconv
+    # metrics arrive on their connectors. All forwarded together, minus the
+    # undisableable .calls counters the span_metrics instances tack on.
+    metrics:
+      receivers:
+        [
+          otlp,
+          span_metrics/client_operation,
+          span_metrics/invoke_agent,
+          span_metrics/execute_tool,
+          signaltometrics,
+        ]
+      processors: [filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]
