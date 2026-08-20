@@ -240,6 +240,8 @@ Both options apply the same translations; the collector's `genainormalizer` (sou
 
 `session.id` and `user.id` already match the OTel standard and pass through unchanged in both options.
 
+> **Note on request parameters:** `GroqInstrumentor` never emits discrete `llm.temperature` / `llm.max_tokens` / `llm.top_p` span attributes -- only a single `llm.invocation_parameters` JSON string, where every named parameter of `chat.completions.create()` is present, with unset ones serialized as the literal Python repr of the SDK's `Omit` sentinel (e.g. `"top_p": "<groq.Omit object at 0x...>"`) rather than an absent key. Option A's collector parses it with OTTL's `ParseJSON` (see `transform/pre_normalize` in [`otel-collector-config.yaml`](otel-collector-config.yaml), which extracts `temperature` only); Option B's OpenPipeline parses it with DQL's `parse` command and DPL's `JSON` matcher (see the `openinference-request-params` processor in [`openpipeline-openinference.yaml`](openpipeline-openinference.yaml), which extracts all three and filters out the `Omit`-sentinel case rather than passing it through as a literal string) -- DQL's `jsonField()` function looks like the natural fit but is not enabled in this OpenPipeline context (verified live against the tenant).
+
 ---
 
 ## Metrics

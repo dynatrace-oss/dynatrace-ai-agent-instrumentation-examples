@@ -111,23 +111,40 @@ processing:
             toName: "gen_ai.response.finish_reasons"
 
     # ============================================================================
-    # 5. COPY REQUEST PARAMETERS (OFFICIAL gen_ai.request.*)
+    # 5. EXTRACT REQUEST PARAMETERS FROM llm.invocation_parameters (OFFICIAL gen_ai.request.*)
     # ============================================================================
-    # OPENINFERENCE: llm.temperature, llm.max_tokens, llm.top_p
+    # GroqInstrumentor (openinference-instrumentation-groq) never emits discrete
+    # llm.temperature / llm.max_tokens / llm.top_p span attributes — only a single
+    # llm.invocation_parameters JSON string. The fieldsRename this processor used
+    # to do (from those flat names) never matched anything and silently no-opped.
+    #
+    # Verified live against a real captured span (this repo's own e2e CI run for
+    # this PR, job 96067510639): GroqInstrumentor builds llm.invocation_parameters
+    # by binding every named parameter of groq.resources.chat.completions.create()
+    # with signature.bind(...).apply_defaults() — so kwargs the caller never set
+    # come through not as an absent key but as the literal Python repr of the
+    # SDK's `Omit` sentinel, e.g. "top_p": "<groq.Omit object at 0x...>". A plain
+    # field lookup would carry that garbage string into gen_ai.request.top_p, so
+    # each extraction below is guarded against it.
+    #
+    # DQL's jsonField() function is NOT enabled in this OpenPipeline context
+    # (confirmed live: "the function jsonField() isn't enabled") — use the parse
+    # command with DPL's JSON matcher instead, the same mechanism
+    # openai/openinference/openpipeline-openinference.yaml's guardrail processor
+    # already relies on (there via a string pattern rather than the JSON matcher).
     # ============================================================================
     - id: "openinference-request-params"
       enabled: true
-      matcher: "true"
-      type: "fieldsRename"
-      description: "Copy OpenInference request parameters to official gen_ai.request.*"
-      fieldsRename:
-        fields:
-          - fromName: "llm.temperature"
-            toName: "gen_ai.request.temperature"
-          - fromName: "llm.max_tokens"
-            toName: "gen_ai.request.max_tokens"
-          - fromName: "llm.top_p"
-            toName: "gen_ai.request.top_p"
+      matcher: "isNotNull(llm.invocation_parameters)"
+      type: "dql"
+      description: "Extract temperature/max_tokens/top_p from the llm.invocation_parameters JSON blob"
+      dql:
+        script: |
+          parse `llm.invocation_parameters`, "JSON:temp.invocation_params"
+          | fieldsAdd `gen_ai.request.temperature` = if(NOT contains(toString(`temp.invocation_params`[temperature]), "Omit object"), `temp.invocation_params`[temperature])
+          | fieldsAdd `gen_ai.request.max_tokens` = if(NOT contains(toString(`temp.invocation_params`[max_tokens]), "Omit object"), `temp.invocation_params`[max_tokens])
+          | fieldsAdd `gen_ai.request.top_p` = if(NOT contains(toString(`temp.invocation_params`[top_p]), "Omit object"), `temp.invocation_params`[top_p])
+          | fieldsRemove `temp.invocation_params`
 
     # ============================================================================
     # 6. MIRROR RESPONSE MODEL (OFFICIAL gen_ai.response.model)
