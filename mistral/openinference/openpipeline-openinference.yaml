@@ -119,26 +119,14 @@ processing:
     # ============================================================================
     # 5. EXTRACT REQUEST PARAMETERS FROM llm.invocation_parameters (OFFICIAL gen_ai.request.*)
     # ============================================================================
-    # MistralAIInstrumentor (like GroqInstrumentor) never emits discrete
-    # llm.temperature / llm.max_tokens / llm.top_p span attributes — only a single
-    # llm.invocation_parameters JSON string containing whichever kwargs were
-    # passed to chat.complete()/stream() (minus messages/functions/tools).
-    # A fieldsRename from those flat names (the pattern copied across this repo's
-    # other OpenInference pipelines, e.g. openai's and groq's) never matches
-    # anything and silently no-ops. Parse the JSON blob instead, the same way
-    # otel-collector-config.yaml's transform/pre_normalize does via OTTL's
-    # ParseJSON. DQL's jsonField() function is NOT enabled in this OpenPipeline
-    # context (verified live: "the function jsonField() isn't enabled") — use
-    # the parse command with DPL's JSON matcher instead (the same mechanism
-    # openai/openinference/openpipeline-openinference.yaml's guardrail
-    # processor already relies on, there via a string pattern rather than the
-    # JSON matcher). Verified live against the mock backend that
-    # MistralAIInstrumentor serializes every chat.complete() kwarg into this
-    # JSON, including ones the caller never set — those come through as "",
-    # not an absent key (e.g. this demo doesn't pass top_p, and it shows up in
-    # the blob as "top_p": ""). A plain field lookup would carry that empty
-    # string into gen_ai.request.top_p verbatim, so each fieldsAdd below
-    # explicitly nulls out the empty-string case instead.
+    # MistralAIInstrumentor never emits discrete llm.temperature / llm.max_tokens
+    # / llm.top_p span attributes — only a single llm.invocation_parameters JSON
+    # string with every chat.complete()/stream() kwarg, including unset ones
+    # (serialized as "" rather than omitted). Parse it with DQL's parse command
+    # and DPL's JSON matcher — DQL's jsonField() is not enabled in this
+    # OpenPipeline context. Each field is guarded against the "" case so an
+    # unset kwarg (e.g. top_p, which this demo never passes) resolves to null
+    # instead of an empty string.
     # ============================================================================
     - id: "openinference-request-params"
       enabled: true
