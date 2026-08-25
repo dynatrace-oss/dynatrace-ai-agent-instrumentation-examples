@@ -142,6 +142,21 @@ var GuardrailProfile = Profile{
 	},
 }
 
+var OneAgentGuardrailProfile = Profile{
+	Name: "oneagent-bedrock-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.guardrail.input.sensitive_information.piis", RuleID: "AR-057"},
+		{Name: "gen_ai.guardrail.input.content", RuleID: "AR-058"},
+		{Name: "gen_ai.guardrail.input.topic.names", RuleID: "AR-059"},
+		{Name: "gen_ai.guardrail.id", RuleID: "AR-050"},
+		{Name: "gen_ai.guardrail.version", RuleID: "AR-051"},
+	},
+	Optional: []AttributeCheck{
+		{Name: "gen_ai.guardrail.output.contextual", RuleID: "AR-060"},
+		{Name: "gen_ai.guardrail.input.words.matches", RuleID: "AR-061"},
+	},
+}
+
 // OpenAIProfile extends generic with OpenAI prompt-caching attributes.
 var OpenAIProfile Profile
 
@@ -564,6 +579,11 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 func auditGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
 	t.Helper()
 	auditSpanOptional(t, sdk, instrumentation+"-guardrail", GuardrailProfile, dql, note...)
+}
+
+func auditOneAgentGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	auditSpanOptional(t, sdk, instrumentation+"-guardrail", OneAgentGuardrailProfile, dql, note...)
 }
 
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
