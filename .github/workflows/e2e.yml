@@ -94,6 +94,7 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
+          echo "Reaching out to: ${DT_ENDPOINT:4}"
           VERSION=$(curl -sS --fail \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
             "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
