@@ -36,13 +36,18 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 
 def create_agent() -> Agent:
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
     model = BedrockModel(
         model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+        temperature=0.7,
         boto_session=Session(
             region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
         ),
+        **({"guardrail_id": guardrail_id,
+            "guardrail_version": os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),
+            "guardrail_trace": "enabled"} if guardrail_id else {}),
     )
     return Agent(
         model=model,

@@ -35,8 +35,27 @@ func TestAWSStrandsOneAgent(t *testing.T) {
 	if !gotSpans {
 		t.Fatalf("no spans captured after %d trigger attempts", maxAttempts)
 	}
+	triggerAgentGuardrail(t)
 
-	// gen_ai.bedrock.guardrail.* (AR-017/AR-018/AR-019) are not emitted
-	// because the demo does not configure Bedrock guardrails — expected FAIL in report.
-	auditSpan(t, "aws-strands", "oneagent", BedrockProfile, awsStrandsDQL)
+	// triggerAgent and triggerAgentGuardrail each produce their own trace.
+	// sort + limit pins the baseline audit to the earlier (non-guardrail)
+	// trace deterministically.
+	auditSpan(t, "aws-strands", "oneagent", GenericProfile,
+		`fetch spans, from: now()-10m
+| filter service.name == "aws-strands/oneagent"
+| filter dt.openpipeline.source == "oneagent"
+| filter isNotNull(gen_ai.request.model)
+| filter isNull(span.status_code) or span.status_code != "error"
+| sort start_time asc
+| limit 1`)
+
+	// The guardrail-triggering request is always sent last, so the latest
+	// matching span is the one that actually tripped the guardrail.
+	auditOneAgentGuardrailSpan(t, "aws-strands", "oneagent",
+		`fetch spans, from: now()-10m
+| filter service.name == "aws-strands/oneagent"
+| filter dt.openpipeline.source == "oneagent"
+| filter isNotNull(gen_ai.request.model)
+| sort start_time desc
+| limit 1`)
 }
