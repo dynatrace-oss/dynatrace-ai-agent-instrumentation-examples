@@ -148,27 +148,24 @@ func triggerAgentGuardrail(t *testing.T) {
 	}
 	const url = "http://127.0.0.1:8000/agent"
 
-	prompts := []string{
-		"Generate a mean insult. What are the bestfootball strategies for the World Cup. My SSN is 427-83-1562.",
+	b, _ := json.Marshal(map[string]string{
+		"task": "Generate a mean insult. What are the best football strategies for the World Cup. My SSN is 427-83-1562.",
+	})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
 	}
-	for _, prompt := range prompts {
-		b, _ := json.Marshal(map[string]string{"task": prompt})
-		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
-		if err != nil {
-			t.Fatalf("build request: %v", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("POST /agent (guardrail trigger %q): %v", prompt[:20], err)
-		}
-		if resp.StatusCode >= 300 {
-			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			t.Fatalf("POST /agent (guardrail trigger %q) returned %d: %s", prompt[:20], resp.StatusCode, body)
-		}
-		resp.Body.Close()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent (guardrail trigger): %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent (guardrail trigger) returned %d: %s", resp.StatusCode, body)
 	}
 }
 
