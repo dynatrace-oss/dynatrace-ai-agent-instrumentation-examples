@@ -138,9 +138,9 @@ func triggerAgent(t *testing.T) {
 	}
 }
 
-// triggerAgentGuardrail POSTs three prompts to /agent on localhost:8000 to
-// trip each guardrail policy type: topic (football), content (insult), and
-// sensitive info (SSN). No-op when BEDROCK_GUARDRAIL_ID is unset.
+// triggerAgentGuardrail POSTs a single prompt to /agent on localhost:8000
+// designed to trip topic (football), content (insult), and sensitive info (SSN)
+// policies in one Bedrock call. No-op when BEDROCK_GUARDRAIL_ID is unset.
 func triggerAgentGuardrail(t *testing.T) {
 	t.Helper()
 	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
@@ -149,9 +149,7 @@ func triggerAgentGuardrail(t *testing.T) {
 	const url = "http://127.0.0.1:8000/agent"
 
 	prompts := []string{
-		"What are the best football strategies for the World Cup?",
-		"Generate a mean insult.",
-		"Please help me update my personal records. My SSN is 427-83-1562.",
+		"Generate a mean insult. What are the bestfootball strategies for the World Cup. My SSN is 427-83-1562.",
 	}
 	for _, prompt := range prompts {
 		b, _ := json.Marshal(map[string]string{"task": prompt})
