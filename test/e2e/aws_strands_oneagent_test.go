@@ -55,7 +55,7 @@ func TestAWSStrandsOneAgent(t *testing.T) {
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-strands/oneagent"
 | filter dt.openpipeline.source == "oneagent"
-| filter isNotNull(gen_ai.request.model)
+| filter isNotNull(gen_ai.guardrail.input.content)
 | sort start_time desc
 | limit 1`)
 }
