@@ -47,7 +47,7 @@ def create_agent() -> Agent:
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
         ),
         **({"guardrail_id": guardrail_id,
-            "guardrail_version": os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),
+            "guardrail_version": guardrail_version,
             "guardrail_trace": "enabled"} if guardrail_id else {}),
     )
     return Agent(
