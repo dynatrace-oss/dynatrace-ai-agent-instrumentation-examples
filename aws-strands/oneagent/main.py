@@ -37,6 +37,7 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 def create_agent() -> Agent:
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+    guardrail_version = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
     model = BedrockModel(
         model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         temperature=0.7,
