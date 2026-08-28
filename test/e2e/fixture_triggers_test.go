@@ -169,6 +169,33 @@ func triggerAgentGuardrail(t *testing.T) {
 	}
 }
 
+// triggerStrandsAgentGuardrail POSTs to /agent-guardrail on localhost:8000
+// to trip the aws-strands/oneagent demo's Bedrock guardrail. No-op when
+// BEDROCK_GUARDRAIL_ID is unset.
+func triggerStrandsAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	const url = "http://127.0.0.1:8000/agent-guardrail"
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent-guardrail returned %d: %s", resp.StatusCode, body)
+	}
+}
+
 // triggerResearch POSTs to /research on localhost:8000 with a paper topic.
 func triggerResearch(t *testing.T) {
 	t.Helper()

@@ -35,7 +35,7 @@ func TestAWSStrandsOneAgent(t *testing.T) {
 	if !gotSpans {
 		t.Fatalf("no spans captured after %d trigger attempts", maxAttempts)
 	}
-	triggerAgentGuardrail(t)
+	triggerStrandsAgentGuardrail(t)
 
 	// triggerAgent and triggerAgentGuardrail each produce their own trace.
 	// sort + limit pins the baseline audit to the earlier (non-guardrail)
