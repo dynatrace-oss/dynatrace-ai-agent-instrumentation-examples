@@ -13,7 +13,7 @@ func TestPydanticAIOpenTelemetry(t *testing.T) {
 	triggerMusicAgentGuardrail(t)
 
 	t.Run("bedrock", func(t *testing.T) {
-		auditSpanOptionalWithMetrics(t, "pydantic-ai", "opentelemetry-bedrock", BedrockProfile,
+		auditSpanOptionalWithMetrics(t, "pydantic-ai", "opentelemetry-bedrock", GenericProfile,
 			`fetch spans, from: now()-10m
 | filter service.name == "pydantic-ai-music-agent"
 | filter gen_ai.provider.name == "AWS Bedrock" or gen_ai.system == "AWS Bedrock"
