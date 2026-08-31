@@ -320,6 +320,30 @@ func triggerMusicAgent(t *testing.T) {
 	}
 }
 
+// triggerMusicAgentGuardrail POSTs to /api/ask-guardrail on localhost:8000.
+// It is a no-op when BEDROCK_GUARDRAIL_ID is unset (endpoint returns 501).
+func triggerMusicAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		t.Log("BEDROCK_GUARDRAIL_ID not set — skipping guardrail trigger")
+		return
+	}
+	const url = "http://127.0.0.1:8000/api/ask-guardrail"
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/ask-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /api/ask-guardrail returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // triggerMCPAgent POSTs a weather question to /invoke on localhost:8000.
 func triggerMCPAgent(t *testing.T) {
 	t.Helper()
