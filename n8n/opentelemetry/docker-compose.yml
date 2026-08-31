@@ -46,7 +46,7 @@ services:
         condition: service_healthy
   collector:
     env_file: .env
-    image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.31.0
+    image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.55.0
     command: ["--config=/etc/otelcol/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml
