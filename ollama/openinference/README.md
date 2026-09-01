@@ -179,9 +179,9 @@ make request
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
 2. Your haiku request appears in the Explorer tab, with model, token usage, and duration for the `ollama/openinference` service.
+   ![AI Observability — ollama/openinference service overview](assets/explorer-overview.png)
 3. Open a prompt trace to inspect the request/response content and the agents topology graph.
-
-> Screenshots pending -- no Dynatrace tenant browser session was available when this example was written. See the CI run for this PR for a live, working pipeline.
+   ![AI Observability — ollama/openinference prompt trace detail](assets/prompt-trace-detail.png)
 
 ---
 
