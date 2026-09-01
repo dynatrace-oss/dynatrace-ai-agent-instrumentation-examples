@@ -36,13 +36,15 @@ if __name__ == "__main__":
     client = anthropic.AnthropicBedrock(
         aws_region=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
     )
+    # Non-streaming: openinference-instrumentation-anthropic's messages.stream()
+    # wrapper doesn't populate gen_ai.output.messages content over AnthropicBedrock
+    # (content ends up as empty parts) -- messages.create() takes the wrapper path
+    # that does capture it.
     with using_attributes(session_id=str(uuid.uuid4())):
-        with client.messages.stream(
+        response = client.messages.create(
             model=MODEL,
             max_tokens=256,
             system="You are a haiku poet.",
             messages=[{"role": "user", "content": "Write a haiku."}],
-        ) as stream:
-            for text in stream.text_stream:
-                print(text, end="")
-        print()
+        )
+        print(response.content[0].text)
