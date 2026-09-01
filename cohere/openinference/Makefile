@@ -1,0 +1,86 @@
+SHELL            := /bin/bash
+-include .env
+export
+
+APP_IMAGE        ?=
+BUILD_PLATFORM   ?= linux/amd64
+PORT             ?= 8000
+
+DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
+DT_API_TOKEN     ?= dt0c01.*****
+
+# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.105.0 tracks OTel
+# contrib v0.157.0 and bundles genainormalizerprocessor + signal_to_metrics
+# connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
+override COLLECTOR_CONTAINER := bindplane-otel-collector
+
+.PHONY: install run run-openpipeline build push request stop logs help
+
+help: ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+install: ## Install Python dependencies
+	uv sync
+
+run: ## Start collector + app locally on port $(PORT)  [Option A — Bindplane collector]
+	@$(MAKE) _collector CONFIG=otelcol-config.yaml
+	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+	  uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
+
+# ---------------------------------------------------------------------------
+# run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
+# Deploy the pipeline first: see "Option B" in README.md.
+# No OTEL_EXPORTER_OTLP_ENDPOINT override here — main.py's _otlp_exporter()
+# falls back to DT_ENDPOINT/DT_API_TOKEN and builds the OTLP-with-auth request
+# itself when the collector endpoint is unset.
+# ---------------------------------------------------------------------------
+run-openpipeline: ## Start app locally on port $(PORT)  [Option B — Dynatrace OpenPipeline, no collector]
+	uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
+
+build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
+	docker buildx build --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) .
+
+push: ## Build and push container image to registry
+	docker buildx build --no-cache --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) --push .
+
+request: ## POST /haiku to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/haiku \
+	  -H 'Content-Type: application/json' \
+	  -d '{"topic":"e2e test"}' | python3 -m json.tool
+
+# ---------------------------------------------------------------------------
+# Internal targets
+# ---------------------------------------------------------------------------
+_collector:
+	@if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
+	  echo "Collector already running — stopping it first..."; \
+	  docker stop $(COLLECTOR_CONTAINER) && docker rm $(COLLECTOR_CONTAINER); \
+	fi; \
+	echo "Starting collector ($(CONFIG)) -> $(DT_ENDPOINT)" && \
+	docker run -d \
+	  --name $(COLLECTOR_CONTAINER) \
+	  -p 4318:4318 \
+	  -v $$(pwd)/$(CONFIG):/etc/otelcol/otel-collector-config.yaml:ro \
+	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
+	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
+	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml && \
+	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
+	echo "Collector logs -> collector.log" && \
+	for i in $$(seq 1 15); do \
+	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
+	    echo "Collector is up"; exit 0; \
+	  fi; \
+	  STATUS=$$(docker inspect -f '{{.State.Status}}' $(COLLECTOR_CONTAINER) 2>/dev/null); \
+	  if [ "$$STATUS" = "exited" ]; then \
+	    echo "ERROR: collector crashed — logs:"; docker logs $(COLLECTOR_CONTAINER); exit 1; \
+	  fi; \
+	  echo "  ... ($$i/15)"; sleep 2; \
+	done; \
+	echo "ERROR: collector did not become ready"; docker logs $(COLLECTOR_CONTAINER); exit 1
+
+stop: ## Stop and remove the OTel collector container
+	docker stop $(COLLECTOR_CONTAINER) && docker rm $(COLLECTOR_CONTAINER)
+
+logs: ## Tail collector logs
+	@touch collector.log && tail -F collector.log

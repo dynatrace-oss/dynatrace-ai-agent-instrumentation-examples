@@ -69,7 +69,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 |----------|----------|---------------|---------------|
 | [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
-| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
 | [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
 | [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
 | [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
