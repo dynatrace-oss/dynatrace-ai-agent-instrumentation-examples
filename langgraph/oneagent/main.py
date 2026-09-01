@@ -17,6 +17,8 @@ class HaikuState(TypedDict):
 
 
 def _build_graph():
+    # Credentials come from the environment (see .env.sample):
+    # AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, OPENAI_API_VERSION, MODEL.
     llm = AzureChatOpenAI(
         azure_deployment=os.environ.get("MODEL", "genai-demo"),
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
