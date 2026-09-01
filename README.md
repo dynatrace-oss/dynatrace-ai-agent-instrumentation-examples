@@ -72,7 +72,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
 | [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
 | [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
-| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
+| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
 | [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
