@@ -15,7 +15,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # Bindplane Distro for OpenTelemetry (BDOT) collector. Same pin as openai/openinference —
 # tracks OTel contrib v0.157.0 and bundles genainormalizerprocessor + signal_to_metrics
 # connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.107.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector-anthropic
 
 .PHONY: run run-openpipeline build push request stop logs install help
