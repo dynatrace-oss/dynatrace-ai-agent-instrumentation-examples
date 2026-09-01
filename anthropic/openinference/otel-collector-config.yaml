@@ -8,15 +8,15 @@ processors:
   # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
   # The built-in "openinference" source maps model, provider, token usage, tool,
   # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
-  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
-  # so the exported spans carry only gen_ai.* fields. This processor is provider
-  # agnostic — the same config as openai/openinference/otel-collector-config.yaml
-  # applies unchanged to Anthropic (and any other OpenInference source).
+  # llm.input_messages.N.* into gen_ai.input.messages. remove_originals is off
+  # here (unlike openai/openinference) because transform/fix_output_messages
+  # below needs the raw llm.output_messages.* attributes still present after
+  # this runs; transform/cleanup_raw_attrs strips them at the end of the
+  # pipeline instead so the exported spans still end up gen_ai.*-only.
   gen_ai_normalizer:
     sources:
       - name: openinference
-        remove_originals: true
+        remove_originals: false
 
   # Reads llm.* attributes before gen_ai_normalizer deletes them
   transform/pre_normalize:
@@ -38,6 +38,32 @@ processors:
       - context: span
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+
+  # gen_ai_normalizer reconstructs gen_ai.output.messages with empty `parts`
+  # for Anthropic responses: OpenInference always nests a single text reply
+  # under llm.output_messages.0.message.contents.0.message_content.* (a
+  # content-block array), never the flat .message.content string it uses for
+  # input messages, and the normalizer's output-message path only handles the
+  # flat shape. Rebuild it by hand from the raw attribute for the single
+  # text-block case this demo produces; a response with multiple content
+  # blocks or a tool call needs a corresponding statement added here, and
+  # would otherwise keep the normalizer's empty-parts version.
+  transform/fix_output_messages:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - 'set(attributes["gen_ai.output.messages"], [{"role": attributes["llm.output_messages.0.message.role"], "parts": [{"type": "text", "content": attributes["llm.output_messages.0.message.contents.0.message_content.text"]}], "finish_reason": attributes["llm.finish_reason"]}]) where attributes["llm.output_messages.0.message.contents.0.message_content.type"] == "text"'
+
+  # Drops the raw llm.* attributes that gen_ai_normalizer left in place (see
+  # above) so exported spans carry only gen_ai.* fields, same end result as
+  # remove_originals: true would have given.
+  transform/cleanup_raw_attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - delete_matching_keys(attributes, "^llm\\..*")
 
   # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
   # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
@@ -123,14 +149,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/fix_output_messages, transform/response_model, transform/cleanup_raw_attrs]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/fix_output_messages, transform/response_model, transform/cleanup_raw_attrs, filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [span_metrics, signal_to_metrics]

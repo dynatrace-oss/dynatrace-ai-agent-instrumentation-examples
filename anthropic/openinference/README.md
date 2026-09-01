@@ -243,10 +243,11 @@ The `genainormalizer` processor applies these translations, then `remove_origina
 | `agent.name` | `gen_ai.agent.name` |
 | `session.id` | `gen_ai.conversation.id` |
 | `openinference.span.kind` | `gen_ai.operation.name` (`LLM`→`chat`) |
-| `llm.input_messages.N.*` / `llm.output_messages.N.*` | `gen_ai.input.messages` / `gen_ai.output.messages` (full reconstruction, including the synthesized `system` message -- see [Known gaps & limitations](#known-gaps--limitations)) |
+| `llm.input_messages.N.*` | `gen_ai.input.messages` (full reconstruction, including the synthesized `system` message -- see [Known gaps & limitations](#known-gaps--limitations)) |
 | _(added by collector config)_ | `gen_ai.response.model` (mirrored from `gen_ai.request.model`) |
+| _(added by collector config)_ | `gen_ai.output.messages` -- `genainormalizer` itself produces this with an empty `parts` array for Anthropic responses; see [Known gaps & limitations](#known-gaps--limitations) for the hand-written processor that fixes it |
 
-Unlike a hand-written transform, `genainormalizer` reconstructs the full conversation from the indexed per-message attributes, so `gen_ai.input.messages` / `gen_ai.output.messages` contain the complete message history rather than a serialized fallback.
+Unlike a hand-written transform, `genainormalizer` reconstructs the full input conversation from the indexed per-message attributes, so `gen_ai.input.messages` contains the complete message history rather than a serialized fallback. `gen_ai.output.messages` needs the extra processor above to get the same result.
 
 ### Option B -- OpenPipeline
 
@@ -270,6 +271,13 @@ Both read the normalized `gen_ai.usage.input_tokens` / `gen_ai.usage.output_toke
 ---
 
 ## Known gaps & limitations
+
+### genainormalizer drops output message content (Option A, worked around locally)
+
+`genainormalizer`'s `openinference` source reconstructs `gen_ai.output.messages` with an empty `parts` array for every Anthropic response, even a plain one-block text reply -- confirmed by inspecting the raw pre-normalization span (via `ConsoleSpanExporter`) side by side with the normalized span on the live tenant. The instrumentation itself is not at fault: `openinference-instrumentation-anthropic` correctly captures the reply as
+`llm.output_messages.0.message.contents.0.message_content.text`. The bug is in the normalizer's output-message path, which apparently only handles the flat `.message.content` string shape used for `llm.input_messages.*` and doesn't handle the nested content-block array (`.message.contents.N.message_content.*`) that Anthropic responses always use, even for a single text block.
+
+Worked around here with a hand-written `transform/fix_output_messages` processor in [`otel-collector-config.yaml`](otel-collector-config.yaml) that rebuilds `gen_ai.output.messages` from the raw attribute after `genainormalizer` runs (`remove_originals` is turned off, and a separate `transform/cleanup_raw_attrs` strips the raw `llm.*` attributes afterward instead). This only handles a single `"text"`-type content block -- a response with multiple content blocks or a tool call would need a corresponding statement added, and otherwise falls back to `genainormalizer`'s empty-parts version. Option B (OpenPipeline) never hit this: it doesn't attempt indexed-message reconstruction at all (see below), so its fallback captures the full serialized response including the real text, just not in the standardized `gen_ai.output.messages` array-of-parts shape.
 
 ### Attributes genainormalizer does not yet map (Option A)
 
