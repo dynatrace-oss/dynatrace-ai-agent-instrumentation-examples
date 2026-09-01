@@ -214,9 +214,9 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
 2. Your haiku request appears in the Explorer tab as a span with model name, token usage, and message content.
+  ![AI Observability — span explorer](assets/explorer.png)
 3. Open a span to inspect the full conversation and `gen_ai.*` attributes.
-
-> **Note:** Screenshots for this example are pending a live run against a real Dynatrace tenant and Mistral API key -- see [`assets/`](assets/). Contributions welcome; follow the naming pattern used in [`openai/openinference/assets/`](../../openai/openinference/assets/) (descriptive kebab-case filenames).
+  ![AI Observability — haiku span detail](assets/haikuview.png)
 
 ---
 
