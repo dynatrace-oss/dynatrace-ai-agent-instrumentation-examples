@@ -35,7 +35,10 @@ OA_ALL='[
 OC_ALL='[
   {"name":"aws-bedrock-opentelemetry","app_dir":"aws-bedrock/opentelemetry","test_file":"test/e2e/aws_bedrock_opentelemetry_test.go","test_run":"TestAWSBedrockOpenTelemetry","otel_service_name":"aws-bedrock/opentelemetry"},
   {"name":"aws-bedrock-openinference","app_dir":"aws-bedrock/openinference","test_file":"test/e2e/aws_bedrock_openinference_test.go","test_run":"TestAWSBedrockOpenInference","otel_service_name":"aws-bedrock/openinference"},
+  {"name":"cohere-openinference","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_test.go","test_run":"TestCohereOpenInference","otel_service_name":"cohere/openinference"},
+  {"name":"cohere-openinference-openpipeline","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_openpipeline_test.go","test_run":"TestCohereOpenInferenceOpenPipeline","otel_service_name":"cohere/openinference-openpipeline"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
+  {"name":"anthropic-openinference","app_dir":"anthropic/openinference","test_file":"test/e2e/anthropic_openinference_test.go","test_run":"TestAnthropicOpenInference","otel_service_name":"anthropic/openinference"},
   {"name":"groq-openinference","app_dir":"groq/openinference","test_file":"test/e2e/groq_openinference_test.go","test_run":"TestGroqOpenInference","otel_service_name":"groq/openinference","model":"llama-3.1-8b-instant"},
   {"name":"groq-openinference-openpipeline","app_dir":"groq/openinference","test_file":"test/e2e/groq_openinference_openpipeline_test.go","test_run":"TestGroqOpenInferenceOpenPipeline","otel_service_name":"groq/openinference-openpipeline","model":"llama-3.1-8b-instant"},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},

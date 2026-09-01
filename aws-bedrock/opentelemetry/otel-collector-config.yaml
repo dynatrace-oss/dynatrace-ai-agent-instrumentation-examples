@@ -65,6 +65,13 @@ processors:
           # so only the agent name needs mirroring — and this demo has no @tool.)
           - set(span.attributes["gen_ai.agent.name"], span.attributes["traceloop.entity.name"]) where span.attributes["traceloop.span.kind"] == "agent" and span.attributes["gen_ai.agent.name"] == nil
 
+  transform/span_status:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(status.code, STATUS_CODE_OK) where attributes["gen_ai.operation.name"] != nil and status.code == STATUS_CODE_UNSET
+
   # One filter per metric branch, each dropping every span that is not the one
   # its metric is defined over. The export pipeline below is untouched, so all
   # spans still reach Distributed Tracing regardless of what these drop.
@@ -152,6 +159,7 @@ service:
         [
           transform/bedrock-guardrail-attrs,
           transform/traceloop_operation_name,
+          transform/span_status,
           batch,
         ]
       exporters: [otlphttp/dynatrace]

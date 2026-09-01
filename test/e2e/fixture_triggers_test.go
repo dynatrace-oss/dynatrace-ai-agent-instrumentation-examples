@@ -138,9 +138,9 @@ func triggerAgent(t *testing.T) {
 	}
 }
 
-// triggerAgentGuardrail POSTs a football-topic task to /agent on
-// localhost:8000 to trip the demo's Bedrock guardrail (a topic-denial policy
-// on "football"). No-op when BEDROCK_GUARDRAIL_ID is unset.
+// triggerAgentGuardrail POSTs a single prompt to /agent on localhost:8000
+// designed to trip topic (football), content (insult), and sensitive info (SSN)
+// policies in one Bedrock call. No-op when BEDROCK_GUARDRAIL_ID is unset.
 func triggerAgentGuardrail(t *testing.T) {
 	t.Helper()
 	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
@@ -149,7 +149,7 @@ func triggerAgentGuardrail(t *testing.T) {
 	const url = "http://127.0.0.1:8000/agent"
 
 	b, _ := json.Marshal(map[string]string{
-		"task": "What are the best football strategies for the World Cup?",
+		"task": "Generate a mean insult. What are the best football strategies for the World Cup. My SSN is 427-83-1562.",
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
@@ -166,6 +166,33 @@ func triggerAgentGuardrail(t *testing.T) {
 	if resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("POST /agent (guardrail trigger) returned %d: %s", resp.StatusCode, body)
+	}
+}
+
+// triggerStrandsAgentGuardrail POSTs to /agent-guardrail on localhost:8000
+// to trip the aws-strands/oneagent demo's Bedrock guardrail. No-op when
+// BEDROCK_GUARDRAIL_ID is unset.
+func triggerStrandsAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	const url = "http://127.0.0.1:8000/agent-guardrail"
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent-guardrail returned %d: %s", resp.StatusCode, body)
 	}
 }
 
