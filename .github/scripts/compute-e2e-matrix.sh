@@ -35,7 +35,10 @@ OA_ALL='[
 OC_ALL='[
   {"name":"aws-bedrock-opentelemetry","app_dir":"aws-bedrock/opentelemetry","test_file":"test/e2e/aws_bedrock_opentelemetry_test.go","test_run":"TestAWSBedrockOpenTelemetry","otel_service_name":"aws-bedrock/opentelemetry"},
   {"name":"aws-bedrock-openinference","app_dir":"aws-bedrock/openinference","test_file":"test/e2e/aws_bedrock_openinference_test.go","test_run":"TestAWSBedrockOpenInference","otel_service_name":"aws-bedrock/openinference"},
+  {"name":"cohere-openinference","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_test.go","test_run":"TestCohereOpenInference","otel_service_name":"cohere/openinference"},
+  {"name":"cohere-openinference-openpipeline","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_openpipeline_test.go","test_run":"TestCohereOpenInferenceOpenPipeline","otel_service_name":"cohere/openinference-openpipeline"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
+  {"name":"anthropic-openinference","app_dir":"anthropic/openinference","test_file":"test/e2e/anthropic_openinference_test.go","test_run":"TestAnthropicOpenInference","otel_service_name":"anthropic/openinference"},
   {"name":"mistral-openinference","app_dir":"mistral/openinference","test_file":"test/e2e/mistral_openinference_test.go","test_run":"TestMistralOpenInference","otel_service_name":"mistral/openinference","model":"mistral-small-latest"},
   {"name":"mistral-openinference-openpipeline","app_dir":"mistral/openinference","test_file":"test/e2e/mistral_openinference_openpipeline_test.go","test_run":"TestMistralOpenInferenceOpenPipeline","otel_service_name":"mistral/openinference-openpipeline","model":"mistral-small-latest"},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},
