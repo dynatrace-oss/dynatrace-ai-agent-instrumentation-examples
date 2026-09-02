@@ -37,6 +37,8 @@ OC_ALL='[
   {"name":"aws-bedrock-openinference","app_dir":"aws-bedrock/openinference","test_file":"test/e2e/aws_bedrock_openinference_test.go","test_run":"TestAWSBedrockOpenInference","otel_service_name":"aws-bedrock/openinference"},
   {"name":"cohere-openinference","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_test.go","test_run":"TestCohereOpenInference","otel_service_name":"cohere/openinference"},
   {"name":"cohere-openinference-openpipeline","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_openpipeline_test.go","test_run":"TestCohereOpenInferenceOpenPipeline","otel_service_name":"cohere/openinference-openpipeline"},
+  {"name":"haystack-openinference","app_dir":"haystack/openinference","test_file":"test/e2e/haystack_openinference_test.go","test_run":"TestHaystackOpenInference","otel_service_name":"haystack/openinference"},
+  {"name":"haystack-openinference-openpipeline","app_dir":"haystack/openinference","test_file":"test/e2e/haystack_openinference_openpipeline_test.go","test_run":"TestHaystackOpenInferenceOpenPipeline","otel_service_name":"haystack/openinference-openpipeline"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
   {"name":"anthropic-openinference","app_dir":"anthropic/openinference","test_file":"test/e2e/anthropic_openinference_test.go","test_run":"TestAnthropicOpenInference","otel_service_name":"anthropic/openinference"},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},
