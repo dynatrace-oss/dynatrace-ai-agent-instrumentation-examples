@@ -159,9 +159,9 @@ make run-openpipeline
 
 1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
 2. Your haiku request appears in the Explorer tab, with model, token usage, and cost for the `haystack/openinference` service.
-3. Open a prompt trace to inspect the request/response content.
-
-> **Note:** Screenshots for this example are pending a live run against a real Dynatrace tenant and Azure OpenAI resource -- see [`assets/`](assets/). Contributions welcome; follow the naming pattern used in [`openai/openinference/assets/`](../../openai/openinference/assets/) (descriptive kebab-case filenames).
+   ![AI Observability — haystack/openinference service overview](assets/explorer-overview.png)
+3. Open a prompt trace to inspect the request/response content and the agents topology graph.
+   ![AI Observability — haystack/openinference prompt trace detail](assets/prompt-trace-detail.png)
 
 ---
 
