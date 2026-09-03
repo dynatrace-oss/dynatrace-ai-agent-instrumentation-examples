@@ -81,6 +81,27 @@ OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=google_genai,vertexai
 
 The same reasoning rules out layering OpenLLMetry or OpenInference on top of ADK: both attach to the active tracer provider and re-instrument calls ADK has already traced.
 
+### What the raw ADK attributes look like
+
+Because nothing normalizes the telemetry on the way in, this example shows what ADK actually emits. Verified against a tenant:
+
+| Attribute | `call_llm` span | child `generate_content <model>` span |
+|---|---|---|
+| `gen_ai.provider.name` / `gen_ai.system` | `gcp.vertex.agent` | absent |
+| `gen_ai.request.model` | set | set |
+| `gen_ai.usage.input_tokens` / `output_tokens` | set | set |
+| `gen_ai.operation.name` | absent | `generate_content` |
+| `gen_ai.input.messages` / `gen_ai.output.messages` | absent | set |
+| `gen_ai.response.model` | absent | absent |
+
+Three things to know when reading this in Dynatrace:
+
+- ADK opens **two nested spans per LLM call** (`call_llm`, and a child `generate_content <model>`), both from `google/adk/telemetry/tracing.py`. This is ADK's own span model, not double instrumentation.
+- The semantic attributes are **split across those two spans**: provider identity and token counts sit on `call_llm`, message content sits on the child. Looking at either span alone shows a partial picture.
+- `gen_ai.provider.name` is `gcp.vertex.agent`, not one of the spec's provider values, and `gen_ai.response.model` is on neither span (ADK records the response model only as a metric attribute).
+
+The [`google-adk/opentelemetry`](../opentelemetry) example closes these with collector `transform` statements: mirroring `gen_ai.request.model` into `gen_ai.response.model` and setting `gen_ai.provider.name` to `gemini`. If you need normalized attributes, that normalization has to happen in a collector or in OpenPipeline; no combination of environment variables produces it.
+
 ### Vertex AI / Gemini Enterprise
 
 This example uses an AI Studio API key so it can run unattended in CI. For Vertex AI, drop `GOOGLE_API_KEY` and add:
