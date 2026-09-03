@@ -14,16 +14,13 @@ processors:
     trace_statements:
       - context: span
         statements:
-          - merge_maps(attributes, ParseJSON(attributes["gen_ai.bedrock.guardrail.input_assessment"]), "upsert") where attributes["gen_ai.bedrock.guardrail.input_assessment"] != nil
-          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["contentPolicy"]["filters"]) where attributes["contentPolicy"] != nil
-          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["sensitiveInformationPolicy"]) where attributes["sensitiveInformationPolicy"] != nil
-          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["topicPolicy"]["topics"]) where attributes["topicPolicy"] != nil
+          - set(attributes["temp.g"], ParseJSON(attributes["gen_ai.bedrock.guardrail.input_assessment"])) where attributes["gen_ai.bedrock.guardrail.input_assessment"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["temp.g"]["contentPolicy"]["filters"]) where attributes["temp.g"]["contentPolicy"]["filters"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["temp.g"]["sensitiveInformationPolicy"]) where attributes["temp.g"]["sensitiveInformationPolicy"]["piiEntities"] != nil or attributes["temp.g"]["sensitiveInformationPolicy"]["regexes"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["temp.g"]["topicPolicy"]["topics"]) where attributes["temp.g"]["topicPolicy"]["topics"] != nil
           - set(attributes["gen_ai.bedrock.guardrail.activation"], true) where attributes["gen_ai.bedrock.guardrail.content"] != nil or attributes["gen_ai.bedrock.guardrail.sensitive_info"] != nil or attributes["gen_ai.bedrock.guardrail.topics"] != nil
-          - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["gen_ai.bedrock.guardrail.input_assessment"] != nil
-          - delete_key(attributes, "contentPolicy") where attributes["contentPolicy"] != nil
-          - delete_key(attributes, "sensitiveInformationPolicy") where attributes["sensitiveInformationPolicy"] != nil
-          - delete_key(attributes, "topicPolicy") where attributes["topicPolicy"] != nil
-          - delete_key(attributes, "invocationMetrics") where attributes["invocationMetrics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["temp.g"] != nil
+          - delete_key(attributes, "temp.g") where attributes["temp.g"] != nil
 
   batch:
     send_batch_size: 512

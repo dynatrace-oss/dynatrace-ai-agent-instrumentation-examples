@@ -5,7 +5,7 @@ import (
 )
 
 func TestPydanticAIOpenTelemetry(t *testing.T) {
-	startApp(t, "pydantic-ai/opentelemetry")
+	startAppWithTarget(t, "pydantic-ai/opentelemetry", "run-collector")
 	// Fire 3 requests so the random provider selection covers both Azure and Bedrock.
 	for range 3 {
 		triggerMusicAgent(t)

@@ -28,6 +28,29 @@ processing:
   processors:
 
     # ============================================================================
+    # BEDROCK GUARDRAIL ATTRIBUTES
+    # ============================================================================
+    # The app sets gen_ai.bedrock.guardrail.input_assessment (a JSON string) on
+    # the music_agent.ask_guardrail span from provider_details["trace"]["guardrail"]
+    # ["inputAssessment"]. Parse it here into the finalised gen_ai.bedrock.guardrail.*
+    # attributes — the tenant-side equivalent of the collector transform in
+    # otel-collector-config.yaml (transform/bedrock-guardrail-attrs).
+    # ============================================================================
+    - id: "pydantic-ai-bedrock-guardrail-attrs"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.bedrock.guardrail.input_assessment`)"
+      type: "dql"
+      description: "Derive gen_ai.bedrock.guardrail.* from the raw inputAssessment JSON"
+      dql:
+        script: |
+          parse `gen_ai.bedrock.guardrail.input_assessment`, "JSON:assessment"
+          | fieldsAdd `gen_ai.bedrock.guardrail.content` = if(isNotNull(assessment[contentPolicy][filters]), toString(assessment[contentPolicy][filters]), else: null)
+          | fieldsAdd `gen_ai.bedrock.guardrail.sensitive_info` = if(isNotNull(assessment[sensitiveInformationPolicy][piiEntities]) or isNotNull(assessment[sensitiveInformationPolicy][regexes]), toString(assessment[sensitiveInformationPolicy]), else: null)
+          | fieldsAdd `gen_ai.bedrock.guardrail.topics` = if(isNotNull(assessment[topicPolicy][topics]), toString(assessment[topicPolicy][topics]), else: null)
+          | fieldsAdd `gen_ai.bedrock.guardrail.activation` = isNotNull(`gen_ai.bedrock.guardrail.content`) or isNotNull(`gen_ai.bedrock.guardrail.sensitive_info`) or isNotNull(`gen_ai.bedrock.guardrail.topics`)
+          | fieldsRemove assessment
+
+    # ============================================================================
     # DURATION IN SECONDS (feeds the operation-duration metric below)
     # ============================================================================
     # The span `duration` field is in nanoseconds. The metric-extraction
