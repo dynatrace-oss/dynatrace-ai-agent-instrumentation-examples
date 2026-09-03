@@ -10,12 +10,22 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
 ```
 
-The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`) and forwards spans. The pipeline runs two processors (see [`otelcol-config.yaml`](otelcol-config.yaml)):
+The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`) and forwards spans. The pipeline runs these processors (see [`otelcol-config.yaml`](otelcol-config.yaml)):
 
-1. **`gen_ai_normalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
-2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+1. **`gen_ai_normalizer`** (source `openinference`, `remove_originals: false`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON.
+2. **`transform/fix_input_messages`** / **`transform/fix_output_messages`** rebuild `gen_ai.input.messages` / `gen_ai.output.messages` by hand — `gen_ai_normalizer` otherwise emits both with an empty `parts` array for this demo; see [Known gaps & limitations](#known-gaps--limitations) below.
+3. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+4. **`transform/cleanup_raw_attrs`** strips the raw `llm.*` attributes left behind by turning off `remove_originals`, so exported spans still end up `gen_ai.*`-only.
 
 The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane Distro for OpenTelemetry), which tracks OTel Collector contrib v0.156.0 and bundles the `genainormalizer` processor. The pin means a future version bump surfaces normalization changes in the e2e test.
+
+## Known gaps & limitations
+
+### genainormalizer drops message content (worked around locally)
+
+`genainormalizer`'s `openinference` source reconstructs `gen_ai.input.messages` and `gen_ai.output.messages` with an empty `parts` array for every span this demo produces — [upstream issue](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50133). The root cause: Bedrock's `converse` API takes `content` as an array even for a single plain-text block, so `openinference-instrumentation-bedrock` never sets the flat `message.content` string the normalizer's message-reconstruction path expects — it only nests text under the indexed `llm.{input,output}_messages.N.message.contents.M.message_content.*` form. Unlike the direct-Anthropic-SDK case (see `anthropic/openinference`'s README), this hits *both* input and output messages here, since `system` and user turns all go through the same array-shaped `content` field.
+
+Worked around with hand-written `transform/fix_input_messages` / `transform/fix_output_messages` processors in [`otelcol-config.yaml`](otelcol-config.yaml) that rebuild both attributes from the raw `llm.*` attributes after `genainormalizer` runs (`remove_originals` is turned off, and `transform/cleanup_raw_attrs` strips the raw attributes afterward instead). This only handles the single `"text"`-type content block per message that `write_haiku` produces (`llm.input_messages.0` = system prompt, `.1` = user message, `llm.output_messages.0` = assistant reply) — multiple content blocks or a tool call would need a corresponding statement added, and would otherwise fall back to `genainormalizer`'s empty-parts version. Remove this workaround once the upstream fix is merged and available in the pinned collector image.
 
 ## Prerequisites
 
