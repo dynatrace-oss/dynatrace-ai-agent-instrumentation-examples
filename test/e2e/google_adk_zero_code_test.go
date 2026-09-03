@@ -82,9 +82,21 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	startAppWithTarget(t, "google-adk/zero-code", "run-collector")
 	triggerADKAPIServer(t)
 
-	// The derived gen_ai.invoke_agent.duration / gen_ai.execute_tool.duration
-	// metrics are absent by design; this config runs no span_metrics connector.
-	// See google-adk/opentelemetry for that setup.
+	// Two span_metrics connectors derive gen_ai.invoke_agent.duration and
+	// gen_ai.execute_tool.duration from ADK's own invoke_agent / execute_tool
+	// spans, which ADK records only under its own pre-semconv metric names.
+	//
+	// gen_ai.execute_tool.duration depends on the coordinator actually delegating
+	// to an AgentTool. The request in triggerADKAPIServer asks for recent citing
+	// work, which it cannot answer without the websearch tool; a request that
+	// only asks for a summary lets the model answer from its weights and produces
+	// a trace with no execute_tool span at all.
+	//
+	// gen_ai.invoke_workflow.duration is absent by design: ADK only opens an
+	// invoke_workflow span for a google.adk.workflow.Workflow node, and this demo
+	// is an LlmAgent with AgentTool sub-agents.
+	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentDurationMetrics...)
+
 	auditSpanWithMetrics(t, "google-adk", "zero-code", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "`+adkZeroCodeService+`"
@@ -92,7 +104,7 @@ func TestGoogleADKZeroCode(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
-		adkZeroCodeService, genAIClientMetrics)
+		adkZeroCodeService, metrics)
 
 	// Regression guard for the split above: a span must satisfy the app's GenAI
 	// gate and carry message content at the same time, which is what makes the

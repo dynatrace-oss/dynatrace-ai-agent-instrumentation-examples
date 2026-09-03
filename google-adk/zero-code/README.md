@@ -140,7 +140,11 @@ This works wherever you own the container command, which includes the Dockerfile
 
 That is defensible because the root agent invocation genuinely is the entry point of a remotely triggered operation. Promoting every internal span is not: it invents entry points for each nested LLM call and tool execution.
 
-None of this is reachable from environment variables; normalization has to happen in a collector or in OpenPipeline. The [`google-adk/opentelemetry`](../opentelemetry) example applies the same two statements and additionally derives `gen_ai.invoke_agent.duration` and `gen_ai.execute_tool.duration` with `span_metrics` connectors, which this config deliberately leaves out.
+None of this is reachable from environment variables; normalization has to happen in a collector or in OpenPipeline.
+
+The config also derives the two spec-named agent metrics with `span_metrics` connectors: `gen_ai.invoke_agent.duration` and `gen_ai.execute_tool.duration`. ADK records equivalents under its own pre-semconv names (`gen_ai.agent.invocation.duration`, `gen_ai.tool.execution.duration`), which still flow through untouched; the connectors add the spec-named versions alongside them. Each connector reads a filtered branch carrying only its own span type, kept separate from the export pipeline so a filter can never drop a span from Distributed Tracing.
+
+There is deliberately no `gen_ai.invoke_workflow.duration`: ADK only opens an `invoke_workflow` span for a `google.adk.workflow.Workflow` node, and this demo is a plain `LlmAgent` with two `AgentTool` sub-agents, so there is no span to derive it from honestly.
 
 ### Vertex AI / Gemini Enterprise
 
