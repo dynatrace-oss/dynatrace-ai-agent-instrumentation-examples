@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.models.bedrock import BedrockConverseModel, BedrockModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.azure import AzureProvider
@@ -140,7 +141,7 @@ async def ask_question(request: QuestionRequest):
                     model=model,
                     system_prompt=MUSIC_SYSTEM_PROMPT,
                 )
-                result = await agent.run(request.question)
+                result = await agent.run(request.question, model_settings=ModelSettings(temperature=1.0))
                 answer = result.output if hasattr(result, "output") else result.data
 
                 # Record token usage on the outer span

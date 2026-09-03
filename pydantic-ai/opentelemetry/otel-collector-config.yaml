@@ -22,6 +22,18 @@ processors:
           - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["temp.g"] != nil
           - delete_key(attributes, "temp.g") where attributes["temp.g"] != nil
 
+  # Extract gen_ai.system_instructions from the first message in gen_ai.input.messages
+  # when its role is "system". pydantic-ai serialises the full message list (including
+  # the system prompt) into gen_ai.input.messages as a JSON array.
+  transform/system-instructions:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.msgs"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil
+          - set(attributes["gen_ai.system_instructions"], attributes["temp.msgs"][0]["parts"][0]["content"]) where attributes["temp.msgs"][0]["role"] == "system"
+          - delete_key(attributes, "temp.msgs") where attributes["temp.msgs"] != nil
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -69,7 +81,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/bedrock-guardrail-attrs, batch]
+      processors: [transform/bedrock-guardrail-attrs, transform/system-instructions, batch]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch: keep only LLM spans and feed the span_metrics connector.
     traces/genai_metrics:

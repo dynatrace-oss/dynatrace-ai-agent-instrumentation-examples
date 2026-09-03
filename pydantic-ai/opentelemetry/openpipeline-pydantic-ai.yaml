@@ -51,6 +51,23 @@ processing:
           | fieldsRemove assessment
 
     # ============================================================================
+    # SYSTEM INSTRUCTIONS
+    # ============================================================================
+    # pydantic-ai serialises the full message list into gen_ai.input.messages as a
+    # JSON array. Extract the system prompt from the first message when role == "system".
+    # ============================================================================
+    - id: "pydantic-ai-system-instructions"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.input.messages`)"
+      type: "dql"
+      description: "Extract system message into gen_ai.system_instructions"
+      dql:
+        script: |
+          parse `gen_ai.input.messages`, "JSON:msgs"
+          | fieldsAdd `gen_ai.system_instructions` = if(msgs[0][role] == "system", msgs[0][parts][0][content], else: null)
+          | fieldsRemove msgs
+
+    # ============================================================================
     # DURATION IN SECONDS (feeds the operation-duration metric below)
     # ============================================================================
     # The span `duration` field is in nanoseconds. The metric-extraction
