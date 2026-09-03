@@ -19,9 +19,9 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
-import prompt
-from sub_agents.academic_newresearch import academic_newresearch_agent
-from sub_agents.academic_websearch import academic_websearch_agent
+from . import prompt
+from .sub_agents.academic_newresearch import academic_newresearch_agent
+from .sub_agents.academic_websearch import academic_websearch_agent
 
 MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 

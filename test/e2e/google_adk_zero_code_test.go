@@ -1,52 +1,105 @@
 package e2e
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
 	"testing"
 )
 
+const (
+	adkZeroCodeApp     = "academic_research"
+	adkZeroCodeService = "google-adk-zero-code"
+)
+
+// triggerADKAPIServer drives ADK's own API server: create a session, then POST
+// /run. Kept local to this suite rather than added to fixture_triggers_test.go,
+// which is shared infrastructure and would make every PR run the full matrix.
+func triggerADKAPIServer(t *testing.T) {
+	t.Helper()
+	const base = "http://127.0.0.1:8000"
+
+	post := func(url string, body any) {
+		b, _ := json.Marshal(body)
+		resp, err := http.Post(url, "application/json", bytes.NewReader(b))
+		if err != nil {
+			t.Fatalf("POST %s: %v", url, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			rb, _ := io.ReadAll(resp.Body)
+			t.Fatalf("POST %s returned %d: %s", url, resp.StatusCode, rb)
+		}
+	}
+
+	post(base+"/apps/"+adkZeroCodeApp+"/users/e2e/sessions", map[string]any{
+		"session_id": "e2e-session",
+		"state":      map[string]string{"seminal_paper": "Attention is All You Need"},
+	})
+
+	// The coordinator's value is delegation, and asking only for a summary of a
+	// well-known paper lets the model answer from its own weights, producing a
+	// trace with no execute_tool span. Asking for recent citing work forces the
+	// websearch tool onto the happy path.
+	post(base+"/run", map[string]any{
+		"app_name":   adkZeroCodeApp,
+		"user_id":    "e2e",
+		"session_id": "e2e-session",
+		"new_message": map[string]any{
+			"role": "user",
+			"parts": []map[string]string{{
+				"text": "Summarize the key contributions of the paper: Attention is All You Need. " +
+					"Then use your tools to find recent papers citing it and to suggest future " +
+					"research directions based on what you find.",
+			}},
+		},
+	})
+}
+
 func TestGoogleADKZeroCode(t *testing.T) {
-	// Same agent as google-adk/opentelemetry, with no OTel code in the app:
-	// opentelemetry-instrument builds the providers from OTEL_* env vars before
-	// app.py is imported, so instrumentation is deployment config rather than a
-	// source change. The audit verifies that env-only configuration reaches the
-	// same attribute coverage as the in-code variant.
+	// No OTel code and no web code in this demo: it ships an agent package and
+	// runs ADK's own `adk api_server` under opentelemetry-instrument, which
+	// builds the SDK providers from OTEL_* env vars before the server starts.
+	// Instrumentation is therefore deployment config (a Dockerfile CMD and a set
+	// of environment variables) rather than a source change per agent, which is
+	// how it scales across many agents.
 	//
 	// make run-collector routes the app through a local OTel Collector, which
 	// repairs the two gaps ADK leaves. ADK splits the GenAI semantics over two
-	// nested spans per LLM call: gen_ai.provider.name and the token counts on
-	// call_llm, the message content and gen_ai.operation.name on the child
-	// "generate_content <model>" span. Every GenAI view in the app admits a span
-	// only if gen_ai.system or gen_ai.provider.name is set, and the Prompts stream
-	// then drops rows with no input and no output, so on a direct export call_llm
-	// passes the first gate and fails the second while generate_content does the
-	// reverse: spans reach Distributed Tracing but no prompt is ever displayed.
-	// The collector sets gen_ai.provider.name = "vertexai" on the content-bearing
-	// span, strips ADK's scope name out of gen_ai.system on call_llm (the app
-	// resolves the provider as coalesce(gen_ai.system, gen_ai.provider.name), so
-	// otherwise call_llm surfaces as a provider entity named "gcp.vertex.agent"
-	// and its duplicate token counts are counted twice), and mirrors
-	// gen_ai.response.model from the request model.
+	// nested spans per LLM call: provider and token counts on call_llm, message
+	// content and gen_ai.operation.name on the child "generate_content <model>"
+	// span. Every GenAI view in the app admits a span only if gen_ai.system or
+	// gen_ai.provider.name is set, and the Prompts stream then drops rows with no
+	// input and no output, so on a direct export call_llm passes the first gate
+	// and fails the second while generate_content does the reverse: spans reach
+	// Distributed Tracing but no prompt is ever displayed. The collector sets
+	// gen_ai.provider.name = "vertexai" on the content-bearing span, strips ADK's
+	// scope name off call_llm (both gen_ai.system and gen_ai.provider.name carry
+	// it, and the app resolves the provider as coalesce of the two, so leaving
+	// either one in place keeps call_llm's duplicate token counts inside every
+	// aggregate), and mirrors gen_ai.response.model from the request model.
 	startAppWithTarget(t, "google-adk/zero-code", "run-collector")
-	triggerResearch(t)
+	triggerADKAPIServer(t)
 
 	// The derived gen_ai.invoke_agent.duration / gen_ai.execute_tool.duration
 	// metrics are absent by design; this config runs no span_metrics connector.
 	// See google-adk/opentelemetry for that setup.
 	auditSpanWithMetrics(t, "google-adk", "zero-code", GenericProfile,
 		`fetch spans, from: now()-10m
-| filter service.name == "google-adk-zero-code"
+| filter service.name == "`+adkZeroCodeService+`"
 | filter gen_ai.provider.name == "vertexai"
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
-		"google-adk-zero-code", genAIClientMetrics)
+		adkZeroCodeService, genAIClientMetrics)
 
 	// Regression guard for the split above: a span must satisfy the app's GenAI
 	// gate and carry message content at the same time, which is what makes the
 	// Prompts view populate. Asserting the two conditions on separate spans would
 	// pass on a raw ADK export and still show an empty view.
 	assertSpanExists(t, `fetch spans, from: now()-10m
-| filter service.name == "google-adk-zero-code"
+| filter service.name == "`+adkZeroCodeService+`"
 | filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
 | filter isNotNull(gen_ai.input.messages) and isNotNull(gen_ai.output.messages)
 | limit 1`)
@@ -55,16 +108,18 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	// the token counts, so if it does, every token and LLM request is counted
 	// twice and the provider list gains an entity named "gcp.vertex.agent".
 	assertNoMatchingSpan(t, `fetch spans, from: now()-10m
-| filter service.name == "google-adk-zero-code"
+| filter service.name == "`+adkZeroCodeService+`"
 | filter span.name == "call_llm"
 | filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
 | limit 1`)
 
-	// ADK's own spans are all span.kind=internal, so no service is detected in
-	// SDv2 without an entry-point instrumentation. The FastAPI instrumentation,
-	// loaded by opentelemetry-instrument, is what produces the SERVER span.
+	// Every span ADK emits is span.kind=internal, so nothing in ADK's own output
+	// lets SDv2 detect a service. `adk api_server` serves a FastAPI app, so the
+	// opentelemetry-instrumentation-fastapi package that opentelemetry-instrument
+	// loads produces a genuine SERVER span at the HTTP entry point without any
+	// span-kind rewriting.
 	assertSpanExists(t, `fetch spans, from: now()-10m
-| filter service.name == "google-adk-zero-code"
+| filter service.name == "`+adkZeroCodeService+`"
 | filter span.kind == "server"
 | limit 1`)
 }

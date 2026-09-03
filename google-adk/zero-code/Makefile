@@ -40,13 +40,13 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Run app locally on port $(PORT) under opentelemetry-instrument
-	uv run opentelemetry-instrument python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
+run: ## Run ADK's own API server on port $(PORT) under opentelemetry-instrument
+	uv run opentelemetry-instrument adk api_server --host 0.0.0.0 --port $(PORT) agents
 
-run-collector: ## Start the OTel Collector, then run the app on port $(PORT) exporting through it
+run-collector: ## Start the OTel Collector, then run ADK's server exporting through it
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_EXPORTER_OTLP_HEADERS= \
-	  uv run opentelemetry-instrument python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
+	  uv run opentelemetry-instrument adk api_server --host 0.0.0.0 --port $(PORT) agents
 
 stop: ## Stop and remove the OTel collector container
 	docker stop $(COLLECTOR_CONTAINER) && docker rm $(COLLECTOR_CONTAINER)
@@ -87,7 +87,10 @@ build: ## Not applicable — no container defined for this demo
 push: ## Not applicable — no container defined for this demo
 	@echo "push: no Dockerfile for this demo"
 
-request: ## POST /research to localhost:$(PORT)
-	curl -s -X POST http://localhost:$(PORT)/research \
+request: ## Create a session and POST /run to ADK's server on localhost:$(PORT)
+	@curl -s -X POST http://localhost:$(PORT)/apps/academic_research/users/demo/sessions \
 	  -H 'Content-Type: application/json' \
-	  -d '{"topic":"Attention is All You Need"}'
+	  -d '{"session_id":"demo-session","state":{"seminal_paper":"Attention is All You Need"}}' > /dev/null
+	curl -s -X POST http://localhost:$(PORT)/run \
+	  -H 'Content-Type: application/json' \
+	  -d '{"app_name":"academic_research","user_id":"demo","session_id":"demo-session","new_message":{"role":"user","parts":[{"text":"Summarize the key contributions of the paper: Attention is All You Need. Then use your tools to find recent papers citing it and to suggest future research directions based on what you find."}]}}'

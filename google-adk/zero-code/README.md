@@ -1,8 +1,10 @@
 ## Google Agent Development Kit (ADK) + zero-code OpenTelemetry
 
-Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace **without any OpenTelemetry code in the application**. The app is identical to the [`google-adk/opentelemetry`](../opentelemetry) example except that it contains no tracer or meter provider setup: it runs under `opentelemetry-instrument`, and everything is configured through environment variables.
+Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace **without any application code at all**. This demo ships an agent package and nothing else: no tracer or meter provider setup, and no web server of its own. It runs ADK's own `adk api_server` under `opentelemetry-instrument`, and everything is configured through environment variables.
 
-Use this variant when instrumentation has to be rolled out across many agents at once. The exporter endpoint, semantic-convention opt-ins, and content capture become deployment configuration (Terraform, Helm, a shared base image) instead of a code change in every agent repository.
+Use this variant when instrumentation has to be rolled out across many agents at once. The exporter endpoint, semantic-convention opt-ins, and content capture become deployment configuration (Terraform, Helm, a shared base image) instead of a code change in every agent repository. It matches what `adk deploy` produces for Cloud Run: a generated Dockerfile whose command is `adk api_server`, which you own and can prepend `opentelemetry-instrument` to.
+
+The agent itself is the same academic research coordinator as the [`google-adk/opentelemetry`](../opentelemetry) example, restructured into the `agents/<app_name>/` layout ADK's server expects.
 
 ## Prerequisites
 
@@ -15,8 +17,8 @@ Use this variant when instrumentation has to be rolled out across many agents at
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
 2. `make install`; install dependencies
-3. `make run-collector`; start the collector, then the app on port 8000 under `opentelemetry-instrument`
-4. `make request`; send a test research request (in a second terminal)
+3. `make run-collector`; start the collector, then ADK's server on port 8000 under `opentelemetry-instrument`
+4. `make request`; create a session and send a test research request (in a second terminal)
 
 `make run` exports straight to Dynatrace without the collector. Use it to see the raw ADK attributes; the Prompts view stays empty, for the reason described below.
 
@@ -36,19 +38,19 @@ The `Makefile` derives the standard `OTEL_*` variables from `OTEL_ENDPOINT` and 
 | Target | Description |
 |--------|-------------|
 | `make install` | Install Python dependencies |
-| `make run` | Run app locally on port 8000 under `opentelemetry-instrument`, exporting directly to Dynatrace |
-| `make run-collector` | Start the collector, then run the app exporting through it |
+| `make run` | Run ADK's API server on port 8000 under `opentelemetry-instrument`, exporting directly to Dynatrace |
+| `make run-collector` | Start the collector, then run ADK's server exporting through it |
 | `make stop` | Stop and remove the collector container |
 | `make logs` | Tail collector logs |
-| `make request` | POST /research to localhost:8000 |
+| `make request` | Create a session and POST /run to ADK's server on localhost:8000 |
 | `make help` | Show all available targets |
 
 ## Dynatrace Instrumentation
 
 `opentelemetry-instrument` (from `opentelemetry-distro`) builds the SDK providers from environment variables before the application module is imported, then monkey-patches installed instrumentation libraries. Two consequences matter here:
 
-- ADK creates its metric instruments at module import time, so the meter provider must exist first. Under `opentelemetry-instrument` it always does. The in-code variant has to set the provider before `import google.adk` by hand.
-- `opentelemetry-instrumentation-fastapi` produces the `SERVER` span at the HTTP entry point. All of ADK's own spans are `span.kind = internal`, so without an entry-point instrumentation there is no span from which a service can be detected.
+- ADK creates its metric instruments at module import time, so the meter provider must exist first. Under `opentelemetry-instrument` it always does. The in-code variant has to set the provider before `import google.adk` by hand. ADK also tries to install its own tracer provider and logs `Overriding of current TracerProvider is not allowed`; that is expected and harmless, since the provider built from the environment is the one in use.
+- `opentelemetry-instrumentation-fastapi` produces the `SERVER` span at the HTTP entry point. All of ADK's own spans are `span.kind = internal`, so without an entry-point instrumentation there is no span from which a service can be detected. `adk api_server` serves a FastAPI app (`google/adk/cli/api_server.py`), so this instruments ADK's own server; the demo contributes no web code. Verified: `GET /health` and `GET /list-apps` arrive as `SERVER` spans.
 
 The full configuration:
 
@@ -128,9 +130,9 @@ Three things to know when reading this in Dynatrace:
 
 ### span.kind and service detection
 
-Every span ADK emits is `span.kind = internal`, so nothing in ADK's own output lets SDv2 detect a service. This example does not rewrite span kinds in the collector; it gets a genuine `SERVER` span from the `opentelemetry-instrumentation-fastapi` package that `opentelemetry-instrument` loads at the HTTP entry point, which is the accurate fix and needs no pipeline rule.
+Every span ADK emits is `span.kind = internal`, so nothing in ADK's own output lets SDv2 detect a service. This example does not rewrite span kinds in the collector; it gets a genuine `SERVER` span from the `opentelemetry-instrumentation-fastapi` package that `opentelemetry-instrument` loads, wrapping ADK's own FastAPI server. That is the accurate fix and needs no pipeline rule, and it requires no application code, only the package in the image and `opentelemetry-instrument` in front of the command.
 
-Where the runtime owns the entry point and no such instrumentation can be added (a managed Agent Engine deployment, for instance), the option is to promote the **root** invocation span only, in the collector:
+This works wherever you own the container command, which includes the Dockerfile `adk deploy` generates for Cloud Run. Where the runtime owns the entry point instead (a managed Agent Engine deployment), there is nothing to prepend `opentelemetry-instrument` to, and the option is to promote the **root** invocation span only, in the collector:
 
 ```yaml
 - set(span.kind, SPAN_KIND_SERVER) where span.attributes["gen_ai.operation.name"] == "invoke_agent" and span.parent_span_id.string == ""
