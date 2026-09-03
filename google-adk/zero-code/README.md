@@ -108,13 +108,35 @@ Every GenAI view in the AI Observability app admits a span only if `gen_ai.syste
 
 No ADK span satisfies both conditions, so **spans appear in Distributed Tracing while the Prompts view stays empty**. This is not a partial result that improves with more environment variables; it is zero prompts until something adds a provider to the content-bearing span.
 
-`otel-collector-config.yaml` does that in two OTTL statements: set `gen_ai.provider.name` on any span that has a request model but no provider and no `gen_ai.system` (which is exactly the `generate_content` span, and leaves `call_llm` alone), and mirror `gen_ai.request.model` into `gen_ai.response.model`. In a Dynatrace-native deployment the same two statements are an OpenPipeline processor behind a `gen_ai.operation.name == "generate_content"` matcher.
+`otel-collector-config.yaml` reconciles the two spans:
+
+1. **Set `gen_ai.provider.name` to `vertexai` on the inference span.** The predicate is "has `gen_ai.operation.name` and `gen_ai.request.model`", which identifies `generate_content` uniquely: `call_llm` has the model but no operation name, and `invoke_agent` / `execute_tool` have the operation name but no model. Admitting those would inflate the app's LLM request count, which is `count()` over everything passing the gate. The value is `vertexai` rather than the semconv `gcp.vertex_ai` because the app keys its provider icons on the lowercased provider name and Smartscape mints `GENAI_PROVIDER` nodes from this string; `gemini` matches no icon key and creates an off-name topology node.
+2. **Delete `gen_ai.system` where it equals `gcp.vertex.agent`.** ADK writes its own instrumentation scope name there, and the app resolves the provider as `coalesce(gen_ai.system, gen_ai.provider.name)`, so `gen_ai.system` wins. Left in place it surfaces as a provider entity literally named `gcp.vertex.agent`, and because `call_llm` carries a duplicate copy of the token counts, every token and every LLM request is counted twice. Removing the attribute rather than the span keeps `call_llm` in the trace waterfall as the parent of `generate_content`.
+3. **Normalize a stray `gen_ai.system` of `vertex_ai` or `gemini`** on the span just tagged. Which library emits `generate_content` depends on the deployed image: with `google-adk[otel-gcp]` the `google-genai` instrumentation emits it and sets no `gen_ai.system` under the experimental opt-in, while without the extra ADK emits it and does set one. Since `gen_ai.system` outranks `gen_ai.provider.name`, a stray value means the same provider under two names, with two icons and two Smartscape nodes.
+4. **Mirror `gen_ai.request.model` into `gen_ai.response.model`**, which ADK records only as a metric attribute.
+5. **Drop `gcp.vertex.agent.llm_request` / `llm_response`**, ADK's own large duplicates of the semconv message attributes. Nothing in the app reads them.
+
+Verified against a tenant: the `generate_content` span alone carries the messages, model, token counts, `gen_ai.agent.name`, `gen_ai.conversation.id` and `gen_ai.system_instructions`, so removing `call_llm` from the gate loses nothing.
+
+In a Dynatrace-native deployment the same statements are an OpenPipeline processor behind a `gen_ai.operation.name == "generate_content"` matcher.
 
 Three things to know when reading this in Dynatrace:
 
 - ADK opens **two nested spans per LLM call** (`call_llm`, and a child `generate_content <model>`), both from `google/adk/telemetry/tracing.py`. This is ADK's own span model, not double instrumentation.
 - The semantic attributes are **split across those two spans**: provider identity and token counts sit on `call_llm`, message content sits on the child. Looking at either span alone shows a partial picture.
 - `gen_ai.provider.name` is `gcp.vertex.agent`, not one of the spec's provider values, and `gen_ai.response.model` is on neither span (ADK records the response model only as a metric attribute).
+
+### span.kind and service detection
+
+Every span ADK emits is `span.kind = internal`, so nothing in ADK's own output lets SDv2 detect a service. This example does not rewrite span kinds in the collector; it gets a genuine `SERVER` span from the `opentelemetry-instrumentation-fastapi` package that `opentelemetry-instrument` loads at the HTTP entry point, which is the accurate fix and needs no pipeline rule.
+
+Where the runtime owns the entry point and no such instrumentation can be added (a managed Agent Engine deployment, for instance), the option is to promote the **root** invocation span only, in the collector:
+
+```yaml
+- set(span.kind, SPAN_KIND_SERVER) where span.attributes["gen_ai.operation.name"] == "invoke_agent" and span.parent_span_id.string == ""
+```
+
+That is defensible because the root agent invocation genuinely is the entry point of a remotely triggered operation. Promoting every internal span is not: it invents entry points for each nested LLM call and tool execution.
 
 None of this is reachable from environment variables; normalization has to happen in a collector or in OpenPipeline. The [`google-adk/opentelemetry`](../opentelemetry) example applies the same two statements and additionally derives `gen_ai.invoke_agent.duration` and `gen_ai.execute_tool.duration` with `span_metrics` connectors, which this config deliberately leaves out.
 

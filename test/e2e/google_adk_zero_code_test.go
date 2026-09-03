@@ -20,7 +20,11 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	// then drops rows with no input and no output, so on a direct export call_llm
 	// passes the first gate and fails the second while generate_content does the
 	// reverse: spans reach Distributed Tracing but no prompt is ever displayed.
-	// The collector sets a provider on the content-bearing span and mirrors
+	// The collector sets gen_ai.provider.name = "vertexai" on the content-bearing
+	// span, strips ADK's scope name out of gen_ai.system on call_llm (the app
+	// resolves the provider as coalesce(gen_ai.system, gen_ai.provider.name), so
+	// otherwise call_llm surfaces as a provider entity named "gcp.vertex.agent"
+	// and its duplicate token counts are counted twice), and mirrors
 	// gen_ai.response.model from the request model.
 	startAppWithTarget(t, "google-adk/zero-code", "run-collector")
 	triggerResearch(t)
@@ -31,7 +35,7 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	auditSpanWithMetrics(t, "google-adk", "zero-code", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "google-adk-zero-code"
-| filter gen_ai.provider.name == "gemini"
+| filter gen_ai.provider.name == "vertexai"
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
@@ -45,6 +49,15 @@ func TestGoogleADKZeroCode(t *testing.T) {
 | filter service.name == "google-adk-zero-code"
 | filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
 | filter isNotNull(gen_ai.input.messages) and isNotNull(gen_ai.output.messages)
+| limit 1`)
+
+	// call_llm must no longer pass the app's gate. It carries a duplicate copy of
+	// the token counts, so if it does, every token and LLM request is counted
+	// twice and the provider list gains an entity named "gcp.vertex.agent".
+	assertNoMatchingSpan(t, `fetch spans, from: now()-10m
+| filter service.name == "google-adk-zero-code"
+| filter span.name == "call_llm"
+| filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
 | limit 1`)
 
 	// ADK's own spans are all span.kind=internal, so no service is detected in

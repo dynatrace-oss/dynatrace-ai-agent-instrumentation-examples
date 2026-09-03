@@ -1,46 +1,95 @@
 receivers:
   otlp:
     protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
 
 processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
   batch:
     send_batch_size: 512
     timeout: 5s
 
-  # ADK splits the GenAI semantics over two nested spans per LLM call, and neither
-  # one is usable by the AI Observability app on its own:
+  # ADK opens two nested spans per LLM call and splits the GenAI semantics across
+  # them, and the AI Observability app needs one span to carry both halves.
   #
-  #   call_llm                        gen_ai.provider.name = gcp.vertex.agent,
-  #                                   token counts, no message content
-  #   generate_content <model>        message content, gen_ai.operation.name,
-  #                                   no provider and no gen_ai.system
+  #   call_llm                   gen_ai.system = gcp.vertex.agent, token counts,
+  #                              no message content
+  #   generate_content <model>   messages, model, tokens, agent name,
+  #                              conversation id, no provider at all
   #
-  # Every GenAI view in the app admits a span only if gen_ai.system or
-  # gen_ai.provider.name is set, and the Prompts stream then drops rows with no
-  # input and no output. call_llm passes the first gate and fails the second;
-  # generate_content is the other way round. Result without this processor: spans
-  # are visible in Distributed Tracing but the Prompts view is empty.
-  #
-  # Setting a provider on the content-bearing span lets it through the gate with
-  # its messages intact. The guard on gen_ai.system keeps call_llm untouched, so
-  # its own gcp.vertex.agent value is preserved.
-  transform/adk_semconv:
+  # Every GenAI view admits a span only if gen_ai.system or gen_ai.provider.name
+  # is set, and the Prompts stream then drops rows with neither input nor output.
+  # So call_llm passes the gate with nothing to show and generate_content, which
+  # holds everything, never enters. Without this processor spans reach Distributed
+  # Tracing and the Prompts view is empty.
+  transform/genai_dynatrace:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          # Paths carry the explicit "span." context prefix: a bare attributes[...]
-          # still works but the collector rewrites it at startup and logs
-          # "one or more paths were modified to include their context prefix".
-          - set(span.attributes["gen_ai.provider.name"], "gemini") where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.provider.name"] == nil and span.attributes["gen_ai.system"] == nil
+          # 1. Backfill the provider on the inference span.
+          #
+          # gen_ai.operation.name plus gen_ai.request.model identifies
+          # generate_content uniquely: call_llm has the model but no operation
+          # name, and invoke_agent / execute_tool / invoke_workflow have the
+          # operation name but no model. Admitting those would inflate the app's
+          # llmRequests count, which is count() over everything passing the gate.
+          #
+          # The value is "vertexai", not the semconv "gcp.vertex_ai": the app keys
+          # its provider icons on the lowercased provider name (openai, vertexai,
+          # ollama, azure, langchain, amazon, aws.bedrock) and Smartscape mints
+          # GENAI_PROVIDER nodes from this string. "gemini" matches no icon key and
+          # creates an off-name topology node.
+          - set(span.attributes["gen_ai.provider.name"], "vertexai") where span.attributes["gen_ai.provider.name"] == nil and span.attributes["gen_ai.operation.name"] != nil and span.attributes["gen_ai.request.model"] != nil
+
+          # 2. Strip ADK's instrumentation scope name off call_llm.
+          #
+          # ADK writes its own scope name into gen_ai.system, and the app resolves
+          # the provider as coalesce(gen_ai.system, gen_ai.provider.name) — system
+          # wins — so this surfaces as a GENAI_PROVIDER entity literally named
+          # "gcp.vertex.agent". call_llm also carries a duplicate copy of the token
+          # counts, so leaving it inside the gate double-counts every token and
+          # every LLM request. Removing the attribute rather than the span keeps it
+          # in the trace waterfall as the parent of generate_content.
+          - delete_key(span.attributes, "gen_ai.system") where span.attributes["gen_ai.system"] == "gcp.vertex.agent"
+
+          # 2b. Normalize Google's own gen_ai.system values on the inference span.
+          #
+          # Which library emits generate_content depends on the deployed image.
+          # With google-adk[otel-gcp], opentelemetry-instrumentation-google-genai
+          # emits it and sets no gen_ai.system under the experimental semconv
+          # opt-in. Without the extra, ADK emits it and sets gen_ai.system to
+          # "vertex_ai" or "gemini". Since system outranks provider.name, a stray
+          # value would beat the one set above: same provider, two icons, two
+          # Smartscape nodes. Scoped to spans this processor just tagged, so a
+          # genuine gen_ai.system from other instrumentation is left alone.
+          - delete_key(span.attributes, "gen_ai.system") where span.attributes["gen_ai.provider.name"] == "vertexai" and (span.attributes["gen_ai.system"] == "vertex_ai" or span.attributes["gen_ai.system"] == "gemini")
+
+          # 3. Mirror the response model.
+          #
           # ADK never puts gen_ai.response.model on a span; it records the response
           # model only as a metric attribute. AR-005 requires the span attribute,
-          # so it is mirrored from the request model, as the aws-strands and
-          # langfuse configs already do. This is an approximation: the request
-          # model is what was asked for, not necessarily what answered.
+          # which drives the model quick filter and the overview charts, so it is
+          # mirrored from the request model as the aws-strands and langfuse configs
+          # already do. This is an approximation: the request model is what was
+          # asked for, not necessarily what answered.
           - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
+
+          # 4. Drop ADK's legacy prompt payloads.
+          #
+          # Present on call_llm and every execute_tool span, duplicating in ADK's
+          # own format what generate_content already carries as semconv
+          # gen_ai.input.messages / gen_ai.output.messages. Nothing in the app
+          # reads them and they are large.
+          - delete_key(span.attributes, "gcp.vertex.agent.llm_request")
+          - delete_key(span.attributes, "gcp.vertex.agent.llm_response")
 
 exporters:
   otlphttp/dynatrace:
@@ -53,6 +102,12 @@ exporters:
 # passes through unchanged. The in-code variant needs a rename here because its
 # app.py pins service.name on the Resource, which beats OTEL_SERVICE_NAME.
 #
+# span.kind is deliberately not rewritten. ADK emits everything as internal, but
+# this app gets a real SERVER span from the FastAPI instrumentation that
+# opentelemetry-instrument loads, so SDv2 detects the service without any
+# collector-side promotion. See the README for the case where the runtime owns
+# the entry point and no such instrumentation can be added.
+#
 # The derived gen_ai.invoke_agent.duration / gen_ai.execute_tool.duration metrics
 # are deliberately not built here; see google-adk/opentelemetry for the
 # span_metrics connector setup.
@@ -60,10 +115,13 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/adk_semconv, batch]
+      processors: [memory_limiter, transform/genai_dynatrace, batch]
       exporters: [otlphttp/dynatrace]
 
+    # Metrics pass through untouched. gen_ai.client.token.usage and
+    # gen_ai.client.operation.duration already arrive correctly from ADK, and the
+    # app's timeseries queries are provider-agnostic.
     metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, batch]
       exporters: [otlphttp/dynatrace]
