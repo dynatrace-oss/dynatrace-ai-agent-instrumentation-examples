@@ -1,0 +1,69 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # ADK splits the GenAI semantics over two nested spans per LLM call, and neither
+  # one is usable by the AI Observability app on its own:
+  #
+  #   call_llm                        gen_ai.provider.name = gcp.vertex.agent,
+  #                                   token counts, no message content
+  #   generate_content <model>        message content, gen_ai.operation.name,
+  #                                   no provider and no gen_ai.system
+  #
+  # Every GenAI view in the app admits a span only if gen_ai.system or
+  # gen_ai.provider.name is set, and the Prompts stream then drops rows with no
+  # input and no output. call_llm passes the first gate and fails the second;
+  # generate_content is the other way round. Result without this processor: spans
+  # are visible in Distributed Tracing but the Prompts view is empty.
+  #
+  # Setting a provider on the content-bearing span lets it through the gate with
+  # its messages intact. The guard on gen_ai.system keeps call_llm untouched, so
+  # its own gcp.vertex.agent value is preserved.
+  transform/adk_semconv:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # Paths carry the explicit "span." context prefix: a bare attributes[...]
+          # still works but the collector rewrites it at startup and logs
+          # "one or more paths were modified to include their context prefix".
+          - set(span.attributes["gen_ai.provider.name"], "gemini") where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.provider.name"] == nil and span.attributes["gen_ai.system"] == nil
+          # ADK never puts gen_ai.response.model on a span; it records the response
+          # model only as a metric attribute. AR-005 requires the span attribute,
+          # so it is mirrored from the request model, as the aws-strands and
+          # langfuse configs already do. This is an approximation: the request
+          # model is what was asked for, not necessarily what answered.
+          - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+# No resource processor renaming service.name: this app sets no Resource
+# service.name of its own, so OTEL_SERVICE_NAME from the environment governs and
+# passes through unchanged. The in-code variant needs a rename here because its
+# app.py pins service.name on the Resource, which beats OTEL_SERVICE_NAME.
+#
+# The derived gen_ai.invoke_agent.duration / gen_ai.execute_tool.duration metrics
+# are deliberately not built here; see google-adk/opentelemetry for the
+# span_metrics connector setup.
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/adk_semconv, batch]
+      exporters: [otlphttp/dynatrace]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]

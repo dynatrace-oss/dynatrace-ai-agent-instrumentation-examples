@@ -15,8 +15,10 @@ Use this variant when instrumentation has to be rolled out across many agents at
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
 2. `make install`; install dependencies
-3. `make run`; start the app on port 8000 under `opentelemetry-instrument`
+3. `make run-collector`; start the collector, then the app on port 8000 under `opentelemetry-instrument`
 4. `make request`; send a test research request (in a second terminal)
+
+`make run` exports straight to Dynatrace without the collector. Use it to see the raw ADK attributes; the Prompts view stays empty, for the reason described below.
 
 ## Environment Variables
 
@@ -34,7 +36,10 @@ The `Makefile` derives the standard `OTEL_*` variables from `OTEL_ENDPOINT` and 
 | Target | Description |
 |--------|-------------|
 | `make install` | Install Python dependencies |
-| `make run` | Run app locally on port 8000 under `opentelemetry-instrument` |
+| `make run` | Run app locally on port 8000 under `opentelemetry-instrument`, exporting directly to Dynatrace |
+| `make run-collector` | Start the collector, then run the app exporting through it |
+| `make stop` | Stop and remove the collector container |
+| `make logs` | Tail collector logs |
 | `make request` | POST /research to localhost:8000 |
 | `make help` | Show all available targets |
 
@@ -94,13 +99,24 @@ Because nothing normalizes the telemetry on the way in, this example shows what 
 | `gen_ai.input.messages` / `gen_ai.output.messages` | absent | set |
 | `gen_ai.response.model` | absent | absent |
 
+### Why the collector is not optional here
+
+Every GenAI view in the AI Observability app admits a span only if `gen_ai.system` or `gen_ai.provider.name` is set, and the Prompts stream then drops rows that have neither input nor output. Against the table above, on a direct export:
+
+- `call_llm` passes the first gate and is dropped by the second: it has a provider but no message content.
+- `generate_content <model>` has the content but fails the first gate: neither provider field is set.
+
+No ADK span satisfies both conditions, so **spans appear in Distributed Tracing while the Prompts view stays empty**. This is not a partial result that improves with more environment variables; it is zero prompts until something adds a provider to the content-bearing span.
+
+`otel-collector-config.yaml` does that in two OTTL statements: set `gen_ai.provider.name` on any span that has a request model but no provider and no `gen_ai.system` (which is exactly the `generate_content` span, and leaves `call_llm` alone), and mirror `gen_ai.request.model` into `gen_ai.response.model`. In a Dynatrace-native deployment the same two statements are an OpenPipeline processor behind a `gen_ai.operation.name == "generate_content"` matcher.
+
 Three things to know when reading this in Dynatrace:
 
 - ADK opens **two nested spans per LLM call** (`call_llm`, and a child `generate_content <model>`), both from `google/adk/telemetry/tracing.py`. This is ADK's own span model, not double instrumentation.
 - The semantic attributes are **split across those two spans**: provider identity and token counts sit on `call_llm`, message content sits on the child. Looking at either span alone shows a partial picture.
 - `gen_ai.provider.name` is `gcp.vertex.agent`, not one of the spec's provider values, and `gen_ai.response.model` is on neither span (ADK records the response model only as a metric attribute).
 
-The [`google-adk/opentelemetry`](../opentelemetry) example closes these with collector `transform` statements: mirroring `gen_ai.request.model` into `gen_ai.response.model` and setting `gen_ai.provider.name` to `gemini`. If you need normalized attributes, that normalization has to happen in a collector or in OpenPipeline; no combination of environment variables produces it.
+None of this is reachable from environment variables; normalization has to happen in a collector or in OpenPipeline. The [`google-adk/opentelemetry`](../opentelemetry) example applies the same two statements and additionally derives `gen_ai.invoke_agent.duration` and `gen_ai.execute_tool.duration` with `span_metrics` connectors, which this config deliberately leaves out.
 
 ### Vertex AI / Gemini Enterprise
 
