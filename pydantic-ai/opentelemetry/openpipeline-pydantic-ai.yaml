@@ -65,6 +65,7 @@ processing:
         script: |
           parse `gen_ai.input.messages`, "JSON:msgs"
           | fieldsAdd `gen_ai.system_instructions` = if(msgs[0][role] == "system", msgs[0][parts][0][content], else: null)
+          | fieldsAdd `gen_ai.input.messages` = if(msgs[0][role] == "system", toString(arraySlice(msgs, 1, arraySize(msgs))), else: `gen_ai.input.messages`)
           | fieldsRemove msgs
 
     # ============================================================================

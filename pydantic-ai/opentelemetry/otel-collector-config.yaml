@@ -22,9 +22,9 @@ processors:
           - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["temp.g"] != nil
           - delete_key(attributes, "temp.g") where attributes["temp.g"] != nil
 
-  # Extract gen_ai.system_instructions from the first message in gen_ai.input.messages
-  # when its role is "system". pydantic-ai serialises the full message list (including
-  # the system prompt) into gen_ai.input.messages as a JSON array.
+  # Extracts the system-role entry from gen_ai.input.messages into the dedicated
+  # gen_ai.system_instructions attribute and removes it from the messages array to
+  # avoid duplication in the prompts view.
   transform/system-instructions:
     error_mode: ignore
     trace_statements:
@@ -32,6 +32,8 @@ processors:
         statements:
           - set(attributes["temp.msgs"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil
           - set(attributes["gen_ai.system_instructions"], attributes["temp.msgs"][0]["parts"][0]["content"]) where attributes["temp.msgs"][0]["role"] == "system"
+          - delete_index(attributes["temp.msgs"], 0) where attributes["temp.msgs"][0]["role"] == "system"
+          - set(attributes["gen_ai.input.messages"], attributes["temp.msgs"]) where attributes["temp.msgs"] != nil
           - delete_key(attributes, "temp.msgs") where attributes["temp.msgs"] != nil
 
   batch:
