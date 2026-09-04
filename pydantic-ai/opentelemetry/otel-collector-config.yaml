@@ -5,6 +5,37 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # pydantic-ai carries the raw Bedrock trace response verbatim in provider_details.
+  # The app extracts the inputAssessment object (a Bedrock API response field) and
+  # sets it as gen_ai.bedrock.guardrail.input_assessment for the collector to parse
+  # into the finalised gen_ai.bedrock.guardrail.* attributes.
+  transform/bedrock-guardrail-attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.g"], ParseJSON(attributes["gen_ai.bedrock.guardrail.input_assessment"])) where attributes["gen_ai.bedrock.guardrail.input_assessment"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["temp.g"]["contentPolicy"]["filters"]) where attributes["temp.g"]["contentPolicy"]["filters"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["temp.g"]["sensitiveInformationPolicy"]) where attributes["temp.g"]["sensitiveInformationPolicy"]["piiEntities"] != nil or attributes["temp.g"]["sensitiveInformationPolicy"]["regexes"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["temp.g"]["topicPolicy"]["topics"]) where attributes["temp.g"]["topicPolicy"]["topics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], true) where attributes["gen_ai.bedrock.guardrail.content"] != nil or attributes["gen_ai.bedrock.guardrail.sensitive_info"] != nil or attributes["gen_ai.bedrock.guardrail.topics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["temp.g"] != nil
+          - delete_key(attributes, "temp.g") where attributes["temp.g"] != nil
+
+  # Extracts the system-role entry from gen_ai.input.messages into the dedicated
+  # gen_ai.system_instructions attribute and removes it from the messages array to
+  # avoid duplication in the prompts view.
+  transform/system-instructions:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.msgs"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil
+          - set(attributes["gen_ai.system_instructions"], attributes["temp.msgs"][0]["parts"][0]["content"]) where attributes["temp.msgs"][0]["role"] == "system"
+          - delete_index(attributes["temp.msgs"], 0) where attributes["temp.msgs"][0]["role"] == "system"
+          - set(attributes["gen_ai.input.messages"], attributes["temp.msgs"]) where attributes["temp.msgs"] != nil
+          - delete_key(attributes, "temp.msgs") where attributes["temp.msgs"] != nil
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -52,7 +83,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/bedrock-guardrail-attrs, transform/system-instructions, batch]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch: keep only LLM spans and feed the span_metrics connector.
     traces/genai_metrics:
