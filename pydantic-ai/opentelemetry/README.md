@@ -127,3 +127,25 @@ The app is available at [http://localhost:8000](http://localhost:8000).
 - **Token-level visibility** — input and output token counts on every span
 - **Prompt & completion content** — captured as span events (`include_content=True`)
 - **Metrics** — token usage and request latency exported as OTLP metrics for dashboarding
+
+### Bedrock Guardrails (optional)
+
+If you have an [AWS Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) configured, add its ID to your `.env`:
+
+```bash
+BEDROCK_GUARDRAIL_ID=<YOUR_GUARDRAIL_ID>
+BEDROCK_GUARDRAIL_VERSION=DRAFT  # or a published version number
+```
+
+With these set, the `/api/ask-guardrail` endpoint sends a prompt designed to trip topic, content, and sensitive-information policies. The app passes the guardrail config via `BedrockModelSettings`, extracts the per-policy assessment from `ModelResponse.provider_details`, and sets it as span attributes. The OTel Collector (via `make run-collector`) or the OpenPipeline config (`openpipeline-pydantic-ai.yaml`) then derives the final attributes:
+
+| Attribute | Description |
+|---|---|
+| `gen_ai.bedrock.guardrail.activation` | `true` if any policy fired |
+| `gen_ai.bedrock.guardrail.content` | Content policy filter results |
+| `gen_ai.bedrock.guardrail.sensitive_info` | Sensitive information policy results |
+| `gen_ai.bedrock.guardrail.topics` | Topic policy results |
+| `gen_ai.guardrail.id` | Guardrail identifier |
+| `gen_ai.guardrail.version` | Guardrail version |
+
+When `BEDROCK_GUARDRAIL_ID` is not set, the endpoint returns 501 and the guardrail story is skipped.
