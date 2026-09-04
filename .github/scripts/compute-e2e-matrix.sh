@@ -41,6 +41,8 @@ OC_ALL='[
   {"name":"haystack-openinference-openpipeline","app_dir":"haystack/openinference","test_file":"test/e2e/haystack_openinference_openpipeline_test.go","test_run":"TestHaystackOpenInferenceOpenPipeline","otel_service_name":"haystack/openinference-openpipeline"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
   {"name":"anthropic-openinference","app_dir":"anthropic/openinference","test_file":"test/e2e/anthropic_openinference_test.go","test_run":"TestAnthropicOpenInference","otel_service_name":"anthropic/openinference"},
+  {"name":"groq-openinference","app_dir":"groq/openinference","test_file":"test/e2e/groq_openinference_test.go","test_run":"TestGroqOpenInference","otel_service_name":"groq/openinference","model":"llama-3.1-8b-instant"},
+  {"name":"groq-openinference-openpipeline","app_dir":"groq/openinference","test_file":"test/e2e/groq_openinference_openpipeline_test.go","test_run":"TestGroqOpenInferenceOpenPipeline","otel_service_name":"groq/openinference-openpipeline","model":"llama-3.1-8b-instant"},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},
   {"name":"langfuse-opentelemetry","app_dir":"langfuse/opentelemetry","test_file":"test/e2e/langfuse_opentelemetry_test.go","test_run":"TestLangfuseOpenTelemetry","otel_service_name":"langfuse"},
   {"name":"langfuse-opentelemetry-node","app_dir":"langfuse/opentelemetry-node","test_file":"test/e2e/langfuse_opentelemetry_node_test.go","test_run":"TestLangfuseOpenTelemetryNode","otel_service_name":"langfuse-node","needs_node":true},
@@ -57,6 +59,7 @@ OC_ALL='[
   {"name":"aws-strands-opentelemetry","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_test.go","test_run":"TestAWSStrandsOpenTelemetry","otel_service_name":"aws-strands/opentelemetry"},
   {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_openpipeline_test.go","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"},
   {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_collector_test.go","test_run":"TestGoogleADKOpenTelemetryCollector","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"google-adk-zero-code","app_dir":"google-adk/zero-code","test_file":"test/e2e/google_adk_zero_code_test.go","test_run":"TestGoogleADKZeroCode","otel_service_name":"google-adk-zero-code","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true},
   {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"}
 ]'

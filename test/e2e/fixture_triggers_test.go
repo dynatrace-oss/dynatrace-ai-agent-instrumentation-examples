@@ -112,6 +112,53 @@ func triggerHaikuGuardrail(t *testing.T) {
 	}
 }
 
+type guardrailCheck struct {
+	Text string `json:"text"`
+}
+
+// triggerApplyGuardrail POSTs two requests to /guardrail on localhost:8000,
+// exercising Bedrock's standalone ApplyGuardrail API (client.apply_guardrail) —
+// structurally distinct from the Converse guardrailConfig path exercised by
+// triggerHaikuGuardrail: it produces its own OpenInference "GUARDRAIL"-kind span
+// rather than an LLM-kind span, and isn't a chat completion at all (no model, no
+// generated text). The first call sends guardrail-safe content; the second reuses
+// the "football strategies for the World Cup" topic-denial trigger already used
+// by triggerHaikuGuardrail to trip the same guardrail resource, mirroring the
+// non-guardrail/guardrail-triggering split. No-op when BEDROCK_GUARDRAIL_ID is
+// unset, matching the app-side skip behavior.
+func triggerApplyGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	postGuardrailCheck(t, "Who is the president of the United States?")
+	postGuardrailCheck(t, "What are the best football strategies for the World Cup?")
+}
+
+// postGuardrailCheck POSTs a single text to /guardrail on localhost:8000.
+func postGuardrailCheck(t *testing.T, text string) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/guardrail"
+
+	b, _ := json.Marshal(guardrailCheck{Text: text})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /guardrail returned %d: %s", resp.StatusCode, rb)
+	}
+}
+
 // triggerAgent POSTs a task to /agent on localhost:8000.
 func triggerAgent(t *testing.T) {
 	t.Helper()

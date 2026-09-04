@@ -142,6 +142,40 @@ var GuardrailProfile = Profile{
 	},
 }
 
+// ApplyGuardrailProfile checks Bedrock's standalone ApplyGuardrail API
+// (client.apply_guardrail), which openinference-instrumentation-bedrock traces as
+// its own OpenInference "GUARDRAIL"-kind span — structurally distinct from the
+// Converse guardrailConfig path GuardrailProfile checks. It intentionally does NOT
+// check gen_ai.bedrock.guardrail.{content,topics,words,sensitive_info} the way
+// GuardrailProfile does: the ApplyGuardrail wrapper never puts that assessment
+// breakdown into span attributes at all (only action/actionReason/outputs), so
+// there's nothing for a collector transform to reconstruct it from. It also does
+// not check for a gen_ai.bedrock.guardrail.* / gen_ai.guardrail.id projection more
+// generally — genainormalizer's "openinference" source has no such mapping (its
+// LookupTable only renames LLM-kind model/token/tool/agent/session attributes; see
+// genainormalizerprocessor/internal/openinference/mappings.go upstream), and no
+// collector config in this repo adds one for aws-bedrock/openinference either
+// (sdk-comparison-baseline.md documents gen_ai.guardrail.id as "extracted from
+// llm.invocation_parameters by the collector transform/llm-invocation-params
+// processor (OpenInference path)", but no such processor exists anywhere in this
+// repo — that line is aspirational baseline, not shipped normalization). So this
+// profile checks the raw OpenInference span/IO attributes the wrapper actually
+// sets. Note that openinference.span.kind itself does not survive as-is: the
+// generic LookupTable renames it to gen_ai.operation.name (with remove_originals
+// dropping the original), so the DQL anchor query for this profile must filter on
+// gen_ai.operation.name == "GUARDRAIL", not openinference.span.kind.
+var ApplyGuardrailProfile = Profile{
+	Name: "bedrock-apply-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.operation.name"},
+		{Name: "output.value"},
+		{Name: "metadata"},
+	},
+	Optional: []AttributeCheck{
+		{Name: "input.value"},
+	},
+}
+
 var OneAgentGuardrailProfile = Profile{
 	Name: "oneagent-bedrock-guardrail",
 	Required: []AttributeCheck{
@@ -584,6 +618,47 @@ func auditGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...
 func auditOneAgentGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
 	t.Helper()
 	auditSpanOptional(t, sdk, instrumentation+"-guardrail", OneAgentGuardrailProfile, dql, note...)
+}
+
+// auditApplyGuardrailSpan audits the guardrail-triggering call from
+// triggerApplyGuardrail against ApplyGuardrailProfile. It cannot reuse
+// auditSpanOptional/auditGuardrailSpan: _apply_guardrail_wrapper
+// (openinference-instrumentation-bedrock) sets the span's OTel status to ERROR
+// when the guardrail actually blocks content — the expected, asserted-for outcome
+// here — whereas every other audit helper in this file treats
+// span.status_code == "error" as a failure via assertNotErrorSpan. Skips (rather
+// than fails) when no anchor span is found, since triggerApplyGuardrail no-ops
+// when BEDROCK_GUARDRAIL_ID is unset. Reports are written under
+// "<instrumentation>-apply-guardrail" so they never collide with the baseline or
+// GuardrailProfile reports for the same suite.
+func auditApplyGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s apply_guardrail spans found — guardrail likely not configured this run", sdk, instrumentation)
+		return
+	}
+	if v, ok := records[0]["span.status_code"]; !ok || fmt.Sprint(v) != "error" {
+		t.Fatalf("expected the guardrail-triggering apply_guardrail span to have span.status_code=error (guardrail should have blocked the request): %v", records[0])
+	}
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation+"-apply-guardrail", ApplyGuardrailProfile, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+
+	for _, r := range report.Required {
+		if r.Status == "fail" {
+			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
+		}
+	}
+	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
+		report.Verdict, len(spans), sdk, instrumentation+"-apply-guardrail")
 }
 
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
