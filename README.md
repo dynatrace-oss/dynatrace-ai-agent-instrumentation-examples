@@ -70,9 +70,9 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
 | [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
-| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
+| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
 | [Mistral](./mistral/) | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
-| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
+| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
 | [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
@@ -87,7 +87,7 @@ Monitor AI agent frameworks with Dynatrace.
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
-| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
+| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
 | [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
 | [Langfuse](./langfuse/) | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
 | [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |

@@ -1,64 +1,38 @@
 receivers:
   otlp:
     protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Reads llm.invocation_parameters before gen_ai_normalizer deletes it below.
+  # OllamaInstrumentor nests temperature/num_predict/top_p under an "options"
+  # object (the ollama Python client's chat(options={...}) kwarg) rather than
+  # as flat invocation_parameters keys like the other provider SDKs in this
+  # repo, so the JSON path here goes one level deeper than e.g.
+  # cohere/openinference or anthropic/openinference use.
+  transform/pre_normalize:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil
+          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["options"]["temperature"]) where attributes["temp.invocation_params"]["options"]["temperature"] != nil
+          - set(attributes["gen_ai.request.max_tokens"], attributes["temp.invocation_params"]["options"]["num_predict"]) where attributes["temp.invocation_params"]["options"]["num_predict"] != nil
+          - set(attributes["gen_ai.request.top_p"], attributes["temp.invocation_params"]["options"]["top_p"]) where attributes["temp.invocation_params"]["options"]["top_p"] != nil
+          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
+
   # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool,
-  # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
-  # and gen_ai.output.messages. remove_originals is off (unlike before) because
-  # transform/fix_input_messages and transform/fix_output_messages below need
-  # the raw llm.* attributes still present after this runs;
-  # transform/cleanup_raw_attrs strips them at the end of the pipeline instead
-  # so the exported spans still end up gen_ai.*-only.
+  # The built-in "openinference" source maps model, provider, token usage, tool
+  # and session attributes, and reconstructs llm.output_messages.0.* into
+  # gen_ai.output.messages — OllamaInstrumentor emits a flat single-message
+  # response (no Anthropic-style content-block nesting), so no extra fixup
+  # transform is needed here. remove_originals drops the raw llm.* attributes
+  # so the exported spans carry only gen_ai.* fields.
   gen_ai_normalizer:
     sources:
       - name: openinference
-        remove_originals: false
-
-  # gen_ai_normalizer reconstructs gen_ai.input.messages / gen_ai.output.messages
-  # with empty `parts` here: Bedrock's converse API takes `content` as an array
-  # even for a single plain-text block, so openinference-instrumentation-bedrock
-  # always nests message text under
-  # llm.{input,output}_messages.N.message.contents.M.message_content.* (a
-  # content-block array) and never sets the flat .message.content string the
-  # normalizer's message path expects. Upstream bug:
-  # https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50133
-  # Rebuild both by hand from the raw attributes for the single-text-block
-  # shape this demo produces (llm.input_messages.0 = system prompt,
-  # .1 = user message, llm.output_messages.0 = assistant reply); a response
-  # with multiple content blocks or a tool call needs a corresponding
-  # statement added here, and would otherwise keep the normalizer's
-  # empty-parts version. Remove once the fix for the upstream issue is merged
-  # and available in the collector image.
-  transform/fix_input_messages:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - 'set(attributes["gen_ai.input.messages"], [{"role": attributes["llm.input_messages.0.message.role"], "parts": [{"type": "text", "content": attributes["llm.input_messages.0.message.contents.0.message_content.text"]}]}, {"role": attributes["llm.input_messages.1.message.role"], "parts": [{"type": "text", "content": attributes["llm.input_messages.1.message.contents.0.message_content.text"]}]}]) where attributes["llm.input_messages.1.message.contents.0.message_content.type"] == "text"'
-
-  transform/fix_output_messages:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - 'set(attributes["gen_ai.output.messages"], [{"role": attributes["llm.output_messages.0.message.role"], "parts": [{"type": "text", "content": attributes["llm.output_messages.0.message.contents.0.message_content.text"]}], "finish_reason": attributes["llm.finish_reason"]}]) where attributes["llm.output_messages.0.message.contents.0.message_content.type"] == "text"'
-
-  # Drops the raw llm.* attributes that gen_ai_normalizer left in place (see
-  # above) so exported spans carry only gen_ai.* fields, same end result as
-  # remove_originals: true would have given.
-  transform/cleanup_raw_attrs:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - delete_matching_keys(attributes, "^llm\\..*")
+        remove_originals: true
 
   # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
   # emit gen_ai.response.model (OpenInference has no separate response-model
@@ -154,14 +128,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/fix_input_messages, transform/fix_output_messages, transform/response_model, transform/cleanup_raw_attrs, batch]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, batch]
       exporters: [otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/fix_input_messages, transform/fix_output_messages, transform/response_model, transform/cleanup_raw_attrs, filter/genai_only, batch]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]
