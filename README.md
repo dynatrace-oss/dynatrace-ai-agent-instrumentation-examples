@@ -87,7 +87,7 @@ Monitor AI agent frameworks with Dynatrace.
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
-| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
+| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
 | [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
 | [Langfuse](./langfuse/) | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
 | [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
