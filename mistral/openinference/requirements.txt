@@ -1,0 +1,4 @@
+mistralai==2.9.3
+openinference-instrumentation-mistralai>=2.1.0
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp==1.44.0
