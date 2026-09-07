@@ -15,7 +15,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # Bindplane Distro for OpenTelemetry (BDOT) collector. Bundles the
 # genainormalizer processor + signal_to_metrics connector used below. Pinned
 # so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.106.0
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.107.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
