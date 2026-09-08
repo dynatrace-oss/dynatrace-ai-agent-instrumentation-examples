@@ -1,0 +1,233 @@
+metadata:
+  version: '1'
+  dependencies:
+    apps:
+    - id: dynatrace.automations
+      version: ^1.2834.0
+    - id: dynatrace.github.connector
+      version: ^2.8.0
+  inputs:
+  - type: connection
+    schema: app:dynatrace.github.connector:connection
+    targets:
+    - tasks.get_content_1.connectionId
+    - tasks.get_content_2.connectionId
+    - tasks.get_content_3.connectionId
+workflow:
+  title: Agentic Instruction Retriever
+  description: ''
+  schemaVersion: 4
+  trigger:
+    schedule:
+      isActive: true
+      trigger:
+        time: 02:00
+        type: time
+      filterParameters:
+        earliestStart: '2026-03-24'
+      timezone: Australia/Brisbane
+      inputs: {}
+  result: null
+  type: STANDARD
+  input: {}
+  hourlyExecutionLimit: 1000
+  guide: null
+  tasks:
+    get_content_1:
+      name: get_content_1
+      input:
+        owner: agardnerit
+        filePath: AGENTS.md
+        reference: main
+        repository: agentcontrol
+        connectionId: ''
+      action: dynatrace.github.connector:get-content
+      position:
+        x: 0
+        y: 1
+      description: Retrieves the content of a file in a repository
+      predecessors: []
+    get_content_2:
+      name: get_content_2
+      input:
+        owner: agardnerit
+        filePath: frontend/AGENTS.md
+        reference: main
+        repository: agentcontrol
+        connectionId: ''
+      action: dynatrace.github.connector:get-content
+      active: true
+      position:
+        x: 1
+        y: 1
+      description: Retrieves the content of a file in a repository
+      predecessors: []
+    get_content_3:
+      name: get_content_3
+      input:
+        owner: agardnerit
+        filePath: AGENTS.md
+        reference: main
+        repository: agentcontrol2
+        connectionId: ''
+      action: dynatrace.github.connector:get-content
+      active: true
+      position:
+        x: 2
+        y: 1
+      description: Retrieves the content of a file in a repository
+      predecessors: []
+    run_javascript_1:
+      name: run_javascript_1
+      input:
+        script: "import { execution } from '@dynatrace-sdk/automation-utils';\nimport\
+          \ { workflowsClient } from '@dynatrace-sdk/client-automation';\nimport {\
+          \ documentsClient } from '@dynatrace-sdk/client-document';\nimport { executionsClient\
+          \ } from '@dynatrace-sdk/client-automation';\nimport {credentialVaultClient}\
+          \ from \"@dynatrace-sdk/client-classic-environment-v2\";\n\n/* TODO: Integration\
+          \ with credential vault for private repos\n * For now, this workflow ONLY\
+          \ works with public repos\n * For testing, use:\n * https://github.com/agardnerit/agentcontrol\n\
+          \ * https://github.com/agardnerit/agentcontrol2\n */\nconst githubToken\
+          \ = await credentialVaultClient.getCredentialsDetails({\n    id: \"CREDENTIALS_VAULT-7E102ED0F4684CA8\"\
+          ,\n  }).then((credentials) => credentials.token);\n\n// simple GUID helper\n\
+          function generateGUID() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,\
+          \ c => {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x'\
+          \ ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\n// Heuristic:\
+          \ treat task as enabled unless an explicit \"disabled\" indicator is present.\n\
+          // Check a variety of common property names that may indicate a disabled\
+          \ task.\nfunction isTaskEnabled(taskDef) {\n  if (!taskDef || typeof taskDef\
+          \ !== 'object') return false;\n  // check common boolean flags or state\
+          \ strings\n  if ('enabled' in taskDef && taskDef.enabled === false) return\
+          \ false;\n  if ('isEnabled' in taskDef && taskDef.isEnabled === false) return\
+          \ false;\n  if ('disabled' in taskDef && taskDef.disabled === true) return\
+          \ false;\n  if ('state' in taskDef && String(taskDef.state).toUpperCase()\
+          \ === 'DISABLED') return false;\n  if ('status' in taskDef && String(taskDef.status).toUpperCase()\
+          \ === 'DISABLED') return false;\n  if ('active' in taskDef && taskDef.active\
+          \ === false) return false;\n  // No negative indicator found -> assume enabled\n\
+          \  return true;\n}\n\n// Call GitHub commits API to get most recent commit\
+          \ SHA for a given file path\nasync function getLatestCommitShaForFile(owner,\
+          \ repo, path, ref, token) {\n  const q = new URLSearchParams({ path, per_page:\
+          \ '1', ...(ref ? { sha: ref } : {}) });\n  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?${q.toString()}`;\n\
+          \  const headers = { Accept: 'application/vnd.github+json' };\n  if (token\
+          \ && token != \"\") headers.Authorization = `Bearer ${token}`;\n  const\
+          \ resp = await fetch(url, { headers });\n  if (!resp.ok) {\n    console.warn(`GitHub\
+          \ commits API returned ${resp.status} for ${owner}/${repo}/${path}`);\n\
+          \    return null;\n  }\n  const arr = await resp.json();\n  if (Array.isArray(arr)\
+          \ && arr.length > 0 && arr[0].sha) return arr[0].sha;\n  return null;\n\
+          }\n\n// sanitize content so any existing ``` inside it won't break the surrounding\
+          \ fence\nfunction sanitizeBackticks(s) {\n  return String(s ?? '').replace(/```/g,\
+          \ '```' + '\\u200B'); // inserts a zero-width space after the fence\n}\n\
+          \nexport default async function ({ executionId, actionExecutionId }) {\n\
+          \  const ex = await execution(executionId); // to read task results at runtime【call_XJEd0w4lrRouHYD3AakDPha5-0】\n\
+          \n  // 1) find workflow id from execution context (defensive)\n  const exeContext\
+          \ = await execution(executionId);\n  const workflowId = exeContext.workflowId\
+          \ ?? exeContext.workflow;\n  if (!workflowId) {\n    console.warn('Unable\
+          \ to determine workflowId from execution context; aborting discovery.');\n\
+          \    return { error: 'no-workflow-id' };\n  }\n\n  // 2) fetch workflow\
+          \ task definitions (inspect predecessors & enabled flag)【call_rN3nIRWx11Oj860mf3XV3pWz-0】\n\
+          \  // Option: add adminAccess:true if you need elevated visibility (uncomment\
+          \ if required).\n  const workflowTasksResp = await workflowsClient.getWorkflowTasks({\
+          \ id: workflowId /*, adminAccess: true */ });\n\n  // normalize to array\
+          \ of task definitions\n  let taskDefs = [];\n  if (Array.isArray(workflowTasksResp))\
+          \ taskDefs = workflowTasksResp;\n  else if (workflowTasksResp && typeof\
+          \ workflowTasksResp === 'object') {\n    if (Array.isArray(workflowTasksResp.tasks))\
+          \ taskDefs = workflowTasksResp.tasks;\n    else if (workflowTasksResp.tasks\
+          \ && typeof workflowTasksResp.tasks === 'object') taskDefs = Object.values(workflowTasksResp.tasks);\n\
+          \    else taskDefs = Object.values(workflowTasksResp);\n  }\n\n  console.log('Loaded\
+          \ task definitions count:', taskDefs.length);\n\n  // find this run-js task\
+          \ name so we can exclude it (best-effort)\n  const currentTaskDef = taskDefs.find(t\
+          \ => t?.actionExecutionId && String(t.actionExecutionId) === String(actionExecutionId));\n\
+          \  const currentTaskName = currentTaskDef ? (currentTaskDef.name ?? currentTaskDef.id\
+          \ ?? currentTaskDef.taskName) : undefined;\n\n  // 3) select first-layer\
+          \ tasks (no predecessors) AND enabled according to definition\n  function\
+          \ predsEmpty(t) {\n    const preds = t?.predecessors ?? t?.predecessorIds\
+          \ ?? t?.previousTaskIds ?? t?.dependsOn ?? [];\n    if (!preds) return true;\n\
+          \    if (Array.isArray(preds)) return preds.length === 0 || preds.every(p\
+          \ => !p || (typeof p === 'object' ? !(p.id||p.name||p.taskId) : String(p).trim()\
+          \ === ''));\n    if (typeof preds === 'object') return Object.keys(preds).length\
+          \ === 0;\n    return false;\n  }\n\n  const candidateRoots = taskDefs\n\
+          \    .filter(t => !!t)\n    .filter(t => {\n      const name = t.name ??\
+          \ t.id ?? t.taskName;\n      if (!name) return false;\n      if (currentTaskName\
+          \ && String(name) === String(currentTaskName)) return false; // exclude\
+          \ this JS task\n      if (!predsEmpty(t)) return false; // only tasks with\
+          \ no predecessors\n      if (!isTaskEnabled(t)) {\n        console.log(`Skipping\
+          \ task (disabled in definition): ${name}`);\n        return false;\n   \
+          \   }\n      return true;\n    })\n    .map(t => t.name ?? t.id ?? t.taskName)\n\
+          \    .filter(Boolean);\n\n  console.log('Candidate first-layer tasks (definition-level,\
+          \ enabled):', candidateRoots);\n\n  // 4) At runtime, only include tasks\
+          \ that actually produced a result (skip tasks that threw or returned nothing)\n\
+          \  const firstLayerTaskNames = [];\n  for (const name of candidateRoots)\
+          \ {\n    try {\n      const r = await ex.result(name); // get previous task\
+          \ result (may throw if task didn't run)【call_XJEd0w4lrRouHYD3AakDPha5-0】\n\
+          \      // if result is undefined/null/empty string/object -> treat as no\
+          \ output\n      let content = '';\n      if (typeof r === 'string') content\
+          \ = r;\n      else if (r && typeof r === 'object') content = r.content ??\
+          \ r.text ?? JSON.stringify(r);\n      else content = String(r ?? '');\n\n\
+          \      if (String(content).trim() === '') {\n        console.log(`Skipping\
+          \ task ${name} because it produced no content at runtime.`);\n        continue;\n\
+          \      }\n      firstLayerTaskNames.push(name);\n    } catch (err) {\n \
+          \     // likely the task did not run (disabled/condition false) or no result\
+          \ available\n      console.log(`Skipping task ${name} because ex.result\
+          \ threw or result missing:`, err && (err.message || err));\n    }\n  }\n\
+          \n  console.log('Final first-layer tasks included (runtime-checked):', firstLayerTaskNames);\n\
+          \n  // 5) Build notebook sections: static first section with last-updated\
+          \ timestamp\n  const nowISO = new Date().toISOString();\n  const sections\
+          \ = [\n    {\n      id: 'title-section-id',\n      type: 'markdown',\n \
+          \     markdown: `# AGENTS.md\n\nThis notebook displays details about your\
+          \ agent instructions pulled from AGENTS.md files.\n\n_Last updated: ${nowISO}_`\n\
+          \    }\n  ];\n\n  // 6) Add a section for each runtime-included task (with\
+          \ its result)\n  for (const taskName of firstLayerTaskNames) {\n\n    const\
+          \ taskInput = await executionsClient.getTaskExecutionInput({\n      executionId,\n\
+          \      id: taskName,\n    });\n    \n    try {\n      const taskResult =\
+          \ await ex.result(taskName); // we already called this once above; may cache\
+          \ if you prefer\n      \n      let commitSha = null;\n      let commitLink\
+          \ = \"\";\n      try {\n        commitSha = await getLatestCommitShaForFile(taskInput.owner,\
+          \ taskInput.repository, taskInput.filePath, taskInput.reference, githubToken);\
+          \ // uses /repos/{owner}/{repo}/commits?path=...【call_xvln9738UFViVEWd0WdzF5MI-1】\n\
+          \        // https://github.com/agardnerIT/agentcontrol/commit/c5fa4e7b12db2cb248c3c7b1cc4093cdf9d225e7\n\
+          \        commitLink = `https://github.com/${taskInput.owner}/${taskInput.repository}/commit/${commitSha}`;\n\
+          \        console.log(commitLink);\n        \n      } catch (e) {\n     \
+          \   commitLink = `https://github.com/${taskResult.owner}/${taskResult.repository}/commit/undefined`;\n\
+          \        console.warn('Commits API call failed:', e && e.message);\n   \
+          \   }\n      \n      let content = '';\n      if (typeof taskResult ===\
+          \ 'string') content = taskResult;\n      else if (taskResult && typeof taskResult\
+          \ === 'object') content = taskResult.content ?? taskResult.text ?? JSON.stringify(taskResult,\
+          \ null, 2);\n      else content = String(taskResult ?? '');\n\n      //\
+          \ Escape any backticks in the content so we can surround it with a code\
+          \ block\n      let safeContent = sanitizeBackticks(content);\n\n      sections.push({\n\
+          \        id: `section-${generateGUID()}`,\n        type: 'markdown',\n \
+          \       markdown: `# Agent: ${taskInput.owner}/${taskInput.repository}/${taskInput.reference}/${taskInput.filePath}\n\
+          \n| Owner | Repository | Reference (Tag or Branch) | File Path | Commit\
+          \ Link |\n|-------|------------|-----------------------------------|-----------|--------------\
+          \ |\n| ${taskInput.owner} | ${taskInput.repository} | ${taskInput.reference}\
+          \ | ${taskInput.filePath} | [${commitSha}](${commitLink}) |\n\n## AGENTS.md\
+          \ Content\n\\`\\`\\`\n${safeContent}\n\\`\\`\\`\n`\n      });\n    } catch\
+          \ (err) {\n      console.warn(`Unexpected failure reading result for ${taskName}:`,\
+          \ err && (err.message || err));\n    }\n  }\n\n  // 7) create-or-update\
+          \ notebook (same optimistic locking pattern you used)\n  const notebookContent\
+          \ = { defaultTimeframe: { from: 'now()-2h', to: 'now()' }, defaultSegments:\
+          \ [], sections };\n  const contentBlob = new Blob([JSON.stringify(notebookContent)],\
+          \ { type: 'application/json' });\n  const notebookId = `abcd-12345678-1234-1234-1234-agenttracker`;\n\
+          \n  try {\n    const metadata = await documentsClient.getDocumentMetadata({\
+          \ id: notebookId });\n    const updated = await documentsClient.updateDocumentContent({\n\
+          \      id: metadata.id,\n      optimisticLockingVersion: metadata.version,\n\
+          \      body: { content: contentBlob },\n    });\n    console.log('Updated\
+          \ document:', updated);\n    return updated;\n  } catch (err) {\n    const\
+          \ notFound = err && (err.status === 404 || err.statusCode === 404 || err.response?.status\
+          \ === 404);\n    if (notFound) {\n      const created = await documentsClient.createDocument({\n\
+          \        body: {\n          name: '[AGENTS.md] Agent Details',\n       \
+          \   type: 'notebook',\n          description: 'Show AGENTS.md contents',\n\
+          \          id: notebookId,\n          content: contentBlob,\n        },\n\
+          \      });\n      console.log('Created document:', created);\n      return\
+          \ created;\n    }\n    console.error('Unexpected error creating/updating\
+          \ doc:', err);\n    throw err;\n  }\n}"
+      action: dynatrace.automations:run-javascript
+      position:
+        x: 0
+        y: 2
+      conditions:
+        states:
+          get_content_1: OK
+      description: Run custom JavaScript code.
+      predecessors:
+      - get_content_1
