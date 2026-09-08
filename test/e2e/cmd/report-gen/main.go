@@ -383,6 +383,22 @@ code { font-family: 'SF Mono', Consolas, 'Courier New', monospace; color: #7dd3f
 
 .history-table td, .history-table th { padding: 8px 14px; }
 
+.attr-filter { margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.attr-filter input {
+  background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+  color: #e2e8f0; padding: 8px 12px; font-size: 13px; width: 360px;
+  font-family: inherit;
+}
+.attr-filter input:focus { outline: none; border-color: #60a5fa; }
+.attr-filter-count { color: #94a3b8; font-size: 12px; }
+code.match-hit { background: rgba(250,204,21,0.28); color: #fde68a; border-radius: 3px; padding: 0 3px; }
+
+.attr-match-cell { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.attr-match-cell.detected          { color: #4ade80; }
+.attr-match-cell.detected-fallback { color: #a78bfa; }
+.attr-match-cell.not-detected      { color: #f87171; }
+.attr-match-cell.not-tracked       { color: #475569; font-weight: 400; }
+
 footer {
   padding: 20px 32px;
   border-top: 1px solid #1e293b;
@@ -410,6 +426,10 @@ footer {
 
 <h2>Results</h2>
 {{if .Reports}}
+<div class="attr-filter">
+  <input type="text" id="attr-search" placeholder="Filter samples by attribute (e.g. gen_ai.usage.input_tokens)" oninput="filterByAttribute(this.value)" autocomplete="off">
+  <span id="attr-search-count" class="attr-filter-count"></span>
+</div>
 <div class="table-wrap">
 <table>
   <thead>
@@ -420,13 +440,14 @@ footer {
       <th>Verdict</th>
       <th>Required</th>
       <th>Optional</th>
+      <th id="attr-match-header" style="display:none">Attribute Match</th>
       <th>Note</th>
       <th>Generated</th>
     </tr>
   </thead>
   <tbody>
   {{range .Reports}}
-    <tr class="summary-row" onclick="toggleDetail({{.Index}}, this)">
+    <tr class="summary-row" data-index="{{.Index}}" onclick="toggleDetail({{.Index}}, this)">
       <td><span class="toggle">&#x25B6;</span></td>
       <td>
         <span class="sdk">{{.SDK}}</span>
@@ -436,11 +457,12 @@ footer {
       <td><span class="verdict-badge verdict-{{lower .Verdict}}">{{.Verdict}}</span></td>
       <td class="count {{if eq .ReqPass .ReqTotal}}ok{{else}}err{{end}}">{{.ReqPass}}/{{.ReqTotal}}</td>
       <td class="count {{if eq .OptPresent .OptTotal}}ok{{else}}warn{{end}}">{{.OptPresent}}/{{.OptTotal}}</td>
+      <td class="attr-match-cell" id="attr-match-{{.Index}}" style="display:none"></td>
       <td>{{if .Note}}<span class="note">{{.Note}}</span>{{end}}</td>
       <td class="gen-at">{{dateOf .GeneratedAt}}</td>
     </tr>
     <tr class="detail-row" id="detail-{{.Index}}" style="display:none">
-      <td colspan="8">
+      <td colspan="9">
         <div class="detail-inner">
           <div class="detail-grid">
             <div class="detail-section">
@@ -546,6 +568,96 @@ function toggleDetail(idx, row) {
   var visible = detail.style.display !== 'none';
   detail.style.display = visible ? 'none' : 'table-row';
   row.classList.toggle('expanded', !visible);
+}
+
+var attrSummaryRows = Array.prototype.slice.call(document.querySelectorAll('tr.summary-row'));
+var attrMatchHeader = document.getElementById('attr-match-header');
+
+function clearAttrHighlights(detailRow) {
+  var hits = detailRow.querySelectorAll('code.match-hit');
+  for (var i = 0; i < hits.length; i++) {
+    hits[i].classList.remove('match-hit');
+  }
+}
+
+// Rows whose status td indicates the attribute/metric was actually observed
+// in the captured span/metric data for that run, not just declared as a rule.
+var DETECTED_STATUS_CLASSES = { 's-pass': 'detected', 's-fallback': 'detected-fallback' };
+
+// Inspects every attribute/metric row in a report's detail section and finds
+// the ones whose name matches the query, returning their detection status.
+function findAttributeMatches(detailRow, query) {
+  var rows = detailRow.querySelectorAll('.detail-section .attr-table tbody tr');
+  var statuses = [];
+  for (var i = 0; i < rows.length; i++) {
+    var code = rows[i].querySelector('code');
+    if (!code || code.textContent.toLowerCase().indexOf(query) === -1) {
+      continue;
+    }
+    code.classList.add('match-hit');
+    var statusCell = rows[i].querySelector('td[class^="s-"]');
+    statuses.push(statusCell ? statusCell.className : '');
+  }
+  return statuses;
+}
+
+function classifyMatches(statuses) {
+  if (statuses.length === 0) {
+    return { cls: 'not-tracked', label: '⚪ not tracked' };
+  }
+  for (var i = 0; i < statuses.length; i++) {
+    if (statuses[i].indexOf('s-pass') !== -1) {
+      return { cls: 'detected', label: '✅ detected' };
+    }
+  }
+  for (var i = 0; i < statuses.length; i++) {
+    if (statuses[i].indexOf('s-fallback') !== -1) {
+      return { cls: 'detected-fallback', label: '🔄 detected (fallback)' };
+    }
+  }
+  return { cls: 'not-detected', label: '❌ not detected' };
+}
+
+function filterByAttribute(rawQuery) {
+  var query = rawQuery.trim().toLowerCase();
+  var countEl = document.getElementById('attr-search-count');
+  var tally = { detected: 0, 'detected-fallback': 0, 'not-detected': 0, 'not-tracked': 0 };
+
+  attrMatchHeader.style.display = query === '' ? 'none' : '';
+
+  attrSummaryRows.forEach(function (row) {
+    var idx = row.getAttribute('data-index');
+    var detailRow = document.getElementById('detail-' + idx);
+    var matchCell = document.getElementById('attr-match-' + idx);
+    clearAttrHighlights(detailRow);
+
+    if (query === '') {
+      detailRow.style.display = 'none';
+      row.classList.remove('expanded');
+      matchCell.style.display = 'none';
+      matchCell.className = 'attr-match-cell';
+      matchCell.textContent = '';
+      return;
+    }
+
+    var statuses = findAttributeMatches(detailRow, query);
+    var result = classifyMatches(statuses);
+    tally[result.cls]++;
+
+    matchCell.style.display = '';
+    matchCell.className = 'attr-match-cell ' + result.cls;
+    matchCell.textContent = result.label;
+
+    // Auto-expand only when there's something to show; leave untracked rows collapsed.
+    var shouldExpand = statuses.length > 0;
+    detailRow.style.display = shouldExpand ? 'table-row' : 'none';
+    row.classList.toggle('expanded', shouldExpand);
+  });
+
+  var detectedTotal = tally.detected + tally['detected-fallback'];
+  countEl.textContent = query === '' ? '' :
+    (detectedTotal + ' detected · ' + tally['not-detected'] + ' not detected · ' +
+     tally['not-tracked'] + ' not tracked (of ' + attrSummaryRows.length + ')');
 }
 </script>
 

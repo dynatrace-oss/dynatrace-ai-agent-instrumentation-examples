@@ -9,21 +9,42 @@ def setup_otel(service_name: str = "rum-music-agent", exporter_wrapper=None):
     Initialise OpenTelemetry traces + metrics and export to Dynatrace.
     Uses DT_ENDPOINT and DT_TOKEN from the environment (set via .env).
     Returns (tracer_provider, meter_provider).
+
+    Two export paths:
+      - Direct (`make run`, default): spans + metrics go straight to Dynatrace
+        OTLP. pydantic-ai emits gen_ai.client.token.usage natively, but neither
+        gen_ai.client.operation.duration nor gen_ai.invoke_agent.duration, so
+        those are backfilled tenant-side (openpipeline-rum.yaml).
+      - Collector (`make run-collector`): set OTEL_COLLECTOR_ENDPOINT (e.g.
+        http://localhost:4318) to route through the local OTel Collector, which
+        derives both durations from the spans (span_metrics) and forwards
+        everything to Dynatrace. The collector holds the DT token, so no
+        Authorization header is sent from the app.
+
+    OTEL_SERVICE_NAME overrides service_name. The collector path must use a
+    distinct service name so the two paths never produce the same series twice.
     """
-    dt_endpoint = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-    dt_api_token = os.environ.get("DT_API_TOKEN", "")
+    service_name = os.environ.get("OTEL_SERVICE_NAME") or service_name
+    collector_endpoint = os.environ.get("OTEL_COLLECTOR_ENDPOINT", "").rstrip("/")
 
-    if not dt_endpoint or not dt_api_token:
-        print("[otel] DT_ENDPOINT or DT_API_TOKEN not set — OTel export disabled")
-        return None, None
+    if collector_endpoint:
+        otlp_base = collector_endpoint
+        headers = {}
+    else:
+        dt_endpoint = os.environ.get("DT_ENDPOINT", "").rstrip("/")
+        dt_api_token = os.environ.get("DT_API_TOKEN", "")
 
-    parsed = urlparse(dt_endpoint)
-    host = parsed.hostname or ""
-    host_l = host.lower()
-    if host_l == "apps.dynatrace.com" or host_l.endswith(".apps.dynatrace.com"):
-        dt_endpoint = dt_endpoint.replace(".apps.dynatrace.com", ".live.dynatrace.com")
-    otlp_base = f"{dt_endpoint}/api/v2/otlp"
-    headers = {"Authorization": f"Api-Token {dt_api_token}"}
+        if not dt_endpoint or not dt_api_token:
+            print("[otel] DT_ENDPOINT or DT_API_TOKEN not set — OTel export disabled")
+            return None, None
+
+        parsed = urlparse(dt_endpoint)
+        host = parsed.hostname or ""
+        host_l = host.lower()
+        if host_l == "apps.dynatrace.com" or host_l.endswith(".apps.dynatrace.com"):
+            dt_endpoint = dt_endpoint.replace(".apps.dynatrace.com", ".live.dynatrace.com")
+        otlp_base = f"{dt_endpoint}/api/v2/otlp"
+        headers = {"Authorization": f"Api-Token {dt_api_token}"}
 
     os.environ["OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE"] = "delta"
 

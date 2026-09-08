@@ -1,12 +1,28 @@
 # CrewAI + Dynatrace
 
-This sample instruments a [CrewAI](https://docs.crewai.com) agent with Dynatrace using [OpenLLMetry](https://github.com/traceloop/openllmetry) (Traceloop SDK) — no separate OpenTelemetry collector required.
+This sample instruments a [CrewAI](https://docs.crewai.com) agent with Dynatrace using [OpenLLMetry](https://github.com/traceloop/openllmetry) (Traceloop SDK). `make run` exports straight to Dynatrace with no collector; `make run-collector` adds a local OpenTelemetry Collector that derives the [GenAI agent duration metrics](#derived-agent-metrics) from the spans.
 
 ## What this sample does
 
 - Runs a FastAPI server exposing `POST /haiku`
 - Each request spins up a CrewAI `Poet` agent that writes a haiku using Azure OpenAI
-- Exports traces and metrics directly to Dynatrace via OTLP HTTP
+- Exports traces and metrics directly to Dynatrace via OTLP HTTP, or through a local collector when started with `make run-collector`
+
+## Derived agent metrics
+
+`make run-collector` starts an OpenTelemetry Collector (`otel-collector-config.yaml`) that derives two GenAI semconv metrics from the CrewAI spans, with no application change:
+
+| Metric | Derived from |
+|---|---|
+| `gen_ai.invoke_agent.duration` | the agent execution span (`<role>.agent`, `traceloop.span.kind = agent`) |
+| `gen_ai.invoke_workflow.duration` | the crew kickoff span (`crewai.workflow`) |
+
+Both are Histograms in seconds, exported with delta temporality because Dynatrace OTLP metric ingest rejects cumulative metrics.
+
+> [!NOTE]
+> The metric branches key on `traceloop.span.kind` and the span name, not on `gen_ai.operation.name`. `opentelemetry-instrumentation-crewai` sets `gen_ai.operation.name = invoke_agent` on three *nested* span types at once --- the crew kickoff, the agent execution, and the task execution --- so filtering on the enum would fold all three boundaries into one histogram and record roughly the same wall-clock three times. The collector does not rewrite the enum: the labelling is wrong upstream, and correcting it here would hide the problem and diverge from what the same SDK reports elsewhere.
+
+The collector also renames `service.name` to `crewai-collector`, so a collector run stays distinguishable from a direct-export run in Dynatrace.
 
 ## Prerequisites
 
@@ -48,8 +64,11 @@ make request
 | Target | Description |
 |--------|-------------|
 | `make install` | Create venv and install dependencies via uv |
-| `make run` | Start the FastAPI app on port 8000 |
+| `make run` | Start the FastAPI app on port 8000, exporting straight to Dynatrace |
+| `make run-collector` | Start the OTel Collector, then the app exporting through it (adds the derived agent metrics) |
 | `make request` | POST /haiku to localhost:8000 |
+| `make stop` | Stop and remove the collector container |
+| `make logs` | Tail the collector logs |
 
 ## Dynatrace views
 

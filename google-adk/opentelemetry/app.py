@@ -5,6 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ADK's experimental semconv path writes gen_ai.input.messages,
+# gen_ai.output.messages and gen_ai.system_instructions as OTel span
+# attributes. Without the opt-in, ADK only writes content into GCP-internal
+# blobs (gcp.vertex.agent.llm_request/response), which are not OTel semconv.
+os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "SPAN_ONLY")
+
 from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -82,22 +89,48 @@ async def research(req: ResearchRequest) -> str:
         session_id=str(uuid.uuid4()),
         state={"seminal_paper": req.topic},
     )
+    # The coordinator's value is delegation: it reaches academic_websearch_agent and
+    # academic_newresearch_agent through AgentTool. Asking only for a summary of a
+    # well-known paper lets the model answer from its own weights, producing a trace
+    # with no execute_tool span at all, so the derived
+    # gen_ai.execute_tool.duration metric is missing on those runs.
+    #
+    # Ask for recent citing work instead, which the coordinator cannot answer without
+    # the websearch tool. That makes the tool call part of the demo's happy path
+    # rather than a coin flip.
     message = Content(
         role="user",
-        parts=[Part(text=f"Briefly summarize the key contributions of the paper: {req.topic}")],
+        parts=[
+            Part(
+                text=(
+                    f"Summarize the key contributions of the paper: {req.topic}. "
+                    "Then use your tools to find recent papers citing it and to suggest "
+                    "future research directions based on what you find."
+                )
+            )
+        ],
     )
 
     async def _run() -> str:
+        # Drain the runner rather than returning from inside the loop. Returning early
+        # abandons the async generator, which ADK reports as "Root node
+        # academic_coordinator was cancelled" and OTel as a "Failed to detach context
+        # ... was created in a different Context" ValueError: the generator is closed
+        # while spans are still open, so any span that had not ended yet is never
+        # exported. Keeping the first final response but consuming the stream to
+        # completion lets every span end normally.
+        answer = ""
         async for event in runner.run_async(
             user_id="e2e",
             session_id=session.id,
             new_message=message,
         ):
-            if event.is_final_response() and event.content and event.content.parts:
+            if not answer and event.is_final_response() and event.content and event.content.parts:
                 for part in event.content.parts:
                     if part.text:
-                        return part.text
-        return ""
+                        answer = part.text
+                        break
+        return answer
 
     result = await _run()
     if not result:

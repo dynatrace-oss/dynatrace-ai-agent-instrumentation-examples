@@ -36,6 +36,29 @@ func Start(dir string) (*App, error) {
 	return a, nil
 }
 
+// StartWithTarget runs "make -e <target>" in dir as a background process and
+// waits for port 8000 to accept connections before returning. Use for HTTP apps
+// that need a non-default make target (e.g. "run-collector").
+// A longer timeout (3 minutes) is used because collector targets pull a Docker
+// image on first run, which can take 60-90s before the app itself starts.
+func StartWithTarget(dir, target string) (*App, error) {
+	cmd := exec.Command("make", "-e", target)
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("make %s: %w", target, err)
+	}
+	a := &App{cmd: cmd}
+	if err := a.waitReady(3 * time.Minute); err != nil {
+		_ = a.Stop()
+		return nil, err
+	}
+	return a, nil
+}
+
 // StartCLI runs "make run" in dir as a background process without waiting for
 // an HTTP readiness endpoint. Use this for CLI-style apps that emit telemetry
 // autonomously without an HTTP interface.

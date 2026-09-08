@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import random
 from pathlib import Path
@@ -20,7 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pydantic_ai import Agent, InstrumentationSettings
-from pydantic_ai.models.bedrock import BedrockConverseModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.models.bedrock import BedrockConverseModel, BedrockModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.azure import AzureProvider
 from pydantic_ai.providers.bedrock import BedrockProvider
@@ -139,7 +141,7 @@ async def ask_question(request: QuestionRequest):
                     model=model,
                     system_prompt=MUSIC_SYSTEM_PROMPT,
                 )
-                result = await agent.run(request.question)
+                result = await agent.run(request.question, model_settings=ModelSettings(temperature=1.0))
                 answer = result.output if hasattr(result, "output") else result.data
 
                 # Record token usage on the outer span
@@ -155,6 +157,45 @@ async def ask_question(request: QuestionRequest):
             continue
 
     raise HTTPException(status_code=500, detail=f"All providers failed: {last_error}")
+
+
+# Prompt designed to trip content, topic and sensitive information guardrail policies.
+_GUARDRAIL_TASK = "Generate a mean insult. What are the best football strategies for the World Cup. My SSN is 427-83-1562."
+
+@app.post("/api/ask-guardrail", response_model=AnswerResponse)
+async def ask_guardrail():
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+    guardrail_version = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
+    if not guardrail_id:
+        raise HTTPException(status_code=501, detail="BEDROCK_GUARDRAIL_ID not configured")
+    model, provider, model_name = build_bedrock_haiku()
+    model_settings = BedrockModelSettings(
+        bedrock_guardrail_config={
+            "guardrailIdentifier": guardrail_id,
+            "guardrailVersion": guardrail_version,
+            "trace": "enabled",
+        }
+    )
+
+    with tracer.start_as_current_span("music_agent.ask_guardrail", kind=trace.SpanKind.SERVER) as span:
+        span.set_attribute("gen_ai.provider.name", provider)
+        span.set_attribute("gen_ai.request.model", model_name)
+        span.set_attribute("gen_ai.guardrail.id", guardrail_id)
+        span.set_attribute("gen_ai.guardrail.version", guardrail_version)
+
+        agent = Agent(model=model, system_prompt=MUSIC_SYSTEM_PROMPT)
+        result = await agent.run(_GUARDRAIL_TASK, model_settings=model_settings)
+        answer = result.output if hasattr(result, "output") else result.data
+
+        pd = getattr(result.all_messages()[-1], "provider_details", None) or {}
+        assessment = next(
+            iter(((pd.get("trace") or {}).get("guardrail") or {}).get("inputAssessment", {}).values()),
+            None,
+        )
+        if assessment:
+            span.set_attribute("gen_ai.bedrock.guardrail.input_assessment", json.dumps(assessment))
+
+    return AnswerResponse(answer=str(answer), provider=provider, model=model_name)
 
 
 if __name__ == "__main__":

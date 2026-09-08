@@ -4,7 +4,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from main import setup_instrumentation, write_haiku
+from main import apply_guardrail, setup_instrumentation, write_haiku
 
 setup_instrumentation()
 
@@ -20,6 +20,15 @@ class HaikuResponse(BaseModel):
     haiku: str
 
 
+class GuardrailRequest(BaseModel):
+    text: str
+
+
+class GuardrailResponse(BaseModel):
+    text: str
+    action: str
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -31,3 +40,11 @@ async def haiku(req: HaikuRequest):
         raise HTTPException(status_code=400, detail="topic must not be empty")
     result = await asyncio.to_thread(write_haiku, req.topic)
     return HaikuResponse(topic=req.topic, haiku=result)
+
+
+@app.post("/guardrail", response_model=GuardrailResponse)
+async def guardrail(req: GuardrailRequest):
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="text must not be empty")
+    result = await asyncio.to_thread(apply_guardrail, req.text)
+    return GuardrailResponse(text=req.text, action=result)

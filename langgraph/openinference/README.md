@@ -44,6 +44,7 @@ Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/ope
 1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
 2. Create a token with these permissions:
    - `openTelemetryTrace.ingest`
+   - `metrics.ingest` (for the derived GenAI client metrics)
 3. Copy the token value.
 
 ### 2. Set environment variables
@@ -113,6 +114,17 @@ Two additional processors run after normalization:
 
 - **`transform/response_model`** — mirrors `gen_ai.request.model` → `gen_ai.response.model` when absent (OpenInference has no separate response-model field).
 - **`transform/output_prompt_results`** — extracts Azure OpenAI content-filter verdicts from the `output.value` JSON blob emitted by LangChain's Azure OpenAI integration and sets them as `gen_ai.prompt.prompt_filter_results`. This makes per-prompt filter results (hate, self-harm, sexual, violence, jailbreak) visible in Dynatrace AI Observability's content-filter view.
+
+### Derived metrics
+
+OpenInference is span-only: it emits no metric instruments, so the two GenAI client metrics the AI Observability app charts are derived from the normalized spans by collector connectors.
+
+| Metric | Derived by |
+|---|---|
+| `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on LLM spans |
+| `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signal_to_metrics` connector, two sum defs (one per direction) |
+
+Both run on a separate `traces/genai_metrics` pipeline branch, so the `filter/genai_only` filter that restricts them to LLM spans can never drop a span from the trace export path. Both use delta temporality, which Dynatrace metric ingest requires (cumulative is dropped). The Dynatrace API token needs the `metrics.ingest` scope in addition to `openTelemetryTrace.ingest`.
 
 ---
 

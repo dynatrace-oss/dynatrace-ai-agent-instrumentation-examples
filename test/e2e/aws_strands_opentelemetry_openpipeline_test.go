@@ -13,6 +13,13 @@ func TestAWSStrandsOpenTelemetryOpenPipeline(t *testing.T) {
 	// because the demo does not configure Bedrock guardrails — expected FAIL in report.
 	// Metrics are derived server-side by the OpenPipeline strands-agents-ai-spans
 	// pipeline (metric extraction added in this branch).
+	//
+	// The agent duration metrics are asserted on this path too: the OpenPipeline
+	// config extracts them from the same spans the collector derives them from, so
+	// both export paths are expected to produce the same series. Only the two
+	// durations that have a real span behind them are checked —
+	// gen_ai.invoke_workflow.duration is not extracted, because Strands has no
+	// workflow primitive.
 	auditSpanWithMetrics(t, "aws-strands", "opentelemetry-openpipeline", BedrockProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-strands/opentelemetry-openpipeline"
@@ -20,5 +27,6 @@ func TestAWSStrandsOpenTelemetryOpenPipeline(t *testing.T) {
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
 | limit 1`,
-		"aws-strands/opentelemetry-openpipeline", genAIClientMetrics)
+		"aws-strands/opentelemetry-openpipeline",
+		append(append([]string{}, genAIClientMetrics...), genAIAgentDurationMetrics...))
 }

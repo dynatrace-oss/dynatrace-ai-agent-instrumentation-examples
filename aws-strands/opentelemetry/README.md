@@ -37,7 +37,7 @@ With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note bel
 - Shows the full agentic trace in the Dynatrace AI Observability app including tool calls, cycle spans, model invocations, token usage, and message content.
 
 > [!NOTE]
-> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. Both options below re-create the two metrics the app needs — `gen_ai.client.token.usage` and `gen_ai.client.operation.duration` — from the Strands spans: Option A in the collector (`spanmetrics` + `signaltometrics` connectors), Option B server-side in OpenPipeline (span-to-metric extraction). See [Metrics](#metrics).
+> This example uses `strands-agents` 1.x, which configures OpenTelemetry via `StrandsTelemetry` (`setup_otlp_exporter()` + `setup_meter()`) and requires the `opentelemetry-exporter-otlp-proto-http` package. Strands emits its own `strands.*` metrics (for example `strands.event_loop.input.tokens`), **not** the OTel semconv `gen_ai.client.*` metrics the AI Observability app charts. Both options below re-create the two metrics the app needs — `gen_ai.client.token.usage` and `gen_ai.client.operation.duration` — from the Strands spans: Option A in the collector (`span_metrics` + `signaltometrics` connectors), Option B server-side in OpenPipeline (span-to-metric extraction). Both options additionally derive the `gen_ai.invoke_agent.duration` / `gen_ai.execute_tool.duration` agent metrics. See [Metrics](#metrics).
 
 ---
 
@@ -111,7 +111,7 @@ make install
 
 ## Option A: Bindplane Collector with transform processor
 
-The Bindplane Collector intercepts spans and applies all Strands → `gen_ai.*` attribute mappings before forwarding to Dynatrace, and derives the two `gen_ai.client.*` metrics from the spans. No Dynatrace configuration needed.
+The Bindplane Collector intercepts spans and applies all Strands → `gen_ai.*` attribute mappings before forwarding to Dynatrace, and derives the `gen_ai.client.*` and GenAI agent duration metrics from the spans. No Dynatrace configuration needed.
 
 ```
 App  →  Strands SDK (OTLP export)  →  Bindplane Collector (transform + metric connectors)  →  Dynatrace Grail
@@ -121,7 +121,7 @@ App  →  Strands SDK (OTLP export)  →  Bindplane Collector (transform + metri
 make run
 ```
 
-The collector listens on port `4318`. The `transform/strands` processor remaps non-standard Strands attributes to `gen_ai.*`, and the `spanmetrics` / `signaltometrics` connectors derive the `gen_ai.client.*` metrics (see [Metrics](#metrics)), before forwarding to Dynatrace. This demo runs the **Bindplane** collector image (`ghcr.io/observiq/bindplane-agent`).
+The collector listens on port `4318`. The `transform/strands` processor remaps non-standard Strands attributes to `gen_ai.*`, and the `span_metrics` / `signaltometrics` connectors derive the `gen_ai.client.*` and agent duration metrics (see [Metrics](#metrics)), before forwarding to Dynatrace. This demo runs the **Bindplane** collector image (`ghcr.io/observiq/bindplane-agent`).
 
 **Useful commands:**
 
@@ -148,7 +148,8 @@ This is a one-time setup per tenant.
 2. Select **Spans**.
 3. Click **Add pipeline**, name it `strands-agents-ai-spans`, and add the processors from [`openpipeline-strands.yaml`](./openpipeline-strands.yaml).
 4. Go to the **Routing** tab and add an entry:
-   - Matcher: `gen_ai.provider.name == "strands-agents"`
+   - Matcher: `gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"`
+   - The `service.name` half of the matcher is what keeps this pipeline off the collector run's spans; without it the metric extractors would double-derive the agent durations. See the header of [`openpipeline-strands.yaml`](./openpipeline-strands.yaml).
    - Pipeline: `strands-agents-ai-spans`
 
 ### Step 2: Run the app
@@ -177,7 +178,7 @@ make run-openpipeline
 | `gen_ai.usage.prompt_tokens` | `gen_ai.usage.input_tokens` | Renamed to current OTel GenAI naming |
 | `gen_ai.usage.completion_tokens` | `gen_ai.usage.output_tokens` | Renamed |
 | _(mirrored from request model)_ | `gen_ai.response.model` | Strands does not emit a separate response model field |
-| `gen_ai.provider.name` | `gen_ai.provider.name` | Emitted as `"strands-agents"` by Strands 1.x (latest conventions); passed through and used as the routing/matcher key |
+| `gen_ai.provider.name` | `gen_ai.provider.name` | Emitted as `"strands-agents"` by Strands 1.x (latest conventions); passed through and used as part of the routing matcher, together with `service.name` |
 | `span.name` | `gen_ai.operation.name` / `gen_ai.operation.kind` | `"Model invoke"` → kind `task`, name `chat`; `"Tool: <n>"` → kind `tool`; `"Cycle <n>"` → kind `task`; agent span → kind `agent` |
 | `tool.name` | `gen_ai.tool.name` | OpenPipeline only |
 | `tool.parameters` | `gen_ai.tool.call.arguments` | OpenPipeline only |
@@ -188,16 +189,22 @@ make run-openpipeline
 
 ## Metrics
 
-Strands emits `gen_ai.*` span attributes and its own `strands.*` metrics, but not the two OTel semconv metrics the AI Observability app charts. Both options re-create them from the spans, so the cost and latency tiles populate either way:
+Strands emits `gen_ai.*` span attributes and its own `strands.*` metrics, but not the OTel semconv metrics the AI Observability app charts. Both options re-create the two client metrics from the spans, so the cost and latency tiles populate either way; Option A additionally derives the GenAI agent duration metrics:
 
 | Metric | Option A (collector) | Option B (OpenPipeline) |
 |---|---|---|
-| `gen_ai.client.operation.duration` (s) | `spanmetrics` connector, on `Model invoke` spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
+| `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on `chat` spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs | two `samplingAwareValueMetric` extractors, one per direction |
+| `gen_ai.invoke_agent.duration` (s) | `span_metrics` connector, on `invoke_agent` spans | `samplingAwareHistogramMetric` extractor, on `invoke_agent` spans |
+| `gen_ai.execute_tool.duration` (s) | `span_metrics` connector, on `execute_tool` spans | `samplingAwareHistogramMetric` extractor, on `execute_tool` spans |
 
-**Option A** derives both metrics in the collector. `gen_ai.client.token.usage` needs the `signaltometrics` connector, which ships in the **Bindplane** collector (`ghcr.io/observiq/bindplane-agent`) but **not** in the Dynatrace collector distro — this is why the Makefile pins the Bindplane image. Requires the token's `metrics.ingest` scope. Both metrics use delta temporality (Dynatrace rejects cumulative).
+**Option A** derives all four metrics in the collector. `gen_ai.client.token.usage` needs the `signaltometrics` connector, which ships in the **Bindplane** collector (`ghcr.io/observiq/bindplane-agent`) but **not** in the Dynatrace collector distro — this is why the Makefile pins the Bindplane image. Requires the token's `metrics.ingest` scope. All metrics use delta temporality (Dynatrace rejects cumulative).
 
-**Option B** derives the same two metrics server-side from the ingested spans via the metric-extraction processors in [`openpipeline-strands.yaml`](openpipeline-strands.yaml) — no collector required. The token metric uses the two-extractor pattern (one extractor per direction, both writing `gen_ai.client.token.usage` with a constant `gen_ai.token.type` dimension).
+The two agent duration metrics need no application change: Strands already sets `gen_ai.operation.name` to `invoke_agent` on the agent span and `execute_tool` on the tool span, so each metric is a `span_metrics` instance fed by a `filter` processor that keeps only that span type. Each instance also emits an undisableable `<namespace>.calls` counter, which a metrics `filter` drops by exact name before export.
+
+**`gen_ai.invoke_workflow.duration` is deliberately not emitted.** Strands has no workflow primitive — its tracer only produces agent, chat, tool and event-loop-cycle spans — so there is no span this demo could honestly derive a workflow duration from. See the [`microsoft-agent-framework`](../../microsoft-agent-framework/opentelemetry) demo for a framework that does have real workflow spans. Likewise, the per-invocation call counts `gen_ai.invoke_agent.inference_calls` / `.tool_calls` are not emitted here: they are distributions over invocations, not span durations, so they cannot be derived at the collector at all.
+
+**Option B** derives the two client metrics server-side from the ingested spans via the metric-extraction processors in [`openpipeline-strands.yaml`](openpipeline-strands.yaml) — no collector required. The token metric uses the two-extractor pattern (one extractor per direction, both writing `gen_ai.client.token.usage` with a constant `gen_ai.token.type` dimension). The agent and tool duration metrics are extracted here too, with the same dimensions the collector uses, so both options produce the same series.
 
 ---
 
@@ -216,7 +223,7 @@ Strands emits `gen_ai.*` span attributes and its own `strands.*` metrics, but no
 **Spans in Distributed Tracing but not in AI Observability:**
 - AI Observability requires `gen_ai.provider.name` to be set; added by the transform processor / OpenPipeline.
 - Option A: confirm the collector started with `otel-collector-config.yaml`.
-- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.provider.name == "strands-agents"`, pipeline `strands-agents-ai-spans`.
+- Option B: confirm the OpenPipeline routing entry is active; matcher `gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"`, pipeline `strands-agents-ai-spans`.
 
 **Port conflict (Option A):**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.

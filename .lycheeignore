@@ -1,6 +1,11 @@
 # npmjs.com blocks automated requests with 403 — not a broken link
 https://www.npmjs.com
 
+# console.mistral.ai redirects unauthenticated requests into an endless Ory
+# login-flow redirect loop (each hop gets a new flow ID) rather than a normal
+# login page — not a broken link, just unreachable without a session.
+https://console.mistral.ai
+
 # Localhost and loopback — dev/example URLs, never real targets
 http://localhost
 http://127.0.0.1

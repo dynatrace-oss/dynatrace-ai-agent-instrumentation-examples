@@ -28,6 +28,47 @@ processing:
   processors:
 
     # ============================================================================
+    # BEDROCK GUARDRAIL ATTRIBUTES
+    # ============================================================================
+    # The app sets gen_ai.bedrock.guardrail.input_assessment (a JSON string) on
+    # the music_agent.ask_guardrail span from provider_details["trace"]["guardrail"]
+    # ["inputAssessment"]. Parse it here into the finalised gen_ai.bedrock.guardrail.*
+    # attributes — the tenant-side equivalent of the collector transform in
+    # otel-collector-config.yaml (transform/bedrock-guardrail-attrs).
+    # ============================================================================
+    - id: "pydantic-ai-bedrock-guardrail-attrs"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.bedrock.guardrail.input_assessment`)"
+      type: "dql"
+      description: "Derive gen_ai.bedrock.guardrail.* from the raw inputAssessment JSON"
+      dql:
+        script: |
+          parse `gen_ai.bedrock.guardrail.input_assessment`, "JSON:assessment"
+          | fieldsAdd `gen_ai.bedrock.guardrail.content` = if(isNotNull(assessment[contentPolicy][filters]), toString(assessment[contentPolicy][filters]), else: null)
+          | fieldsAdd `gen_ai.bedrock.guardrail.sensitive_info` = if(isNotNull(assessment[sensitiveInformationPolicy][piiEntities]) or isNotNull(assessment[sensitiveInformationPolicy][regexes]), toString(assessment[sensitiveInformationPolicy]), else: null)
+          | fieldsAdd `gen_ai.bedrock.guardrail.topics` = if(isNotNull(assessment[topicPolicy][topics]), toString(assessment[topicPolicy][topics]), else: null)
+          | fieldsAdd `gen_ai.bedrock.guardrail.activation` = isNotNull(`gen_ai.bedrock.guardrail.content`) or isNotNull(`gen_ai.bedrock.guardrail.sensitive_info`) or isNotNull(`gen_ai.bedrock.guardrail.topics`)
+          | fieldsRemove assessment
+
+    # ============================================================================
+    # SYSTEM INSTRUCTIONS
+    # ============================================================================
+    # pydantic-ai serialises the full message list into gen_ai.input.messages as a
+    # JSON array. Extract the system prompt from the first message when role == "system".
+    # ============================================================================
+    - id: "pydantic-ai-system-instructions"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.input.messages`)"
+      type: "dql"
+      description: "Extract system message into gen_ai.system_instructions"
+      dql:
+        script: |
+          parse `gen_ai.input.messages`, "JSON:msgs"
+          | fieldsAdd `gen_ai.system_instructions` = if(msgs[0][role] == "system", msgs[0][parts][0][content], else: null)
+          | fieldsAdd `gen_ai.input.messages` = if(msgs[0][role] == "system", toString(arraySlice(msgs, 1, arraySize(msgs))), else: `gen_ai.input.messages`)
+          | fieldsRemove msgs
+
+    # ============================================================================
     # DURATION IN SECONDS (feeds the operation-duration metric below)
     # ============================================================================
     # The span `duration` field is in nanoseconds. The metric-extraction

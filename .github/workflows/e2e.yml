@@ -62,7 +62,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.14'
+          python-version: '3.13'
 
       - name: Install uv
         run: pip install -r test/e2e/requirements-tools.txt
@@ -166,7 +166,7 @@ jobs:
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
             echo "Error: TEST_RUN contains invalid characters: $TEST_RUN"; exit 1
           fi
-          go test ./... -run "$TEST_RUN" -v -timeout 20m
+          go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       - name: Write job summary
         if: always()
@@ -227,7 +227,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.14'
+          python-version: '3.13'
 
       - name: Install uv
         run: pip install -r test/e2e/requirements-tools.txt
@@ -298,7 +298,7 @@ jobs:
           TEST_RUN: TestAWSBedrockOneAgent
           OTEL_SERVICE_NAME: aws-bedrock/oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       - name: Run anthropic-oneagent
         if: always()
@@ -307,7 +307,7 @@ jobs:
           TEST_RUN: TestAnthropicOneAgent
           OTEL_SERVICE_NAME: anthropic/oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       - name: Run openai-oneagent
         if: always()
@@ -316,7 +316,7 @@ jobs:
           TEST_RUN: TestOpenAIOneAgent
           OTEL_SERVICE_NAME: openai/oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       - name: Run ollama-oneagent
         if: always()
@@ -325,7 +325,7 @@ jobs:
           TEST_RUN: TestOllamaOneAgent
           OTEL_SERVICE_NAME: ollama/oneagent
           MODEL: tinyllama
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # MOCKED: no real GROQ_API_KEY yet — an in-process httptest stub intercepts
       # Groq SDK calls. OneAgent instruments at the SDK level so spans carry
@@ -337,7 +337,7 @@ jobs:
           TEST_RUN: TestGroqOneAgent
           OTEL_SERVICE_NAME: groq/oneagent
           MODEL: tinyllama
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # MOCKED: no real COHERE_API_KEY yet — an in-process httptest stub intercepts
       # Cohere SDK calls via CO_API_URL. OneAgent instruments at the SDK level so spans
@@ -349,7 +349,7 @@ jobs:
           TEST_RUN: TestCohereOneAgent
           OTEL_SERVICE_NAME: cohere/oneagent
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # Uses real Azure OpenAI credentials via AzureOpenAIGenerator in Haystack.
       # Haystack disables its own tracing; OneAgent instruments the underlying openai SDK.
@@ -364,7 +364,37 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
+      - name: Run aws-bedrock-agents-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestAWSBedrockAgentsOneAgent
+          OTEL_SERVICE_NAME: aws-bedrock-agents/oneagent
+          BEDROCK_GUARDRAIL_ID: ${{ secrets.BEDROCK_GUARDRAIL_ID }}
+          BEDROCK_GUARDRAIL_VERSION: ${{ secrets.BEDROCK_GUARDRAIL_VERSION }}
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
+      - name: Run mistral-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestMistralOneAgent
+          OTEL_SERVICE_NAME: mistral/oneagent
+          MODEL: mistral-small-latest
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
+      - name: Run langgraph-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestLangGraphOneAgent
+          OTEL_SERVICE_NAME: langgraph/oneagent
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # aws-strands-oneagent runs last: it appears to need more OneAgent sensor warm-up time than
       # other suites (likely due to threading instrumentation via ThreadingInstrumentor). Running
@@ -376,7 +406,9 @@ jobs:
         env:
           TEST_RUN: TestAWSStrandsOneAgent
           OTEL_SERVICE_NAME: aws-strands/oneagent
-        run: go test ./... -run "$TEST_RUN" -v -timeout 20m
+          BEDROCK_GUARDRAIL_ID: ${{ secrets.BEDROCK_GUARDRAIL_ID }}
+          BEDROCK_GUARDRAIL_VERSION: ${{ secrets.BEDROCK_GUARDRAIL_VERSION }}
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # Runs after all per-service steps to detect entity merging: if OneAgent
       # assigned spans from multiple service.name values to the same SERVICE entity
@@ -386,7 +418,7 @@ jobs:
         working-directory: test/e2e
         env:
           NIGHTLY_START_TIME: ${{ env.NIGHTLY_START_TIME }}
-        run: go test ./... -run "TestOneAgentEntityIsolation" -v -timeout 15m
+        run: go test ./... -run "^TestOneAgentEntityIsolation$" -v -timeout 15m
 
       - name: Write job summary
         if: always()
@@ -436,10 +468,26 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.14'
+          python-version: '3.13'
 
       - name: Install uv
         run: pip install -r test/e2e/requirements-tools.txt
+
+      - name: Cache Ollama model
+        if: matrix.ollama_model != ''
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ matrix.ollama_model }}
+
+      - name: Set up Ollama
+        if: matrix.ollama_model != ''
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
+          ollama pull ${{ matrix.ollama_model }}
 
       - name: Set up Node.js
         if: ${{ matrix.needs_node || matrix.node_version != '' }}
@@ -474,7 +522,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
@@ -486,7 +534,7 @@ jobs:
           if ! [[ "$TEST_RUN" =~ ^[A-Za-z][A-Za-z0-9_]+$ ]]; then
             echo "Error: TEST_RUN contains invalid characters: $TEST_RUN"; exit 1
           fi
-          go test ./... -run "$TEST_RUN" -v -timeout 20m
+          go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       - name: Write job summary
         if: always()

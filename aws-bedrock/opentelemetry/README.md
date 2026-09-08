@@ -27,15 +27,24 @@ Python app → OTel Collector (localhost:4318) → Dynatrace OTLP endpoint
 
 All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Traceloop decorators.
 
+### Derived agent metrics
+
+The Traceloop decorators tag their spans with `traceloop.span.kind` but never set `gen_ai.operation.name`, so the GenAI agent metrics have nothing to key on out of the box. The collector config closes that gap without touching application code:
+
+1. `transform/traceloop_operation_name` maps `traceloop.span.kind` onto the spec enum --- `agent` to `invoke_agent`, `workflow` to `invoke_workflow` --- and only where the enum is absent, so the `chat` value that `BedrockInstrumentor` sets on the LLM spans is never overwritten. `task` is left unmapped; it is an arbitrary function boundary, not a spec operation.
+2. Two `span_metrics` connectors then derive `gen_ai.invoke_agent.duration` and `gen_ai.invoke_workflow.duration` (Histogram, seconds) from those spans.
+
+`gen_ai.execute_tool.duration` is not derived here: the demo uses no `@tool` decorator, so there is no tool span to measure.
+
 > [!IMPORTANT]
 > Dynatrace OTLP metric ingest accepts **delta** temporality only and rejects cumulative metrics with HTTP 400. The app sets `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` before initializing Traceloop so the GenAI client metrics are accepted.
 
 ## Guardrails
 
-`run_converse_guardrail_trigger()` sends a prompt that violates a configured [Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) (a denied-topics policy) so you can see a blocked request in Dynatrace. When `BEDROCK_GUARDRAIL_ID` is set, every Converse call attaches the guardrail with `trace: enabled`, and the instrumentation (`opentelemetry.instrumentation.bedrock`) maps the assessment onto the span:
+`run_converse_guardrail_trigger()` sends prompts that violate a configured [Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) so you can see blocked requests in Dynatrace. When `BEDROCK_GUARDRAIL_ID` is set, every Converse call attaches the guardrail with `trace: enabled`, and the instrumentation (`opentelemetry.instrumentation.bedrock`) maps the assessment onto the span:
 
 - `gen_ai.response.finish_reasons = ["content_filter"]` and an `Input blocked` output message
-- `gen_ai.bedrock.guardrail.activation`, `.input_filter`, `.topics`
+- `gen_ai.bedrock.guardrail.activation`, `.input_filter`, `.topics`, `.content`, `.sensitive_info`
 - `gen_ai.guardrail.id` / `.version`
 
 Set `BEDROCK_GUARDRAIL_ID` (and optionally `BEDROCK_GUARDRAIL_VERSION`, default `DRAFT`) to enable it; without it the guardrail story is skipped.

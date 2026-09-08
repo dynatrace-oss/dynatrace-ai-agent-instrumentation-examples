@@ -1,10 +1,13 @@
 {
-  "version": "1.3.0",
+  "version": "1.5.0",
   "scope": "current-state",
-  "date": "2026-06-17",
+  "date": "2026-08-25",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.5.0 (2026-08-25): Add OneAgent-specific Bedrock guardrail attributes (AR-057..AR-061) in a new guardrails-bedrock-oneagent group. OneAgent emits these under different names than the OTel SDK path; gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) are shared. Updated OneAgentGuardrailProfile in the e2e audit fixture.",
+    "1.4.0 (2026-08-07): Add AR-054/AR-055/AR-056 for the GenAI agent, tool and workflow duration metrics (gen_ai.invoke_agent.duration, gen_ai.execute_tool.duration, gen_ai.invoke_workflow.duration). All three are Development-stability semconv metrics that no instrumentation library emits under these names, so demos derive them from spans via a collector span_metrics connector or an OpenPipeline metric extractor (AI-352). Recorded as optional with an empty used_by: no AI Observability view consumes them yet, so they are semconv coverage tracking rather than a dashboard dependency and are deliberately not added to any profile metrics list, where absence would fail the audit.",
+    "1.3.2 (2026-08-04): Add gen_ai.usage.prompt_caching.read_tokens (AR-052) and gen_ai.usage.prompt_caching.write_tokens (AR-053) as optional attributes in a new caching-anthropic group; new anthropic profile (extends generic) in the e2e audit fixture. Live-verified against the ixq6468h sprint tenant on the anthropic/oneagent demo (AnthropicBedrock client + cache_control). Note: not yet visualised directly on any dashboard — these are the raw per-span inputs PPX's gen_ai.prompt.caching metric (AR-045) is computed from, not something a dashboard tile reads itself.",
     "1.3.1 (2026-07-28): Add gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) as provider-specific required attributes in the guardrails-bedrock group. Extracted from llm.invocation_parameters by the collector transform/llm-invocation-params processor (OpenInference path). Added to GuardrailProfile required checks in the e2e audit fixture.",
     "1.3.0 (2026-07-24): Add a per-profile metrics list. Move AR-025 (gen_ai.client.operation.duration) and AR-044 (gen_ai.client.token.usage) out of the generic optional_attributes into generic.metrics; they are verified as OTel metrics via timeseries existence, not as span attributes. The e2e suite now records metric-existence results in the generated per-SDK reports.",
     "1.2.1 (2026-06-17): Add VR-021 (conversation_thread view rule): gen_ai.conversation.id (AR-041) is set by AgentTelemetryLayer on invoke_agent spans only; ChatTelemetryLayer does not forward options to _get_span_attributes so inner chat spans never carry this attribute. Add span_scope note to AR-041. Update AR-041 note in attributes.",
@@ -43,6 +46,13 @@
           "extends": "generic",
           "additional_required_attributes": ["AR-017", "AR-018", "AR-019"],
           "additional_optional_attributes": ["AR-020", "AR-021", "AR-040", "AR-045", "AR-046"]
+        },
+        "anthropic": {
+          "dashboard": "bedrock.dashboard.json",
+          "description": "Anthropic (native and via Bedrock) provider profile. Includes all generic checks plus the raw prompt-caching token attributes; no dedicated anthropic dashboard exists yet, so this reuses bedrock.dashboard.json, which only visualises the derived gen_ai.prompt.caching metric (AR-045), not AR-052/AR-053 directly.",
+          "extends": "generic",
+          "additional_required_attributes": [],
+          "additional_optional_attributes": ["AR-052", "AR-053"]
         },
         "google": {
           "dashboard": "google.dashboard.json",
@@ -205,11 +215,21 @@
       "gen_ai.client.token.usage": "AR-044",
       "gen_ai.prompt.caching": "AR-045",
       "gen_ai.guardrail.grounding_type": "AR-046",
+      "gen_ai.usage.prompt_caching.read_tokens": "AR-052",
+      "gen_ai.usage.prompt_caching.write_tokens": "AR-053",
+      "gen_ai.invoke_agent.duration": "AR-054",
+      "gen_ai.execute_tool.duration": "AR-055",
+      "gen_ai.invoke_workflow.duration": "AR-056",
       "span.status_code": "AR-047",
       "gen_ai.model": "AR-048",
       "event.type": "AR-049",
       "gen_ai.guardrail.id": "AR-050",
-      "gen_ai.guardrail.version": "AR-051"
+      "gen_ai.guardrail.version": "AR-051",
+      "gen_ai.guardrail.input.sensitive_information.piis": "AR-057",
+      "gen_ai.guardrail.input.content": "AR-058",
+      "gen_ai.guardrail.input.topic.names": "AR-059",
+      "gen_ai.guardrail.output.contextual": "AR-060",
+      "gen_ai.guardrail.input.words.matches": "AR-061"
     },
     "non_sdk_rule_ids": {
       "dt.smartscape.service": "NS-001",
@@ -1069,6 +1089,119 @@
       "owned_by": "collector_processor",
       "used_by": ["guardrail_overview_cards"],
       "note": "Version of the AWS Bedrock Guardrail applied to the request."
+    },
+    {
+      "name": "gen_ai.usage.prompt_caching.read_tokens",
+      "rule_id": "AR-052",
+      "required_level": "optional",
+      "group": "caching-anthropic",
+      "type": "span_attribute",
+      "providers": ["anthropic", "bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": [],
+      "note": "Per-span count of tokens read from the Anthropic/Bedrock prompt cache on a cache hit. Not directly visualised by any dashboard today — this and AR-053 are the raw per-span inputs PPX's gen_ai.prompt.caching metric (AR-045) is computed from. Live-verified on the anthropic/oneagent demo (AnthropicBedrock client with a cache_control-marked system block) against the ixq6468h sprint tenant on 2026-08-04."
+    },
+    {
+      "name": "gen_ai.usage.prompt_caching.write_tokens",
+      "rule_id": "AR-053",
+      "required_level": "optional",
+      "group": "caching-anthropic",
+      "type": "span_attribute",
+      "providers": ["anthropic", "bedrock"],
+      "owned_by": "provider_sdk",
+      "used_by": [],
+      "note": "Per-span count of tokens written to the Anthropic/Bedrock prompt cache on a cache miss/first write. Not directly visualised by any dashboard today — see AR-052. Live-verified on the anthropic/oneagent demo against the ixq6468h sprint tenant on 2026-08-04."
+    },
+    {
+      "name": "gen_ai.invoke_agent.duration",
+      "rule_id": "AR-054",
+      "required_level": "optional",
+      "group": "agent-performance",
+      "type": "metric",
+      "providers": ["generic"],
+      "owned_by": "collector_processor",
+      "used_by": [],
+      "dimensions": ["gen_ai.agent.name", "gen_ai.operation.name"],
+      "note": "Duration of one GenAI agent invocation. Histogram, seconds, Development stability in the GenAI metrics semconv. No instrumentation library emits it under this name, so demos derive it from the invoke_agent span: a span_metrics connector on the collector path, a samplingAwareHistogramMetric extractor on the OpenPipeline path. used_by is empty on purpose — no AI Observability view consumes it yet, so it is coverage tracking, not a dashboard dependency, and must not gate a profile."
+    },
+    {
+      "name": "gen_ai.execute_tool.duration",
+      "rule_id": "AR-055",
+      "required_level": "optional",
+      "group": "agent-performance",
+      "type": "metric",
+      "providers": ["generic"],
+      "owned_by": "collector_processor",
+      "used_by": [],
+      "dimensions": ["gen_ai.tool.name", "gen_ai.operation.name"],
+      "note": "Duration of one GenAI tool execution. Histogram, seconds, Development stability in the GenAI metrics semconv. Derived from the execute_tool span the same two ways as AR-054. Not consumed by any AI Observability view yet."
+    },
+    {
+      "name": "gen_ai.invoke_workflow.duration",
+      "rule_id": "AR-056",
+      "required_level": "optional",
+      "group": "agent-performance",
+      "type": "metric",
+      "providers": ["generic"],
+      "owned_by": "collector_processor",
+      "used_by": [],
+      "dimensions": ["gen_ai.operation.name"],
+      "note": "Duration of one GenAI workflow run. Histogram, seconds, Development stability in the GenAI metrics semconv. Only derivable where the framework actually opens a workflow span: of the demos surveyed for AI-352 only microsoft-agent-framework does. aws-strands has no workflow primitive and the google-adk demo has no Workflow node, so neither emits it and neither should be audited for it. Not consumed by any AI Observability view yet."
+    },
+    {
+      "name": "gen_ai.guardrail.input.sensitive_information.piis",
+      "rule_id": "AR-057",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock-oneagent",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.sensitive_info (AR-019). Lists PII types detected by the Bedrock guardrail on the input side."
+    },
+    {
+      "name": "gen_ai.guardrail.input.content",
+      "rule_id": "AR-058",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock-oneagent",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.content (AR-018). Content policy result for the guardrail input check."
+    },
+    {
+      "name": "gen_ai.guardrail.input.topic.names",
+      "rule_id": "AR-059",
+      "required_level": "provider-specific",
+      "group": "guardrails-bedrock-oneagent",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.topics (AR-020) scoped to the input side. Lists topic names blocked by the guardrail on the prompt."
+    },
+    {
+      "name": "gen_ai.guardrail.output.contextual",
+      "rule_id": "AR-060",
+      "required_level": "optional",
+      "group": "guardrails-bedrock-oneagent",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.contextual (AR-040) scoped to the output side. Contextual grounding score for the model response."
+    },
+    {
+      "name": "gen_ai.guardrail.input.words.matches",
+      "rule_id": "AR-061",
+      "required_level": "optional",
+      "group": "guardrails-bedrock-oneagent",
+      "type": "span_attribute",
+      "providers": ["bedrock"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.words (AR-021) scoped to the input side. Lists word/phrase matches triggered by the guardrail on the prompt."
     }
   ],
   "non_sdk_fields": [

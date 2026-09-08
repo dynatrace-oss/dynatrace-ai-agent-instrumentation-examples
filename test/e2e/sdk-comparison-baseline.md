@@ -7,7 +7,7 @@ Goal: make SDK/framework comparisons deterministic and consistent.
 
 ## What This Baseline Is
 
-`sdk-comparison-baseline.json` (v1.3.1) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
+`sdk-comparison-baseline.json` (v1.3.2) is the single source of truth for pass/fail comparison rules against the current Dynatrace AI Observability app expectations.
 
 It contains:
 - Core pass/fail rules (`must_have_any`, `must_have_all`)
@@ -54,6 +54,7 @@ Each profile maps to a specific dashboard in `genai-observability/documents/`. U
 |---|---|---|
 | `generic` | `abmodelversioning.dashboard.json` | Provider-agnostic; any OTel-compliant SDK. Covers all_genai_views, prompts, cost, latency, service_health. |
 | `openai` | `openai.dashboard.json` | Extends generic + OpenAI prompt-caching attributes (AR-022, AR-023). |
+| `anthropic` | `bedrock.dashboard.json` | Extends generic + Anthropic prompt-caching token attributes (AR-052, AR-053). No dedicated anthropic dashboard exists yet; reuses bedrock.dashboard.json, which only visualises the derived AR-045 metric, not AR-052/AR-053 directly. |
 | `azure` | `azureai.dashboard.json` | Extends generic + Azure content filter attributes (AR-015, AR-016). |
 | `bedrock` | `bedrock.dashboard.json` | Extends generic + Bedrock guardrail, caching, and contextual grounding attributes. |
 | `google` | `google.dashboard.json` | Extends generic; no additional provider-specific attributes required. |
@@ -63,7 +64,7 @@ Each profile maps to a specific dashboard in `genai-observability/documents/`. U
 ## Recommended AI Output Shape
 
 Use this structure in reports:
-- `profile`: `generic | azure | bedrock | openai | google | nvidia | kong`
+- `profile`: `generic | azure | bedrock | openai | anthropic | google | nvidia | kong`
 - `dashboard_targeted`: dashboard filename from profile mapping above
 - `result`: `PASS | FAIL | PARTIAL`
 - `failed_required`: list
@@ -102,7 +103,7 @@ Model overview:
 
 Profile precedence:
 - If a scenario override exists in `profile_selection.scenario_overrides`, run/skip profiles from the override.
-- Otherwise, evaluate by selected profile (`generic`, `azure`, `bedrock`, `openai`, `google`, `nvidia`, `kong`).
+- Otherwise, evaluate by selected profile (`generic`, `azure`, `bedrock`, `openai`, `anthropic`, `google`, `nvidia`, `kong`).
 
 ### Core & Service
 
@@ -128,6 +129,9 @@ Profile precedence:
 | `gen_ai.token.type` | AR-024 | recommended | cost_dashboard — splits cost lanes; values: `input`, `output`, `cache_read`, `cache_creation` |
 | `gen_ai.client.operation.duration` | AR-025 | required | latency_charts — p99 and mean latency (OTel histogram metric) |
 | `gen_ai.client.token.usage` | AR-044 | recommended | cost_dashboard — OTel counter metric; used as `timeseries sum(gen_ai.client.token.usage)` filtered by `gen_ai.token.type` dimension. Distinct from the span attributes AR-006/AR-007. Missing → all cost tiles show $0 silently. |
+| `gen_ai.invoke_agent.duration` | AR-054 | optional | _(no view yet)_ — agent invocation duration; OTel histogram in seconds. Derived from the `invoke_agent` span by a collector `span_metrics` connector or an OpenPipeline extractor; no library emits it under this name. |
+| `gen_ai.execute_tool.duration` | AR-055 | optional | _(no view yet)_ — tool execution duration; derived from the `execute_tool` span the same two ways as AR-054. |
+| `gen_ai.invoke_workflow.duration` | AR-056 | optional | _(no view yet)_ — workflow run duration; only derivable where the framework opens a workflow span (of the AI-352 demos, only microsoft-agent-framework does). |
 
 ### Operations & Agents
 
@@ -170,13 +174,15 @@ Profile precedence:
 | `gen_ai.guardrail.id` | AR-050 | provider-specific (bedrock) | guardrail_overview_cards — unique guardrail identifier, extracted from `llm.invocation_parameters` by collector processor |
 | `gen_ai.guardrail.version` | AR-051 | provider-specific (bedrock) | guardrail_overview_cards — guardrail version (e.g. `DRAFT` or a pinned numeric version) |
 
-### Caching (OpenAI / Bedrock)
+### Caching (OpenAI / Bedrock / Anthropic)
 
 | Attribute | Rule ID | Required Level | Used By Visuals |
 |---|---|---|---|
 | `gen_ai.prompt_caching` | AR-022 | provider-specific (openai, bedrock) | cached_vs_non_cached_chart — span attribute; values: `read` for cache hit |
 | `gen_ai.cache.type` | AR-023 | provider-specific (openai, bedrock) | cached_vs_non_cached_chart — span attribute; values: `read`, `write` |
 | `gen_ai.prompt.caching` | AR-045 | provider-specific (bedrock) | bedrock_cache_tiles — **metric** (distinct from AR-022); used as `timeseries sum(gen_ai.prompt.caching)` filtered by `gen_ai.cache.type` to compute cache-read/write token savings |
+| `gen_ai.usage.prompt_caching.read_tokens` | AR-052 | provider-specific (anthropic, bedrock) | Not yet visualised directly by any dashboard — raw per-span input to the AR-045 metric. Live-verified on `anthropic/oneagent` against the `ixq6468h` sprint tenant (2026-08-04). |
+| `gen_ai.usage.prompt_caching.write_tokens` | AR-053 | provider-specific (anthropic, bedrock) | Same as AR-052 but for cache writes. |
 
 ### Evaluation Results
 
@@ -358,6 +364,11 @@ These rules model app behavior better than a flat required/optional list.
 - Must pass generic profile first.
 - Then also require OpenAI provider-specific attributes (AR-022, AR-023).
 
+### Anthropic profile (→ bedrock.dashboard.json, reused)
+- Must pass generic profile first.
+- Then also check the optional Anthropic prompt-caching token attributes (AR-052, AR-053) — only one of the two is ever present on a given span (a request either writes the cache or reads from it, never both).
+- No dedicated anthropic dashboard exists yet; neither AR-052 nor AR-053 is directly visualised — they are the raw per-span inputs the AR-045 metric is computed from.
+
 ### Google profile (→ google.dashboard.json)
 - Must pass generic profile first.
 - No additional provider-specific attributes required.
@@ -379,3 +390,4 @@ These rules model app behavior better than a flat required/optional list.
 - Always check `changelog` in `sdk-comparison-baseline.json` to confirm you are reading the current version before running a comparison.
 - For AR-020 and AR-021: their absence from a Bedrock SDK does NOT degrade any current dashboard. Report them as `dashboard_gaps` (SDK should emit them; dashboard does not yet visualise them) rather than `silent_failures`.
 - `gen_ai.client.token.usage` (AR-044) is a metric, not a span attribute. Its presence cannot be inferred from span traces alone — it requires a metrics pipeline (e.g. `should_enrich_metrics=True` in Traceloop, or a custom `MeterProvider`).
+- The agent duration metrics (AR-054, AR-055, AR-056) are metrics too, and are **optional with an empty `used_by`** on purpose. No AI Observability view consumes them yet — they are tracked here as semconv coverage, not as a dashboard dependency. Do **not** add them to a profile's `metrics` list: every key in a profile metric list is mandatory and absence fails the audit, so gating on them would fail every demo that does not derive them. AR-056 in particular is only derivable where the framework actually opens a workflow span.

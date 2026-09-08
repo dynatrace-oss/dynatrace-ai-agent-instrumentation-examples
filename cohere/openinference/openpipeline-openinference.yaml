@@ -1,0 +1,384 @@
+---
+# OpenPipeline Configuration for OpenInference (Arize Phoenix) - Cohere
+# Server-side equivalent of the gen_ai_normalizer collector processor in
+# otelcol-config.yaml — see that file's comments for the pipeline this mirrors.
+#
+# Based on:
+# - Official schema: builtin:openpipeline.spans.pipelines
+# - Semantic dictionary: /semantic-dictionary/source/fields/signal_fields/gen_ai.yaml
+# - Retrieved via: dtctl get settings-schemas builtin:openpipeline.spans.pipelines
+# - OpenInference spec: https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md
+#
+# Trimmed from openai/openinference/openpipeline-openinference.yaml: the Azure
+# content-filter, AWS Bedrock guardrail, and reranker processors are dropped —
+# CohereInstrumentor (openinference-instrumentation-cohere) has no equivalent
+# concept and explicitly does not instrument rerank/classify endpoints.
+
+customId: "cohere-openinference-ai-spans"
+displayName: "Cohere OpenInference (Arize Phoenix) AI Observability - Spans"
+
+processing:
+  processors:
+    # ============================================================================
+    # 1. MAP OPENINFERENCE SPAN KINDS TO gen_ai.operation.kind (OFFICIAL)
+    # ============================================================================
+    # OPENINFERENCE:
+    #   - Attribute: openinference.span.kind (enum)
+    #   - Values seen from CohereInstrumentor: LLM, EMBEDDING
+    # DYNATRACE:
+    #   - Attribute: gen_ai.operation.kind (enum)
+    #   - Values: workflow, task, agent, tool, retrieval
+    # ============================================================================
+    - id: "openinference-operation-kind"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Map OpenInference span kinds to official gen_ai.operation.kind"
+      dql:
+        script: |
+          fieldsAdd gen_ai.operation.kind = if(openinference.span.kind == "CHAIN", "workflow",
+                                          else: if(openinference.span.kind == "TOOL", "tool",
+                                          else: if(openinference.span.kind == "AGENT", "agent",
+                                          else: if(openinference.span.kind == "RETRIEVER", "retrieval",
+                                          else: "task"))))
+
+    # ============================================================================
+    # 2. SET OPERATION NAME FOR LLM (OFFICIAL gen_ai.operation.name)
+    # ============================================================================
+    - id: "openinference-llm-op-name"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"
+      type: "fieldsAdd"
+      description: "Set operation name to chat for LLM spans"
+      fieldsAdd:
+        fields:
+          - name: "gen_ai.operation.name"
+            value: "chat"
+
+    # ============================================================================
+    # 3. MAP LLM ATTRIBUTES (OFFICIAL gen_ai.*)
+    # ============================================================================
+    # OPENINFERENCE: llm.model_name, llm.provider (CohereInstrumentor sets both
+    # llm.provider and llm.system to "cohere")
+    # DYNATRACE: gen_ai.request.model, gen_ai.provider.name
+    # ============================================================================
+    - id: "openinference-llm-attributes"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"
+      type: "fieldsRename"
+      description: "Map OpenInference LLM attributes to official gen_ai.*"
+      fieldsRename:
+        fields:
+          - fromName: "llm.model_name"
+            toName: "gen_ai.request.model"
+          - fromName: "llm.provider"
+            toName: "gen_ai.provider.name"
+
+    # ============================================================================
+    # 3b. FALLBACK: MAP llm.system TO gen_ai.provider.name
+    # ============================================================================
+    # Only runs if gen_ai.provider.name was NOT already set by processor 3 (i.e.
+    # llm.provider was absent). CohereInstrumentor sets both, so this is a no-op
+    # safety net here, kept for consistency with the other OpenInference pipelines
+    # in this repo where llm.provider may be absent.
+    # ============================================================================
+    - id: "openinference-llm-system-fallback"
+      enabled: true
+      matcher: "isNotNull(llm.system)"
+      type: "dql"
+      description: "Fallback: map llm.system to gen_ai.provider.name when llm.provider is absent; always remove llm.system"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.provider.name` = if(isNull(`gen_ai.provider.name`), `llm.system`, else: `gen_ai.provider.name`)
+          | fieldsRemove `llm.system`
+
+    # ============================================================================
+    # 4. MAP LLM USAGE (OFFICIAL gen_ai.usage.*)
+    # ============================================================================
+    - id: "openinference-llm-usage"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"
+      type: "fieldsRename"
+      description: "Map OpenInference token usage to official gen_ai.usage.*"
+      fieldsRename:
+        fields:
+          - fromName: "llm.token_count.prompt"
+            toName: "gen_ai.usage.input_tokens"
+          - fromName: "llm.token_count.completion"
+            toName: "gen_ai.usage.output_tokens"
+          - fromName: "llm.finish_reason"
+            toName: "gen_ai.response.finish_reasons"
+
+    # ============================================================================
+    # 5. EXTRACT REQUEST PARAMETERS FROM llm.invocation_parameters (OFFICIAL gen_ai.request.*)
+    # ============================================================================
+    # CohereInstrumentor packs temperature/max_tokens/p into a single
+    # llm.invocation_parameters JSON string rather than discrete attributes.
+    # Cohere's chat() has no top_p parameter — the equivalent is p.
+    # ============================================================================
+    - id: "openinference-request-params"
+      enabled: true
+      matcher: "isNotNull(llm.invocation_parameters)"
+      type: "dql"
+      description: "Extract temperature/max_tokens/top_p (Cohere's `p`) from the llm.invocation_parameters JSON blob"
+      dql:
+        script: |
+          parse `llm.invocation_parameters`, "JSON:temp.invocation_params"
+          | fieldsAdd `gen_ai.request.temperature` = `temp.invocation_params`[temperature]
+          | fieldsAdd `gen_ai.request.max_tokens` = `temp.invocation_params`[max_tokens]
+          | fieldsAdd `gen_ai.request.top_p` = `temp.invocation_params`[p]
+          | fieldsRemove `temp.invocation_params`
+
+    # ============================================================================
+    # 6. MIRROR RESPONSE MODEL (OFFICIAL gen_ai.response.model)
+    # ============================================================================
+    # OpenInference has no separate response-model field; mirror the request
+    # model, same as the gen_ai_normalizer collector processor does.
+    # ============================================================================
+    - id: "openinference-response-mapping"
+      enabled: true
+      matcher: "isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)"
+      type: "dql"
+      description: "Mirror gen_ai.request.model into gen_ai.response.model"
+      dql:
+        script: |
+          fieldsAdd gen_ai.response.model = gen_ai.request.model
+
+    # ============================================================================
+    # 7. SET OPERATION NAME FOR EMBEDDINGS (OFFICIAL gen_ai.operation.name)
+    # ============================================================================
+    # CohereInstrumentor also instruments ClientV2.embed / AsyncClientV2.embed.
+    # ============================================================================
+    - id: "openinference-embedding-op-name"
+      enabled: true
+      matcher: "isNotNull(embedding.model_name)"
+      type: "fieldsAdd"
+      description: "Set operation name to embeddings for Embedding spans"
+      fieldsAdd:
+        fields:
+          - name: "gen_ai.operation.name"
+            value: "embeddings"
+
+    # ============================================================================
+    # 8. EMBEDDING ATTRIBUTES (OFFICIAL gen_ai.*)
+    # ============================================================================
+    - id: "openinference-embedding-attributes"
+      enabled: true
+      matcher: "isNotNull(embedding.model_name)"
+      type: "fieldsRename"
+      description: "Map OpenInference embedding attributes to official gen_ai.*"
+      fieldsRename:
+        fields:
+          - fromName: "embedding.model_name"
+            toName: "gen_ai.request.model"
+          - fromName: "embedding.vector_length"
+            toName: "gen_ai.embeddings.dimension.count"
+
+    # ============================================================================
+    # 9. AGENT NORMALIZATION (OFFICIAL gen_ai.agent.name)
+    # ============================================================================
+    - id: "openinference-agent-mapping"
+      enabled: true
+      matcher: "true"
+      type: "fieldsRename"
+      description: "Map OpenInference agent name to official attribute"
+      fieldsRename:
+        fields:
+          - fromName: "agent.name"
+            toName: "gen_ai.agent.name"
+
+    # ============================================================================
+    # 10. TOOL DETAILS (OFFICIAL gen_ai.tool.*)
+    # ============================================================================
+    - id: "openinference-tool-mapping"
+      enabled: true
+      matcher: "isNotNull(tool.name)"
+      type: "fieldsRename"
+      description: "Map OpenInference tool attributes"
+      fieldsRename:
+        fields:
+          - fromName: "tool.name"
+            toName: "gen_ai.tool.name"
+          - fromName: "tool.description"
+            toName: "gen_ai.tool.description"
+
+    # ============================================================================
+    # 11. ADD SOURCE METADATA
+    # ============================================================================
+    # NOTE: fieldsAdd processor type evaluates `value` as a DQL expression —
+    # bare identifiers are field references (not string literals). Using a DQL
+    # processor instead so "openinference" is properly quoted as a string literal.
+    - id: "openinference-source-metadata"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Tag source SDK — string literal requires DQL processor, not fieldsAdd"
+      dql:
+        script: |
+          fieldsAdd `ai.observability.source` = "openinference"
+
+    # ============================================================================
+    # 12. CLEANUP LEFTOVER llm.* / openinference.* FIELDS
+    # ============================================================================
+    - id: "openinference-cleanup"
+      enabled: true
+      matcher: "true"
+      type: "fieldsRemove"
+      description: "Remove leftover OpenInference source attributes after mapping"
+      fieldsRemove:
+        fields:
+          - "openinference.span.kind"
+          - "llm.invocation_parameters"
+          - "llm.token_count.total"
+          - "llm.input_messages.0.message.role"
+          - "llm.input_messages.0.message.content"
+          - "llm.output_messages.0.message.role"
+          - "llm.output_messages.0.message.content"
+          - "input.mime_type"
+          - "output.mime_type"
+
+    # ============================================================================
+    # 13. SESSION & USER PASS-THROUGH (DOCUMENTATION)
+    # ============================================================================
+    # OpenInference defines session.id and user.id as reserved attributes that
+    # already use the correct OTel-standard names. No rename processor needed —
+    # they pass through to Dynatrace as-is.
+    # ============================================================================
+    # (No processor required — session.id and user.id already match DT target names.)
+
+    # ============================================================================
+    # 14. INPUT/OUTPUT FALLBACK FOR PROMPTS LIST VIEW (INTERIM FIX)
+    # ============================================================================
+    # OpenInference emits messages as indexed span attributes
+    # (llm.input_messages.N.message.role/content) which DQL cannot aggregate.
+    # Copy input.value/output.value to gen_ai.input.messages/gen_ai.output.messages
+    # as a fallback so spans still appear in the Prompts list view.
+    # ============================================================================
+    - id: "openinference-input-output-fallback"
+      enabled: true
+      matcher: "true"
+      type: "dql"
+      description: "Map input.value/output.value to gen_ai.* so spans appear in Prompts list"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.input.messages` = `input.value`, `gen_ai.output.messages` = `output.value`
+          | fieldsRemove `input.value`, `output.value`
+
+    # ============================================================================
+    # 15. SYSTEM INSTRUCTIONS EXTRACTION
+    # ============================================================================
+    - id: "openinference-system-instructions"
+      enabled: true
+      matcher: "isNotNull(`llm.input_messages.0.message.role`)"
+      type: "dql"
+      description: "Extract system message into gen_ai.system_instructions"
+      dql:
+        script: |
+          fieldsAdd `gen_ai.system_instructions` = if(
+            `llm.input_messages.0.message.role` == "system",
+            `llm.input_messages.0.message.content`
+          )
+
+    # ============================================================================
+    # 16. DURATION IN SECONDS (feeds the operation-duration metric below)
+    # ============================================================================
+    # The span `duration` field is in nanoseconds; gen_ai.client.operation.duration
+    # is in seconds. Materialize a seconds value here for the metric extractor.
+    # ============================================================================
+    - id: "openinference-duration-seconds"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.input_tokens`) OR isNotNull(`gen_ai.usage.output_tokens`)"
+      type: "dql"
+      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
+# ==============================================================================
+# METRIC EXTRACTION
+# ==============================================================================
+# OpenInference is span-only by design (_supports_metrics=False), so neither
+# gen_ai.client.operation.duration nor gen_ai.client.token.usage is emitted
+# natively. Both are re-created here from the attributes normalized above — the
+# server-side equivalent of the span_metrics / signal_to_metrics connectors in
+# otelcol-config.yaml.
+# ==============================================================================
+metricExtraction:
+  processors:
+    - id: "openinference-operation-duration-metric"
+      enabled: true
+      matcher: "isNotNull(duration_seconds)"
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from OpenInference LLM spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    # ============================================================================
+    # TOKEN USAGE — two extractors, same metric key, aliased dimension
+    # ============================================================================
+    - id: "openinference-token-usage-input-metric"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.input_tokens`)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (input tokens) from OpenInference spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.input_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "input"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "openinference-token-usage-output-metric"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.output_tokens`)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (output tokens) from OpenInference spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.output_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "output"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"

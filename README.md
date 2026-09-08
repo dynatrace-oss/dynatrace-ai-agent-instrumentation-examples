@@ -1,5 +1,7 @@
 # Dynatrace Agentic AI Instrumentation Examples
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/badge)](https://scorecard.dev/viewer/?uri=github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples)
+
 This project demonstrates how to instrument AI agents with Dynatrace to gain observability into Agentic AI workloads, including performance, cost, and runtime behavior.
 
 By integrating Dynatrace with AI agents, developers can monitor agent execution, understand tool interactions, trace prompt and response flows, and analyze dependencies across distributed AI-driven systems.
@@ -67,10 +69,10 @@ Monitor specific AI provider SDKs with Dynatrace.
 |----------|----------|---------------|---------------|
 | [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
-| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | — | — |
-| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | — | — |
-| [Mistral](./mistral/oneagent/) | [✓\*](./mistral/oneagent/) | — | — |
-| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
+| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
+| [Mistral](./mistral/) | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
+| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
 | [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
@@ -85,8 +87,8 @@ Monitor AI agent frameworks with Dynatrace.
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
-| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) |
-| [Haystack](./haystack/oneagent/) | [✓](./haystack/oneagent/) | — | — |
+| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
+| [Haystack](./haystack/) | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
 | [Langfuse](./langfuse/) | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
 | [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [LiteLLM](./litellm/opentelemetry/) | — | — | [✓](./litellm/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |

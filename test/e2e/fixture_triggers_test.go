@@ -3,12 +3,14 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // runMakeTarget runs a Makefile target in the given app directory (e.g. "request"
@@ -110,6 +112,53 @@ func triggerHaikuGuardrail(t *testing.T) {
 	}
 }
 
+type guardrailCheck struct {
+	Text string `json:"text"`
+}
+
+// triggerApplyGuardrail POSTs two requests to /guardrail on localhost:8000,
+// exercising Bedrock's standalone ApplyGuardrail API (client.apply_guardrail) —
+// structurally distinct from the Converse guardrailConfig path exercised by
+// triggerHaikuGuardrail: it produces its own OpenInference "GUARDRAIL"-kind span
+// rather than an LLM-kind span, and isn't a chat completion at all (no model, no
+// generated text). The first call sends guardrail-safe content; the second reuses
+// the "football strategies for the World Cup" topic-denial trigger already used
+// by triggerHaikuGuardrail to trip the same guardrail resource, mirroring the
+// non-guardrail/guardrail-triggering split. No-op when BEDROCK_GUARDRAIL_ID is
+// unset, matching the app-side skip behavior.
+func triggerApplyGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	postGuardrailCheck(t, "Who is the president of the United States?")
+	postGuardrailCheck(t, "What are the best football strategies for the World Cup?")
+}
+
+// postGuardrailCheck POSTs a single text to /guardrail on localhost:8000.
+func postGuardrailCheck(t *testing.T, text string) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/guardrail"
+
+	b, _ := json.Marshal(guardrailCheck{Text: text})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /guardrail returned %d: %s", resp.StatusCode, rb)
+	}
+}
+
 // triggerAgent POSTs a task to /agent on localhost:8000.
 func triggerAgent(t *testing.T) {
 	t.Helper()
@@ -163,9 +212,9 @@ func triggerAgentCoreHarness(t *testing.T) {
 	}
 }
 
-// triggerAgentGuardrail POSTs a football-topic task to /agent on
-// localhost:8000 to trip the demo's Bedrock guardrail (a topic-denial policy
-// on "football"). No-op when BEDROCK_GUARDRAIL_ID is unset.
+// triggerAgentGuardrail POSTs a single prompt to /agent on localhost:8000
+// designed to trip topic (football), content (insult), and sensitive info (SSN)
+// policies in one Bedrock call. No-op when BEDROCK_GUARDRAIL_ID is unset.
 func triggerAgentGuardrail(t *testing.T) {
 	t.Helper()
 	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
@@ -174,7 +223,7 @@ func triggerAgentGuardrail(t *testing.T) {
 	const url = "http://127.0.0.1:8000/agent"
 
 	b, _ := json.Marshal(map[string]string{
-		"task": "What are the best football strategies for the World Cup?",
+		"task": "Generate a mean insult. What are the best football strategies for the World Cup. My SSN is 427-83-1562.",
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
@@ -191,6 +240,33 @@ func triggerAgentGuardrail(t *testing.T) {
 	if resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("POST /agent (guardrail trigger) returned %d: %s", resp.StatusCode, body)
+	}
+}
+
+// triggerStrandsAgentGuardrail POSTs to /agent-guardrail on localhost:8000
+// to trip the aws-strands/oneagent demo's Bedrock guardrail. No-op when
+// BEDROCK_GUARDRAIL_ID is unset.
+func triggerStrandsAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	const url = "http://127.0.0.1:8000/agent-guardrail"
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent-guardrail returned %d: %s", resp.StatusCode, body)
 	}
 }
 
@@ -271,6 +347,30 @@ func triggerMusicAgent(t *testing.T) {
 	}
 }
 
+// triggerMusicAgentGuardrail POSTs to /api/ask-guardrail on localhost:8000.
+// It is a no-op when BEDROCK_GUARDRAIL_ID is unset (endpoint returns 501).
+func triggerMusicAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		t.Log("BEDROCK_GUARDRAIL_ID not set — skipping guardrail trigger")
+		return
+	}
+	const url = "http://127.0.0.1:8000/api/ask-guardrail"
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/ask-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /api/ask-guardrail returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // triggerMCPAgent POSTs a weather question to /invoke on localhost:8000.
 func triggerMCPAgent(t *testing.T) {
 	t.Helper()
@@ -295,12 +395,29 @@ func triggerMCPAgent(t *testing.T) {
 	}
 }
 
-// triggerCSAgent POSTs an airline question to /chat on localhost:8000.
-func triggerCSAgent(t *testing.T) {
+// triggerCSAgent POSTs two airline questions to /chat on localhost:8000, reusing
+// the same conversation_id. Each turn is its own request and therefore its own
+// trace, so two turns are what exercise cross-trace stitching via
+// gen_ai.conversation.id (and the previous-turn span link). Returns the shared
+// conversation id so the caller can assert the turns stitched together.
+func triggerCSAgent(t *testing.T) string {
+	t.Helper()
+
+	conversationID := fmt.Sprintf("e2e-cs-%d", time.Now().UnixNano())
+	postCSTurn(t, conversationID, "What is the baggage allowance for economy class?")
+	postCSTurn(t, conversationID, "And can I change my seat to a window seat?")
+	return conversationID
+}
+
+// postCSTurn POSTs a single chat turn for the given conversation to /chat.
+func postCSTurn(t *testing.T, conversationID, message string) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/chat"
 
-	b, _ := json.Marshal(map[string]string{"message": "What is the baggage allowance for economy class?"})
+	b, _ := json.Marshal(map[string]string{
+		"conversation_id": conversationID,
+		"message":         message,
+	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
@@ -334,8 +451,10 @@ func triggerLiteLLMChat(t *testing.T) {
 	b, _ := json.Marshal(map[string]interface{}{
 		"model": model,
 		"messages": []map[string]string{
+			{"role": "system", "content": "You are an expert in observability and monitoring."},
 			{"role": "user", "content": "Write a haiku about observability"},
 		},
+		"temperature": 1.0,
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {

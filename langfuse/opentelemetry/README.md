@@ -50,7 +50,7 @@ Langfuse uses its own semantic conventions that the Dynatrace AI Observability a
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector | Simpler ops -- no collector to manage |
 | **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
-Both paths produce the same `gen_ai.*` span attributes, and both emit the `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` metrics charted by the AI Observability app -- Option A via the collector's `spanmetrics` and `signal_to_metrics` connectors, Option B via OpenPipeline metric-extraction processors (see [Attribute mapping reference](#attribute-mapping-reference)).
+Both paths produce the same `gen_ai.*` span attributes, and both emit the `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` metrics charted by the AI Observability app -- Option A via the collector's `span_metrics` and `signal_to_metrics` connectors, Option B via OpenPipeline metric-extraction processors (see [Attribute mapping reference](#attribute-mapping-reference)).
 
 ---
 
@@ -105,7 +105,7 @@ App  →  Langfuse SDK (OTLP export)  →  Bindplane Collector (transform proces
 make run
 ```
 
-The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A second pipeline branch feeds `spanmetrics` (derives `gen_ai.client.operation.duration`, seconds, from LLM span durations) and `signal_to_metrics` (derives `gen_ai.client.token.usage` from the `gen_ai.usage.input_tokens` / `output_tokens` attributes), both exported to Dynatrace. The collector stays running after the app exits so the metrics flush; stop it with `make stop`.
+The collector listens on port `4318`. The `transform/langfuse` processor maps `langfuse.observation.*` attributes to `gen_ai.*` before forwarding to Dynatrace. A second pipeline branch feeds `span_metrics` (derives `gen_ai.client.operation.duration`, seconds, from LLM span durations) and `signal_to_metrics` (derives `gen_ai.client.token.usage` from the `gen_ai.usage.input_tokens` / `output_tokens` attributes), both exported to Dynatrace. The collector stays running after the app exits so the metrics flush; stop it with `make stop`.
 
 > **Note:** this runs the [Bindplane collector](https://github.com/observIQ/bindplane-agent), not the Dynatrace distribution -- `signal_to_metrics` isn't compiled into `ghcr.io/dynatrace/dynatrace-otel-collector` as of its latest release (checked v0.52.0).
 
@@ -184,7 +184,7 @@ These mappings are applied by both the Bindplane Collector (`transform/langfuse`
 
 | Metric | Source | Notes |
 |---|---|---|
-| `gen_ai.client.operation.duration` | LLM span duration | Charted by the AI Observability app. Option A (Collector) emits it via the `spanmetrics` connector; Option B (OpenPipeline) extracts it with a `samplingAwareHistogramMetric` processor (`measurement: field`, seconds). Both carry `service.name` as a dimension. OpenPipeline metric extraction from spans requires the DPS **Metrics Ingest and Process** rate card. |
+| `gen_ai.client.operation.duration` | LLM span duration | Charted by the AI Observability app. Option A (Collector) emits it via the `span_metrics` connector; Option B (OpenPipeline) extracts it with a `samplingAwareHistogramMetric` processor (`measurement: field`, seconds). Both carry `service.name` as a dimension. OpenPipeline metric extraction from spans requires the DPS **Metrics Ingest and Process** rate card. |
 | `gen_ai.client.token.usage` | `gen_ai.usage.input_tokens` / `output_tokens` | Charted by the AI Observability app, dimensioned by `gen_ai.token.type` (`input`/`output`). Option A (Collector) emits it via the `signal_to_metrics` connector (two `sum` metric definitions, one per direction, `gen_ai.token.type` set via `default_value` since the span carries no such attribute itself); Option B (OpenPipeline) extracts it with two `samplingAwareValueMetric` processors (same two-extractors-one-metric-key pattern, `gen_ai.token.type` set via a `constant` dimension). |
 
 ---

@@ -11,6 +11,17 @@ processors:
     send_batch_size: 512
     timeout: 5s
 
+  transform/system_instructions:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.input_messages"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil
+          - set(attributes["gen_ai.system_instructions"], attributes["temp.input_messages"][0]["parts"][0]["content"]) where attributes["temp.input_messages"][0]["role"] == "system"
+          - delete_index(attributes["temp.input_messages"], 0) where attributes["temp.input_messages"][0]["role"] == "system"
+          - set(attributes["gen_ai.input.messages"], attributes["temp.input_messages"]) where attributes["temp.input_messages"] != nil
+          - delete_key(attributes, "temp.input_messages") where attributes["temp.input_messages"] != nil
+
 exporters:
   otlphttp/dynatrace:
     endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
@@ -21,7 +32,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/system_instructions, batch]
       exporters: [otlphttp/dynatrace]
     metrics:
       receivers: [otlp]

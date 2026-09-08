@@ -7,8 +7,16 @@
 #
 # Deploy in your Dynatrace tenant (Settings → OpenPipeline → Spans), then add
 # a routing entry:
-#   Matcher:  gen_ai.provider.name == "strands-agents"
+#   Matcher:  gen_ai.provider.name == "strands-agents" AND service.name == "aws-strands/opentelemetry-openpipeline"
 #   Pipeline: strands-agents-ai-spans
+#
+# The matcher is scoped to the OpenPipeline run's own service.name, not just to
+# the provider. Strands sets gen_ai.provider.name itself and the collector does
+# not strip it, so a provider-only matcher would also route the collector demo's
+# spans (service.name "aws-strands/opentelemetry") into this pipeline — and the
+# metric extractors below would then derive gen_ai.invoke_agent.duration a second
+# time for spans the collector already produced it for. `make run-openpipeline`
+# is what sets the distinct service name.
 #
 # Note: Strands 1.x with gen_ai_latest_experimental emits gen_ai.provider.name
 # (not gen_ai.system). Use gen_ai.provider.name in the routing matcher.
@@ -59,6 +67,16 @@ processing:
     #   "execute_tool <name>"     → tool  / (tool name)
     #   "execute_event_loop_cycle"→ task  / event-loop-cycle
     #   "invoke_agent <name>"     → agent / (agent name)
+    #
+    # gen_ai.operation.name is only derived when the span does not already carry
+    # one. Strands 1.x sets it natively to the spec enum values (chat,
+    # execute_tool, invoke_agent, execute_event_loop_cycle — see
+    # strands/telemetry/tracer.py), and overwriting that with the full span name
+    # would (a) diverge from the collector path, which keys and dimensions on the
+    # enum, and (b) push the agent/tool name into a metric dimension that is
+    # supposed to be a low-cardinality enum. The derivation is kept as a fallback
+    # for legacy Strands spans that predate the attribute, matching how step 1
+    # guards the message fields.
     # ============================================================================
     - id: "strands-operation"
       enabled: true
@@ -71,7 +89,8 @@ processing:
                                              else: if(startsWith(span.name, "execute_tool "), "tool",
                                              else: if(span.name == "execute_event_loop_cycle", "task",
                                              else: "agent")))
-          | fieldsAdd `gen_ai.operation.name` = if(span.name == "chat", "chat", else: span.name)
+          | fieldsAdd `gen_ai.operation.name` = if(isNotNull(`gen_ai.operation.name`), `gen_ai.operation.name`,
+                                               else: if(span.name == "chat", "chat", else: span.name))
 
     # ============================================================================
     # 3. RESPONSE MODEL
@@ -159,14 +178,17 @@ processing:
     # gen_ai.client.operation.duration (and every native SDK emitter) is in
     # SECONDS. Materialize a seconds value here and point the metric at it via
     # measurement: "field" (same fix as openpipeline-langfuse.yaml, PR #166).
-    # Scoped to LLM call spans (span.name == "chat" in Strands 1.x with latest semconv) — the LLM call is the unit the duration and
-    # token metrics describe.
+    # Scoped to the three span types that feed a duration metric below: the LLM call
+    # (chat), the agent invocation, and the tool execution. Cycle spans are excluded
+    # — no metric is defined over them. Keyed on gen_ai.operation.name rather than
+    # the span name because OpenPipeline matcher queries do not allow startsWith();
+    # step 2 above guarantees the field is set by the time this processor runs.
     # ============================================================================
     - id: "strands-duration-seconds"
       enabled: true
-      matcher: 'span.name == "chat"'
+      matcher: '`gen_ai.operation.name` == "chat" OR `gen_ai.operation.name` == "invoke_agent" OR `gen_ai.operation.name` == "execute_tool"'
       type: "dql"
-      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      description: "Compute span duration in seconds (span duration is nanoseconds)"
       dql:
         script: |
           fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
@@ -205,6 +227,72 @@ metricExtraction:
             sourceFieldName: "gen_ai.request.model"
           - extractionType: "field"
             sourceFieldName: "gen_ai.response.model"
+
+    # ============================================================================
+    # AGENT AND TOOL DURATIONS (AI-352)
+    # ============================================================================
+    # The GenAI semconv agent metrics. No instrumentation library emits them —
+    # Strands' own agent/tool timings live under strands.* names — so they are
+    # derived here from the spans, the tenant-side equivalent of the
+    # span_metrics connectors in otel-collector-config.yaml. Dimensions are kept
+    # identical to that collector config so the two export paths produce the same
+    # series and a dashboard cannot tell them apart.
+    #
+    # Matchers key on gen_ai.operation.name, the same attribute the collector's
+    # filter processors use, so both paths select exactly the same spans. Strands
+    # sets it natively to the spec enum; the span name cannot be used instead
+    # because it carries the agent/tool name ("invoke_agent Weather Agent") and
+    # OpenPipeline matcher queries do NOT allow startsWith() — the Settings API
+    # rejects the pipeline with "The function `startsWith()` isn't enabled".
+    # Both read duration_seconds, materialized in the processing step above — the
+    # metric-extraction "duration" measurement emits MICROSECONDS, but these
+    # metrics are defined in SECONDS.
+    #
+    # gen_ai.invoke_workflow.duration is deliberately absent: Strands has no
+    # workflow primitive, so there is no span to derive it from and nothing is
+    # synthesized to fill the gap.
+    # ============================================================================
+    - id: "strands-invoke-agent-duration-metric"
+      enabled: true
+      matcher: '`gen_ai.operation.name` == "invoke_agent"'
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.invoke_agent.duration from Strands agent spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.invoke_agent.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.agent.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+
+    - id: "strands-execute-tool-duration-metric"
+      enabled: true
+      matcher: '`gen_ai.operation.name` == "execute_tool"'
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.execute_tool.duration from Strands tool spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.execute_tool.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.tool.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
 
     # ============================================================================
     # TOKEN USAGE — two extractors, same metric key, aliased dimension

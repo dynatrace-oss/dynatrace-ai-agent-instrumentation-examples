@@ -27,7 +27,7 @@ func TestAWSBedrockAgentsOneAgent(t *testing.T) {
 
 	// The guardrail-triggering request is always sent last, so the latest
 	// matching span is the one that actually tripped the guardrail.
-	auditGuardrailSpan(t, "aws-bedrock-agents", "oneagent",
+	auditOneAgentGuardrailSpan(t, "aws-bedrock-agents", "oneagent",
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock-agents/oneagent"
 | filter (gen_ai.provider.name == "aws_bedrock") and dt.openpipeline.source == "oneagent"
