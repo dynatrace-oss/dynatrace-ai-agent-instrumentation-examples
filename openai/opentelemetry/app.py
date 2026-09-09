@@ -40,18 +40,27 @@ if __name__ == "__main__":
             api_key=os.getenv("OPENAI_API_KEY"),
         )
 
+    topic = os.environ.get("TOPIC")
+    user_message = f"Write a haiku about {topic}." if topic else "Write a haiku."
+
     set_conversation_id(str(uuid.uuid4()))
-    response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": "You are a skilled poet specializing in haiku."},
-            {"role": "user", "content": "Write a haiku."},
-        ],
-        temperature=1,
-        max_completion_tokens=2000,
-        stream=True,
-        stream_options={"include_usage": True},
-    )
-    for chunk in response:
-        if chunk.choices and (content := chunk.choices[0].delta.content):
-            print(content, end="")
+    try:
+        response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a skilled poet specializing in haiku."},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=1,
+            max_completion_tokens=2000,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+        for chunk in response:
+            if chunk.choices and (content := chunk.choices[0].delta.content):
+                print(content, end="")
+    except openai.BadRequestError as exc:
+        if exc.code == "content_filter":
+            print(f"[content filter triggered] {exc.message}")
+        else:
+            raise
