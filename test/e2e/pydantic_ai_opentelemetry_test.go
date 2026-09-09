@@ -6,8 +6,10 @@ import (
 
 func TestPydanticAIOpenTelemetry(t *testing.T) {
 	startAppWithTarget(t, "pydantic-ai/opentelemetry", "run-collector")
-	// Fire 3 requests so the random provider selection covers both Azure and Bedrock.
-	for range 3 {
+	// Fire 6 requests so the random provider selection covers both Azure and Bedrock.
+	// With 3 requests, the odds of missing Bedrock entirely by chance are ~3.7%
+	// (1/3 per request); 6 requests brings that down to ~0.1%.
+	for range 6 {
 		triggerMusicAgent(t)
 	}
 	triggerMusicAgentGuardrail(t)
