@@ -13,12 +13,22 @@ func TestPydanticAIOpenTelemetry(t *testing.T) {
 	triggerMusicAgentGuardrail(t)
 
 	t.Run("bedrock", func(t *testing.T) {
+		// gen_ai.provider.name/gen_ai.system == "AWS Bedrock" also matches spans from the
+		// ask-guardrail flow (always Bedrock Haiku, no temperature, and without usage tokens
+		// on a guardrail-intervened response) — excluded here via a trace-id lookup so this
+		// audits the /api/ask flow only. The guardrail flow has its own "bedrock-guardrail" subtest below.
 		auditSpanOptionalWithMetrics(t, "pydantic-ai", "opentelemetry-bedrock", GenericProfile,
 			`fetch spans, from: now()-10m
 | filter service.name == "pydantic-ai-music-agent"
 | filter gen_ai.provider.name == "AWS Bedrock" or gen_ai.system == "AWS Bedrock"
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
+| lookup [fetch spans, from: now()-10m
+    | filter service.name == "pydantic-ai-music-agent"
+    | filter isNotNull(gen_ai.guardrail.id)
+    | fields trace.id],
+  sourceField: trace.id, lookupField: trace.id
+| filter isNull(lookup.trace.id)
 | limit 1`,
 			"pydantic-ai-music-agent", genAIClientMetrics)
 	})
