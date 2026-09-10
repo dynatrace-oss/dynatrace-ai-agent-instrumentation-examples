@@ -125,6 +125,8 @@ Telemetry is reported under `service.name = github-copilot`.
 | `github.copilot.turn_id` / `turn_count` | Turn tracking |
 | `github.copilot.token_limit` | Model context limit |
 
+Not emitted by the runtime: `gen_ai.agent.name` (it sends `gen_ai.agent.id` and `gen_ai.agent.version` instead) and `gen_ai.request.temperature`. `gen_ai.token.type` is a dimension on `gen_ai.client.token.usage`, not a span attribute. `span.status_code` is set only on failures.
+
 ### Metrics
 
 | Metric | Type | Description |
@@ -140,9 +142,19 @@ Telemetry is reported under `service.name = github-copilot`.
 
 ## Content Capture
 
-Prompt, response, tool-argument, and tool-result content is **not exported by default**. Capture is an explicit, privacy-sensitive opt-in (`captureContent` in `TelemetryConfig`, `COPILOT_CAPTURE_CONTENT=true` for this example). Leave it off unless you need it: this content routinely includes source code, credentials, and customer data.
+Prompt, response, tool-argument, and tool-result content is **not exported by default**. Capture is an explicit, privacy-sensitive opt-in: `captureContent` in `TelemetryConfig`, or `COPILOT_CAPTURE_CONTENT=true` for this example.
 
-When enabled, message content follows the current `gen_ai.input.messages` and `gen_ai.output.messages` conventions rather than the legacy indexed `gen_ai.prompt.0.*` names.
+**If prompts and responses are missing in Dynatrace, this is why.** Three attributes appear only when capture is enabled:
+
+| Attribute | Contains |
+|---|---|
+| `gen_ai.input.messages` | Prompt messages sent to the model |
+| `gen_ai.output.messages` | Model response messages |
+| `gen_ai.system_instructions` | System prompt |
+
+The runtime uses these current GenAI convention names, not the legacy indexed `gen_ai.prompt.0.*` / `gen_ai.completion.0.*` form.
+
+Turn it on deliberately and only where appropriate. For a coding agent this content is the developer's source code, along with anything else in the prompt context: credentials, customer data, internal file paths.
 
 ## Verify in Dynatrace
 
