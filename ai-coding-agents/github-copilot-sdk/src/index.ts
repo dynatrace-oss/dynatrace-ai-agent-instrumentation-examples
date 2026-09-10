@@ -1,5 +1,5 @@
 /**
- * index.ts — GitHub Copilot SDK agent with native OpenTelemetry export.
+ * index.ts: GitHub Copilot SDK agent with native OpenTelemetry export.
  *
  * The Copilot runtime emits its own OTel traces and metrics using the GenAI
  * semantic conventions. Enabling them is configuration only: pass TelemetryConfig
