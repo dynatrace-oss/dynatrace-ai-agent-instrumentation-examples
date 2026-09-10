@@ -28,7 +28,15 @@ Copy the example env file and fill in your credentials:
 cp .env.example .env
 ```
 
-You need a Dynatrace **classic** access token (`dt0c01.*`) with the `openTelemetryTrace.ingest` and `metrics.ingest` scopes. Platform tokens (`dt0s16.*`) cannot be used for OTLP ingestion. Build the endpoint from your classic domain (no `.apps.`) with the `/api/v2/otlp` base path.
+The OTLP endpoint is Environment API v2 on your **classic** domain (no `.apps.`), with the `/api/v2/otlp` base path:
+
+```
+https://<env-id>.live.dynatrace.com/api/v2/otlp
+```
+
+It authenticates with `Authorization: Api-Token` and a classic access token (`dt0c01.*`) carrying the `openTelemetryTrace.ingest` and `metrics.ingest` scopes.
+
+Platform tokens (`dt0s16.*`) are a different scheme: they authenticate as `Authorization: Bearer` against Dynatrace platform services and are scoped in the `storage:*` / `openpipeline:*` namespace, so they do not carry the ingest scopes this endpoint checks. Use a classic token here.
 
 Start the Collector with the included [`collector.yaml`](./collector.yaml):
 
