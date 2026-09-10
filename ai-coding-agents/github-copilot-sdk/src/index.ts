@@ -1,18 +1,26 @@
 /**
  * index.ts — Minimal GitHub Copilot SDK agent with Dynatrace instrumentation.
  *
- * Demonstrates how to:
- * 1. Initialize OpenTelemetry for Dynatrace OTLP export
- * 2. Create a Copilot SDK session with tools
- * 3. Subscribe to session events for GenAI span instrumentation
- * 4. Send a message and observe the results in Dynatrace AI Observability
+ * Two mutually exclusive telemetry modes, selected with COPILOT_TELEMETRY_MODE:
+ *
+ *   manual (default): this example's OTel bootstrap plus spans synthesized from the
+ *                     session event stream, exported straight to Dynatrace.
+ *   native:           the Copilot runtime's own OTel export via TelemetryConfig.
+ *                     No manual exporters, no synthesized LLM spans.
+ *
+ * Never run both: they represent the same inferences and double-count calls and tokens.
  */
 
 import { initTelemetry, shutdownTelemetry } from "./telemetry.js";
 
+const telemetryMode =
+  process.env.COPILOT_TELEMETRY_MODE === "native" ? "native" : "manual";
+
 // IMPORTANT: Initialize telemetry before importing the SDK
 // so that any auto-instrumented HTTP calls are captured.
-initTelemetry();
+if (telemetryMode === "manual") {
+  initTelemetry();
+}
 
 import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";
 import { subscribeSessionTelemetry } from "./instrumentation.js";
@@ -29,12 +37,22 @@ const getCurrentTime = defineTool("get_current_time", {
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
+  // In native mode the runtime exports its own traces, metrics, and OTel events.
+  // TelemetryConfig has no per-client headers field, so point it at an authenticated
+  // OTLP gateway or Collector that forwards to Dynatrace.
   const client = new CopilotClient({
     gitHubToken: process.env.GH_TOKEN,
+    ...(telemetryMode === "native" && {
+      telemetry: {
+        otlpEndpoint: process.env.COPILOT_OTLP_ENDPOINT,
+        otlpProtocol: "http/protobuf",
+        captureContent: false,
+      },
+    }),
   });
 
   await client.start();
-  console.log("Copilot SDK client started");
+  console.log(`Copilot SDK client started (telemetry mode: ${telemetryMode})`);
 
   const model = process.env.PROVIDER_MODEL || "claude-sonnet-4-5-20250929";
 
@@ -52,12 +70,11 @@ async function main() {
 
   console.log(`Session created: ${session.sessionId}`);
 
-  // ── Subscribe to session events for telemetry ──
-  const cleanupTelemetry = subscribeSessionTelemetry(
-    session,
-    session.sessionId,
-    model,
-  );
+  // ── Subscribe to session events for telemetry (manual mode only) ──
+  const cleanupTelemetry =
+    telemetryMode === "manual"
+      ? subscribeSessionTelemetry(session, session.sessionId, model)
+      : () => {};
 
   // ── Send a message ──
   const prompt = process.argv[2] || "What time is it?";
@@ -76,11 +93,13 @@ async function main() {
   console.log(`Response: ${content ?? "(no response)"}\n`);
 
   // ── Cleanup ──
+  // client.stop() closes all active sessions, so the session needs no separate teardown.
   cleanupTelemetry();
-  await session.destroy();
   await client.stop();
-  await shutdownTelemetry();
-  console.log("Done. Traces and metrics exported to Dynatrace.");
+  if (telemetryMode === "manual") {
+    await shutdownTelemetry();
+  }
+  console.log(`Done. Telemetry mode: ${telemetryMode}.`);
 }
 
 main().catch((err) => {
