@@ -66,6 +66,19 @@ processors:
       span:
         - attributes["gen_ai.operation.name"] != "execute_tool"
 
+  # signal_to_metrics emits its sums as cumulative and exposes no temporality
+  # setting (its Sum config rejects a `temporality` key), while Dynatrace OTLP
+  # metric ingest accepts delta only and drops the rest. Converting here is the
+  # only place the temporality can be fixed.
+  #
+  # Scoped strictly to the one metric that needs it: the three span_metrics
+  # connectors are already configured delta and must not be touched.
+  cumulative_to_delta/token_usage:
+    include:
+      metrics:
+        - gen_ai.client.token.usage
+      match_type: strict
+
   # span_metrics emits a "<namespace>.calls" counter alongside each histogram and
   # offers no way to disable it. None is a GenAI spec metric, so all three are
   # dropped by exact name before export.
@@ -201,5 +214,6 @@ service:
     metrics:
       receivers:
         [otlp, span_metrics/invoke_agent, span_metrics/execute_tool, span_metrics/client_operation, signal_to_metrics]
-      processors: [resource/service_name, filter/drop_derived_calls, batch]
+      processors:
+        [resource/service_name, cumulative_to_delta/token_usage, filter/drop_derived_calls, batch]
       exporters: [otlp_http/dynatrace]

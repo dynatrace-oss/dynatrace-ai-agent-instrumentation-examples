@@ -82,6 +82,8 @@ The SDK emits no metrics, so [`collector.yaml`](./collector.yaml) derives all fo
 | `gen_ai.invoke_agent.duration` | `invoke_agent` span timing, by `gen_ai.agent.name` | `span_metrics` |
 | `gen_ai.execute_tool.duration` | `execute_tool` span timing, by `gen_ai.tool.name` | `span_metrics` |
 
+`signal_to_metrics` emits cumulative sums and offers no temporality setting, while Dynatrace accepts delta only and silently drops the rest, so a `cumulative_to_delta` processor scoped to `gen_ai.client.token.usage` converts it before export. The three `span_metrics` connectors are configured delta directly and are left alone.
+
 One caveat worth knowing before you read the latency charts: `gen_ai.client.operation.duration` is derived from the agent turn, not from a single Gemini request, because the SDK opens no span around the client call. It therefore measures a whole turn (several model invocations plus tool execution). The turn is the narrowest boundary the SDK exposes, and the alternative is empty latency charts.
 
 This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.107.0`. The pin means a future version bump surfaces normalization changes in the e2e test.
