@@ -1,0 +1,63 @@
+# OpenTelemetry Collector config — GitHub Copilot → Dynatrace bridge
+#
+# The Copilot runtime exports its metrics with cumulative temporality and offers
+# no setting to change it (OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE is
+# ignored). Dynatrace only accepts delta, so metrics must pass through the
+# cumulativetodelta processor below. Traces would ingest directly, but the
+# runtime has no per-signal endpoint setting, so both signals route here.
+#
+# Required environment variables (set before starting the Collector):
+#   DT_OTEL_ENDPOINT  — Dynatrace OTLP base URL, e.g.
+#                       https://<env-id>.live.dynatrace.com/api/v2/otlp
+#   DT_API_TOKEN      — Dynatrace API token with metrics.ingest and
+#                       openTelemetryTrace.ingest scopes (classic dt0c01.* token)
+#
+# Usage:
+#   DT_OTEL_ENDPOINT=https://<env-id>.live.dynatrace.com/api/v2/otlp \
+#   DT_API_TOKEN=dt0c01.<token> \
+#   otelcol --config collector.yaml
+#
+# Or with Docker:
+#   docker run --rm -p 4318:4318 \
+#     -e DT_OTEL_ENDPOINT="https://<env-id>.live.dynatrace.com/api/v2/otlp" \
+#     -e DT_API_TOKEN="dt0c01.<token>" \
+#     -v $(pwd)/collector.yaml:/etc/otelcol/config.yaml \
+#     otel/opentelemetry-collector-contrib
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318   # Copilot otlpProtocol: http/protobuf or http/json
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+    timeout: 5s
+
+  # Dynatrace rejects cumulative OTLP metrics with HTTP 400.
+  cumulativetodelta:
+    include:
+      match_type: regexp
+      metrics:
+        - "gen_ai\\..*"
+        - "github\\.copilot\\..*"
+
+exporters:
+  otlphttp:
+    endpoint: ${env:DT_OTEL_ENDPOINT}
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+    # otlphttp sends binary Protobuf by default — required by Dynatrace
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [cumulativetodelta, batch]
+      exporters: [otlphttp]

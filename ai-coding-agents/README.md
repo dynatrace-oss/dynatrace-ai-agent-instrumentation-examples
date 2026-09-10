@@ -12,7 +12,7 @@ Unlike traditional application instrumentation, coding agents run interactively 
 - [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
 - [OpenClaw + observability plugin](./openclaw-observability-plugin/) — community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
-- [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
+- [GitHub Copilot](./github-copilot-sdk/) — native OTEL support via enterprise managed settings or the Copilot SDK, no code changes required (collector-assisted for metrics)
 
 ---
 
@@ -44,7 +44,7 @@ Pick the coding agent you use and follow its setup guide:
 | [OpenAI Codex CLI](./openai-codex/) | `~/.codex/config.toml` | ~5 min |
 | [OpenCode](./opencode/) | Environment variables | ~5 min |
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |
-| [GitHub Copilot SDK](./github-copilot-sdk/) | Manual OTel spans in Node.js | ~15 min |
+| [GitHub Copilot](./github-copilot-sdk/) | Enterprise managed settings or SDK `TelemetryConfig` (+ Collector) | ~5 min |
 
 > [!TIP]
 > For Dynatrace setup instructions, API token scopes, and advanced configuration, see the [AI Observability Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
