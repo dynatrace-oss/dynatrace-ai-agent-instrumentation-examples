@@ -25,6 +25,12 @@ func TestGitHubCopilotOpenTelemetry(t *testing.T) {
 		t.Setenv("COPILOT_PROVIDER_BASE_URL", base+"/v1")
 	}
 
+	// Content capture is off by default in the example for privacy, but the
+	// prompts and responses here come from the mock, so enabling it is safe and
+	// exercises gen_ai.input.messages, gen_ai.output.messages and
+	// gen_ai.system_instructions.
+	t.Setenv("COPILOT_CAPTURE_CONTENT", "true")
+
 	// CLI app: make run builds TypeScript, starts the collector (Docker), then
 	// runs dist/index.js once. No triggerHaiku; make run issues the request.
 	startCLIApp(t, "ai-coding-agents/github-copilot-sdk")
