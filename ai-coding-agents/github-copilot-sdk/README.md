@@ -158,9 +158,9 @@ Turn it on deliberately and only where appropriate. For a coding agent this cont
 
 ## Verify in Dynatrace
 
-1. **AI Observability app** — the agent appears automatically with models, token usage, and traces
-2. **Distributed Traces** — search for `service.name = github-copilot`
-3. **Metrics browser** — search for `gen_ai.client` and `github.copilot`
+1. **AI Observability app**: the agent appears automatically with models, token usage, and traces
+2. **Distributed Traces**: search for `service.name = github-copilot`
+3. **Metrics browser**: search for `gen_ai.client` and `github.copilot`
 
 You can also verify with DQL in a notebook:
 
