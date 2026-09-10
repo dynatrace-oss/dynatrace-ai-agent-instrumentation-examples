@@ -7,7 +7,7 @@ Unlike traditional application instrumentation, coding agents run interactively 
 ## Supported Coding Agents
 
 - [Anthropic Claude Code](./claude-code/) — native OTEL support via environment variables, no code changes required
-- [Google Antigravity](./antigravity/) — Python SDK with opt-in OTel hooks for agent, tool, and step spans
+- [Google Antigravity](./antigravity/) — Python SDK with opt-in OTel hooks for agent, tool, and step spans, plus token usage and prompt capture
 - [OpenAI Codex CLI](./openai-codex/) — OTLP export via `~/.codex/config.toml`
 - [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export

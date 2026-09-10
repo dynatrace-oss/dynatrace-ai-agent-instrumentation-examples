@@ -4,7 +4,7 @@
   "tiles": {
     "intro": {
       "type": "markdown",
-      "content": "## Google Antigravity monitoring\n\nAgent, tool and step spans emitted by the Antigravity SDK's OpenTelemetry hooks.\n\n[Example](https://github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/tree/main/ai-coding-agents/antigravity) | [SDK](https://github.com/google-antigravity/antigravity-sdk-python)"
+      "content": "## Google Antigravity monitoring\n\nAgent, tool and step spans from the Antigravity SDK's OpenTelemetry hooks, plus the token usage and duration metrics derived from them by the collector.\n\n[Example](https://github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/tree/main/ai-coding-agents/antigravity) | [SDK](https://github.com/google-antigravity/antigravity-sdk-python)"
     },
     "invocations": {
       "title": "Agent invocations",
@@ -42,6 +42,36 @@
         }
       }
     },
+    "total_tokens": {
+      "title": "Total tokens",
+      "type": "data",
+      "query": "timeseries tokens = sum(gen_ai.client.token.usage), from: now()-1h\n| fieldsAdd total = arraySum(tokens)\n| summarize total = sum(total)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": {
+          "label": "Tokens",
+          "recordField": "total"
+        }
+      }
+    },
+    "tokens_by_type": {
+      "title": "Tokens by direction",
+      "type": "data",
+      "query": "timeseries tokens = sum(gen_ai.client.token.usage), by: { gen_ai.token.type }, from: now()-1h",
+      "visualization": "lineChart"
+    },
+    "tokens_by_model": {
+      "title": "Tokens by model",
+      "type": "data",
+      "query": "timeseries tokens = sum(gen_ai.client.token.usage), by: { gen_ai.request.model, gen_ai.token.type }, from: now()-1h",
+      "visualization": "barChart"
+    },
+    "client_latency": {
+      "title": "Client operation duration",
+      "type": "data",
+      "query": "timeseries duration = avg(gen_ai.client.operation.duration), by: { gen_ai.request.model }, from: now()-1h",
+      "visualization": "lineChart"
+    },
     "agent_latency": {
       "title": "Agent invocation duration",
       "type": "data",
@@ -54,12 +84,6 @@
       "query": "timeseries duration = avg(gen_ai.execute_tool.duration), by: { gen_ai.tool.name }, from: now()-1h",
       "visualization": "lineChart"
     },
-    "tool_breakdown": {
-      "title": "Calls by tool",
-      "type": "data",
-      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter gen_ai.operation.name == \"execute_tool\"\n| summarize count = count(), by: { gen_ai.tool.name }\n| sort count desc",
-      "visualization": "barChart"
-    },
     "steps": {
       "title": "Steps per turn",
       "type": "data",
@@ -71,6 +95,12 @@
           "recordField": "avg_steps"
         }
       }
+    },
+    "prompts": {
+      "title": "Prompts and responses",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter gen_ai.operation.name == \"invoke_agent\"\n| fields timestamp, gen_ai.agent.name, gen_ai.request.model, gen_ai.input.messages, gen_ai.output.messages, gen_ai.usage.input_tokens, gen_ai.usage.output_tokens, duration, trace.id\n| sort timestamp desc\n| limit 25",
+      "visualization": "table"
     },
     "recent": {
       "title": "Recent Antigravity spans",
@@ -89,48 +119,72 @@
     "invocations": {
       "x": 0,
       "y": 3,
-      "w": 6,
+      "w": 5,
       "h": 4
     },
     "tools": {
-      "x": 6,
+      "x": 5,
       "y": 3,
-      "w": 6,
+      "w": 5,
       "h": 4
     },
     "errors": {
-      "x": 12,
+      "x": 10,
       "y": 3,
-      "w": 6,
+      "w": 4,
       "h": 4
     },
     "steps": {
-      "x": 18,
+      "x": 14,
       "y": 3,
-      "w": 6,
+      "w": 5,
       "h": 4
     },
-    "agent_latency": {
+    "total_tokens": {
+      "x": 19,
+      "y": 3,
+      "w": 5,
+      "h": 4
+    },
+    "tokens_by_type": {
       "x": 0,
       "y": 7,
       "w": 12,
       "h": 6
     },
-    "tool_latency": {
+    "tokens_by_model": {
       "x": 12,
       "y": 7,
       "w": 12,
       "h": 6
     },
-    "tool_breakdown": {
+    "client_latency": {
       "x": 0,
       "y": 13,
-      "w": 12,
+      "w": 8,
       "h": 6
+    },
+    "agent_latency": {
+      "x": 8,
+      "y": 13,
+      "w": 8,
+      "h": 6
+    },
+    "tool_latency": {
+      "x": 16,
+      "y": 13,
+      "w": 8,
+      "h": 6
+    },
+    "prompts": {
+      "x": 0,
+      "y": 19,
+      "w": 24,
+      "h": 8
     },
     "recent": {
       "x": 0,
-      "y": 19,
+      "y": 27,
       "w": 24,
       "h": 8
     }

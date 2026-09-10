@@ -1,8 +1,10 @@
 # OpenTelemetry Collector config: Antigravity SDK -> Dynatrace bridge.
 #
-# Beyond forwarding, this derives the two GenAI agent duration metrics from the
-# SDK's own spans: no instrumentation library emits them today, and the AI
-# Observability app charts them.
+# Beyond forwarding, this derives the GenAI metrics the AI Observability app
+# charts. The SDK emits no metrics at all, so all four come from its spans:
+# token usage and client duration from the invoke_agent span (which app.py
+# enriches with the model and token counts), and the agent/tool durations from
+# the span timings.
 #
 # Required environment variables:
 #   DT_OTEL_ENDPOINT  = Dynatrace OTLP base URL, e.g.
@@ -33,6 +35,17 @@ processors:
         value: antigravity-collector
         action: upsert
 
+  # The SDK reports no resolved model anywhere, so the request model is mirrored
+  # to satisfy AR-005, which drives the model quick filter and the overview
+  # charts. It is an approximation: an alias can resolve to a dated build.
+  # Same mirroring the google-adk, aws-strands and langfuse configs do.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
+
   # One filter per metric branch: each drops every span that is not the one its
   # metric is defined over. The export pipeline below is untouched, so all spans
   # still reach Distributed Tracing.
@@ -54,7 +67,7 @@ processors:
         - attributes["gen_ai.operation.name"] != "execute_tool"
 
   # span_metrics emits a "<namespace>.calls" counter alongside each histogram and
-  # offers no way to disable it. Neither is a GenAI spec metric, so both are
+  # offers no way to disable it. None is a GenAI spec metric, so all three are
   # dropped by exact name before export.
   filter/drop_derived_calls:
     error_mode: ignore
@@ -62,6 +75,7 @@ processors:
       metric:
         - name == "gen_ai.invoke_agent.calls"
         - name == "gen_ai.execute_tool.calls"
+        - name == "gen_ai.client.operation.calls"
 
 connectors:
   # The connector always names its histogram "duration", so the spec metric name
@@ -94,8 +108,70 @@ connectors:
       - name: gen_ai.operation.name
     metrics_flush_interval: 15s
 
+  # gen_ai.client.operation.duration is also derived from the invoke_agent span,
+  # because the SDK opens no span around the Gemini call itself. It therefore
+  # measures a whole agent turn (several model invocations plus tool execution),
+  # not one client request. The turn is the narrowest boundary the SDK exposes,
+  # and the alternative is leaving the app's latency charts empty.
+  span_metrics/client_operation:
+    namespace: gen_ai.client.operation
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # gen_ai.client.token.usage from the token attributes app.py puts on the turn
+  # span. span_metrics only derives duration and call counts from span timing,
+  # never from attribute values, so a second connector is needed.
+  #
+  # Two entries feed the same metric name, one per token direction:
+  # gen_ai.token.type has no source attribute of its own, so each entry's
+  # condition picks the matching field and default_value supplies the dimension.
+  # This connector always emits delta temporality, which is what Dynatrace wants.
+  signal_to_metrics:
+    spans:
+      - name: gen_ai.client.token.usage
+        description: "Number of tokens used per agent turn, by direction"
+        unit: "{token}"
+        conditions:
+          - span.attributes["gen_ai.usage.input_tokens"] != nil
+        sum:
+          value: Int(span.attributes["gen_ai.usage.input_tokens"])
+          monotonic: true
+        attributes:
+          - key: gen_ai.token.type
+            default_value: input
+          - key: gen_ai.operation.name
+          - key: gen_ai.provider.name
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+      - name: gen_ai.client.token.usage
+        description: "Number of tokens used per agent turn, by direction"
+        unit: "{token}"
+        conditions:
+          - span.attributes["gen_ai.usage.output_tokens"] != nil
+        sum:
+          value: Int(span.attributes["gen_ai.usage.output_tokens"])
+          monotonic: true
+        attributes:
+          - key: gen_ai.token.type
+            default_value: output
+          - key: gen_ai.operation.name
+          - key: gen_ai.provider.name
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+      # service.name is a resource attribute and is included by default, so it
+      # is not listed here, same as for span_metrics.
+
 exporters:
-  otlphttp/dynatrace:
+  otlp_http/dynatrace:
     endpoint: ${env:DT_OTEL_ENDPOINT}
     headers:
       Authorization: "Api-Token ${env:DT_API_TOKEN}"
@@ -104,13 +180,18 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resource/service_name, batch]
-      exporters: [otlphttp/dynatrace]
+      processors: [resource/service_name, transform/response_model, batch]
+      exporters: [otlp_http/dynatrace]
 
+    # The invoke_agent branch feeds three connectors: the agent duration, the
+    # client duration, and the token counters. transform/response_model runs
+    # first so gen_ai.response.model is available as a dimension.
     traces/invoke_agent_metrics:
       receivers: [otlp]
-      processors: [resource/service_name, filter/invoke_agent, batch]
-      exporters: [span_metrics/invoke_agent]
+      processors:
+        [resource/service_name, transform/response_model, filter/invoke_agent, batch]
+      exporters:
+        [span_metrics/invoke_agent, span_metrics/client_operation, signal_to_metrics]
 
     traces/execute_tool_metrics:
       receivers: [otlp]
@@ -118,6 +199,7 @@ service:
       exporters: [span_metrics/execute_tool]
 
     metrics:
-      receivers: [otlp, span_metrics/invoke_agent, span_metrics/execute_tool]
+      receivers:
+        [otlp, span_metrics/invoke_agent, span_metrics/execute_tool, span_metrics/client_operation, signal_to_metrics]
       processors: [resource/service_name, filter/drop_derived_calls, batch]
-      exporters: [otlphttp/dynatrace]
+      exporters: [otlp_http/dynatrace]
