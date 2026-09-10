@@ -2,6 +2,8 @@
 
 This example shows how to enable [OpenTelemetry](https://opentelemetry.io/) tracing in the [Google Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python) and route the data to Dynatrace for AI Observability of agent turns, tool calls, reasoning steps, token usage and prompt content.
 
+![AI Observability: antigravity-collector service overview with token usage and cost](./assets/explorer-overview.png)
+
 Unlike the CLI-based coding agents in this section, Antigravity is an SDK: telemetry is not switched on by an environment variable. The SDK ships OTel hooks in `google.antigravity.utils.otel`, but they are opt-in, and the application owns the `TracerProvider`. Both are wired up in [`app.py`](./app.py).
 
 ## Dynatrace Instrumentation
@@ -70,6 +72,8 @@ export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false
 ```
 
 Content is written to `gen_ai.input.messages` / `gen_ai.output.messages`, not the legacy indexed `gen_ai.prompt.N.content` attributes.
+
+![AI Observability: antigravity prompt and response in the Prompts stream](./assets/prompts-view.png)
 
 ### Derived metrics
 
