@@ -35,16 +35,23 @@ processors:
         value: antigravity-collector
         action: upsert
 
+  # Two fixups the metric connectors depend on.
+  #
   # The SDK reports no resolved model anywhere, so the request model is mirrored
   # to satisfy AR-005, which drives the model quick filter and the overview
   # charts. It is an approximation: an alias can resolve to a dated build.
   # Same mirroring the google-adk, aws-strands and langfuse configs do.
-  transform/response_model:
+  transform/genai_span_attrs:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
           - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil
+          # app.py sets the provider on the Resource. signal_to_metrics reads span
+          # attributes only and drops a data point outright when any dimension it
+          # lists is absent, so the provider is copied down onto the span. Without
+          # this, gen_ai.client.token.usage is emitted for no span at all.
+          - set(span.attributes["gen_ai.provider.name"], resource.attributes["gen_ai.provider.name"]) where span.attributes["gen_ai.provider.name"] == nil and resource.attributes["gen_ai.provider.name"] != nil
 
   # One filter per metric branch: each drops every span that is not the one its
   # metric is defined over. The export pipeline below is untouched, so all spans
@@ -65,19 +72,6 @@ processors:
     traces:
       span:
         - attributes["gen_ai.operation.name"] != "execute_tool"
-
-  # signal_to_metrics emits its sums as cumulative and exposes no temporality
-  # setting (its Sum config rejects a `temporality` key), while Dynatrace OTLP
-  # metric ingest accepts delta only and drops the rest. Converting here is the
-  # only place the temporality can be fixed.
-  #
-  # Scoped strictly to the one metric that needs it: the three span_metrics
-  # connectors are already configured delta and must not be touched.
-  cumulative_to_delta/token_usage:
-    include:
-      metrics:
-        - gen_ai.client.token.usage
-      match_type: strict
 
   # span_metrics emits a "<namespace>.calls" counter alongside each histogram and
   # offers no way to disable it. None is a GenAI spec metric, so all three are
@@ -193,16 +187,16 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resource/service_name, transform/response_model, batch]
+      processors: [resource/service_name, transform/genai_span_attrs, batch]
       exporters: [otlp_http/dynatrace]
 
     # The invoke_agent branch feeds three connectors: the agent duration, the
-    # client duration, and the token counters. transform/response_model runs
-    # first so gen_ai.response.model is available as a dimension.
+    # client duration, and the token counters. transform/genai_span_attrs runs
+    # first so gen_ai.response.model and gen_ai.provider.name are available as dimensions.
     traces/invoke_agent_metrics:
       receivers: [otlp]
       processors:
-        [resource/service_name, transform/response_model, filter/invoke_agent, batch]
+        [resource/service_name, transform/genai_span_attrs, filter/invoke_agent, batch]
       exporters:
         [span_metrics/invoke_agent, span_metrics/client_operation, signal_to_metrics]
 
@@ -214,6 +208,5 @@ service:
     metrics:
       receivers:
         [otlp, span_metrics/invoke_agent, span_metrics/execute_tool, span_metrics/client_operation, signal_to_metrics]
-      processors:
-        [resource/service_name, cumulative_to_delta/token_usage, filter/drop_derived_calls, batch]
+      processors: [resource/service_name, filter/drop_derived_calls, batch]
       exporters: [otlp_http/dynatrace]

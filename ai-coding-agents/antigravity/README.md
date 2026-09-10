@@ -82,7 +82,7 @@ The SDK emits no metrics, so [`collector.yaml`](./collector.yaml) derives all fo
 | `gen_ai.invoke_agent.duration` | `invoke_agent` span timing, by `gen_ai.agent.name` | `span_metrics` |
 | `gen_ai.execute_tool.duration` | `execute_tool` span timing, by `gen_ai.tool.name` | `span_metrics` |
 
-`signal_to_metrics` emits cumulative sums and offers no temporality setting, while Dynatrace accepts delta only and silently drops the rest, so a `cumulative_to_delta` processor scoped to `gen_ai.client.token.usage` converts it before export. The three `span_metrics` connectors are configured delta directly and are left alone.
+`signal_to_metrics` reads span attributes only, and drops a data point outright when any dimension it lists is missing from the span. `gen_ai.provider.name` is set on the Resource by `app.py`, so a transform copies it down onto the span first; without that, the token metric is silently emitted for no span at all. All four metrics are delta, which is what Dynatrace ingest requires: the three `span_metrics` connectors are configured that way explicitly, and `signal_to_metrics` is delta by default.
 
 One caveat worth knowing before you read the latency charts: `gen_ai.client.operation.duration` is derived from the agent turn, not from a single Gemini request, because the SDK opens no span around the client call. It therefore measures a whole turn (several model invocations plus tool execution). The turn is the narrowest boundary the SDK exposes, and the alternative is empty latency charts.
 
