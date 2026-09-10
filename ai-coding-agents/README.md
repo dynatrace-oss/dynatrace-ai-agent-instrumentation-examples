@@ -7,7 +7,7 @@ Unlike traditional application instrumentation, coding agents run interactively 
 ## Supported Coding Agents
 
 - [Anthropic Claude Code](./claude-code/) — native OTEL support via environment variables, no code changes required
-- [Google Gemini CLI](./gemini-cli/) — native OTEL support via `~/.gemini/settings.json`, no code changes required (collector-assisted for recent versions)
+- [Google Antigravity](./antigravity/) — Python SDK with opt-in OTel hooks for agent, tool, and step spans
 - [OpenAI Codex CLI](./openai-codex/) — OTLP export via `~/.codex/config.toml`
 - [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
@@ -40,7 +40,7 @@ Pick the coding agent you use and follow its setup guide:
 | Agent | Integration method | Effort |
 |---|---|---|
 | [Claude Code](./claude-code/) | Environment variables or `settings.json` | ~5 min |
-| [Gemini CLI](./gemini-cli/) | `~/.gemini/settings.json` or env vars (+ Collector) | ~5 min |
+| [Google Antigravity](./antigravity/) | OTel hooks in `LocalAgentConfig` (+ optional Collector) | ~10 min |
 | [OpenAI Codex CLI](./openai-codex/) | `~/.codex/config.toml` | ~5 min |
 | [OpenCode](./opencode/) | Environment variables | ~5 min |
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |

@@ -1,0 +1,141 @@
+{
+  "version": 21,
+  "variables": [],
+  "tiles": {
+    "intro": {
+      "type": "markdown",
+      "content": "## Google Antigravity monitoring\n\nAgent, tool and step spans emitted by the Antigravity SDK's OpenTelemetry hooks.\n\n[Example](https://github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/tree/main/ai-coding-agents/antigravity) | [SDK](https://github.com/google-antigravity/antigravity-sdk-python)"
+    },
+    "invocations": {
+      "title": "Agent invocations",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter gen_ai.operation.name == \"invoke_agent\"\n| summarize count = count()",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": {
+          "label": "Invocations",
+          "recordField": "count"
+        }
+      }
+    },
+    "tools": {
+      "title": "Tool executions",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter gen_ai.operation.name == \"execute_tool\"\n| summarize count = count()",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": {
+          "label": "Tool calls",
+          "recordField": "count"
+        }
+      }
+    },
+    "errors": {
+      "title": "Failed spans",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter span.status_code == \"error\"\n| summarize count = count()",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": {
+          "label": "Errors",
+          "recordField": "count"
+        }
+      }
+    },
+    "agent_latency": {
+      "title": "Agent invocation duration",
+      "type": "data",
+      "query": "timeseries duration = avg(gen_ai.invoke_agent.duration), by: { gen_ai.agent.name }, from: now()-1h",
+      "visualization": "lineChart"
+    },
+    "tool_latency": {
+      "title": "Tool execution duration",
+      "type": "data",
+      "query": "timeseries duration = avg(gen_ai.execute_tool.duration), by: { gen_ai.tool.name }, from: now()-1h",
+      "visualization": "lineChart"
+    },
+    "tool_breakdown": {
+      "title": "Calls by tool",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter gen_ai.operation.name == \"execute_tool\"\n| summarize count = count(), by: { gen_ai.tool.name }\n| sort count desc",
+      "visualization": "barChart"
+    },
+    "steps": {
+      "title": "Steps per turn",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| filter isNotNull(antigravity.step.index)\n| summarize steps = count(), by: { trace.id }\n| summarize avg_steps = avg(steps)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "singleValue": {
+          "label": "Avg steps / trace",
+          "recordField": "avg_steps"
+        }
+      }
+    },
+    "recent": {
+      "title": "Recent Antigravity spans",
+      "type": "data",
+      "query": "fetch spans, from: now()-1h\n| filter matchesValue(service.name, \"antigravity*\")\n| fields timestamp, span.name, gen_ai.operation.name, gen_ai.agent.name, gen_ai.tool.name, duration, span.status_code, trace.id\n| sort timestamp desc\n| limit 50",
+      "visualization": "table"
+    }
+  },
+  "layouts": {
+    "intro": {
+      "x": 0,
+      "y": 0,
+      "w": 24,
+      "h": 3
+    },
+    "invocations": {
+      "x": 0,
+      "y": 3,
+      "w": 6,
+      "h": 4
+    },
+    "tools": {
+      "x": 6,
+      "y": 3,
+      "w": 6,
+      "h": 4
+    },
+    "errors": {
+      "x": 12,
+      "y": 3,
+      "w": 6,
+      "h": 4
+    },
+    "steps": {
+      "x": 18,
+      "y": 3,
+      "w": 6,
+      "h": 4
+    },
+    "agent_latency": {
+      "x": 0,
+      "y": 7,
+      "w": 12,
+      "h": 6
+    },
+    "tool_latency": {
+      "x": 12,
+      "y": 7,
+      "w": 12,
+      "h": 6
+    },
+    "tool_breakdown": {
+      "x": 0,
+      "y": 13,
+      "w": 12,
+      "h": 6
+    },
+    "recent": {
+      "x": 0,
+      "y": 19,
+      "w": 24,
+      "h": 8
+    }
+  },
+  "importedWithCode": false,
+  "settings": {},
+  "annotations": []
+}

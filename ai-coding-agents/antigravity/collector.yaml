@@ -1,0 +1,123 @@
+# OpenTelemetry Collector config: Antigravity SDK -> Dynatrace bridge.
+#
+# Beyond forwarding, this derives the two GenAI agent duration metrics from the
+# SDK's own spans: no instrumentation library emits them today, and the AI
+# Observability app charts them.
+#
+# Required environment variables:
+#   DT_OTEL_ENDPOINT  = Dynatrace OTLP base URL, e.g.
+#                       https://<env-id>.live.dynatrace.com/api/v2/otlp
+#   DT_API_TOKEN      = API token with openTelemetryTrace.ingest and metrics.ingest
+#
+# Started by `make run-collector`; see the Makefile for the docker invocation.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # app.py pins service.name on the Resource, which beats OTEL_SERVICE_NAME, so
+  # the collector run is renamed here to keep it distinct from the direct-export
+  # run. The e2e metric assertion isolates by service.name.
+  resource/service_name:
+    attributes:
+      - key: service.name
+        value: antigravity-collector
+        action: upsert
+
+  # One filter per metric branch: each drops every span that is not the one its
+  # metric is defined over. The export pipeline below is untouched, so all spans
+  # still reach Distributed Tracing.
+  #
+  # The SDK names its spans "invoke_agent <name>" and "execute_tool <name>" but
+  # sets gen_ai.operation.name to the bare operation, so matching on the
+  # attribute is exact. Session and antigravity.step.* spans carry no
+  # gen_ai.operation.name and are dropped here.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/execute_tool:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "execute_tool"
+
+  # span_metrics emits a "<namespace>.calls" counter alongside each histogram and
+  # offers no way to disable it. Neither is a GenAI spec metric, so both are
+  # dropped by exact name before export.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.execute_tool.calls"
+
+connectors:
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.invoke_agent" -> gen_ai.invoke_agent.duration.
+  # Dynatrace OTLP metric ingest accepts delta temporality only.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # A turn spans several Gemini calls plus tool execution.
+      explicit:
+        buckets: [250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  span_metrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # Tools here are local Python functions, so these run on a far shorter
+      # scale than an LLM call.
+      explicit:
+        buckets: [1ms, 5ms, 10ms, 50ms, 100ms, 500ms, 1s, 5s]
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: ${env:DT_OTEL_ENDPOINT}
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource/service_name, batch]
+      exporters: [otlphttp/dynatrace]
+
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/execute_tool_metrics:
+      receivers: [otlp]
+      processors: [resource/service_name, filter/execute_tool, batch]
+      exporters: [span_metrics/execute_tool]
+
+    metrics:
+      receivers: [otlp, span_metrics/invoke_agent, span_metrics/execute_tool]
+      processors: [resource/service_name, filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]
