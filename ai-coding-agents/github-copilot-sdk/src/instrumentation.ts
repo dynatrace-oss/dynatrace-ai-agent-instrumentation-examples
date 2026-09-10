@@ -1,22 +1,20 @@
 /**
- * instrumentation.ts — GenAI span instrumentation for GitHub Copilot SDK sessions.
+ * instrumentation.ts: manual GenAI span augmentation for GitHub Copilot SDK sessions.
  *
- * Creates OpenTelemetry spans following the GenAI semantic conventions so that the
- * Dynatrace AI Observability app can display models, token usage, and prompt traces.
+ * Builds OpenTelemetry spans following the GenAI semantic conventions from the SDK's
+ * session event stream. Use this for application-specific spans, custom tools, or
+ * business attributes on top of (or instead of) the Copilot runtime's own native OTel
+ * telemetry (`CopilotClient` `TelemetryConfig`).
  *
  * Span hierarchy:
  *   invoke_agent (root, SERVER)
- *     ├── chat {model} (per-LLM-call, CLIENT)  ← required for AI Observability app
+ *     ├── chat {model} (per-LLM-call, CLIENT)
  *     ├── chat {model} (per-LLM-call, CLIENT)
  *     ├── execute_tool {toolName} (CLIENT)
  *     └── ...
  *
- * The AI Observability app filters on:
- *   fetch spans
- *   | filter isNotNull(gen_ai.provider.name)
- *   | filter in(llm.request.type, {"chat", "completion"})
- *
- * The `chat {model}` spans satisfy both filters via `gen_ai.provider.name` + `llm.request.type`.
+ * Do not run this alongside native runtime telemetry without deduplication: both can
+ * represent the same inferences and double-count LLM calls and tokens.
  */
 
 import { SpanKind, SpanStatusCode, context, trace, type Span } from "@opentelemetry/api";
@@ -66,8 +64,9 @@ function getProviderName(): string {
 }
 
 /**
- * Check whether prompt/completion content should be captured in spans.
- * Opt-in only — disabled by default for privacy.
+ * Check whether message content should be captured in spans.
+ * Opt-in only, disabled by default: prompts, responses, and tool payloads can
+ * contain source code and other sensitive data.
  */
 function shouldCaptureContent(): boolean {
   return process.env.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT === "true";
@@ -145,7 +144,7 @@ export function subscribeSessionTelemetry(
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Per-LLM-call span — this is what makes the AI Observability app work
+      // Per-LLM-call span, one per inference
       // ────────────────────────────────────────────────────────────────────
       case "assistant.usage": {
         const d = event.data;
@@ -167,16 +166,13 @@ export function subscribeSessionTelemetry(
         const llmSpan = tracer.startSpan(`chat ${eventModel}`, {
           kind: SpanKind.CLIENT,
           attributes: {
-            // GenAI semantic conventions (new — only gen_ai.provider.name)
+            // GenAI semantic conventions (gen_ai.system is deprecated)
             "gen_ai.provider.name": providerName,
             "gen_ai.operation.name": "chat",
             "gen_ai.request.model": eventModel,
             "gen_ai.response.model": eventModel,
 
-            // Required: this is the attribute the AI Observability app filters on
-            "llm.request.type": "chat",
-
-            // Token usage (with standard aliases)
+            // Token usage
             ...(inputTokens != null && {
               "gen_ai.usage.input_tokens": inputTokens,
             }),
@@ -189,7 +185,9 @@ export function subscribeSessionTelemetry(
           },
         }, rootCtx);
 
-        // Opt-in: attach buffered user prompt and assistant message content
+        // Opt-in message content capture. The current GenAI conventions name these
+        // gen_ai.input.messages / gen_ai.output.messages; the indexed attributes below
+        // are the legacy form, kept until a tested migration lands.
         if (shouldCaptureContent()) {
           if (lastUserMessage) {
             llmSpan.setAttribute("gen_ai.prompt.0.role", "user");

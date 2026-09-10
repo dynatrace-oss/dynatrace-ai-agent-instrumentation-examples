@@ -1,73 +1,96 @@
-# GitHub Copilot SDK — Dynatrace AI Observability
+# GitHub Copilot SDK - Dynatrace AI Observability
 
-This example shows how to instrument a [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk) (`@github/copilot-sdk`) agent with [OpenTelemetry](https://opentelemetry.io/) so that traces, token usage, and tool execution appear in the **Dynatrace AI Observability** app.
+This example shows how to get [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk) (`@github/copilot-sdk`) agent telemetry into the **Dynatrace AI Observability** app with [OpenTelemetry](https://opentelemetry.io/).
 
-Unlike Python-based frameworks where Traceloop/OpenLLMetry can auto-instrument LLM client libraries, the Copilot SDK wraps providers internally — so we use **manual OTel spans** created from the SDK's session event stream.
+> [!NOTE]
+> **Scope: SDK application instrumentation.** This example covers an application you build with the Copilot SDK. Enterprise-managed Copilot CLI and VS Code deployments are configured separately, through the managed `telemetry` property in [enterprise managed settings](https://docs.github.com/en/copilot/reference/enterprise-administrators/enterprise-managed-settings), and are out of scope here.
 
-## How It Works
+## Two supported approaches
 
-The Copilot SDK emits events via `session.on(event => ...)`. We subscribe to these events and create OpenTelemetry spans that follow the [GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/):
+| Approach | What it covers | When to use |
+|---|---|---|
+| **Native runtime OTel** | Traces, metrics, and OTel events emitted by the Copilot runtime itself, using GenAI semantic conventions (`gen_ai.*`) plus Copilot-specific `github.copilot.*` attributes | You want the runtime's own view of agent, model, tool, session, token, and duration data |
+| **Manual augmentation** | Spans this example builds from the SDK session event stream | You need application-specific spans, custom tools, or business attributes the runtime does not emit |
+
+Manual spans are **optional augmentation**, not a requirement. Earlier versions of this example said manual session-event spans were the only way to observe a Copilot SDK agent; that is no longer true, since the SDK/runtime supports native OTel through `TelemetryConfig`.
+
+> [!WARNING]
+> **Do not enable both without deduplication.** Native runtime telemetry and this example's synthesized per-inference spans can represent the same LLM calls. Running them together double-counts calls and tokens. Pick one primary source for LLM calls, or deduplicate deliberately. This example uses a `COPILOT_TELEMETRY_MODE` variable to keep the two apart.
+
+### Native configuration
+
+```ts
+const client = new CopilotClient({
+  telemetry: {
+    otlpEndpoint: "https://otel-gateway.example.com",
+    otlpProtocol: "http/protobuf",
+    captureContent: false,
+  },
+});
+```
+
+Constraints worth knowing:
+
+- `TelemetryConfig` documents endpoint, protocol, exporter type, source name, file path, and content capture.
+- It does **not** document a per-client headers field. Don't invent `otlpHeaders`, and don't assume authenticated direct-to-Dynatrace export can be configured through an SDK property.
+- For SDK workloads, send to an authenticated OTLP gateway or Collector that forwards to Dynatrace, unless you have explicitly verified the installed runtime's supported environment-based authentication configuration.
+- For enterprise-managed CLI and VS Code deployments, direct Dynatrace authentication can be passed with managed `telemetry.headers`.
+
+See [GitHub: Copilot SDK OpenTelemetry instrumentation](https://docs.github.com/en/copilot/how-tos/copilot-sdk/observability/opentelemetry) and [GitHub: OpenTelemetry for agent monitoring](https://docs.github.com/en/copilot/concepts/enterprise/opentelemetry).
+
+### Content capture
+
+Prompt, response, tool-argument, and tool-result content is **not exported by default**, in either approach. Capture is an explicit, privacy-sensitive opt-in (`captureContent` natively, `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` for the manual path). Leave it off unless you need it: this content can include source code, credentials, and customer data.
+
+When you document or model captured content, prefer the current `gen_ai.input.messages` / `gen_ai.output.messages` attributes over the legacy indexed `gen_ai.prompt.0.*` / `gen_ai.completion.0.*` names.
+
+## Manual augmentation: how it works
+
+The Copilot SDK emits events via `session.on(event => ...)`. The example subscribes to these and creates spans following the [GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/):
 
 ```
 invoke_agent (root span, SpanKind.SERVER)
-  ├── chat claude-sonnet-4-5-20250929 (SpanKind.CLIENT)  ← per-LLM-call
-  ├── chat claude-sonnet-4-5-20250929 (SpanKind.CLIENT)  ← per-LLM-call
+  ├── chat claude-sonnet-4-5-20250929 (SpanKind.CLIENT)  <- per-LLM-call
+  ├── chat claude-sonnet-4-5-20250929 (SpanKind.CLIENT)  <- per-LLM-call
   ├── execute_tool run_bash (SpanKind.CLIENT)
   └── execute_tool get_current_time (SpanKind.CLIENT)
 ```
 
-The `chat {model}` spans include `llm.request.type: "chat"` — this is the critical attribute that makes the Dynatrace AI Observability app detect and display the LLM calls.
+### Key SDK events
 
-### Key SDK Events
-
-| Event | When | What We Create |
+| Event | When | What we create |
 |---|---|---|
-| `user.message` | When user sends a message | Buffer prompt for opt-in capture on next LLM span |
-| `assistant.message` | When assistant responds | Buffer content for opt-in capture on next LLM span |
+| `user.message` | User sends a message | Buffer prompt for opt-in capture on next LLM span |
+| `assistant.message` | Assistant responds | Buffer content for opt-in capture on next LLM span |
 | `assistant.usage` | After each LLM inference | `chat {model}` span with token counts + `llmTokensTotal` / `llmLatency` metrics |
 | `tool.execution_start` / `tool.execution_complete` | Tool execution lifecycle | `execute_tool {name}` child span |
 | `session.shutdown` | Session ends | End root span, clean up orphaned tool spans |
 | `session.error` | Error occurs | Set error status on root span |
 
-### Span Attributes for AI Observability
+### Span attributes
 
-The Dynatrace AI Observability app filters spans using this DQL:
+Each `chat {model}` span carries:
 
-```dql
-fetch spans
-| filter isNotNull(gen_ai.provider.name)
-| filter in(llm.request.type, {"chat", "completion"})
-```
+| Attribute | Value |
+|---|---|
+| `gen_ai.provider.name` | `"github.copilot"` (or `PROVIDER_TYPE`) |
+| `gen_ai.operation.name` | `"chat"` |
+| `gen_ai.request.model` | Model ID from the event |
+| `gen_ai.response.model` | Model ID from the event |
+| `gen_ai.usage.input_tokens` | From `assistant.usage` |
+| `gen_ai.usage.output_tokens` | From `assistant.usage` |
+| `gen_ai.response.finish_reasons` | `["stop"]` |
 
-Every `chat {model}` span includes these attributes:
+Tool spans carry `gen_ai.provider.name`, `gen_ai.operation.name`, `gen_ai.tool.name`, and `gen_ai.tool.call.id` where the SDK event supplies them.
 
-| Attribute | Value | Purpose |
-|---|---|---|
-| `gen_ai.provider.name` | `"github.copilot"` (or `PROVIDER_TYPE`) | Provider identification |
-| `llm.request.type` | `"chat"` | **Required** — AI Observability app filter |
-| `gen_ai.operation.name` | `"chat"` | Operation classification |
-| `gen_ai.request.model` | Model ID from event | Model identification |
-| `gen_ai.response.model` | Model ID from event | Model identification |
-| `gen_ai.usage.input_tokens` | From `assistant_usage` event | Token tracking |
-| `gen_ai.usage.output_tokens` | From `assistant_usage` event | Token tracking |
-| `gen_ai.usage.prompt_tokens` | Alias for input_tokens | Compatibility |
-| `gen_ai.usage.completion_tokens` | Alias for output_tokens | Compatibility |
-| `gen_ai.prompt.0.role` | `"user"` | Opt-in content capture |
-| `gen_ai.prompt.0.content` | User prompt (truncated) | Opt-in content capture |
-| `gen_ai.completion.0.role` | `"assistant"` | Opt-in content capture |
-| `gen_ai.completion.0.content` | Response text (truncated) | Opt-in content capture |
-| `gen_ai.response.finish_reasons` | `["stop"]` | Completion reason |
-
-## Dynatrace Instrumentation
+## Dynatrace instrumentation
 
 > [!TIP]
-> For detailed setup instructions, configuration options, and advanced use cases, please refer to the [Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
+> For setup instructions, configuration options, and advanced use cases, see the [Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started) and [Dynatrace: OpenTelemetry and AI Observability](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/opentelemetry).
 
-The instrumentation consists of two files:
+### `src/telemetry.ts` - OTel SDK bootstrap (manual mode)
 
-### `src/telemetry.ts` — OTel SDK Bootstrap
-
-Initializes the OpenTelemetry NodeSDK with OTLP/HTTP protobuf exporters pointed at Dynatrace:
+Initializes the OpenTelemetry NodeSDK with OTLP/HTTP protobuf exporters pointed at Dynatrace. These exporters serve the manual-augmentation path only; native mode does not use them.
 
 ```typescript
 import { NodeSDK } from "@opentelemetry/sdk-node";
@@ -88,41 +111,31 @@ const metricExporter = new OTLPMetricExporter({
 });
 ```
 
-### `src/instrumentation.ts` — GenAI Span Instrumentation
-
-Subscribes to Copilot SDK session events and creates per-LLM-call spans:
+### `src/instrumentation.ts` - GenAI span augmentation
 
 ```typescript
 import { subscribeSessionTelemetry } from "./instrumentation.js";
 
 const session = await client.createSession({ model, tools, ... });
-
-// Subscribe to events — creates spans + records metrics
 const cleanup = subscribeSessionTelemetry(session, session.sessionId, model);
-
 // ... use the session ...
-
 cleanup(); // End spans on session close
 ```
 
-The key instrumentation happens in the `assistant.usage` event handler:
+The per-inference span is created in the `assistant.usage` handler:
 
 ```typescript
 case "assistant.usage": {
-  // Create a per-LLM-call span (required for AI Observability app)
   const rootCtx = trace.setSpan(context.active(), rootSpan);
   const llmSpan = tracer.startSpan(`chat ${event.data.model}`, {
     kind: SpanKind.CLIENT,
     attributes: {
       "gen_ai.provider.name": providerName,
       "gen_ai.operation.name": "chat",
-      "llm.request.type": "chat",              // Critical: AI Observability filter
       "gen_ai.request.model": event.data.model,
       "gen_ai.response.model": event.data.model,
       "gen_ai.usage.input_tokens": event.data.inputTokens,
       "gen_ai.usage.output_tokens": event.data.outputTokens,
-      "gen_ai.usage.prompt_tokens": event.data.inputTokens,    // Alias
-      "gen_ai.usage.completion_tokens": event.data.outputTokens, // Alias
       "gen_ai.response.finish_reasons": ["stop"],
     },
   }, rootCtx);
@@ -131,26 +144,25 @@ case "assistant.usage": {
 }
 ```
 
-## How to Use
+## How to use
 
 ### Prerequisites
 
 - Node.js 20+
-- A [GitHub Fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with `Copilot Requests` access (`GH_TOKEN`)
-- A Dynatrace environment with an API token that has **`openTelemetryTrace.ingest`** and **`metrics.ingest`** scopes
+- A [GitHub fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with `Copilot Requests` access (`GH_TOKEN`)
+- Manual mode: a Dynatrace environment with an API token that has **`openTelemetryTrace.ingest`** and **`metrics.ingest`** scopes
+- Native mode: an authenticated OTLP gateway or Collector that forwards to Dynatrace
 
-### Dynatrace API Token
+### Dynatrace API token (manual mode)
 
-In Dynatrace:
-
-1. Press `Ctrl+K` and search for **Access Tokens**
-2. Generate a new token with scopes: `openTelemetryTrace.ingest`, `metrics.ingest`
+1. Press `Ctrl+K` in Dynatrace and search for **Access Tokens**
+2. Generate a token with scopes `openTelemetryTrace.ingest` and `metrics.ingest`
 3. Note the token (starts with `dt0c01.`)
 
 > [!IMPORTANT]
 > Use a **classic access token** (`dt0c01.*`), not a platform token (`dt0s16.*`). Platform tokens cannot be used for OTLP ingestion.
 
-Build your Dynatrace OTLP endpoint URL using your **classic domain** (no `.apps.`) with the `/api/v2/otlp` base path:
+Build the OTLP endpoint URL from your **classic domain** (no `.apps.`) with the `/api/v2/otlp` base path:
 
 ```
 https://<env-id>.live.dynatrace.com/api/v2/otlp
@@ -160,88 +172,113 @@ https://<env-id>.live.dynatrace.com/api/v2/otlp
 
 ```bash
 cp .env.example .env
-# Edit .env with your GH_TOKEN, DYNATRACE_OTLP_URL, and DYNATRACE_OTLP_TOKEN
 ```
+
+Edit `.env` with your `GH_TOKEN` and, for manual mode, `DYNATRACE_OTLP_URL` and `DYNATRACE_OTLP_TOKEN`. For native mode set `COPILOT_TELEMETRY_MODE=native` and `COPILOT_OTLP_ENDPOINT`.
 
 ### Install and run
 
 ```bash
 npm install
+```
+
+```bash
 npm run build
+```
+
+```bash
 npm start
-# Or with a custom prompt:
+```
+
+Run with a custom prompt:
+
+```bash
 npm start -- "What is the current date and time?"
 ```
 
-### Upload Dynatrace Dashboard
+The example defaults to manual mode, so existing setups keep working unchanged.
 
-A prebuilt dashboard is included:
+### Upload the Dynatrace dashboard
 
-1. Download the [GitHub Copilot SDK - AI Observability.json](GitHub%20Copilot%20SDK%20-%20AI%20Observability.json) dashboard
-2. Open the Dynatrace **Dashboards** app and click **Upload**
+1. Download [GitHub Copilot SDK - AI Observability.json](GitHub%20Copilot%20SDK%20-%20AI%20Observability.json)
+2. Open the Dynatrace **Dashboards** app and select **Upload**
 3. Upload the JSON file
 
-The dashboard includes: LLM request counts, token usage, cost analysis by model, tool execution monitoring, latency tracking, top expensive/slowest prompts, and session overview.
+The dashboard covers LLM request counts, token usage, cost analysis by model, tool execution monitoring, latency tracking, top expensive and slowest prompts, and a session overview.
 
 ![Dashboard preview showing LLM request counts, token usage, cost analysis, tool execution, latency, and top prompts](./dashboard.png)
 
 ### Verify in Dynatrace
 
-After running the agent, open your Dynatrace tenant:
+1. **AI Observability app** - the agent appears with models, token usage, and call traces
+2. **Dashboard** - open the uploaded dashboard
+3. **Distributed Traces** - search for `service.name = copilot-sdk-agent`
+4. **Metrics browser** - search for `copilot_sdk` (manual mode metrics)
 
-1. **AI Observability app** — The agent should appear automatically, showing models, token usage, and call traces
-2. **Dashboard** — Open the uploaded dashboard for cost analysis, tool execution, and session metrics
-3. **Distributed Traces** — Search for `service.name = copilot-sdk-agent` to see the full span hierarchy
-4. **Metrics browser** — Search for `copilot_sdk` to see token and latency metrics
-
-You can also verify with DQL in a notebook:
+A practical verification query (this is not the exact internal query used by every AI Observability app version):
 
 ```dql
 fetch spans
 | filter isNotNull(gen_ai.provider.name)
-| filter in(llm.request.type, {"chat", "completion"})
+| filter gen_ai.operation.name == "chat"
 | fields span.name, gen_ai.request.model,
          gen_ai.usage.input_tokens, gen_ai.usage.output_tokens
 | limit 10
 ```
 
-## Optional Configuration
+To see the whole agent hierarchy:
+
+```dql
+fetch spans
+| filter isNotNull(gen_ai.provider.name)
+| filter in(gen_ai.operation.name, {"invoke_agent", "chat", "execute_tool"})
+| fields timestamp, span.name, gen_ai.operation.name,
+         gen_ai.request.model, gen_ai.usage.input_tokens,
+         gen_ai.usage.output_tokens
+| limit 50
+```
+
+In native mode, check that only one logical LLM call appears per inference, and that no message content is present while `captureContent` is `false`.
+
+## Optional configuration
 
 | Variable | Default | Description |
 |---|---|---|
-| `OTEL_SERVICE_NAME` | `copilot-sdk-agent` | Service name in traces/metrics |
-| `PROVIDER_TYPE` | `github.copilot` | Value for `gen_ai.provider.name` attribute |
-| `PROVIDER_MODEL` | `claude-sonnet-4-5-20250929` | Default model to use |
-| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `false` | Set to `true` to capture prompt/completion text in spans |
+| `COPILOT_TELEMETRY_MODE` | `manual` | `manual` or `native`. Never enable both paths at once |
+| `COPILOT_OTLP_ENDPOINT` | (unset) | Native mode: OTLP gateway or Collector endpoint for the Copilot runtime |
+| `OTEL_SERVICE_NAME` | `copilot-sdk-agent` | Service name in traces and metrics (manual mode) |
+| `PROVIDER_TYPE` | `github.copilot` | Value for `gen_ai.provider.name` (manual mode) |
+| `PROVIDER_MODEL` | `claude-sonnet-4-5-20250929` | Default model |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `false` | Manual mode: capture message content in spans |
 
-## Key Lessons
+## Key lessons
 
-1. **`llm.request.type: "chat"` is mandatory** — Without this attribute, the AI Observability app won't detect your spans, even if `gen_ai.provider.name` is set correctly.
+1. **Native telemetry exists; manual spans are optional.** The Copilot runtime emits `gen_ai.*` and `github.copilot.*` telemetry via `TelemetryConfig`. Add manual spans only for what the runtime does not cover.
 
-2. **Use `gen_ai.provider.name` on ALL span types** — Not just LLM spans. The app uses `gen_ai.provider.name` as a first-pass filter. Tool spans and HTTP spans should also carry this attribute. (The old `gen_ai.system` attribute is deprecated — use `gen_ai.provider.name` exclusively.)
+2. **Pick one source for LLM calls.** Native runtime spans and synthesized per-inference spans overlap. Running both without deduplication double-counts calls and tokens.
 
-3. **Use dot-notation event names** — The Copilot SDK uses `user.message`, `assistant.message`, `assistant.usage`, `tool.execution_start`, `tool.execution_complete`, `session.shutdown`, `session.error` — not underscore names.
+3. **Use `gen_ai.provider.name` on all span types**, not just LLM spans. Tool and HTTP spans should carry it too. The older `gen_ai.system` attribute is deprecated.
 
-4. **Capture user prompts via `user.message`** — Subscribe to the `user.message` event to capture `gen_ai.prompt.0.content` on per-LLM-call spans (opt-in only).
+4. **Use dot-notation event names.** The SDK uses `user.message`, `assistant.message`, `assistant.usage`, `tool.execution_start`, `tool.execution_complete`, `session.shutdown`, `session.error`.
 
-5. **One span per LLM inference, not per session** — The app expects a span for each individual LLM API call (the `assistant.usage` event), not one span for the entire conversation session.
+5. **One span per LLM inference, not per session.** Create a span for each `assistant.usage` event, not one for the whole conversation.
 
-6. **Include token aliases** — Set both `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` AND `gen_ai.usage.prompt_tokens` / `gen_ai.usage.completion_tokens` for maximum compatibility.
+6. **Dynatrace requires delta temporality.** Set `AggregationTemporality.DELTA` on the metric exporter; cumulative (the OTel default) is not supported.
 
-7. **Dynatrace requires delta temporality** — Set `AggregationTemporality.DELTA` on the metric exporter. Cumulative temporality (the OTel default) is not supported.
+7. **Use the OTLP base path.** `DYNATRACE_OTLP_URL` should include `/api/v2/otlp`, then append `/v1/traces` and `/v1/metrics`.
 
-8. **Use the OTLP base path** — `DYNATRACE_OTLP_URL` should include `/api/v2/otlp` (e.g., `https://abc123.live.dynatrace.com/api/v2/otlp`). Append `/v1/traces` and `/v1/metrics` for individual signals.
+8. **Use classic tokens for OTLP.** Platform tokens (`dt0s16.*`) work for DQL and platform APIs, but OTLP ingestion needs classic tokens (`dt0c01.*`) with the `Api-Token` auth header.
 
-9. **Use classic tokens for OTLP** — Platform tokens (`dt0s16.*`) work for DQL queries and platform APIs, but OTLP ingestion requires classic access tokens (`dt0c01.*`) with `Api-Token` auth header format.
+9. **Content capture is opt-in in both modes**, and can carry source code and other sensitive data.
 
-10. **Content capture is opt-in** — Prompt and completion text should only be included in spans when explicitly enabled via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`. This avoids accidentally sending sensitive data to your observability backend.
+10. **This is client-side export, not a server-side usage API.** GitHub documents OTel traces, metrics, and events; there is no OTLP Logs-signal export and no central admin usage-export API behind this.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `src/telemetry.ts` | OTel SDK bootstrap with Dynatrace OTLP exporters |
-| `src/instrumentation.ts` | GenAI span creation from Copilot SDK session events |
-| `src/index.ts` | Minimal example agent showing the integration |
+| `src/telemetry.ts` | OTel SDK bootstrap with Dynatrace OTLP exporters (manual mode) |
+| `src/instrumentation.ts` | GenAI span augmentation from Copilot SDK session events |
+| `src/index.ts` | Minimal example agent, with `COPILOT_TELEMETRY_MODE` switch |
 | `GitHub Copilot SDK - AI Observability.json` | Prebuilt Dynatrace dashboard |
 | `.env.example` | Environment variable template |
