@@ -11,8 +11,8 @@
 #                       https://<env-id>.live.dynatrace.com/api/v2/otlp
 #                       The Makefile derives this from DT_ENDPOINT, the bare
 #                       tenant URL the rest of the repo and the e2e suite set.
-#   DT_API_TOKEN: Dynatrace API token with metrics.ingest and
-#                       openTelemetryTrace.ingest scopes (classic dt0c01.* token)
+#   DT_API_TOKEN: Dynatrace API token with the metrics.ingest and
+#                 openTelemetryTrace.ingest scopes
 #
 # Usage:
 #   DT_OTEL_ENDPOINT=https://<env-id>.live.dynatrace.com/api/v2/otlp \

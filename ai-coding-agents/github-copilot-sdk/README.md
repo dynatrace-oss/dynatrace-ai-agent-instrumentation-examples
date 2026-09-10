@@ -28,15 +28,13 @@ Copy the example env file and fill in your credentials:
 cp .env.example .env
 ```
 
-The OTLP endpoint is Environment API v2 on your **classic** domain (no `.apps.`), with the `/api/v2/otlp` base path:
+You need a Dynatrace API token with the `openTelemetryTrace.ingest` and `metrics.ingest` scopes, sent as `Authorization: Api-Token`.
+
+The OTLP endpoint uses your classic domain (no `.apps.`) with the `/api/v2/otlp` base path:
 
 ```
 https://<env-id>.live.dynatrace.com/api/v2/otlp
 ```
-
-It authenticates with `Authorization: Api-Token` and a classic access token (`dt0c01.*`) carrying the `openTelemetryTrace.ingest` and `metrics.ingest` scopes.
-
-Platform tokens (`dt0s16.*`) are a different scheme: they authenticate as `Authorization: Bearer` against Dynatrace platform services and are scoped in the `storage:*` / `openpipeline:*` namespace, so they do not carry the ingest scopes this endpoint checks. Use a classic token here.
 
 Start the Collector with the included [`collector.yaml`](./collector.yaml):
 
@@ -187,7 +185,7 @@ fetch spans
 | Variable | Default | Description |
 |---|---|---|
 | `DT_ENDPOINT` | (required) | Dynatrace tenant URL; the Makefile appends `/api/v2/otlp` |
-| `DT_API_TOKEN` | (required) | Classic Dynatrace token, used by the Collector |
+| `DT_API_TOKEN` | (required) | Dynatrace API token, used by the Collector |
 | `GH_TOKEN` | (required) | GitHub token with `Copilot Requests` access, for SDK apps |
 | `COPILOT_OTLP_ENDPOINT` | `http://localhost:4318` | Where the runtime sends OTLP |
 | `OTLP_PORT` | `4318` | Host port the Collector listens on |
