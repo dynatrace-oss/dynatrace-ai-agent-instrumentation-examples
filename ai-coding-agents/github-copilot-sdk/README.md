@@ -42,6 +42,13 @@ Or run it directly with any Collector distribution that includes `cumulativetode
 DT_OTEL_ENDPOINT=https://<env-id>.live.dynatrace.com/api/v2/otlp DT_API_TOKEN=dt0c01.<token> otelcol-contrib --config collector.yaml
 ```
 
+> [!WARNING]
+> Port `4318` is a common default and is often already taken, for example by a
+> local `dynatrace-otel-collector` or another demo's Collector. A conflicting
+> listener **silently swallows** the agent's telemetry: the run succeeds and
+> nothing reaches Dynatrace. `make` refuses to start when the port is busy;
+> set `OTLP_PORT` to a free port if that happens.
+
 ### 2. Point Copilot at the Collector
 
 How you enable telemetry depends on which Copilot surface you use.
@@ -159,10 +166,11 @@ fetch spans
 
 | Variable | Default | Description |
 |---|---|---|
-| `DT_OTEL_ENDPOINT` | (required) | Dynatrace OTLP base URL, used by the Collector |
+| `DT_ENDPOINT` | (required) | Dynatrace tenant URL; the Makefile appends `/api/v2/otlp` |
 | `DT_API_TOKEN` | (required) | Classic Dynatrace token, used by the Collector |
 | `GH_TOKEN` | (required) | GitHub token with `Copilot Requests` access, for SDK apps |
 | `COPILOT_OTLP_ENDPOINT` | `http://localhost:4318` | Where the runtime sends OTLP |
+| `OTLP_PORT` | `4318` | Host port the Collector listens on |
 | `COPILOT_CAPTURE_CONTENT` | `false` | Capture prompt, response, and tool content |
 | `PROVIDER_MODEL` | `claude-sonnet-4-5-20250929` | Model used by the example |
 | `COPILOT_PROVIDER_BASE_URL` | (unset) | BYOK OpenAI-compatible endpoint; used by the e2e suite |

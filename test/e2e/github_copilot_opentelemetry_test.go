@@ -26,7 +26,7 @@ func TestGitHubCopilotOpenTelemetry(t *testing.T) {
 	}
 
 	// CLI app: make run builds TypeScript, starts the collector (Docker), then
-	// runs dist/index.js once. No triggerHaiku — make run issues the request.
+	// runs dist/index.js once. No triggerHaiku; make run issues the request.
 	startCLIApp(t, "ai-coding-agents/github-copilot-sdk")
 
 	auditSpanWithMetrics(t, "github-copilot", "opentelemetry", GenericProfile,
