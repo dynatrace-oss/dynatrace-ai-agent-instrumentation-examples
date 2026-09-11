@@ -53,22 +53,24 @@ type RunSummary struct {
 // viewReport adds computed display fields to SpanReport.
 type viewReport struct {
 	SpanReport
-	Index      int
-	ReqPass    int
-	ReqTotal   int
-	OptPresent int
-	OptTotal   int
+	Index           int
+	ReqPass         int
+	ReqTotal        int
+	OptPresent      int
+	OptTotal        int
+	GenAINormalizer bool
 }
 
 type pageData struct {
-	RunDate string
-	RunURL  string
-	Reports []viewReport
-	History []RunSummary // most-recent first
-	Full    int
-	Pass    int
-	Fail    int
-	Total   int
+	RunDate          string
+	RunURL           string
+	Reports          []viewReport
+	History          []RunSummary // most-recent first
+	Full             int
+	Pass             int
+	Fail             int
+	Total            int
+	Instrumentations []string // distinct instrumentation values, sorted
 }
 
 func main() {
@@ -77,6 +79,7 @@ func main() {
 	runURL := flag.String("run-url", "", "URL of the CI run (linked in header)")
 	historyFile := flag.String("history-file", "", "path to history.json to read (optional)")
 	historyOutput := flag.String("history-output", "", "path to write updated history.json (optional)")
+	repoRoot := flag.String("repo-root", "../..", "path to the repo root, used to detect which examples' collector configs use the gen_ai_normalizer processor")
 	flag.Parse()
 
 	reports, err := loadReports(*inputDir)
@@ -89,7 +92,7 @@ func main() {
 	})
 
 	history := loadHistory(*historyFile)
-	data := buildPageData(reports, history, *runURL)
+	data := buildPageData(reports, history, *runURL, *repoRoot)
 
 	if err := renderHTML(data, *outputFile); err != nil {
 		fatalf("render HTML: %v", err)
@@ -140,9 +143,10 @@ func loadHistory(path string) []RunSummary {
 	return h
 }
 
-func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pageData {
+func buildPageData(reports []SpanReport, history []RunSummary, runURL, repoRoot string) pageData {
 	views := make([]viewReport, len(reports))
 	var full, pass, fail int
+	instrSeen := map[string]bool{}
 
 	for i, r := range reports {
 		v := viewReport{SpanReport: r, Index: i}
@@ -166,8 +170,16 @@ func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pa
 		default:
 			fail++
 		}
+		v.GenAINormalizer = usesGenAINormalizer(repoRoot, r.SDK, r.Instrumentation)
+		instrSeen[r.Instrumentation] = true
 		views[i] = v
 	}
+
+	instrumentations := make([]string, 0, len(instrSeen))
+	for instr := range instrSeen {
+		instrumentations = append(instrumentations, instr)
+	}
+	sort.Strings(instrumentations)
 
 	// Show history most-recent first.
 	reversed := make([]RunSummary, len(history))
@@ -176,15 +188,38 @@ func buildPageData(reports []SpanReport, history []RunSummary, runURL string) pa
 	}
 
 	return pageData{
-		RunDate: time.Now().UTC().Format("2006-01-02 15:04 UTC"),
-		RunURL:  runURL,
-		Reports: views,
-		History: reversed,
-		Full:    full,
-		Pass:    pass,
-		Fail:    fail,
-		Total:   len(reports),
+		RunDate:          time.Now().UTC().Format("2006-01-02 15:04 UTC"),
+		RunURL:           runURL,
+		Reports:          views,
+		History:          reversed,
+		Full:             full,
+		Pass:             pass,
+		Fail:             fail,
+		Total:            len(reports),
+		Instrumentations: instrumentations,
 	}
+}
+
+// genAINormalizerConfigNames are the collector config filenames used across
+// the example directories (naming isn't fully consistent repo-wide).
+var genAINormalizerConfigNames = []string{"otel-collector-config.yaml", "otelcol-config.yaml"}
+
+// usesGenAINormalizer reports whether the example's OTel Collector config
+// (found under <repoRoot>/<sdk>/<instrumentation>/) pipes spans through the
+// gen_ai_normalizer processor. Examples with no collector config (e.g. OneAgent-
+// based ones) never use it.
+func usesGenAINormalizer(repoRoot, sdk, instrumentation string) bool {
+	for _, name := range genAINormalizerConfigNames {
+		path := filepath.Join(repoRoot, sdk, instrumentation, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		if strings.Contains(string(data), "gen_ai_normalizer") {
+			return true
+		}
+	}
+	return false
 }
 
 func appendHistory(existing []RunSummary, data pageData) []RunSummary {
@@ -383,7 +418,8 @@ code { font-family: 'SF Mono', Consolas, 'Courier New', monospace; color: #7dd3f
 
 .history-table td, .history-table th { padding: 8px 14px; }
 
-.attr-filter { margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.toolbar { margin-bottom: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; }
+.attr-filter { display: flex; align-items: center; gap: 10px; }
 .attr-filter input {
   background: #1e293b; border: 1px solid #334155; border-radius: 6px;
   color: #e2e8f0; padding: 8px 12px; font-size: 13px; width: 360px;
@@ -398,6 +434,32 @@ code.match-hit { background: rgba(250,204,21,0.28); color: #fde68a; border-radiu
 .attr-match-cell.detected-fallback { color: #a78bfa; }
 .attr-match-cell.not-detected      { color: #f87171; }
 .attr-match-cell.not-tracked       { color: #475569; font-weight: 400; }
+
+.toolbar-btn {
+  background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+  color: #e2e8f0; padding: 7px 12px; font-size: 13px; font-family: inherit;
+  cursor: pointer;
+}
+.toolbar-btn:hover { border-color: #60a5fa; }
+
+.filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-group-label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #1e293b; border: 1px solid #334155; border-radius: 9999px;
+  padding: 4px 10px; font-size: 12px; cursor: pointer; user-select: none;
+  color: #94a3b8;
+}
+.filter-chip input { cursor: pointer; }
+.filter-chip.active { border-color: #60a5fa; color: #e2e8f0; }
+
+.filter-select {
+  background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+  color: #e2e8f0; padding: 7px 10px; font-size: 13px; font-family: inherit;
+}
+
+.normalizer-cell { font-size: 13px; text-align: center; }
+tr.row-hidden { display: none !important; }
 
 footer {
   padding: 20px 32px;
@@ -426,9 +488,29 @@ footer {
 
 <h2>Results</h2>
 {{if .Reports}}
-<div class="attr-filter">
-  <input type="text" id="attr-search" placeholder="Filter samples by attribute (e.g. gen_ai.usage.input_tokens)" oninput="filterByAttribute(this.value)" autocomplete="off">
-  <span id="attr-search-count" class="attr-filter-count"></span>
+<div class="toolbar">
+  <button type="button" class="toolbar-btn" onclick="expandAll()">Expand all</button>
+  <button type="button" class="toolbar-btn" onclick="collapseAll()">Collapse all</button>
+  <div class="attr-filter">
+    <input type="text" id="attr-search" placeholder="Filter samples by attribute (e.g. gen_ai.usage.input_tokens)" oninput="filterByAttribute(this.value)" autocomplete="off">
+    <span id="attr-search-count" class="attr-filter-count"></span>
+  </div>
+  <div class="filter-group" id="instr-filter-group">
+    <span class="filter-group-label">Instrumentation</span>
+    {{range $.Instrumentations}}
+    <label class="filter-chip active" data-instr="{{.}}">
+      <input type="checkbox" checked value="{{.}}" onchange="onInstrFilterChange()"> {{.}}
+    </label>
+    {{end}}
+  </div>
+  <div class="filter-group">
+    <span class="filter-group-label">GenAI normaliser</span>
+    <select class="filter-select" id="normalizer-filter" onchange="applyFilters()">
+      <option value="all">All</option>
+      <option value="yes">Uses gen_ai_normalizer</option>
+      <option value="no">Does not use it</option>
+    </select>
+  </div>
 </div>
 <div class="table-wrap">
 <table>
@@ -441,13 +523,14 @@ footer {
       <th>Required</th>
       <th>Optional</th>
       <th id="attr-match-header" style="display:none">Attribute Match</th>
+      <th title="Whether this example's OTel Collector config pipes spans through the gen_ai_normalizer processor">Normaliser</th>
       <th>Note</th>
       <th>Generated</th>
     </tr>
   </thead>
   <tbody>
   {{range .Reports}}
-    <tr class="summary-row" data-index="{{.Index}}" onclick="toggleDetail({{.Index}}, this)">
+    <tr class="summary-row" data-index="{{.Index}}" data-instrumentation="{{.Instrumentation}}" data-genai-normalizer="{{.GenAINormalizer}}" onclick="toggleDetail({{.Index}}, this)">
       <td><span class="toggle">&#x25B6;</span></td>
       <td>
         <span class="sdk">{{.SDK}}</span>
@@ -458,11 +541,12 @@ footer {
       <td class="count {{if eq .ReqPass .ReqTotal}}ok{{else}}err{{end}}">{{.ReqPass}}/{{.ReqTotal}}</td>
       <td class="count {{if eq .OptPresent .OptTotal}}ok{{else}}warn{{end}}">{{.OptPresent}}/{{.OptTotal}}</td>
       <td class="attr-match-cell" id="attr-match-{{.Index}}" style="display:none"></td>
+      <td class="normalizer-cell">{{if .GenAINormalizer}}✅{{else}}⚪{{end}}</td>
       <td>{{if .Note}}<span class="note">{{.Note}}</span>{{end}}</td>
       <td class="gen-at">{{dateOf .GeneratedAt}}</td>
     </tr>
     <tr class="detail-row" id="detail-{{.Index}}" style="display:none">
-      <td colspan="9">
+      <td colspan="10">
         <div class="detail-inner">
           <div class="detail-grid">
             <div class="detail-section">
@@ -572,6 +656,58 @@ function toggleDetail(idx, row) {
 
 var attrSummaryRows = Array.prototype.slice.call(document.querySelectorAll('tr.summary-row'));
 var attrMatchHeader = document.getElementById('attr-match-header');
+
+// --- Expand / collapse all -------------------------------------------------
+
+function setAllExpanded(expand) {
+  attrSummaryRows.forEach(function (row) {
+    if (row.classList.contains('row-hidden')) {
+      return;
+    }
+    var idx = row.getAttribute('data-index');
+    var detail = document.getElementById('detail-' + idx);
+    detail.style.display = expand ? 'table-row' : 'none';
+    row.classList.toggle('expanded', expand);
+  });
+}
+
+function expandAll() { setAllExpanded(true); }
+function collapseAll() { setAllExpanded(false); }
+
+// --- Instrumentation / GenAI normaliser filters -----------------------------
+
+function onInstrFilterChange() {
+  var chips = document.querySelectorAll('#instr-filter-group .filter-chip');
+  chips.forEach(function (chip) {
+    var checked = chip.querySelector('input').checked;
+    chip.classList.toggle('active', checked);
+  });
+  applyFilters();
+}
+
+function applyFilters() {
+  var checkedInstrs = Array.prototype.slice
+    .call(document.querySelectorAll('#instr-filter-group input:checked'))
+    .map(function (i) { return i.value; });
+  var normalizerFilter = document.getElementById('normalizer-filter').value;
+
+  attrSummaryRows.forEach(function (row) {
+    var idx = row.getAttribute('data-index');
+    var detail = document.getElementById('detail-' + idx);
+    var instr = row.getAttribute('data-instrumentation');
+    var usesNormalizer = row.getAttribute('data-genai-normalizer') === 'true';
+
+    var visible = checkedInstrs.indexOf(instr) !== -1;
+    if (normalizerFilter === 'yes') {
+      visible = visible && usesNormalizer;
+    } else if (normalizerFilter === 'no') {
+      visible = visible && !usesNormalizer;
+    }
+
+    row.classList.toggle('row-hidden', !visible);
+    detail.classList.toggle('row-hidden', !visible);
+  });
+}
 
 function clearAttrHighlights(detailRow) {
   var hits = detailRow.querySelectorAll('code.match-hit');
