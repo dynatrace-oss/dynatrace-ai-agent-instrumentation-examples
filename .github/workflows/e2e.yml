@@ -565,6 +565,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -578,10 +579,21 @@ jobs:
           path: all-reports/
         continue-on-error: true
 
+      - name: Download nightly baseline reports
+        id: baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BASELINE_DIR: baseline-reports
+        run: bash .github/scripts/download-nightly-baseline.sh
+        continue-on-error: true
+
       - name: Build comment body
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REPORTS_DIR: all-reports
+          BASELINE_DIR: baseline-reports
+          BASELINE_RUN_URL: ${{ steps.baseline.outputs.run_url }}
           OUTPUT_FILE: comment.md
         run: bash .github/scripts/pr-audit-comment.sh
 

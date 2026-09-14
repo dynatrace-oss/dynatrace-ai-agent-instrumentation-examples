@@ -12,13 +12,19 @@
 #                         tick in the summary, plus a link to the run for the detail.
 #
 # Inputs (environment variables):
-#   RUN_URL     - URL of this Actions run (linked in the overflow case)
-#   REPORTS_DIR - directory containing the merged *.md / *.json reports
-#   OUTPUT_FILE - path to write the comment body to (default: comment.md)
+#   RUN_URL          - URL of this Actions run (linked in the overflow case)
+#   REPORTS_DIR      - directory containing the merged *.md / *.json reports
+#   BASELINE_DIR     - directory containing the baseline nightly run's *.json
+#                      reports, downloaded by download-nightly-baseline.sh
+#                      (default: baseline-reports)
+#   BASELINE_RUN_URL - URL of the baseline nightly run, for linking (optional)
+#   OUTPUT_FILE      - path to write the comment body to (default: comment.md)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THRESHOLD=2
 REPORTS_DIR="${REPORTS_DIR:-all-reports}"
+BASELINE_DIR="${BASELINE_DIR:-baseline-reports}"
 OUTPUT_FILE="${OUTPUT_FILE:-comment.md}"
 
 # Collect report basenames (one per suite) from the JSON files, sorted for a
@@ -36,6 +42,23 @@ body_file="$OUTPUT_FILE"
   echo "## 🔭 GenAI span audit"
   echo
 } > "$body_file"
+
+if [ "$count" -gt 0 ]; then
+  {
+    echo "### 📊 Attribute changes vs. nightly (\`main\`)"
+    echo
+    if [ -n "${BASELINE_RUN_URL:-}" ]; then
+      echo "_Baseline: [last nightly run](${BASELINE_RUN_URL})._"
+      echo
+    fi
+  } >> "$body_file"
+  CURR_DIR="$REPORTS_DIR" BASELINE_DIR="$BASELINE_DIR" bash "${SCRIPT_DIR}/pr-attribute-diff.sh" >> "$body_file"
+  {
+    echo
+    echo "---"
+    echo
+  } >> "$body_file"
+fi
 
 verdict_tick() {
   case "$1" in
