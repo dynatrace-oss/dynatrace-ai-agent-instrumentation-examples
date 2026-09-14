@@ -39,7 +39,7 @@ https://<env-id>.live.dynatrace.com/api/v2/otlp
 Start the Collector with the included [`collector.yaml`](./collector.yaml):
 
 ```bash
-make _collector
+make collector
 ```
 
 Or run it directly with any Collector distribution that includes `cumulativetodelta`:
@@ -82,6 +82,8 @@ const client = new CopilotClient({
 
 `TelemetryConfig` supports `otlpEndpoint`, `otlpProtocol`, `exporterType`, `sourceName`, `filePath`, and `captureContent`. It has **no** headers field, which is why the Collector handles Dynatrace authentication.
 
+`gitHubToken` is optional. When it is unset the SDK leaves `useLoggedInUser` on and the runtime reuses your existing `copilot` CLI sign-in, so a separate token is only needed for unattended environments. A `gh auth token` will not work here: `gh` and Copilot are different OAuth apps and the Copilot API rejects it.
+
 That is the entire integration. See [`src/index.ts`](./src/index.ts) for a complete runnable agent.
 
 ### 3. Run it
@@ -113,6 +115,9 @@ Telemetry is reported under `service.name = github-copilot`.
 | `invoke_agent` | Agent invocation, wrapping one turn |
 | `chat {model}` | One LLM inference |
 | `session.provisioning` / `session.first_turn` | Session lifecycle |
+
+> [!NOTE]
+> The runtime emits **two** `chat {model}` spans per inference: a placeholder that opens and closes within microseconds, and the real one. Only the real span carries `gen_ai.usage.*`, `gen_ai.response.id`, and `gen_ai.response.model`. Left alone, the placeholder doubles the chat operation count in Dynatrace, so [`collector.yaml`](./collector.yaml) drops spans named `chat *` that have no input token count.
 
 ### Span Attributes
 
@@ -186,7 +191,7 @@ fetch spans
 |---|---|---|
 | `DT_ENDPOINT` | (required) | Dynatrace tenant URL; the Makefile appends `/api/v2/otlp` |
 | `DT_API_TOKEN` | (required) | Dynatrace API token, used by the Collector |
-| `GH_TOKEN` | (required) | GitHub token with `Copilot Requests` access, for SDK apps |
+| `GH_TOKEN` | (optional) | GitHub token with `Copilot Requests` access. Leave unset to use your existing `copilot` CLI sign-in |
 | `COPILOT_OTLP_ENDPOINT` | `http://localhost:4318` | Where the runtime sends OTLP |
 | `OTLP_PORT` | `4318` | Host port the Collector listens on |
 | `COPILOT_CAPTURE_CONTENT` | `false` | Capture prompt, response, and tool content |
