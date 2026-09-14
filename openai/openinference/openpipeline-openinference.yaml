@@ -473,7 +473,7 @@ processing:
     # (No additional processor needed — processor 3b handles this.)
 
     # ============================================================================
-    # 15. OUTPUT PROMPT FILTER RESULTS
+    # 15. OUTPUT FILTER RESULTS
     # ============================================================================
     # Extracts Azure OpenAI content-filter results embedded in the output.value
     # JSON blob. Must run before processor 16 which moves output.value to
@@ -483,10 +483,14 @@ processing:
     #   - Attribute: output.value (JSON string)
     #   - Embedded key: prompt_filter_results (array) — per-prompt content-filter
     #     results returned by Azure OpenAI content filtering
+    #   - Embedded key: choices[0].content_filter_results (object) — per-completion
+    #     content-filter verdicts (hate, self-harm, sexual, violence, etc.)
     #
     # DYNATRACE:
     #   - Attribute: gen_ai.prompt.prompt_filter_results (string) — serialised
-    #     content-filter result array for querying in DQL
+    #     prompt-level content-filter results for querying in DQL
+    #   - Attribute: gen_ai.completion.content_filter_results (string) — serialised
+    #     completion-level content-filter results for querying in DQL
     #
     # STATUS: ✅ GAP FIX — New processor
     # ============================================================================
@@ -494,11 +498,12 @@ processing:
       enabled: true
       matcher: "isNotNull(output.value)"
       type: "dql"
-      description: "Extract prompt filter results from output.value JSON"
+      description: "Extract prompt and completion filter results from output.value JSON"
       dql:
         script: |
           parse output.value, "JSON:output_value"
-          | fieldsAdd gen_ai.prompt.prompt_filter_results = toString(output_value[prompt_filter_results])
+          | fieldsAdd `gen_ai.prompt.prompt_filter_results` = toString(output_value[prompt_filter_results])
+          | fieldsAdd `gen_ai.completion.content_filter_results` = toString(output_value["choices"][0]["content_filter_results"])
           | fieldsRemove output_value
 
     # ============================================================================
