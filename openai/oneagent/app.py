@@ -33,7 +33,7 @@ async def haiku() -> str:
         response = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": "Write a haiku."}],
-            max_completion_tokens=20,
+            max_completion_tokens=2000,
         )
         return response.choices[0].message.content or ""
 
