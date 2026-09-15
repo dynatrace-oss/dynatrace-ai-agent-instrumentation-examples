@@ -8,7 +8,7 @@
 - **Provider**: OpenAI (or Azure OpenAI depending on env vars — `OPENAI_API_BASE` / `OPENAI_API_VERSION` select Azure-compatible mode). Default model: `gpt-4o`.
 - **OTel setup**: No application-level OTel. The app is a minimal FastAPI service. Instrumentation is provided entirely by Dynatrace OneAgent injected at the pod level.
   - OneAgent auto-instruments the OpenAI Python SDK via the fully supported **Python OpenAI** sensor. This is not experimental — it is a production-grade sensor that gates all OpenAI AI monitoring.
-  - The optional **Python OpenAI prompt capture** feature must be enabled separately to populate `gen_ai.input.messages` / `gen_ai.output.messages` in the prompts view.
+  - The optional **Python OpenAI prompt capture** feature must be enabled separately to populate `gen_ai.input.messages` / `gen_ai.output.messages` in the prompts view. This is necessary but not sufficient: the sensor does not reassemble streamed chunks, so under `stream=True` the output message is absent even with prompt capture enabled.
   - The **Python FastAPI** sensor must be enabled to generate HTTP entry-point spans.
   - The app uses non-streaming (`client.chat.completions.create` without `stream=True`), which returns a complete `ChatCompletion` object so OneAgent can capture `gen_ai.response.model` and token counts from the response body.
   - There is no `gen_ai.*` span attribute emission from the app code itself.
@@ -31,7 +31,7 @@
 | View | Status | Root cause |
 |------|--------|------------|
 | All GenAI views gate | ✅ | Provider identity present via Python OpenAI sensor |
-| Prompts — content | ⚠️ optional | Available when "Python OpenAI prompt capture" feature is enabled |
+| Prompts — content | ⚠️ optional | Requires "Python OpenAI prompt capture" enabled **and** non-streaming; streaming drops the output message |
 | Prompts — model column | ✅ | `gen_ai.request.model` captured by Python OpenAI sensor |
 | Latency charts | ❌ | OneAgent does not emit `gen_ai.client.operation.duration` OTel metric |
 | Cost dashboard (span tokens) | ✅ | Token counts captured from the non-streaming response body |
@@ -49,7 +49,7 @@ Attributes absent that cause empty charts with no visible error:
 
 | Attribute | Root cause |
 |-----------|-----------|
-| `gen_ai.input.messages` / `gen_ai.output.messages` | Requires enabling "Python OpenAI prompt capture" optional feature |
+| `gen_ai.input.messages` / `gen_ai.output.messages` | Requires "Python OpenAI prompt capture" enabled **and** non-streaming — under `stream=True` the sensor never sees an assembled response |
 | `gen_ai.client.operation.duration` | OneAgent does not emit this OTel metric |
 | `gen_ai.client.token.usage` (metric) | OneAgent does not emit this OTel metric |
 
@@ -57,11 +57,11 @@ Attributes absent that cause empty charts with no visible error:
 
 **1. Enable Python OpenAI sensor** in Settings → OneAgent features. This is a fully supported sensor (not experimental). Restart the Python process after enabling.
 
-**2. Enable Python OpenAI prompt capture** (optional) to populate `gen_ai.input.messages` / `gen_ai.output.messages` and show content in the prompts view.
+**2. Enable Python OpenAI prompt capture** (optional) to populate `gen_ai.input.messages` / `gen_ai.output.messages` and show content in the prompts view. Note this only takes effect in non-streaming mode — see item 4.
 
 **3. Enable Python FastAPI sensor** to generate HTTP entry-point spans for the service health tile.
 
-**4. Non-streaming mode** is already used by this demo, so `gen_ai.response.model` and token counts are read from the complete response body:
+**4. Non-streaming mode** is already used by this demo, and is required for message content. Observed on a tenant with prompt capture enabled: under `stream=True` the output message was absent from the span; switching to non-streaming made it appear. `gen_ai.response.model` and token counts are likewise read from the complete response body.
 
 ```python
 response = client.chat.completions.create(

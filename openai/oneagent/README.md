@@ -2,7 +2,7 @@
 
 Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
-> **Prompt capture is opt-in** — The Python OpenAI sensor is fully supported, but `gen_ai.input.messages` / `gen_ai.output.messages` are only populated when the optional **Python OpenAI prompt capture** feature is enabled. Without it, spans are produced but the Prompts tab shows no content. See [Prompt capture and streaming](#prompt-capture-and-streaming).
+> **Streaming drops the output message** — OneAgent's Python OpenAI sensor does not reassemble streamed chunks, so `stream=True` leaves `gen_ai.output.messages` absent from the span. This demo uses non-streaming for that reason. Content additionally requires the optional **Python OpenAI prompt capture** feature. See [Prompt capture and streaming](#prompt-capture-and-streaming).
 
 ## Prerequisites
 
@@ -40,17 +40,11 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 
 ## Prompt capture and streaming
 
-Two separate things affect what this demo's spans contain. They are often confused for one another.
+**This demo deliberately does not use `stream=True`.**
 
-**1. Message content is gated by a OneAgent feature, not by app code.**
+OneAgent's Python OpenAI sensor reads the completed response object. Under streaming the SDK returns a chunk iterator instead, and the sensor does not reassemble it, so the response never reaches the span — `gen_ai.output.messages` is absent entirely, along with unreliable `gen_ai.response.model` and `gen_ai.usage.*`. Enabling prompt capture does not help here; there is no assembled response for it to capture.
 
-`gen_ai.input.messages` and `gen_ai.output.messages` stay empty until **Python OpenAI prompt capture** is enabled under Settings → OneAgent features. Restart the Python process after enabling it. No change to this app can substitute for that setting.
-
-**2. This demo deliberately does not use `stream=True`.**
-
-Under streaming, the SDK returns a chunk iterator rather than a completed response body, so OneAgent has no single response object to read `gen_ai.response.model` and token counts from. Those attributes become unreliable, which silently empties the model column and the cost dashboard's span-token tiles.
-
-The request is therefore non-streaming, and the caller reads the completed message directly:
+Switching to non-streaming makes the output message appear:
 
 ```python
 response = client.chat.completions.create(
@@ -61,7 +55,9 @@ response = client.chat.completions.create(
 return response.choices[0].message.content or ""
 ```
 
-If you adapt this demo to stream, expect `gen_ai.response.model` and `gen_ai.usage.*` to degrade. Sibling demos that stream (`openai/opentelemetry`, `openai/openinference`) can afford to because their instrumentation libraries reassemble the stream themselves — OneAgent does not.
+Sibling demos that stream (`openai/opentelemetry`, `openai/openinference`) can afford to because their instrumentation libraries reassemble the stream themselves. OneAgent does not. If you adapt this demo to stream, expect to lose the output message.
+
+**Message content also requires the optional Python OpenAI prompt capture feature.** Enable it under Settings → OneAgent features and restart the Python process. This is necessary but not sufficient — with prompt capture on and streaming still enabled, `gen_ai.output.messages` remains empty.
 
 **Keep `max_completion_tokens` high enough to finish the answer.** A low cap truncates the completion mid-sentence, and the truncated text is what lands in `gen_ai.output.messages`. This looks like an instrumentation bug but is a request parameter.
 
