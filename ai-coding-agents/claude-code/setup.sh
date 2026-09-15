@@ -45,9 +45,17 @@ export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta
 # export OTEL_LOG_TOOL_DETAILS=1
 export OTEL_LOG_USER_PROMPTS=1
 
+# Traces (beta): export spans so sessions appear in the Dynatrace
+# AI Observability app (Explorer, traces, agent topology).
+# Metrics and logs alone do NOT light up that app — it is span-driven.
+# See README section "Light up the AI Observability app".
+export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+export OTEL_TRACES_EXPORTER=otlp
+
 echo "Claude Code telemetry configured for Dynatrace:"
 echo "  Endpoint : $DT_OTEL_ENDPOINT"
 echo "  Metrics  : $OTEL_METRICS_EXPORTER (${OTEL_EXPORTER_OTLP_PROTOCOL})"
 echo "  Logs     : $OTEL_LOGS_EXPORTER (${OTEL_EXPORTER_OTLP_PROTOCOL})"
+echo "  Traces   : $OTEL_TRACES_EXPORTER (beta, ${OTEL_EXPORTER_OTLP_PROTOCOL})"
 echo ""
 echo "Run 'claude' to start a session with telemetry enabled."

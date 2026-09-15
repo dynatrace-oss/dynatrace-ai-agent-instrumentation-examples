@@ -1,0 +1,12 @@
+{
+  "routingEntries": [
+    {
+      "pipelineType": "custom",
+      "pipelineId": "<PIPELINE_OBJECT_UID>",
+      "builtinPipelineId": "00000000-0000-0000-0000-000000000000",
+      "matcher": "matchesValue(service.name, \"claude-code\")",
+      "description": "Route Claude Code spans to the GenAI enrichment pipeline",
+      "enabled": true
+    }
+  ]
+}
