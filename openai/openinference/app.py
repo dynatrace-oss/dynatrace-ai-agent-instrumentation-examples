@@ -17,7 +17,11 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
 
 
-SERVICE_NAME = "openai-openinference-genai-semconv"
+SERVICE_NAME = os.getenv(
+    "OTEL_SERVICE_NAME",
+    "openai/openinference-genai-semconv",
+)
+MODEL = required("MODEL")
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(SERVICE_NAME)
