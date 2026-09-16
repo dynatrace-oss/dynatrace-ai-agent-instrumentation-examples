@@ -1,11 +1,10 @@
 import logging
 import os
 import uuid
-import openai
-
 from contextlib import asynccontextmanager
 from typing import Iterator
 
+import openai
 from fastapi import FastAPI, HTTPException
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 from openinference.instrumentation import TraceConfig, using_attributes
@@ -16,6 +15,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
+
 
 SERVICE_NAME = "openai-openinference-genai-semconv"
 
@@ -34,84 +34,90 @@ def env_is_true(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
     if value is None:
         return default
+
     return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def dynatrace_trace_endpoint() -> str:
-    endpoint = required("DT_ENDPOINT").rstrip("/")
-
-    if endpoint.endswith("/v1/traces"):
-        return endpoint
-    if endpoint.endswith("/api/v2/otlp"):
-        return endpoint + "/v1/traces"
-    return endpoint + "/api/v2/otlp/v1/traces"
 
 
 def configure_tracing() -> TracerProvider:
     if not env_is_true("OPENINFERENCE_ENABLE_GENAI_SEMCONV"):
         raise RuntimeError(
-            "Set OPENINFERENCE_ENABLE_GENAI_SEMCONV=true so OpenInference emits "
-            "OTel gen_ai.* semantic-convention attributes."
+            "Set OPENINFERENCE_ENABLE_GENAI_SEMCONV=true so OpenInference "
+            "emits OTel gen_ai.* semantic-convention attributes."
         )
 
-    resource = Resource.create({"service.name": SERVICE_NAME})
+    resource = Resource.create(
+        {
+            "service.name": SERVICE_NAME,
+        }
+    )
+
     provider = TracerProvider(resource=resource)
 
-    exporter = OTLPSpanExporter(
-        endpoint=dynatrace_trace_endpoint(),
-        headers={"Authorization": f"Api-Token {required('DT_API_TOKEN')}"},
+    # OTLPSpanExporter reads:
+    #
+    # OTEL_EXPORTER_OTLP_ENDPOINT
+    # OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+    # OTEL_EXPORTER_OTLP_HEADERS
+    # OTEL_EXPORTER_OTLP_TRACES_HEADERS
+    provider.add_span_processor(
+        BatchSpanProcessor(OTLPSpanExporter())
     )
-    provider.add_span_processor(BatchSpanProcessor(exporter))
+
     trace.set_tracer_provider(provider)
 
-    # Prompt and completion capture is disabled unless explicitly approved.
-    capture_content = env_is_true("CAPTURE_MESSAGE_CONTENT", default=False)
-    trace_config = TraceConfig(
-        hide_inputs=not capture_content,
-        hide_outputs=not capture_content,
-    )
-
+    # TraceConfig reads the OpenInference environment variables, including:
+    #
+    # OPENINFERENCE_HIDE_INPUTS
+    # OPENINFERENCE_HIDE_OUTPUTS
+    #
+    # Keep both set to true unless message-content capture was explicitly
+    # approved.
     OpenAIInstrumentor().instrument(
         tracer_provider=provider,
-        config=trace_config,
+        config=TraceConfig(),
     )
 
-    logger.info(
-        "Tracing configured for service=%s; message_content_capture=%s",
-        SERVICE_NAME,
-        capture_content,
-    )
+    logger.info("Tracing configured for service=%s", SERVICE_NAME)
+
     return provider
 
 
-tracer_provider = configure_tracing()
 def configure_openai_client() -> tuple[openai.OpenAI, str]:
     api_version = os.getenv("OPENAI_API_VERSION")
+    api_base = os.getenv("OPENAI_API_BASE")
+    api_key = required("OPENAI_API_KEY")
+
     timeout = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "30"))
     max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "0"))
 
     if api_version:
         client = openai.AzureOpenAI(
             azure_endpoint=required("OPENAI_API_BASE"),
-            api_key=required("OPENAI_API_KEY"),
+            api_key=api_key,
             api_version=api_version,
             timeout=timeout,
             max_retries=max_retries,
         )
+
         provider_name = "azure.openai"
     else:
         client = openai.OpenAI(
-            api_key=required("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_API_BASE") or None,
+            api_key=api_key,
+            base_url=api_base or None,
             timeout=timeout,
             max_retries=max_retries,
         )
+
         provider_name = "openai"
+
+    logger.info("Configured LLM client provider=%s", provider_name)
 
     return client, provider_name
 
 
+tracer_provider = configure_tracing()
 openai_client, llm_provider = configure_openai_client()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> Iterator[None]:
@@ -130,7 +136,12 @@ app = FastAPI(
 
 
 class HaikuRequest(BaseModel):
-    topic: str = Field(default="observability", min_length=1, max_length=200)
+    topic: str = Field(
+        default="observability",
+        min_length=1,
+        max_length=200,
+    )
+
     conversation_id: str | None = Field(
         default=None,
         description="Reuse this value for all requests in the same conversation.",
@@ -145,17 +156,30 @@ class HaikuResponse(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": SERVICE_NAME}
+    return {
+        "status": "ok",
+        "service": SERVICE_NAME,
+        "llm_provider": llm_provider,
+    }
 
 
 @app.post("/haiku", response_model=HaikuResponse)
 def create_haiku(request: HaikuRequest) -> HaikuResponse:
     conversation_id = request.conversation_id or str(uuid.uuid4())
-    model = os.getenv("MODEL")
+
+    # This matches the existing repository example.
+    #
+    # Standard OpenAI:
+    #   MODEL is the model name.
+    #
+    # Azure OpenAI:
+    #   MODEL is the exact Azure deployment name, not necessarily the
+    #   underlying model-family name.
+    model = required("MODEL")
 
     try:
-        # OpenInference maps session_id to gen_ai.conversation.id when the
-        # GenAI semantic-convention compatibility flag is enabled.
+        # OpenInference maps session_id to gen_ai.conversation.id when
+        # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true is enabled.
         with using_attributes(session_id=conversation_id):
             response = openai_client.chat.completions.create(
                 model=model,
@@ -176,10 +200,11 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
             )
 
         content = response.choices[0].message.content
+
         if not content:
             raise HTTPException(
                 status_code=502,
-                detail="OpenAI returned a response without text content.",
+                detail="The provider returned a response without text content.",
             )
 
         return HaikuResponse(
@@ -189,45 +214,69 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
         )
 
     except APITimeoutError as error:
-        logger.warning("OpenAI request timed out: %s", type(error).__name__)
+        logger.warning(
+            "%s request timed out: %s",
+            llm_provider,
+            type(error).__name__,
+        )
+
         raise HTTPException(
             status_code=504,
             detail=(
-                "OpenAI request timed out. Check outbound HTTPS access to "
-                "api.openai.com:443 and the approved HTTPS proxy configuration."
+                f"{llm_provider} request timed out. Check outbound HTTPS "
+                "access to the configured endpoint and the approved proxy."
             ),
         ) from error
 
     except APIConnectionError as error:
-        logger.warning("OpenAI connection failed: %s", type(error).__name__)
+        logger.warning(
+            "%s connection failed: %s",
+            llm_provider,
+            type(error).__name__,
+        )
+
         raise HTTPException(
             status_code=502,
             detail=(
-                "Could not connect to OpenAI. Check DNS, TLS inspection, outbound "
-                "HTTPS access, and the approved HTTPS proxy configuration."
+                f"Could not connect to {llm_provider}. Check the configured "
+                "endpoint, DNS, TLS inspection, outbound HTTPS access, and "
+                "proxy configuration."
             ),
         ) from error
 
     except APIStatusError as error:
+        # The URL and response body help diagnose Azure deployment, endpoint,
+        # and API-version mismatches. Authentication headers are not logged.
         logger.warning(
-            "OpenAI returned an HTTP error: status_code=%s",
+            "%s returned status=%s request_url=%s response=%s",
+            llm_provider,
             error.status_code,
+            error.request.url,
+            error.response.text,
         )
+
         raise HTTPException(
             status_code=502,
-            detail=f"OpenAI returned HTTP status {error.status_code}.",
+            detail=f"{llm_provider} returned HTTP status {error.status_code}.",
         ) from error
 
     except HTTPException:
         raise
 
     except Exception as error:
-        logger.exception("Unexpected OpenAI request failure")
+        logger.exception(
+            "Unexpected %s request failure",
+            llm_provider,
+        )
+
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected OpenAI request failure: {type(error).__name__}",
+            detail=(
+                "Unexpected provider request failure: "
+                f"{type(error).__name__}"
+            ),
         ) from error
 
     finally:
-        # Make local validation less dependent on the batch export interval.
+        # Reduce the wait for spans during local validation.
         tracer_provider.force_flush(timeout_millis=10_000)
