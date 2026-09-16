@@ -151,7 +151,7 @@ def health() -> dict[str, str]:
 @app.post("/haiku", response_model=HaikuResponse)
 def create_haiku(request: HaikuRequest) -> HaikuResponse:
     conversation_id = request.conversation_id or str(uuid.uuid4())
-    model = os.getenv("OPENAI_MODEL")
+    model = os.getenv("MODEL")
 
     try:
         # OpenInference maps session_id to gen_ai.conversation.id when the
