@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from typing import Iterator
 
 from fastapi import FastAPI, HTTPException
-from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
+import openai
+from openai import APIConnectionError, APIStatusError, APITimeoutError
 from openinference.instrumentation import TraceConfig, using_attributes
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from opentelemetry import trace
