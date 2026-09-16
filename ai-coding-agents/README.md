@@ -1,18 +1,19 @@
 # AI Coding Agent Observability
 
-This section covers how to instrument **AI coding agents** — CLI tools and gateways that autonomously write, edit, and commit code on behalf of developers — with Dynatrace for full observability into cost, token usage, session activity, and tool behavior.
+This section covers how to instrument **AI coding agents** - CLI tools, editor agents, and gateways that autonomously write, edit, and commit code on behalf of developers - with Dynatrace for full observability into cost, token usage, session activity, and tool behavior.
 
-Unlike traditional application instrumentation, coding agents run interactively in developer environments. Dynatrace captures their built-in OpenTelemetry signals with zero code changes required, giving engineering teams visibility into how AI is actually being used across their organization.
+Unlike traditional application instrumentation, coding agents run interactively in developer environments. Dynatrace captures their built-in OpenTelemetry signals where available, giving engineering teams visibility into how AI is actually being used across their organization.
 
 ## Supported Coding Agents
 
-- [Anthropic Claude Code](./claude-code/) — native OTEL support via environment variables, no code changes required
-- [Google Antigravity](./antigravity/) — Python SDK with opt-in OTel hooks for agent, tool, and step spans, plus token usage and prompt capture
-- [OpenAI Codex CLI](./openai-codex/) — OTLP export via `~/.codex/config.toml`
-- [OpenCode](./opencode/) — native OTEL support via environment variables, traces export directly to Dynatrace
-- [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
-- [OpenClaw + observability plugin](./openclaw-observability-plugin/) — community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
-- [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
+- [Anthropic Claude Code](./claude-code/) - native OTEL support via environment variables, no code changes required
+- [Google Antigravity](./antigravity/) - Python SDK with opt-in OTel hooks for agent, tool, and step spans, plus token usage and prompt capture
+- [OpenAI Codex CLI](./openai-codex/) - OTLP export via `~/.codex/config.toml`
+- [OpenCode](./opencode/) - native OTEL support via environment variables, traces export directly to Dynatrace
+- [OpenClaw](./openclaw/) - built-in `diagnostics-otel` plugin for full trace, metric, and log export
+- [OpenClaw + observability plugin](./openclaw-observability-plugin/) - community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
+- [VS Code Copilot Chat](./vscode-copilot/) - native OTLP export for traces, metrics, and OTel events; no application code changes required
+- [GitHub Copilot SDK](./github-copilot-sdk/) - manual OTel span instrumentation for custom TypeScript applications built with `@github/copilot-sdk`
 
 ---
 
@@ -29,7 +30,7 @@ A single Dynatrace dashboard surfaces everything you need to understand AI codin
 | **Engineering Metrics** | Lines of code added/removed, git commits, pull requests created |
 | **Tool Events** | Tool calls accepted/rejected, API errors, prompt events |
 
-All signals are enriched with common attributes (`session.id`, `user.id`, `user.email`, `organization.id`, `app.version`) so you can slice data by user, team, or project.
+The exact attributes vary by coding agent. Use each agent's setup guide for its native schema and privacy controls.
 
 ---
 
@@ -44,6 +45,7 @@ Pick the coding agent you use and follow its setup guide:
 | [OpenAI Codex CLI](./openai-codex/) | `~/.codex/config.toml` | ~5 min |
 | [OpenCode](./opencode/) | Environment variables | ~5 min |
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |
+| [VS Code Copilot Chat](./vscode-copilot/) | Native OTLP/HTTP exporter | ~5 min |
 | [GitHub Copilot SDK](./github-copilot-sdk/) | Manual OTel spans in Node.js | ~15 min |
 
 > [!TIP]
