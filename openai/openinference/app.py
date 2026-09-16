@@ -124,10 +124,10 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
             "OpenAI request failed: type=%s",
             type(error).__name__,
         )
-    raise HTTPException(
-        status_code=502,
-        detail=f"OpenAI request failed: {type(error).__name__}",
-    ) from error
+        raise HTTPException(
+            status_code=502,
+            detail=f"OpenAI request failed: {type(error).__name__}",
+        ) from error
 
     haiku = response.choices[0].message.content
     if not haiku:
