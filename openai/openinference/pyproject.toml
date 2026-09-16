@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "OpenAI OpenInference example with OTel GenAI semantic-convention dual-write"
 requires-python = ">=3.10,<3.15"
 dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
   "openai==3.14.1",
   "openinference-instrumentation-openai==0.1.60",
   "openinference-instrumentation==0.1.61",
