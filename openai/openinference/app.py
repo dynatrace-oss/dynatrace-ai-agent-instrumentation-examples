@@ -1,11 +1,11 @@
+import logging
 import os
 import uuid
-import logging
 from contextlib import asynccontextmanager
 from typing import Iterator
 
 from fastapi import FastAPI, HTTPException
-from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from openinference.instrumentation import TraceConfig, using_attributes
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from opentelemetry import trace
@@ -15,10 +15,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
 
-
 SERVICE_NAME = "openai-openinference-genai-semconv"
+DEFAULT_MODEL = "gpt-4o-mini"
 
-logger = logging.getLogger("uvicorn.error")
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
+logger = logging.getLogger(SERVICE_NAME)
+
 
 def required(name: str) -> str:
     value = os.getenv(name)
@@ -27,83 +29,114 @@ def required(name: str) -> str:
     return value
 
 
+def env_is_true(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def dynatrace_trace_endpoint() -> str:
+    endpoint = required("DT_ENDPOINT").rstrip("/")
+
+    if endpoint.endswith("/v1/traces"):
+        return endpoint
+    if endpoint.endswith("/api/v2/otlp"):
+        return endpoint + "/v1/traces"
+    return endpoint + "/api/v2/otlp/v1/traces"
+
+
 def configure_tracing() -> TracerProvider:
-    if os.getenv("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "").lower() != "true":
+    if not env_is_true("OPENINFERENCE_ENABLE_GENAI_SEMCONV"):
         raise RuntimeError(
             "Set OPENINFERENCE_ENABLE_GENAI_SEMCONV=true so OpenInference emits "
-            "OTel GenAI semantic-convention attributes required by AI Observability."
+            "OTel gen_ai.* semantic-convention attributes."
         )
+
+    resource = Resource.create({"service.name": SERVICE_NAME})
+    provider = TracerProvider(resource=resource)
 
     exporter = OTLPSpanExporter(
-        endpoint=(
-                required("DT_ENDPOINT").rstrip("/")
-                + "/api/v2/otlp/v1/traces"
-        ),
-        headers={
-            "Authorization": f"Api-Token {required('DT_API_TOKEN')}",
-        },
-    )
-
-    provider = TracerProvider(
-        resource=Resource.create(
-            {
-                "service.name": SERVICE_NAME,
-            }
-        )
+        endpoint=dynatrace_trace_endpoint(),
+        headers={"Authorization": f"Api-Token {required('DT_API_TOKEN')}"},
     )
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
 
-    # TraceConfig reads OPENINFERENCE_ENABLE_GENAI_SEMCONV and
-    # the OPENINFERENCE_HIDE_* privacy settings from the environment.
-    OpenAIInstrumentor().instrument(
-        tracer_provider=provider,
-        config=TraceConfig(),
+    # Prompt and completion capture is disabled unless explicitly approved.
+    capture_content = env_is_true("CAPTURE_MESSAGE_CONTENT", default=False)
+    trace_config = TraceConfig(
+        hide_inputs=not capture_content,
+        hide_outputs=not capture_content,
     )
 
+    OpenAIInstrumentor().instrument(
+        tracer_provider=provider,
+        config=trace_config,
+    )
+
+    logger.info(
+        "Tracing configured for service=%s; message_content_capture=%s",
+        SERVICE_NAME,
+        capture_content,
+    )
     return provider
 
 
 tracer_provider = configure_tracing()
-openai_client = OpenAI(api_key=required("OPENAI_API_KEY"))
+openai_client = OpenAI(
+    api_key=required("OPENAI_API_KEY"),
+    timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "30")),
+    max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "0")),
+)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> Iterator[None]:
-    yield
-    tracer_provider.force_flush()
-    tracer_provider.shutdown()
+    try:
+        yield
+    finally:
+        tracer_provider.force_flush(timeout_millis=10_000)
+        tracer_provider.shutdown()
 
 
 app = FastAPI(
-    title="OpenAI OpenInference GenAI semantic-convention example",
+    title="OpenAI OpenInference GenAI semantic conventions",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
 
 class HaikuRequest(BaseModel):
-    topic: str = Field(min_length=1, max_length=500)
+    topic: str = Field(default="observability", min_length=1, max_length=200)
+    conversation_id: str | None = Field(
+        default=None,
+        description="Reuse this value for all requests in the same conversation.",
+    )
 
 
 class HaikuResponse(BaseModel):
-    topic: str
     haiku: str
+    model: str
     conversation_id: str
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "service": SERVICE_NAME}
 
 
 @app.post("/haiku", response_model=HaikuResponse)
 def create_haiku(request: HaikuRequest) -> HaikuResponse:
-    conversation_id = str(uuid.uuid4())
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    model = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
 
     try:
+        # OpenInference maps session_id to gen_ai.conversation.id when the
+        # GenAI semantic-convention compatibility flag is enabled.
         with using_attributes(session_id=conversation_id):
             response = openai_client.chat.completions.create(
-                model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                model=model,
                 messages=[
                     {
                         "role": "system",
@@ -119,25 +152,60 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
                 ],
                 max_completion_tokens=100,
             )
-    except Exception as error:
-        logger.exception(
-            "OpenAI request failed: type=%s",
-            type(error).__name__,
+
+        content = response.choices[0].message.content
+        if not content:
+            raise HTTPException(
+                status_code=502,
+                detail="OpenAI returned a response without text content.",
+            )
+
+        return HaikuResponse(
+            haiku=content,
+            model=response.model,
+            conversation_id=conversation_id,
         )
+
+    except APITimeoutError as error:
+        logger.warning("OpenAI request timed out: %s", type(error).__name__)
         raise HTTPException(
-            status_code=502,
-            detail=f"OpenAI request failed: {type(error).__name__}",
+            status_code=504,
+            detail=(
+                "OpenAI request timed out. Check outbound HTTPS access to "
+                "api.openai.com:443 and the approved HTTPS proxy configuration."
+            ),
         ) from error
 
-    haiku = response.choices[0].message.content
-    if not haiku:
+    except APIConnectionError as error:
+        logger.warning("OpenAI connection failed: %s", type(error).__name__)
         raise HTTPException(
             status_code=502,
-            detail="OpenAI returned an empty response.",
-        )
+            detail=(
+                "Could not connect to OpenAI. Check DNS, TLS inspection, outbound "
+                "HTTPS access, and the approved HTTPS proxy configuration."
+            ),
+        ) from error
 
-    return HaikuResponse(
-        topic=request.topic,
-        haiku=haiku.strip(),
-        conversation_id=conversation_id,
-    )
+    except APIStatusError as error:
+        logger.warning(
+            "OpenAI returned an HTTP error: status_code=%s",
+            error.status_code,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"OpenAI returned HTTP status {error.status_code}.",
+        ) from error
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        logger.exception("Unexpected OpenAI request failure")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected OpenAI request failure: {type(error).__name__}",
+        ) from error
+
+    finally:
+        # Make local validation less dependent on the batch export interval.
+        tracer_provider.force_flush(timeout_millis=10_000)
