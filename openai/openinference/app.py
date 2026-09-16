@@ -1,60 +1,67 @@
 import os
 import uuid
-import openai
-from openai import Stream
-from openai.types.chat import ChatCompletionChunk
+
+from openai import AzureOpenAI
+from openinference.instrumentation import TraceConfig, using_attributes
 from openinference.instrumentation.openai import OpenAIInstrumentor
-from openinference.instrumentation import using_attributes
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry import trace
-from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
-from opentelemetry.sdk.resources import Resource, OTELResourceDetector, ProcessResourceDetector, OsResourceDetector, \
-    get_aggregated_resources
-from opentelemetry.semconv.attributes import service_attributes
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-MODEL: str = os.environ.get("MODEL", "gpt-4o")
 
-# OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
-# For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
-#                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
-detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
-resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
-    {service_attributes.SERVICE_NAME: "openinference"}))
+def required(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
 
-tracer_provider = trace_sdk.TracerProvider(resource=resource)
-tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
-tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
-trace.set_tracer_provider(tracer_provider)
 
-OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+def configure_tracing() -> TracerProvider:
+    if os.getenv("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "").lower() != "true":
+        raise RuntimeError(
+            "Set OPENINFERENCE_ENABLE_GENAI_SEMCONV=true so OpenInference emits "
+            "OTel GenAI semantic-convention attributes required by AI Observability."
+        )
+
+    endpoint = required("DT_ENDPOINT").rstrip("/") + "/api/v2/otlp/v1/traces"
+    exporter = OTLPSpanExporter(
+        endpoint=endpoint,
+        headers={"Authorization": f"Api-Token {required('DT_API_TOKEN')}"},
+    )
+    provider = TracerProvider(
+        resource=Resource.create({"service.name": "azure-openai-openinference"})
+    )
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+
+    OpenAIInstrumentor().instrument(
+        tracer_provider=provider,
+        config=TraceConfig(),
+    )
+    return provider
+
+
+def main() -> None:
+    provider = configure_tracing()
+    client = AzureOpenAI(
+        azure_endpoint=required("AZURE_OPENAI_ENDPOINT"),
+        api_key=required("AZURE_OPENAI_API_KEY"),
+        api_version=required("AZURE_OPENAI_API_VERSION"),
+    )
+
+    with using_attributes(session_id=str(uuid.uuid4())):
+        response = client.chat.completions.create(
+            model=required("AZURE_OPENAI_DEPLOYMENT"),
+            messages=[{"role": "user", "content": "Write a haiku about observability."}],
+            max_completion_tokens=100,
+        )
+        print(response.choices[0].message.content)
+
+    provider.force_flush()
+    provider.shutdown()
+
 
 if __name__ == "__main__":
-    api_version = os.getenv("OPENAI_API_VERSION")
-    if api_version:
-        client = openai.AzureOpenAI(
-            azure_endpoint=os.getenv("OPENAI_API_BASE"),
-            api_key=os.getenv("OPENAI_API_KEY"),
-            api_version=api_version,
-        )
-    else:
-        client = openai.OpenAI(
-            base_url=os.getenv("OPENAI_API_BASE"),
-            api_key=os.getenv("OPENAI_API_KEY"),
-        )
-    with using_attributes(session_id=str(uuid.uuid4())):
-        response: Stream[ChatCompletionChunk] = client.chat.completions.create(  # type: ignore[assignment]
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": "You are a haiku poet."},
-                {"role": "user", "content": "Write a haiku."},
-            ],
-            max_completion_tokens=2000,
-            stream=True,
-            stream_options={"include_usage": True},
-            temperature=1.0,
-        )
-        for chunk in response:
-            if chunk.choices and (content := chunk.choices[0].delta.content):
-                print(content, end="")
+    main()
