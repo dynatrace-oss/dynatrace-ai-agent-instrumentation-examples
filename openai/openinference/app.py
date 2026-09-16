@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from openai import AzureOpenAI
+from openai import OpenAI
 from openinference.instrumentation import TraceConfig, using_attributes
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from opentelemetry import trace
@@ -25,13 +25,12 @@ def configure_tracing() -> TracerProvider:
             "OTel GenAI semantic-convention attributes required by AI Observability."
         )
 
-    endpoint = required("DT_ENDPOINT").rstrip("/") + "/api/v2/otlp/v1/traces"
     exporter = OTLPSpanExporter(
-        endpoint=endpoint,
+        endpoint=required("DT_ENDPOINT").rstrip("/") + "/api/v2/otlp/v1/traces",
         headers={"Authorization": f"Api-Token {required('DT_API_TOKEN')}"},
     )
     provider = TracerProvider(
-        resource=Resource.create({"service.name": "azure-openai-openinference"})
+        resource=Resource.create({"service.name": "openai-openinference-genai-semconv"})
     )
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
@@ -45,15 +44,11 @@ def configure_tracing() -> TracerProvider:
 
 def main() -> None:
     provider = configure_tracing()
-    client = AzureOpenAI(
-        azure_endpoint=required("AZURE_OPENAI_ENDPOINT"),
-        api_key=required("AZURE_OPENAI_API_KEY"),
-        api_version=required("AZURE_OPENAI_API_VERSION"),
-    )
+    client = OpenAI(api_key=required("OPENAI_API_KEY"))
 
     with using_attributes(session_id=str(uuid.uuid4())):
         response = client.chat.completions.create(
-            model=required("AZURE_OPENAI_DEPLOYMENT"),
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
             messages=[{"role": "user", "content": "Write a haiku about observability."}],
             max_completion_tokens=100,
         )
