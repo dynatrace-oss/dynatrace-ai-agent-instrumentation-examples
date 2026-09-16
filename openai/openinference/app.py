@@ -1,11 +1,12 @@
 import logging
 import os
 import uuid
+import openai
+
 from contextlib import asynccontextmanager
 from typing import Iterator
 
 from fastapi import FastAPI, HTTPException
-import openai
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 from openinference.instrumentation import TraceConfig, using_attributes
 from openinference.instrumentation.openai import OpenAIInstrumentor
@@ -17,7 +18,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
 
 SERVICE_NAME = "openai-openinference-genai-semconv"
-DEFAULT_MODEL = "gpt-4o-mini"
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(SERVICE_NAME)
@@ -85,12 +85,33 @@ def configure_tracing() -> TracerProvider:
 
 
 tracer_provider = configure_tracing()
-openai_client = OpenAI(
-    api_key=required("OPENAI_API_KEY"),
-    timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "30")),
-    max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "0")),
-)
+def configure_openai_client() -> tuple[openai.OpenAI, str]:
+    api_version = os.getenv("OPENAI_API_VERSION")
+    timeout = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "30"))
+    max_retries = int(os.getenv("OPENAI_MAX_RETRIES", "0"))
 
+    if api_version:
+        client = openai.AzureOpenAI(
+            azure_endpoint=required("OPENAI_API_BASE"),
+            api_key=required("OPENAI_API_KEY"),
+            api_version=api_version,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
+        provider_name = "azure.openai"
+    else:
+        client = openai.OpenAI(
+            api_key=required("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_API_BASE") or None,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
+        provider_name = "openai"
+
+    return client, provider_name
+
+
+openai_client, llm_provider = configure_openai_client()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> Iterator[None]:
@@ -130,7 +151,7 @@ def health() -> dict[str, str]:
 @app.post("/haiku", response_model=HaikuResponse)
 def create_haiku(request: HaikuRequest) -> HaikuResponse:
     conversation_id = request.conversation_id or str(uuid.uuid4())
-    model = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
+    model = os.getenv("OPENAI_MODEL")
 
     try:
         # OpenInference maps session_id to gen_ai.conversation.id when the
