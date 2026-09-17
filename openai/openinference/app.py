@@ -11,11 +11,13 @@ from openinference.instrumentation import TraceConfig, using_attributes
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
-
+from opentelemetry.sdk.resources import (
+    Resource, OTELResourceDetector, ProcessResourceDetector,
+    OsResourceDetector, get_aggregated_resources,
+)
 
 SERVICE_NAME = os.getenv(
     "OTEL_SERVICE_NAME",
@@ -50,10 +52,11 @@ def configure_tracing() -> TracerProvider:
             "emits OTel gen_ai.* semantic-convention attributes."
         )
 
-    resource = Resource.create(
-        {
-            "service.name": SERVICE_NAME,
-        }
+
+
+    resource = get_aggregated_resources(
+        detectors=[OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()],
+        initial_resource=Resource.create({"service.name": SERVICE_NAME}),
     )
 
     provider = TracerProvider(resource=resource)
@@ -97,11 +100,9 @@ def configure_openai_client() -> tuple[openai.OpenAI, str]:
 
     if api_version:
         client = openai.AzureOpenAI(
-            azure_endpoint=required("OPENAI_API_BASE"),
+            azure_endpoint=os.getenv("OPENAI_API_BASE"),  # e.g. https://travel-advisor-demo.openai.azure.com
             api_key=api_key,
             api_version=api_version,
-            timeout=timeout,
-            max_retries=max_retries,
         )
 
         provider_name = "azure.openai"
