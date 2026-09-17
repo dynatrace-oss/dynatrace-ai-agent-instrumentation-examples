@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 SERVICE_NAME = os.getenv(
     "OTEL_SERVICE_NAME",
-    "openai/openinference-genai-semconv",
+    "openai/openinference",
 )
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
