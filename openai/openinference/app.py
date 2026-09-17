@@ -202,7 +202,10 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
                         "content": f"Write a haiku about {request.topic}.",
                     },
                 ],
-                max_completion_tokens=100,
+                max_completion_tokens=2000,
+                stream=True,
+                stream_options={"include_usage": True},
+                temperature=1.0,
             )
 
         content = response.choices[0].message.content

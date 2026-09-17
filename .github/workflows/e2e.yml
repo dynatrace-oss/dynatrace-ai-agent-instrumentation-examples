@@ -335,8 +335,8 @@ jobs:
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           OPENINFERENCE_ENABLE_GENAI_SEMCONV: ${{ matrix.enable_genai_semconv && 'true' || 'false' }}
-          OPENINFERENCE_HIDE_INPUTS: ${{ matrix.enable_genai_semconv && 'true' || 'false' }}
-          OPENINFERENCE_HIDE_OUTPUTS: ${{ matrix.enable_genai_semconv && 'true' || 'false' }}
+          OPENINFERENCE_HIDE_INPUTS: ${{ 'false' }}
+          OPENINFERENCE_HIDE_OUTPUTS: ${{ 'false' }}
           DT_RUM_SCRIPT: ${{ secrets.DT_RUM_SCRIPT }}
           MAX_RUNS: '1'
         run: |
