@@ -14,10 +14,9 @@ install:
 	uv sync
 
 run:
-	OTEL_EXPORTER_OTLP_ENDPOINT=$(OTEL_ENDPOINT) \
-    OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
-	uv run --no-sync uvicorn app:app --host 0.0.0.0 --port 8000
-
+	@OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="$${DT_ENDPOINT}/api/v2/otlp/v1/traces" \
+    	OTEL_EXPORTER_OTLP_TRACES_HEADERS="Authorization=Api-Token $${DT_API_TOKEN}" \
+	  uv run --no-sync uvicorn app:app --host 0.0.0.0 --port 8000
 request:
 	@curl --fail-with-body --show-error --silent \
 		-X POST http://localhost:8000/haiku \
@@ -29,4 +28,4 @@ clean:
 	rm -rf .venv __pycache__ .pytest_cache
 
 stop:
-	@echo "No collector to stop"
+	@-pkill -f 'uvicorn app:app' 2>/dev/null || true

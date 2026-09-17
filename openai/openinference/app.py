@@ -187,7 +187,7 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
         # OpenInference maps session_id to gen_ai.conversation.id when
         # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true is enabled.
         with using_attributes(session_id=conversation_id):
-            response = openai_client.chat.completions.create(
+            stream = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {
@@ -208,7 +208,19 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
                 temperature=1.0,
             )
 
-        content = response.choices[0].message.content
+
+        parts: list[str] = []
+        response_model = model
+
+        for chunk in stream:
+            response_model = chunk.model or response_model
+
+            if chunk.choices:
+                text = chunk.choices[0].delta.content
+                if text:
+                    parts.append(text)
+
+        content = "".join(parts)
 
         if not content:
             raise HTTPException(
@@ -218,7 +230,7 @@ def create_haiku(request: HaikuRequest) -> HaikuResponse:
 
         return HaikuResponse(
             haiku=content,
-            model=response.model,
+            model=response_model,
             conversation_id=conversation_id,
         )
 
