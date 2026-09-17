@@ -5,10 +5,8 @@ import (
 )
 
 func TestOpenAIOpenInference(t *testing.T) {
-	// CLI app: make run starts the OTel Collector (Docker) then runs app.py once.
-	// No triggerHaiku — the haiku request is issued by make run itself.
-	startCLIApp(t, "openai/openinference")
-
+	startApp(t, "openai/openinference")
+	triggerHaiku(t, false)
 	auditSpanWithMetrics(t, "openai", "openinference", OpenAIProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "openai/openinference"
