@@ -6,7 +6,7 @@ import (
 
 func TestOpenAIOpenInference(t *testing.T) {
 	startApp(t, "openai/openinference")
-	triggerHaiku(t, false)
+	triggerHaiku(t, "openinference")
 	auditSpanWithMetrics(t, "openai", "openinference", OpenAIProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "openai/openinference"
