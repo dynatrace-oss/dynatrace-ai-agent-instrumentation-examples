@@ -9,9 +9,9 @@ PORT             ?= 8000
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.105.0 tracks OTel
-# contrib v0.157.0 and bundles genainormalizerprocessor + signal_to_metrics
-# connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
+# Bindplane Distro for OpenTelemetry (BDOT) collector, used here to derive
+# gen_ai.client.operation.duration / gen_ai.client.token.usage metrics.
+# Pinned so a version bump surfaces regressions in the e2e test.
 override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
@@ -23,7 +23,7 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start collector + app locally on port $(PORT)
+run: ## Start collector (metrics derivation) + app locally on port $(PORT)
 	@$(MAKE) _collector CONFIG=otelcol-config.yaml
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)

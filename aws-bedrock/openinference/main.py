@@ -2,6 +2,10 @@ import os
 
 import boto3
 
+# Emit gen_ai.* attributes directly on spans (alongside llm.*/openinference.*)
+# so no downstream OpenInference-to-gen_ai normalization is needed.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 
 def _guardrail_config():
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
