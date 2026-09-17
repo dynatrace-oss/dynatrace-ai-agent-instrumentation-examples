@@ -21,7 +21,6 @@ SERVICE_NAME = os.getenv(
     "OTEL_SERVICE_NAME",
     "openai/openinference-genai-semconv",
 )
-MODEL = required("MODEL")
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(SERVICE_NAME)
