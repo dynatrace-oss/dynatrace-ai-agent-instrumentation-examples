@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
-
+-include .env
+export
 .PHONY: help install run request clean
 
 help:
@@ -13,10 +14,8 @@ install:
 	uv sync
 
 run:
-	@test -f .env || (echo "Copy .env.sample to .env and fill in the values" >&2; exit 1)
-	@set -a; \
-	source .env; \
-	set +a; \
+	OTEL_EXPORTER_OTLP_ENDPOINT=$(OTEL_ENDPOINT) \
+    OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
 	uv run --no-sync uvicorn app:app --host 0.0.0.0 --port 8000
 
 request:
