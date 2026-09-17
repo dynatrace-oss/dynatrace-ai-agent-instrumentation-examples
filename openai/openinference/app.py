@@ -170,7 +170,8 @@ def health() -> dict[str, str]:
 
 
 @app.post("/haiku", response_model=HaikuResponse)
-def create_haiku(request: HaikuRequest) -> HaikuResponse:
+def create_haiku(request: HaikuRequest | None = None) -> HaikuResponse:
+    request = request or HaikuRequest(topic="e2e test")
     conversation_id = request.conversation_id or str(uuid.uuid4())
 
     # This matches the existing repository example.
