@@ -187,7 +187,7 @@ fetch logs, from:now()-1h
 
 - **Metrics browser** – search for `claude_code` to see all emitted metrics
 - **Log & Event Viewer** – filter by `service.name = claude-code` to see session events
-- **AI Observability app** – requires trace export (beta) and, for the full experience, the OpenPipeline enrichment; see [Light up the AI Observability app](#light-up-the-ai-observability-app)
+- **AI Observability app** – requires trace export (beta) and, for the full experience, the GenAI semconv enrichment (OpenPipeline at ingest, or the Collector variant in transit); see [Light up the AI Observability app](#light-up-the-ai-observability-app)
 
 ## Light up the AI Observability app
 
@@ -207,7 +207,7 @@ export OTEL_TRACES_EXPORTER=otlp
 
 The token needs the `openTelemetryTrace.ingest` scope (already required above). After the next session, the app's **Overview** and **Explorer** show your `claude-code` AI app, models, and LLM request counts, and each interaction is a full distributed trace (`claude_code.interaction` → `claude_code.llm_request` / `claude_code.tool`).
 
-### Step 2 — Map Claude Code spans to GenAI semantic conventions (OpenPipeline)
+### Step 2 — Map Claude Code spans to GenAI semantic conventions
 
 Claude Code's spans carry only a subset of the GenAI conventions (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.id`). The app's token/cost tiles, Prompts stream, and Agents topology read attributes Claude Code does not emit — `gen_ai.operation.name`, `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`, `gen_ai.agent.name` / `gen_ai.agent.id`, `gen_ai.input.messages`. The [`openpipeline/`](./openpipeline/) folder contains a span-processing pipeline that derives them at ingest from the attributes Claude Code *does* send:
 
@@ -218,6 +218,8 @@ Claude Code's spans carry only a subset of the GenAI conventions (`gen_ai.system
 | `claude_code.tool` | `execute_tool` | `gen_ai.tool.name` |
 
 Apply it with the [dtctl CLI](https://github.com/dynatrace-oss/dtctl) (or recreate it manually in the OpenPipeline app) — see [`openpipeline/README.md`](./openpipeline/README.md) for the two commands. With the pipeline in place, token usage appears per app/model in the Explorer, and interactions surface with their prompt text.
+
+Prefer the enrichment in transit instead of at ingest? [`collector/`](./collector/) contains the identical mappings as an OpenTelemetry Collector `transform` processor (OTTL) — route Claude Code through the collector and the resulting spans are the same. [`collector/README.md`](./collector/README.md) compares the two placements; use one or the other.
 
 ### Verify
 
