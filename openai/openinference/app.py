@@ -22,6 +22,8 @@ SERVICE_NAME = os.getenv(
     "openai/openinference",
 )
 
+MODEL = os.getenv("MODEL", "gpt-5-mini-2025-08-07")
+
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(SERVICE_NAME)
 
