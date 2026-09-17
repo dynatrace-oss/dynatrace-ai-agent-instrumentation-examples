@@ -28,3 +28,6 @@ request:
 
 clean:
 	rm -rf .venv __pycache__ .pytest_cache
+
+stop:
+	@echo "No collector to stop"
