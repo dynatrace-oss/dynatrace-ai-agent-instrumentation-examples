@@ -1,7 +1,6 @@
 import os
 
 import boto3
-from opentelemetry import trace as trace_api
 
 # Emit gen_ai.* attributes directly on spans (alongside llm.*/openinference.*)
 # so no downstream OpenInference-to-gen_ai normalization is needed.
@@ -37,6 +36,7 @@ def _otlp_exporter():
 
 
 def setup_instrumentation() -> None:
+    from opentelemetry import trace as trace_api
     from opentelemetry.sdk.resources import Resource, SERVICE_NAME
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -77,9 +77,6 @@ def write_haiku(topic: str) -> str:
     if gc:
         kwargs["guardrailConfig"] = gc
     response = _get_client().converse(**kwargs)
-    # Mirror request model as response model, matching the old collector
-    # transform/response_model behavior removed from otelcol-config.yaml.
-    trace_api.get_current_span().set_attribute("gen_ai.response.model", kwargs["modelId"])
     content = response["output"]["message"]["content"]
     return content[0]["text"] if content else "(blocked by guardrail)"
 
@@ -94,8 +91,6 @@ def apply_guardrail(text: str) -> str:
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
     if not guardrail_id:
         return "SKIPPED"
-    # Ensure guardrail operation spans carry a GenAI operation name.
-    trace_api.get_current_span().set_attribute("gen_ai.operation.name", "guardrail")
     response = _get_client().apply_guardrail(
         guardrailIdentifier=guardrail_id,
         guardrailVersion=os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),

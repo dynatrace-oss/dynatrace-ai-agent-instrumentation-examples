@@ -4,17 +4,19 @@ Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with D
 
 ## How it works
 
-With native GenAI semantic convention emission enabled, `BedrockInstrumentor` emits `gen_ai.*` attributes directly on spans (alongside existing OpenInference attributes). No collector-side attribute normalization is needed:
+With native GenAI semantic convention emission enabled, `BedrockInstrumentor` emits `gen_ai.*` attributes directly on spans (alongside existing OpenInference attributes). Only two gaps that native emission doesn't cover are patched in the collector; there's no OpenInference-to-`gen_ai.*` normalization chain to maintain:
 
 ```
-App  ->  Bindplane collector (metrics derivation + OTLP forward)  ->  Dynatrace Grail
+App  ->  Bindplane collector (attribute patches + metrics derivation + OTLP forward)  ->  Dynatrace Grail
 ```
 
 The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`), forwards spans, and derives GenAI metrics from span attributes. The pipeline uses these components (see [`otelcol-config.yaml`](otelcol-config.yaml)):
 
-1. **`span_metrics` connector** derives `gen_ai.client.operation.duration` histograms from LLM spans.
-2. **`signal_to_metrics` connector** derives `gen_ai.client.token.usage` metric points from `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`.
-3. **`filter/genai_only`** scopes metric derivation to LLM spans (`gen_ai.request.model` present).
+1. **`transform/response_model`** mirrors `gen_ai.request.model` onto `gen_ai.response.model`, which native OpenInference emission never sets (Bedrock's Converse response carries no model id) but the AI Observability app requires.
+2. **`transform/guardrail_operation_name`** sets `gen_ai.operation.name` to `GUARDRAIL` on the standalone `apply_guardrail` span, derived from the `openinference.span.kind` attribute OpenInference still emits — native emission has no GUARDRAIL-kind handling at all.
+3. **`span_metrics` connector** derives `gen_ai.client.operation.duration` histograms from LLM spans.
+4. **`signal_to_metrics` connector** derives `gen_ai.client.token.usage` metric points from `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Note this connector silently drops the whole datapoint if any of its non-optional `attributes` keys (including `gen_ai.response.model`) is missing from the span — which is why step 1 above matters even though `gen_ai.response.model` isn't otherwise required.
+5. **`filter/genai_only`** scopes metric derivation to LLM spans (`gen_ai.request.model` present).
 
 The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.108.0` (Bindplane Distro for OpenTelemetry). The pin means a future version bump surfaces behavior changes in the e2e test.
 

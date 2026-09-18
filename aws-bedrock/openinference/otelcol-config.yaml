@@ -7,6 +7,27 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # OpenInference's native gen_ai.* emission has no field for the response
+  # model (Bedrock's Converse response carries no model id), so mirror the
+  # request model the same way the removed normalizer chain used to.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+
+  # OpenInference's native gen_ai.* emission has no GUARDRAIL branch, so the
+  # standalone ApplyGuardrail span never gets a gen_ai.operation.name. Derive
+  # it from the openinference.span.kind attribute, which OpenInference still
+  # emits alongside its native gen_ai.* attributes.
+  transform/guardrail_operation_name:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.operation.name"], "GUARDRAIL") where attributes["openinference.span.kind"] == "GUARDRAIL"
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -79,11 +100,11 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/response_model, transform/guardrail_operation_name, batch]
       exporters: [otlp_http/dynatrace]
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only, batch]
+      processors: [transform/response_model, transform/guardrail_operation_name, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]
