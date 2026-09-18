@@ -13,6 +13,11 @@ from opentelemetry.semconv.attributes import service_attributes
 
 MODEL: str = os.environ.get("MODEL", "llama-3.1-8b-instant")
 
+# Emit gen_ai.* attributes directly on the OpenInference span (alongside the
+# existing llm.*/openinference.* ones), so no collector/OpenPipeline normalization
+# step is needed downstream. Set before GroqInstrumentor().instrument() runs.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
