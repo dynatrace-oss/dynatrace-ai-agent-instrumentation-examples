@@ -28,6 +28,24 @@ processors:
         statements:
           - set(attributes["gen_ai.operation.name"], "GUARDRAIL") where attributes["openinference.span.kind"] == "GUARDRAIL"
 
+  # openinference-instrumentation-bedrock never reads Converse's response
+  # trace.guardrail block at all, so main.py sets the raw per-guardrail
+  # assessment as gen_ai.bedrock.guardrail.input_assessment JSON (same pattern
+  # as pydantic-ai/opentelemetry's ask-guardrail endpoint). Flatten it here into
+  # the finalized attributes.
+  transform/bedrock-guardrail-attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.g"], ParseJSON(attributes["gen_ai.bedrock.guardrail.input_assessment"])) where attributes["gen_ai.bedrock.guardrail.input_assessment"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["temp.g"]["contentPolicy"]["filters"]) where attributes["temp.g"]["contentPolicy"]["filters"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["temp.g"]["sensitiveInformationPolicy"]) where attributes["temp.g"]["sensitiveInformationPolicy"]["piiEntities"] != nil or attributes["temp.g"]["sensitiveInformationPolicy"]["regexes"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["temp.g"]["topicPolicy"]["topics"]) where attributes["temp.g"]["topicPolicy"]["topics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], true) where attributes["gen_ai.bedrock.guardrail.content"] != nil or attributes["gen_ai.bedrock.guardrail.sensitive_info"] != nil or attributes["gen_ai.bedrock.guardrail.topics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["temp.g"] != nil
+          - delete_key(attributes, "temp.g") where attributes["temp.g"] != nil
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -100,11 +118,11 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/response_model, transform/guardrail_operation_name, batch]
+      processors: [transform/response_model, transform/guardrail_operation_name, transform/bedrock-guardrail-attrs, batch]
       exporters: [otlp_http/dynatrace]
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [transform/response_model, transform/guardrail_operation_name, filter/genai_only, batch]
+      processors: [transform/response_model, transform/guardrail_operation_name, transform/bedrock-guardrail-attrs, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]

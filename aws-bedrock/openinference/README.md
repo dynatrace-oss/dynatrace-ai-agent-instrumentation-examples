@@ -4,7 +4,7 @@ Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with D
 
 ## How it works
 
-With native GenAI semantic convention emission enabled, `BedrockInstrumentor` emits `gen_ai.*` attributes directly on spans (alongside existing OpenInference attributes). Only two gaps that native emission doesn't cover are patched in the collector; there's no OpenInference-to-`gen_ai.*` normalization chain to maintain:
+With native GenAI semantic convention emission enabled, `BedrockInstrumentor` emits `gen_ai.*` attributes directly on spans (alongside existing OpenInference attributes). Only a few gaps that native emission doesn't cover are patched — most in the collector, one (guardrail assessment data) in the app, since it's runtime state the instrumentation never turns into span attributes at all:
 
 ```
 App  ->  Bindplane collector (attribute patches + metrics derivation + OTLP forward)  ->  Dynatrace Grail
@@ -14,11 +14,18 @@ The app knows only about `http://localhost:4318`; the collector is the component
 
 1. **`transform/response_model`** mirrors `gen_ai.request.model` onto `gen_ai.response.model`, which native OpenInference emission never sets (Bedrock's Converse response carries no model id) but the AI Observability app requires.
 2. **`transform/guardrail_operation_name`** sets `gen_ai.operation.name` to `GUARDRAIL` on the standalone `apply_guardrail` span, derived from the `openinference.span.kind` attribute OpenInference still emits — native emission has no GUARDRAIL-kind handling at all.
-3. **`span_metrics` connector** derives `gen_ai.client.operation.duration` histograms from LLM spans.
-4. **`signal_to_metrics` connector** derives `gen_ai.client.token.usage` metric points from `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Note this connector silently drops the whole datapoint if any of its non-optional `attributes` keys (including `gen_ai.response.model`) is missing from the span — which is why step 1 above matters even though `gen_ai.response.model` isn't otherwise required.
-5. **`filter/genai_only`** scopes metric derivation to LLM spans (`gen_ai.request.model` present).
+3. **`transform/bedrock-guardrail-attrs`** flattens the `gen_ai.bedrock.guardrail.input_assessment` JSON blob (set by `main.py`, see [Known gaps & limitations](#known-gaps--limitations)) into `gen_ai.bedrock.guardrail.content` / `.sensitive_info` / `.topics` / `.activation`.
+4. **`span_metrics` connector** derives `gen_ai.client.operation.duration` histograms from LLM spans.
+5. **`signal_to_metrics` connector** derives `gen_ai.client.token.usage` metric points from `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Note this connector silently drops the whole datapoint if any of its non-optional `attributes` keys (including `gen_ai.response.model`) is missing from the span — which is why step 1 above matters even though `gen_ai.response.model` isn't otherwise required.
+6. **`filter/genai_only`** scopes metric derivation to LLM spans (`gen_ai.request.model` present).
 
 The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.108.0` (Bindplane Distro for OpenTelemetry). The pin means a future version bump surfaces behavior changes in the e2e test.
+
+## Known gaps & limitations
+
+### Converse's guardrail trace data needs app-side extraction
+
+`openinference-instrumentation-bedrock` never reads Bedrock's Converse response `trace.guardrail` block (topic/content/sensitive-info policy assessment data returned when `guardrailConfig.trace` is `"enabled"`) — it's not exposed as a span attribute in any form, so there's nothing for a collector transform to derive it from. `write_haiku` in [`main.py`](main.py) works around this the same way `pydantic-ai/opentelemetry`'s `ask-guardrail` endpoint does: it wraps the guardrail-triggering `converse()` call in its own span (since `openinference-instrumentation-bedrock`'s own Converse span has already ended by the time `.converse()` returns, so attributes can no longer be added to it) and sets the raw per-guardrail assessment as `gen_ai.bedrock.guardrail.input_assessment` JSON for `transform/bedrock-guardrail-attrs` to flatten.
 
 ## Prerequisites
 

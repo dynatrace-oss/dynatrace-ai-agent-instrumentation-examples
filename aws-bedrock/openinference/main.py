@@ -1,3 +1,4 @@
+import json
 import os
 
 import boto3
@@ -67,6 +68,24 @@ def _get_client():
     return _client
 
 
+def _record_guardrail_trace(span, response: dict) -> None:
+    """Bedrock's Converse response carries guardrail assessment data (topic/content/
+    sensitive-info policy detections) in a `trace.guardrail` block that
+    openinference-instrumentation-bedrock does not read at all — it's runtime state
+    the instrumentation never turns into span attributes, so there's nothing for a
+    collector transform to derive it from. Set it here the same way
+    pydantic-ai/opentelemetry's ask-guardrail endpoint does: the raw per-guardrail
+    assessment as a JSON blob for the collector to parse into the finalized
+    gen_ai.bedrock.guardrail.* attributes.
+    """
+    assessment = next(
+        iter((response.get("trace") or {}).get("guardrail", {}).get("inputAssessment", {}).values()),
+        None,
+    )
+    if assessment:
+        span.set_attribute("gen_ai.bedrock.guardrail.input_assessment", json.dumps(assessment))
+
+
 def write_haiku(topic: str) -> str:
     kwargs = {
         "modelId": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
@@ -76,7 +95,21 @@ def write_haiku(topic: str) -> str:
     gc = _guardrail_config()
     if gc:
         kwargs["guardrailConfig"] = gc
-    response = _get_client().converse(**kwargs)
+        from opentelemetry import trace as trace_api
+
+        # openinference-instrumentation-bedrock's own Converse span has already
+        # ended by the time .converse() returns (its wrapper ends the span before
+        # returning control here), so attributes can't be added to it after the
+        # fact. Wrap the call in our own span instead — it shares the same trace
+        # as the (child) Converse span, and we control its lifecycle directly.
+        tracer = trace_api.get_tracer(__name__)
+        with tracer.start_as_current_span("bedrock.converse.guardrail_trace") as span:
+            span.set_attribute("gen_ai.guardrail.id", gc["guardrailIdentifier"])
+            span.set_attribute("gen_ai.guardrail.version", gc["guardrailVersion"])
+            response = _get_client().converse(**kwargs)
+            _record_guardrail_trace(span, response)
+    else:
+        response = _get_client().converse(**kwargs)
     content = response["output"]["message"]["content"]
     return content[0]["text"] if content else "(blocked by guardrail)"
 
