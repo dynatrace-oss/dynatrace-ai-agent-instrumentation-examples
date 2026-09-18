@@ -5,6 +5,19 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV currently maps request parameters from
+  # top-level llm.invocation_parameters keys. Ollama sends temperature under
+  # invocation_parameters.options.temperature, so patch it in here only when the
+  # native gen_ai.request.temperature is missing.
+  transform/ollama_temperature:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil and attributes["gen_ai.request.temperature"] == nil
+          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["options"]["temperature"]) where attributes["gen_ai.request.temperature"] == nil and attributes["temp.invocation_params"]["options"]["temperature"] != nil
+          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
+
   # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true (set in main.py) makes
   # OllamaInstrumentor emit gen_ai.* attributes on the span natively, so no
   # attribute normalization runs here.
@@ -88,13 +101,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [transform/ollama_temperature]
       exporters: [otlp_http/dynatrace]
     # Second branch of the same spans: keep only LLM spans and feed the metric
     # connectors. Kept separate from the export pipeline so the filter here
     # never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only]
+      processors: [transform/ollama_temperature, filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]
