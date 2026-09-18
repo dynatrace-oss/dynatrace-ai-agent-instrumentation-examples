@@ -1,5 +1,9 @@
 import os
 
+# Emit gen_ai.* attributes directly on OpenInference spans (alongside llm.* /
+# openinference.*) so no downstream attribute-normalization step is needed.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 
 def _otlp_exporter():
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
