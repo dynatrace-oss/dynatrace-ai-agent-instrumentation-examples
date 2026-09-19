@@ -5,54 +5,26 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Reads llm.invocation_parameters before gen_ai_normalizer deletes it below.
-  # OllamaInstrumentor nests temperature/num_predict/top_p under an "options"
-  # object (the ollama Python client's chat(options={...}) kwarg) rather than
-  # as flat invocation_parameters keys like the other provider SDKs in this
-  # repo, so the JSON path here goes one level deeper than e.g.
-  # cohere/openinference or anthropic/openinference use.
-  transform/pre_normalize:
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV currently maps request parameters from
+  # top-level llm.invocation_parameters keys. Ollama sends temperature under
+  # invocation_parameters.options.temperature, so patch it in here only when the
+  # native gen_ai.request.temperature is missing.
+  transform/ollama_temperature:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil
-          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["options"]["temperature"]) where attributes["temp.invocation_params"]["options"]["temperature"] != nil
-          - set(attributes["gen_ai.request.max_tokens"], attributes["temp.invocation_params"]["options"]["num_predict"]) where attributes["temp.invocation_params"]["options"]["num_predict"] != nil
-          - set(attributes["gen_ai.request.top_p"], attributes["temp.invocation_params"]["options"]["top_p"]) where attributes["temp.invocation_params"]["options"]["top_p"] != nil
+          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil and attributes["gen_ai.request.temperature"] == nil
+          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["options"]["temperature"]) where attributes["gen_ai.request.temperature"] == nil and attributes["temp.invocation_params"]["options"]["temperature"] != nil
           - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
 
-  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool
-  # and session attributes, and reconstructs llm.output_messages.0.* into
-  # gen_ai.output.messages — OllamaInstrumentor emits a flat single-message
-  # response (no Anthropic-style content-block nesting), so no extra fixup
-  # transform is needed here. remove_originals drops the raw llm.* attributes
-  # so the exported spans carry only gen_ai.* fields.
-  gen_ai_normalizer:
-    sources:
-      - name: openinference
-        remove_originals: true
-
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
-  transform/response_model:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
-
-  batch:
-    send_batch_size: 512
-    timeout: 5s
-
-  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
-  # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
-  # cover LLM calls only. Used solely on the metrics branch — the export pipeline
-  # is left untouched so all spans still reach Distributed Tracing.
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true (set in main.py) makes
+  # OllamaInstrumentor emit gen_ai.* attributes on the span natively, so no
+  # attribute normalization runs here.
+  # Keep only spans that represent an LLM call (gen_ai.request.model is set
+  # natively on LLM spans). Feeds the metrics connectors so the derived metrics
+  # cover LLM calls only. Used solely on the metrics branch — the export
+  # pipeline is left untouched so all spans still reach Distributed Tracing.
   filter/genai_only:
     error_mode: ignore
     traces:
@@ -60,8 +32,10 @@ processors:
         - attributes["gen_ai.request.model"] == nil
 
 connectors:
-  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
-  # from the LLM span durations — same connector the langfuse demo uses.
+  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv,
+  # seconds) from the LLM span durations. OpenInference emits no metric
+  # instruments of its own (span-only by design), so this is still needed
+  # regardless of native gen_ai.* naming.
   span_metrics:
     namespace: gen_ai.client.operation
     # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
@@ -77,12 +51,11 @@ connectors:
       - name: gen_ai.operation.name
     metrics_flush_interval: 15s
 
-  # Token usage: OpenInference is span-only (no metric instruments). Re-create
-  # gen_ai.client.token.usage from the span token attributes with two sum defs
-  # sharing one metric name; the gen_ai.token.type dimension is synthesized per
-  # direction via default_value. signal_to_metrics emits delta per batch, which
-  # Dynatrace requires. Collector-path equivalent of the OpenPipeline
-  # two-extractor pattern.
+  # Token usage: OpenInference has no metric instrument for token counts, so
+  # re-create gen_ai.client.token.usage from the (natively named) span
+  # attributes with two sum defs sharing one metric name; the gen_ai.token.type
+  # dimension is synthesized per direction via default_value. signal_to_metrics
+  # emits delta per batch, which Dynatrace requires.
   signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage
@@ -128,14 +101,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, batch]
+      processors: [transform/ollama_temperature]
       exporters: [otlp_http/dynatrace]
-    # Second branch of the same spans: normalize, keep only LLM spans, and feed
-    # the metric connectors. Kept separate from the export pipeline so the filter
-    # here never drops spans from Distributed Tracing.
+    # Second branch of the same spans: keep only LLM spans and feed the metric
+    # connectors. Kept separate from the export pipeline so the filter here
+    # never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
+      processors: [transform/ollama_temperature, filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]

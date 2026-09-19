@@ -40,6 +40,11 @@ _SYSTEM_PROMPT = (
 MODEL: str = os.environ.get("MODEL", "llama3.2")
 OLLAMA_HOST: str = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
+# Emit gen_ai.* attributes directly on the OpenInference span (alongside the
+# existing llm.*/openinference.* ones), so no collector/OpenPipeline
+# normalization step is needed downstream. Set before instrumentation runs.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 _client = None
 
 
