@@ -32,7 +32,7 @@ dtctl create settings -f spans-pipeline.json \
 #    `dtctl get settings --schema builtin:openpipeline.spans.pipelines`).
 
 # 3. Create the route
-DO NOT USE THIS COMMAND IF OTHER CUSTOM ROUTES EXIST ON THE TENANT
+# DO NOT USE THIS COMMAND IF OTHER CUSTOM ROUTES EXIST ON THE TENANT
 dtctl create settings -f spans-routing.json \
   --schema builtin:openpipeline.spans.routing --scope environment
 ```
