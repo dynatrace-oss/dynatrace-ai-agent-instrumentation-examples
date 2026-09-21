@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"fmt"
 )
 
 // startOpenAICompatibleMock starts a local OpenAI-compatible stub and wires it
