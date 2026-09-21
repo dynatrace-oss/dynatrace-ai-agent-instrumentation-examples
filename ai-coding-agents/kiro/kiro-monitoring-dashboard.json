@@ -246,7 +246,21 @@
       "type": "data",
       "query": "timeseries msg = sum(kiro.daily.messages), by:{kiro.user.new}, from: -30d\n| fieldsAdd TotalMessages = arraySum(msg)\n| fields kiro.user.new, TotalMessages",
       "visualization": "pieChart",
-      "visualizationSettings": { "autoSelectVisualization": false },
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
       "querySettings": {
         "maxResultRecords": 1000,
         "defaultScanLimitGbytes": 500,
