@@ -45,7 +45,7 @@ Dynatrace is a documented destination in the Kiro console. Point the export at y
 
 - **Protocol:** `HTTP/protobuf`
 - **Endpoint:** `https://<environment>.live.dynatrace.com/api/v2/otlp`
-- **Authentication header:** `Authorization=Api-Token <access-token>`, using a token with the **`metrics.ingest`** scope
+- **Authentication header:** `Authorization=Api-Token <access-token>`, using a token with the **`openpipeline:metrics:ingest`** scope
 
 Store these in an AWS Secrets Manager secret as described in the [Kiro enterprise docs](https://kiro.dev/docs/enterprise/monitor-and-track/user-activity/opentelemetry/), then select the secret ARN and `HTTP/protobuf` protocol when enabling the export in the Kiro console.
 
