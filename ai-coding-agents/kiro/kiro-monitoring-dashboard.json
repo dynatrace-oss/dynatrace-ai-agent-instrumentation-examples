@@ -106,8 +106,23 @@
       "title": "Credits & Overage Credits Over Time",
       "type": "data",
       "query": "timeseries { credits = sum(kiro.daily.credits), overage = sum(kiro.daily.overage_credits) }, from: -30d",
-      "visualization": "graphChart",
-      "visualizationSettings": { "autoSelectVisualization": false },
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
       "querySettings": {
         "maxResultRecords": 1000,
         "defaultScanLimitGbytes": 500,
@@ -121,8 +136,23 @@
       "title": "Messages & Conversations Over Time",
       "type": "data",
       "query": "timeseries { messages = sum(kiro.daily.messages), conversations = sum(kiro.daily.conversations) }, from: -30d",
-      "visualization": "graphChart",
-      "visualizationSettings": { "autoSelectVisualization": false },
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
       "querySettings": {
         "maxResultRecords": 1000,
         "defaultScanLimitGbytes": 500,
@@ -140,8 +170,23 @@
       "title": "Messages by Model",
       "type": "data",
       "query": "timeseries mm = sum(kiro.daily.model_messages), by:{kiro.model.name}, from: -30d",
-      "visualization": "graphChart",
-      "visualizationSettings": { "autoSelectVisualization": false },
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
       "querySettings": {
         "maxResultRecords": 1000,
         "defaultScanLimitGbytes": 500,
@@ -155,8 +200,23 @@
       "title": "Messages by Client Type",
       "type": "data",
       "query": "timeseries msg = sum(kiro.daily.messages), by:{kiro.client.type}, from: -30d",
-      "visualization": "graphChart",
-      "visualizationSettings": { "autoSelectVisualization": false },
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
       "querySettings": {
         "maxResultRecords": 1000,
         "defaultScanLimitGbytes": 500,
