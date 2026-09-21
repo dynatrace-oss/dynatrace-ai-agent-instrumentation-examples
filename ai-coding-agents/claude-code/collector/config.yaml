@@ -1,0 +1,89 @@
+# OpenTelemetry Collector configuration — Claude Code → Dynatrace with GenAI
+# semconv enrichment done IN TRANSIT (collector-side).
+#
+# This is the collector equivalent of ../openpipeline/spans-pipeline.json: the
+# same three span mappings, expressed as OTTL transform statements instead of
+# OpenPipeline DQL processors. Use ONE of the two — applying both is harmless
+# (same values) but redundant.
+#
+# Run:  otelcol-contrib --config config.yaml
+#       (the `transform` processor requires the contrib distribution)
+# Then point Claude Code at the collector instead of the tenant:
+#       export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+#       # (OTEL_EXPORTER_OTLP_HEADERS no longer needed on the client —
+#       #  the token moves into this file / the DT_API_TOKEN env var)
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+  transform/claude_code_genai:
+    error_mode: ignore
+    trace_statements:
+      # claude_code.llm_request → GenAI "chat" (per-model token usage)
+      - context: span
+        conditions:
+          - name == "claude_code.llm_request"
+        statements:
+          - set(attributes["gen_ai.operation.name"], "chat")
+          - set(attributes["gen_ai.provider.name"], "anthropic")
+          - set(attributes["gen_ai.response.model"], attributes["model"]) where attributes["model"] != nil
+          - set(attributes["gen_ai.usage.input_tokens"], Int(attributes["input_tokens"])) where attributes["input_tokens"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], Int(attributes["output_tokens"])) where attributes["output_tokens"] != nil
+
+      # claude_code.interaction → GenAI "invoke_agent" (+ gen_ai.input.messages)
+      - context: span
+        conditions:
+          - name == "claude_code.interaction"
+        statements:
+          - set(attributes["gen_ai.operation.name"], "invoke_agent")
+          - set(attributes["gen_ai.provider.name"], "anthropic")
+          - set(attributes["gen_ai.system"], "anthropic")
+          - set(attributes["gen_ai.agent.name"], "Claude Code")
+          - set(attributes["gen_ai.agent.id"], "claude-code")
+          # Build the semconv messages array from the raw user_prompt attribute.
+          # Same escaping order as the OpenPipeline DQL: backslash → quote → newline.
+          - set(attributes["tmp_prompt"], attributes["user_prompt"]) where attributes["user_prompt"] != nil
+          - replace_pattern(attributes["tmp_prompt"], "\\\\", "\\\\") where attributes["tmp_prompt"] != nil
+          - replace_pattern(attributes["tmp_prompt"], "\"", "\\\"") where attributes["tmp_prompt"] != nil
+          - replace_pattern(attributes["tmp_prompt"], "\\n", "\\n") where attributes["tmp_prompt"] != nil
+          - set(attributes["gen_ai.input.messages"], Concat(["[{\"role\":\"user\",\"content\":\"", attributes["tmp_prompt"], "\"}]"], "")) where attributes["tmp_prompt"] != nil
+          - delete_key(attributes, "tmp_prompt")
+
+      # claude_code.tool → GenAI "execute_tool"
+      - context: span
+        conditions:
+          - name == "claude_code.tool"
+        statements:
+          - set(attributes["gen_ai.operation.name"], "execute_tool")
+          - set(attributes["gen_ai.provider.name"], "anthropic")
+          - set(attributes["gen_ai.system"], "anthropic")
+          - set(attributes["gen_ai.tool.name"], attributes["tool_name"]) where attributes["tool_name"] != nil
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp   # e.g. https://<env>.live.dynatrace.com
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/claude_code_genai, batch]
+      exporters: [otlphttp/dynatrace]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]

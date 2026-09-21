@@ -35,6 +35,11 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token <YOUR_DT_TOKEN>"
 
 # 6. Dynatrace requires delta temporality for metrics
 export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta
+
+# 7. Traces (beta) — REQUIRED for the AI Observability app.
+#    Metrics and logs alone do not appear there; the app is span-driven.
+export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+export OTEL_TRACES_EXPORTER=otlp
 ```
 
 Once set, start Claude Code normally:
@@ -182,7 +187,50 @@ fetch logs, from:now()-1h
 
 - **Metrics browser** – search for `claude_code` to see all emitted metrics
 - **Log & Event Viewer** – filter by `service.name = claude-code` to see session events
-- **AI & LLM Observability** – review the pre-built AI observability dashboards
+- **AI Observability app** – requires trace export (beta) and, for the full experience, the GenAI semconv enrichment (OpenPipeline at ingest, or the Collector variant in transit); see [Light up the AI Observability app](#light-up-the-ai-observability-app)
+
+## Light up the AI Observability app
+
+> [!IMPORTANT]
+> The Dynatrace **AI Observability** app (`dynatrace.genai.observability`) is **span-driven**: its Explorer, Prompts, and Agents topology views are computed from spans that follow the [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/). With only metrics and logs configured (steps 1–6 above), the app stays **empty** — the data is still there, but only in the Metrics browser, Logs, and the bundled dashboard.
+
+Two steps get Claude Code sessions into the app:
+
+### Step 1 — Enable trace export (beta)
+
+Claude Code can export spans linking each user prompt to the API requests and tool executions it triggers ([docs](https://code.claude.com/docs/en/monitoring-usage)). Add to your environment (or managed settings `env` block):
+
+```bash
+export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+export OTEL_TRACES_EXPORTER=otlp
+```
+
+The token needs the `openTelemetryTrace.ingest` scope (already required above). After the next session, the app's **Overview** and **Explorer** show your `claude-code` AI app, models, and LLM request counts, and each interaction is a full distributed trace (`claude_code.interaction` → `claude_code.llm_request` / `claude_code.tool`).
+
+### Step 2 — Map Claude Code spans to GenAI semantic conventions
+
+Claude Code's spans carry only a subset of the GenAI conventions (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.id`). The app's token/cost tiles, Prompts stream, and Agents topology read attributes Claude Code does not emit — `gen_ai.operation.name`, `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`, `gen_ai.agent.name` / `gen_ai.agent.id`, `gen_ai.input.messages`. The [`openpipeline/`](./openpipeline/) folder contains a span-processing pipeline that derives them at ingest from the attributes Claude Code *does* send:
+
+| Claude Code span | Mapped to | Added attributes |
+|---|---|---|
+| `claude_code.llm_request` | `chat` | `gen_ai.operation.name`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.model`, `gen_ai.provider.name` |
+| `claude_code.interaction` | `invoke_agent` | `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.input.messages` (from `user_prompt`, requires `OTEL_LOG_USER_PROMPTS=1`) |
+| `claude_code.tool` | `execute_tool` | `gen_ai.tool.name` |
+
+Apply it with the [dtctl CLI](https://github.com/dynatrace-oss/dtctl) (or recreate it manually in the OpenPipeline app) — see [`openpipeline/README.md`](./openpipeline/README.md) for the two commands. With the pipeline in place, token usage appears per app/model in the Explorer, and interactions surface with their prompt text.
+
+Prefer the enrichment in transit instead of at ingest? [`collector/`](./collector/) contains the identical mappings as an OpenTelemetry Collector `transform` processor (OTTL) — route Claude Code through the collector and the resulting spans are the same. [`collector/README.md`](./collector/README.md) compares the two placements; use one or the other.
+
+### Verify
+
+```dql
+fetch spans, from:now()-1h
+| filter service.name == "claude-code"
+| fields start_time, span.name, gen_ai.operation.name, gen_ai.usage.input_tokens, gen_ai.usage.output_tokens, gen_ai.tool.name
+| sort start_time desc
+```
+
+Spans should show `dt.openpipeline.pipelines` = the custom pipeline, and `gen_ai.operation.name` filled. Then open **AI Observability → Explorer**.
 
 ### Optional configuration
 
