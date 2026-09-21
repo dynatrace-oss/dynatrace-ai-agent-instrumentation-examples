@@ -32,7 +32,7 @@ func startAnthropicCompatibleMock(t *testing.T) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
+        w.Header().Set("request-id", "req_claude_code_e2e")
 		var request struct {
 			Model  string `json:"model"`
 			Stream bool   `json:"stream"`
