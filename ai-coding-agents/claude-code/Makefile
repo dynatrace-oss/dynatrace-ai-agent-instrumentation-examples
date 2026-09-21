@@ -27,7 +27,7 @@ run-collector: ## Start collector enrichment and run one headless Claude turn
 	@$(MAKE) _run OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318" OTEL_EXPORTER_OTLP_HEADERS=""
 
 _run:
-	@test -n "$(ANTHROPIC_API_KEY)" || { echo "ERROR: set ANTHROPIC_API_KEY" >&2; exit 1; }
+	@test -n "$(ANTHROPIC_API_KEY)" -o -n "$(CLAUDE_CODE_OAUTH_TOKEN)" || { echo "ERROR: set ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN" >&2; exit 1; }
 	@CLAUDE_CODE_ENABLE_TELEMETRY=1 \
 	 CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 \
 	 OTEL_TRACES_EXPORTER=otlp \

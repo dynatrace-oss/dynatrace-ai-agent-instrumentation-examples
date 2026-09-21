@@ -3,8 +3,11 @@ package e2e
 import "testing"
 
 func TestClaudeCodeOpenTelemetryCollector(t *testing.T) {
+	startAnthropicCompatibleMock(t)
+
 	// The target starts the repository's collector enrichment example, executes
-	// one real headless Claude Code turn, flushes native telemetry, and exits.
+	// one headless Claude Code turn, flushes native telemetry, and exits. The local
+	// Anthropic-compatible mock is used when no real CI credential is configured.
 	startCLIAppWithTarget(t, "ai-coding-agents/claude-code", "run-collector")
 
 	anchor := `fetch spans, from: now()-10m
@@ -20,7 +23,8 @@ func TestClaudeCodeOpenTelemetryCollector(t *testing.T) {
 | sort timestamp desc
 | limit 1`
 
-	auditSpan(t, "claude-code", "opentelemetry-collector", GenericProfile, anchor)
+	auditSpan(t, "claude-code", "opentelemetry-collector", GenericProfile, anchor,
+		"Backend mocked when Anthropic credentials are absent: an in-process httptest server serves the Messages API via ANTHROPIC_BASE_URL.")
 	assertSpanWithAttrs(t, scopedDQL(anchor), []string{
 		"gen_ai.provider.name",
 		"gen_ai.operation.name",
