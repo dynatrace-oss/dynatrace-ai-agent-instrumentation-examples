@@ -3,7 +3,7 @@ SHELL := /bin/bash
 -include .env
 
 DT_ENDPOINT ?=
-DT_INGEST_TOKEN ?=
+DT_API_TOKEN ?=
 CLAUDE_CODE_VERSION ?= latest
 
 override COLLECTOR_IMAGE := ghcr.io/observiq/bindplane-agent:1.108.0
@@ -17,10 +17,12 @@ help: ## Show available targets
 install: ## Install Claude Code CLI
 	npm install --global @anthropic-ai/claude-code@$(CLAUDE_CODE_VERSION)
 
-run: ## Run one headless Claude turn with telemetry sent directly to Dynatrace
+run:
 	@test -n "$(DT_ENDPOINT)" || { echo "ERROR: set DT_ENDPOINT" >&2; exit 1; }
-	@test -n "$(DT_INGEST_TOKEN)" || { echo "ERROR: set DT_INGEST_TOKEN" >&2; exit 1; }
-	@$(MAKE) _run OTEL_EXPORTER_OTLP_ENDPOINT="$(DT_ENDPOINT)/api/v2/otlp" OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_INGEST_TOKEN)"
+	@test -n "$(DT_API_TOKEN)" || { echo "ERROR: set DT_API_TOKEN" >&2; exit 1; }
+	@$(MAKE) _run \
+		OTEL_EXPORTER_OTLP_ENDPOINT="$(DT_ENDPOINT)/api/v2/otlp" \
+		OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)"
 
 run-collector: ## Start collector enrichment and run one headless Claude turn
 	@$(MAKE) _collector
@@ -44,11 +46,10 @@ _run:
 
 _collector:
 	@test -n "$(DT_ENDPOINT)" || { echo "ERROR: set DT_ENDPOINT" >&2; exit 1; }
-	@test -n "$(DT_INGEST_TOKEN)" || { echo "ERROR: set DT_INGEST_TOKEN" >&2; exit 1; }
 	@docker rm -f $(COLLECTOR_CONTAINER) >/dev/null 2>&1 || true
 	@docker run -d --name $(COLLECTOR_CONTAINER) -p 4317:4317 -p 4318:4318 \
 		-v "$$(pwd)/collector/config.yaml:/etc/otel/config.yaml:ro" \
-		-e DT_ENDPOINT="$(DT_ENDPOINT)" -e DT_API_TOKEN="$(DT_INGEST_TOKEN)" \
+		-e DT_ENDPOINT="$(DT_ENDPOINT)" -e DT_API_TOKEN="$(DT_API_TOKEN)" \
 		$(COLLECTOR_IMAGE) --config=/etc/otel/config.yaml >/dev/null
 	@for i in $$(seq 1 20); do \
 		STATUS=$$(docker inspect -f '{{.State.Status}}' $(COLLECTOR_CONTAINER) 2>/dev/null || true); \

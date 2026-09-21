@@ -35,6 +35,7 @@ processors:
           - set(attributes["gen_ai.operation.name"], "chat")
           - set(attributes["gen_ai.provider.name"], "anthropic")
           - set(attributes["gen_ai.response.model"], attributes["model"]) where attributes["model"] != nil
+          - set(attributes["gen_ai.request.model"], attributes["model"]) where attributes["model"] != nil
           - set(attributes["gen_ai.usage.input_tokens"], Int(attributes["input_tokens"])) where attributes["input_tokens"] != nil
           - set(attributes["gen_ai.usage.output_tokens"], Int(attributes["output_tokens"])) where attributes["output_tokens"] != nil
 
