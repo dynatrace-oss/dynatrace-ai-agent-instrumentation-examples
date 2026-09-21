@@ -43,6 +43,7 @@ _run:
 	 OTEL_METRIC_EXPORT_INTERVAL=1000 \
 	 OTEL_LOGS_EXPORT_INTERVAL=1000 \
 	 OTEL_LOG_USER_PROMPTS=1 \
+	 OTEL_LOG_ASSISTANT_RESPONSES=1 \
 	 claude -p --max-turns 1 --output-format text "Reply with exactly: claude-code-e2e-ok"
 
 _collector:
