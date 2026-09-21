@@ -13,6 +13,7 @@ Unlike traditional application instrumentation, coding agents run interactively 
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
 - [OpenClaw + observability plugin](./openclaw-observability-plugin/) — community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
 - [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
+- [Kiro](./kiro/) — native Enterprise OTel export of daily per-user usage metrics, configured by an account administrator
 
 ---
 
@@ -45,6 +46,7 @@ Pick the coding agent you use and follow its setup guide:
 | [OpenCode](./opencode/) | Environment variables | ~5 min |
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |
 | [GitHub Copilot SDK](./github-copilot-sdk/) | Manual OTel spans in Node.js | ~15 min |
+| [Kiro](./kiro/) | AWS Secrets Manager secret + Kiro console setting (admin) | ~10 min |
 
 > [!TIP]
 > For Dynatrace setup instructions, API token scopes, and advanced configuration, see the [AI Observability Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
