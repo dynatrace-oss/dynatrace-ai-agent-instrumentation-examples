@@ -421,6 +421,11 @@ A Collector or OpenPipeline attribute transform cannot repair a broken span hier
 
 ### Assistant response is empty
 
+Claude Code exports telemetry through separate OpenTelemetry signals. 
+Its trace spans contain structural data such as model, duration, token usage, and tool activity, while the actual assistant response text is emitted as the claude_code.assistant_responselog event when OTEL_LOG_ASSISTANT_RESPONSES=1 is enabled. 
+Therefore, the response cannot appear in the application’s generated trace span through the current native SDK instrumentation; it must be viewed and validated in the correlated logs.
+
+
 Set:
 
 ```bash
