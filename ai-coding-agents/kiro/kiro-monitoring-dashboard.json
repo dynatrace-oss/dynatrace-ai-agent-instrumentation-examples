@@ -105,8 +105,8 @@
     "chart-credits-over-time": {
       "title": "Credits & Overage Credits Over Time",
       "type": "data",
-      "query": "timeseries { credits = sum(kiro.daily.credits), overage = sum(kiro.daily.overage_credits) }, from: -30d",
-      "visualization": "lineChart",
+      "query": "timeseries { credits = sum(kiro.daily.credits), overage = sum(kiro.daily.overage_credits) }",
+      "visualization": "barChart",
       "visualizationSettings": {
         "autoSelectVisualization": false,
         "chartSettings": { "legend": { "position": "bottom" } },
@@ -135,8 +135,8 @@
     "chart-messages-conversations-over-time": {
       "title": "Messages & Conversations Over Time",
       "type": "data",
-      "query": "timeseries { messages = sum(kiro.daily.messages), conversations = sum(kiro.daily.conversations) }, from: -30d",
-      "visualization": "lineChart",
+      "query": "timeseries { messages = sum(kiro.daily.messages), conversations = sum(kiro.daily.conversations) }",
+      "visualization": "barChart",
       "visualizationSettings": {
         "autoSelectVisualization": false,
         "chartSettings": { "legend": { "position": "bottom" } },
@@ -169,8 +169,8 @@
     "chart-messages-by-model": {
       "title": "Messages by Model",
       "type": "data",
-      "query": "timeseries mm = sum(kiro.daily.model_messages), by:{kiro.model.name}, from: -30d",
-      "visualization": "lineChart",
+      "query": "timeseries mm = sum(kiro.daily.model_messages), by:{kiro.model.name}",
+      "visualization": "barChart",
       "visualizationSettings": {
         "autoSelectVisualization": false,
         "chartSettings": { "legend": { "position": "bottom" } },
@@ -199,8 +199,8 @@
     "chart-messages-by-client-type": {
       "title": "Messages by Client Type",
       "type": "data",
-      "query": "timeseries msg = sum(kiro.daily.messages), by:{kiro.client.type}, from: -30d",
-      "visualization": "lineChart",
+      "query": "timeseries msg = sum(kiro.daily.messages), by:{kiro.client.type}",
+      "visualization": "barChart",
       "visualizationSettings": {
         "autoSelectVisualization": false,
         "chartSettings": { "legend": { "position": "bottom" } },
