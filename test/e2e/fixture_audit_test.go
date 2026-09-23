@@ -191,6 +191,35 @@ var OneAgentGuardrailProfile = Profile{
 	},
 }
 
+// OpenAIOneAgentGuardrailProfile checks the guardrail attributes OneAgent's Python
+// OpenAI sensor derives from Azure OpenAI content-filter payloads when the GenAI
+// captureGuardrails feature is enabled. The sensor writes its own provider-neutral
+// gen_ai.guardrail.* namespace — not the Bedrock-scoped gen_ai.bedrock.guardrail.*
+// attributes (AR-017..AR-019), which this SDK can never emit because it never talks
+// to Bedrock, and not the raw gen_ai.prompt.prompt_filter_results /
+// gen_ai.completion.content_filter_results blobs (AR-015/AR-016) either, which
+// OneAgent-sourced spans never carry (AI-497).
+//
+// Only the category-filter attribute is required, via an AnyOf over the input and
+// output side: which side fires depends on whether Azure filtered the prompt or the
+// completion, and a single request trips one or the other, never reliably both.
+// Blocklist names need a custom blocklist configured on the deployment, and the PII
+// attribute exists on the output side only — Azure never reports PII on the prompt —
+// so both stay optional.
+var OpenAIOneAgentGuardrailProfile = Profile{
+	Name: "oneagent-openai-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.guardrail.input.content", RuleID: "AR-058",
+			AnyOf: []string{"gen_ai.guardrail.input.content", "gen_ai.guardrail.output.content"}},
+	},
+	Optional: []AttributeCheck{
+		{Name: "gen_ai.guardrail.output.content", RuleID: "AR-062"},
+		{Name: "gen_ai.guardrail.input.words.lists", RuleID: "AR-063"},
+		{Name: "gen_ai.guardrail.output.words.lists", RuleID: "AR-064"},
+		{Name: "gen_ai.guardrail.output.sensitive_information.piis", RuleID: "AR-065"},
+	},
+}
+
 // OpenAIProfile extends generic with OpenAI prompt-caching attributes.
 var OpenAIProfile Profile
 
@@ -618,6 +647,36 @@ func auditGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...
 func auditOneAgentGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
 	t.Helper()
 	auditSpanOptional(t, sdk, instrumentation+"-guardrail", OneAgentGuardrailProfile, dql, note...)
+}
+
+// auditOpenAIGuardrailSpan audits the Azure OpenAI content-filter activation
+// captured by OneAgent's Python OpenAI sensor against
+// OpenAIOneAgentGuardrailProfile. It cannot reuse auditSpanOptional: when Azure
+// filters the prompt the SDK raises BadRequestError and OneAgent marks the span
+// span.status_code = "error" (AI-497) — the expected outcome here — whereas
+// auditSpanOptional treats an error span as a failure via assertNotErrorSpan.
+// Skips (rather than fails) when no anchor span is found, since the trigger
+// no-ops off Azure and the filter only attaches attributes on a request it
+// actually intervened on. Reports are written under "<instrumentation>-guardrail"
+// so they never collide with the baseline auditSpan report for the same suite.
+func auditOpenAIGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s guardrail spans found — content filter did not intervene this run", sdk, instrumentation)
+		return
+	}
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation+"-guardrail", OpenAIOneAgentGuardrailProfile, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+	logAuditResult(t, report, len(spans))
 }
 
 // auditApplyGuardrailSpan audits the guardrail-triggering call from
