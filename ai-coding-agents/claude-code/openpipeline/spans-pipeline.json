@@ -11,7 +11,7 @@
         "description": "Map claude_code.llm_request spans to GenAI semconv (chat)",
         "matcher": "matchesValue(span.name, \"claude_code.llm_request\")",
         "dql": {
-          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.usage.input_tokens = toLong(input_tokens)\n| fieldsAdd gen_ai.usage.output_tokens = toLong(output_tokens)"
+          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.request.model = model\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.usage.input_tokens = toLong(input_tokens)\n| fieldsAdd gen_ai.usage.output_tokens = toLong(output_tokens)\n| fieldsAdd gen_ai.conversation.id = session.id"
         }
       },
       {
@@ -21,7 +21,7 @@
         "description": "Map claude_code.interaction spans to GenAI semconv (invoke_agent)",
         "matcher": "matchesValue(span.name, \"claude_code.interaction\")",
         "dql": {
-          "script": "fieldsAdd gen_ai.operation.name = \"invoke_agent\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.agent.name = \"Claude Code\"\n| fieldsAdd gen_ai.agent.id = \"claude-code\"\n| fieldsAdd tmp_prompt_escaped = replaceString(replaceString(replaceString(user_prompt, \"\\\\\", \"\\\\\\\\\"), \"\\\"\", \"\\\\\\\"\"), \"\\n\", \"\\\\n\")\n| fieldsAdd gen_ai.input.messages = concat(\"[{\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"\", tmp_prompt_escaped, \"\\\"}]\")\n| fieldsRemove tmp_prompt_escaped"
+          "script": "fieldsAdd gen_ai.operation.name = \"invoke_agent\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.agent.name = \"Claude Code\"\n| fieldsAdd gen_ai.agent.id = \"claude-code\"\n| fieldsAdd gen_ai.conversation.id = session.id\n| fieldsAdd tmp_prompt_escaped = replaceString(replaceString(replaceString(user_prompt, \"\\\\\", \"\\\\\\\\\"), \"\\\"\", \"\\\\\\\"\"), \"\\n\", \"\\\\n\")\n| fieldsAdd gen_ai.input.messages = concat(\"[{\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"\", tmp_prompt_escaped, \"\\\"}]\")\n| fieldsRemove tmp_prompt_escaped"
         }
       },
       {
@@ -31,7 +31,7 @@
         "description": "Map claude_code.tool spans to GenAI semconv (execute_tool)",
         "matcher": "matchesValue(span.name, \"claude_code.tool\")",
         "dql": {
-          "script": "fieldsAdd gen_ai.operation.name = \"execute_tool\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.tool.name = tool_name"
+          "script": "fieldsAdd gen_ai.operation.name = \"execute_tool\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.tool.name = tool_name\n| fieldsAdd gen_ai.conversation.id = session.id"
         }
       }
     ]

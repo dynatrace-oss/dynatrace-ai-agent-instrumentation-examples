@@ -67,7 +67,8 @@ OC_ALL='[
   {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_collector_test.go","test_run":"TestGoogleADKOpenTelemetryCollector","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"google-adk-zero-code","app_dir":"google-adk/zero-code","test_file":"test/e2e/google_adk_zero_code_test.go","test_run":"TestGoogleADKZeroCode","otel_service_name":"google-adk-zero-code","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true},
-  {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"}
+  {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"},
+  {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then

@@ -49,7 +49,9 @@ export OTEL_LOG_USER_PROMPTS=1
 # AI Observability app (Explorer, traces, agent topology).
 # Metrics and logs alone do NOT light up that app — it is span-driven.
 # See README section "Light up the AI Observability app".
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
 export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+export CLAUDE_CODE_PROPAGATE_TRACEPARENT=1
 export OTEL_TRACES_EXPORTER=otlp
 
 echo "Claude Code telemetry configured for Dynatrace:"
