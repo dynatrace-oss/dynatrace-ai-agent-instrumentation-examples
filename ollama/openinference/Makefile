@@ -11,10 +11,10 @@ DT_API_TOKEN     ?= dt0c01.*****
 
 OLLAMA_HOST      ?= http://localhost:11434
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. Same pin as the other
-# openinference examples in this repo — tracks OTel contrib v0.157.0 and bundles
-# genainormalizerprocessor + signal_to_metrics connector. Pinned so a version
-# bump surfaces normalization regressions in the e2e test.
+# Bindplane Distro for OpenTelemetry (BDOT) collector. Bundles the
+# span_metrics/signal_to_metrics connectors used below to derive
+# gen_ai.client.operation.duration / gen_ai.client.token.usage. Pinned so a
+# version bump surfaces regressions in the e2e test.
 override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector-ollama
 
@@ -26,7 +26,7 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start collector + app locally on port $(PORT)  [Option A — Bindplane collector]
+run: ## Start collector + app locally on port $(PORT)  [Option A — Bindplane collector, metrics only]
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
