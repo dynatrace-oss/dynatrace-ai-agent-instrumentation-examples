@@ -1,31 +1,31 @@
 # AWS Bedrock + OpenInference Demo
 
-Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with Dynatrace via OpenInference instrumentation (`BedrockInstrumentor`). The app exports spans over OTLP to a local Bindplane collector, which normalizes them and forwards them to Dynatrace.
+Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with Dynatrace via OpenInference instrumentation (`BedrockInstrumentor`). The app enables OpenInference's native GenAI semantic conventions (`OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`), then exports spans over OTLP to a local Bindplane collector that forwards traces and derives GenAI metrics.
 
 ## How it works
 
-OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) that the Dynatrace AI Observability app does not natively understand. This example normalizes them to the Dynatrace `gen_ai.*` format in the collector, so no Dynatrace-side configuration is needed:
+With native GenAI semantic convention emission enabled, `BedrockInstrumentor` emits `gen_ai.*` attributes directly on spans (alongside existing OpenInference attributes). Only a few gaps that native emission doesn't cover are patched — most in the collector, one (guardrail assessment data) in the app, since it's runtime state the instrumentation never turns into span attributes at all:
 
 ```
-App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
+App  ->  Bindplane collector (attribute patches + metrics derivation + OTLP forward)  ->  Dynatrace Grail
 ```
 
-The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`) and forwards spans. The pipeline runs these processors (see [`otelcol-config.yaml`](otelcol-config.yaml)):
+The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`), forwards spans, and derives GenAI metrics from span attributes. The pipeline uses these components (see [`otelcol-config.yaml`](otelcol-config.yaml)):
 
-1. **`gen_ai_normalizer`** (source `openinference`, `remove_originals: false`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON.
-2. **`transform/fix_input_messages`** / **`transform/fix_output_messages`** rebuild `gen_ai.input.messages` / `gen_ai.output.messages` by hand — `gen_ai_normalizer` otherwise emits both with an empty `parts` array for this demo; see [Known gaps & limitations](#known-gaps--limitations) below.
-3. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
-4. **`transform/cleanup_raw_attrs`** strips the raw `llm.*` attributes left behind by turning off `remove_originals`, so exported spans still end up `gen_ai.*`-only.
+1. **`transform/response_model`** mirrors `gen_ai.request.model` onto `gen_ai.response.model`, which native OpenInference emission never sets (Bedrock's Converse response carries no model id) but the AI Observability app requires.
+2. **`transform/guardrail_operation_name`** sets `gen_ai.operation.name` to `GUARDRAIL` on the standalone `apply_guardrail` span, derived from the `openinference.span.kind` attribute OpenInference still emits — native emission has no GUARDRAIL-kind handling at all.
+3. **`transform/bedrock-guardrail-attrs`** flattens the `gen_ai.bedrock.guardrail.input_assessment` JSON blob (set by `main.py`, see [Known gaps & limitations](#known-gaps--limitations)) into `gen_ai.bedrock.guardrail.content` / `.sensitive_info` / `.topics` / `.activation`.
+4. **`span_metrics` connector** derives `gen_ai.client.operation.duration` histograms from LLM spans.
+5. **`signal_to_metrics` connector** derives `gen_ai.client.token.usage` metric points from `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Note this connector silently drops the whole datapoint if any of its non-optional `attributes` keys (including `gen_ai.response.model`) is missing from the span — which is why step 1 above matters even though `gen_ai.response.model` isn't otherwise required.
+6. **`filter/genai_only`** scopes metric derivation to LLM spans (`gen_ai.request.model` present).
 
-The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane Distro for OpenTelemetry), which tracks OTel Collector contrib v0.156.0 and bundles the `genainormalizer` processor. The pin means a future version bump surfaces normalization changes in the e2e test.
+The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.108.0` (Bindplane Distro for OpenTelemetry). The pin means a future version bump surfaces behavior changes in the e2e test.
 
 ## Known gaps & limitations
 
-### genainormalizer drops message content (worked around locally)
+### Converse's guardrail trace data needs app-side extraction
 
-`genainormalizer`'s `openinference` source reconstructs `gen_ai.input.messages` and `gen_ai.output.messages` with an empty `parts` array for every span this demo produces — [upstream issue](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50133). The root cause: Bedrock's `converse` API takes `content` as an array even for a single plain-text block, so `openinference-instrumentation-bedrock` never sets the flat `message.content` string the normalizer's message-reconstruction path expects — it only nests text under the indexed `llm.{input,output}_messages.N.message.contents.M.message_content.*` form. Unlike the direct-Anthropic-SDK case (see `anthropic/openinference`'s README), this hits *both* input and output messages here, since `system` and user turns all go through the same array-shaped `content` field.
-
-Worked around with hand-written `transform/fix_input_messages` / `transform/fix_output_messages` processors in [`otelcol-config.yaml`](otelcol-config.yaml) that rebuild both attributes from the raw `llm.*` attributes after `genainormalizer` runs (`remove_originals` is turned off, and `transform/cleanup_raw_attrs` strips the raw attributes afterward instead). This only handles the single `"text"`-type content block per message that `write_haiku` produces (`llm.input_messages.0` = system prompt, `.1` = user message, `llm.output_messages.0` = assistant reply) — multiple content blocks or a tool call would need a corresponding statement added, and would otherwise fall back to `genainormalizer`'s empty-parts version. Remove this workaround once the upstream fix is merged and available in the pinned collector image.
+`openinference-instrumentation-bedrock` never reads Bedrock's Converse response `trace.guardrail` block (topic/content/sensitive-info policy assessment data returned when `guardrailConfig.trace` is `"enabled"`) — it's not exposed as a span attribute in any form, so there's nothing for a collector transform to derive it from. `write_haiku` in [`main.py`](main.py) works around this the same way `pydantic-ai/opentelemetry`'s `ask-guardrail` endpoint does: it wraps the guardrail-triggering `converse()` call in its own span (since `openinference-instrumentation-bedrock`'s own Converse span has already ended by the time `.converse()` returns, so attributes can no longer be added to it) and sets the raw per-guardrail assessment as `gen_ai.bedrock.guardrail.input_assessment` JSON for `transform/bedrock-guardrail-attrs` to flatten.
 
 ## Prerequisites
 
@@ -50,7 +50,8 @@ Worked around with hand-written `transform/fix_input_messages` / `transform/fix_
 | `AWS_ACCESS_KEY_ID` | Yes | — | AWS access key ID |
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
-| `BEDROCK_MODEL_ID` | No | `anthropic.claude-3-5-sonnet-20241022-v2:0` | Bedrock model ID |
+| `BEDROCK_MODEL_ID` | No | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model ID |
+| `OPENINFERENCE_ENABLE_GENAI_SEMCONV` | No | `true` | Keep enabled to emit `gen_ai.*` attributes natively from OpenInference instrumentation |
 | `OTEL_SERVICE_NAME` | No | `haiku-writer` | Service name reported in traces |
 
 ## Makefile Targets
