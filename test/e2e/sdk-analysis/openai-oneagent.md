@@ -1,6 +1,6 @@
 # OpenAI OneAgent — Baseline Analysis
 
-> **Baseline**: sdk-comparison-baseline.json v1.2.1 | **Path**: `openai/oneagent/app.py` | **Profile**: generic | **Dashboard**: `abmodelversioning.dashboard.json`
+> *Baseline*: sdk-comparison-baseline.json v1.6.0 | *Path*: `openai/oneagent/app.py` | *Profile*: openai + oneagent-openai-guardrail | *Dashboard*: `abmodelversioning.dashboard.json`
 
 ## Instrumentation
 
@@ -39,8 +39,8 @@
 | Service health tile | ✅ | Python FastAPI sensor captures HTTP spans with status codes |
 | Agent quick filter | N/A | Direct OpenAI SDK — no agent framework |
 | Provider quick filter | ✅ | Provider identity present |
-| Guardrails (Azure) | ⚠️ | Possible if using Azure via `OPENAI_API_BASE`, but AR-015/AR-016 not emitted without Azure Content Safety configuration |
-| Guardrails (Bedrock) | N/A | Not Bedrock |
+| Guardrails (Azure) | ✅ conditional | Covered by `POST /haiku-guardrail`. OneAgent does *not* emit AR-015/AR-016 on its own spans — it normalizes Azure's content-filter payload into `gen_ai.guardrail.*` instead (AR-058, AR-062..AR-065). Requires Azure via `OPENAI_API_BASE`/`OPENAI_API_VERSION`, the `captureGuardrails` OneAgent feature enabled, and a filter that actually fires |
+| Guardrails (Bedrock) | N/A | Not Bedrock. `gen_ai.bedrock.guardrail.*` (AR-017..AR-019) can never appear on this demo |
 | Cache hit rate (OpenAI) | ❌ | Prompt caching not used in this demo |
 
 ## Silent failures
@@ -77,3 +77,17 @@ Keep `max_completion_tokens` high enough for the model to finish its answer — 
 **5. OTel metrics (latency charts, cost dashboard)**: Not emitted by OneAgent. Add a separate OTel metrics pipeline if latency charts (`gen_ai.client.operation.duration`) or cost dashboard metrics (`gen_ai.client.token.usage`) are required.
 
 **6. Azure mode (via `OPENAI_API_BASE`)**: If targeting Azure OpenAI, Azure Content Safety (AR-015/AR-016) still requires explicit configuration to populate guardrail views.
+
+*6. Guardrails (Azure mode via `OPENAI_API_BASE`)*: OneAgent's Python OpenAI sensor has an opt-in guardrail path, gated by the GenAI `captureGuardrails` feature (off by default). When enabled it parses Azure's `prompt_filter_results`, the per-choice `content_filter_results`, and the body of the `BadRequestError` Azure raises on a filtered prompt, and writes its own namespace:
+
+| Attribute | Rule ID | Notes |
+|-----------|---------|-------|
+| `gen_ai.guardrail.input.content` | AR-058 | Record array, one entry per triggered prompt category: `{"type":"JAILBREAK"}`, `{"type":"HATE","confidence":"MEDIUM"}` |
+| `gen_ai.guardrail.output.content` | AR-062 | Same, for the completion |
+| `gen_ai.guardrail.input.words.lists` | AR-063 | Matched custom blocklist names (needs a blocklist configured) |
+| `gen_ai.guardrail.output.words.lists` | AR-064 | Same, output side |
+| `gen_ai.guardrail.output.sensitive_information.piis` | AR-065 | PII sub-categories in the completion; Azure has no input-side PII filter |
+
+It never emits AR-015/AR-016 (`gen_ai.prompt.prompt_filter_results` / `gen_ai.completion.content_filter_results`) — those names belong to the OTel/OpenInference path only, which is why PPX's `gen_ai.guardrail.activation` metric never fired for OneAgent Azure traffic until AI-497. It also never emits the Bedrock-scoped `gen_ai.bedrock.guardrail.*` attributes, and no `gen_ai.guardrail.id`/`.version`: an Azure content filter is deployment configuration, not an addressable guardrail resource.
+
+Only a request the filter intervened on carries any of this; a passing request carries nothing. The e2e suite therefore audits it as its own report (`openai-oneagent-guardrail`) against its own anchor span, and skips rather than fails when the filter did not fire.

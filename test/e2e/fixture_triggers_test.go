@@ -112,6 +112,32 @@ func triggerHaikuGuardrail(t *testing.T) {
 	}
 }
 
+// triggerHaikuGuardrailOpenAI POSTs to /haiku-guardrail on localhost:8000 to trip
+// the Azure OpenAI content filter. OneAgent's Python OpenAI sensor derives its
+// gen_ai.guardrail.* attributes exclusively from Azure content-filter payloads
+// (prompt_filter_results / content_filter_results / the BadRequestError body), and
+// api.openai.com returns none of them, so this no-ops unless the demo is pointed
+// at an Azure deployment via OPENAI_API_VERSION.
+func triggerHaikuGuardrailOpenAI(t *testing.T) {
+	t.Helper()
+	if os.Getenv("OPENAI_API_VERSION") == "" {
+		t.Log("OPENAI_API_VERSION not set — skipping Azure content-filter trigger")
+		return
+	}
+	const url = "http://127.0.0.1:8000/haiku-guardrail"
+
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST /haiku-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /haiku-guardrail returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 type guardrailCheck struct {
 	Text string `json:"text"`
 }

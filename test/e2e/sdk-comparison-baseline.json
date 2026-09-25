@@ -1,10 +1,11 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "scope": "current-state",
-  "date": "2026-08-25",
+  "date": "2026-09-23",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.6.0 (2026-09-23): Add OneAgent Azure-OpenAI guardrail attributes (AR-062..AR-065) in a new guardrails-azure-oneagent group, backing the oneagent-openai-guardrail profile in the e2e audit fixture. OneAgent's Python OpenAI sensor derives guardrail signals from Azure content-filter payloads into its own gen_ai.guardrail.* namespace; it emits neither the Bedrock-scoped gen_ai.bedrock.guardrail.* attributes (AR-017..AR-019) nor the raw prompt_filter_results/content_filter_results blobs (AR-015/AR-016) the OTel path carries (AI-497). gen_ai.guardrail.input.content (AR-058) now spans both the bedrock and azure OneAgent groups: same attribute, different provider payload. Added input/output content to equivalents_any_of because a single request trips one side or the other, never reliably both.",
     "1.5.0 (2026-08-25): Add OneAgent-specific Bedrock guardrail attributes (AR-057..AR-061) in a new guardrails-bedrock-oneagent group. OneAgent emits these under different names than the OTel SDK path; gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) are shared. Updated OneAgentGuardrailProfile in the e2e audit fixture.",
     "1.4.0 (2026-08-07): Add AR-054/AR-055/AR-056 for the GenAI agent, tool and workflow duration metrics (gen_ai.invoke_agent.duration, gen_ai.execute_tool.duration, gen_ai.invoke_workflow.duration). All three are Development-stability semconv metrics that no instrumentation library emits under these names, so demos derive them from spans via a collector span_metrics connector or an OpenPipeline metric extractor (AI-352). Recorded as optional with an empty used_by: no AI Observability view consumes them yet, so they are semconv coverage tracking rather than a dashboard dependency and are deliberately not added to any profile metrics list, where absence would fail the audit.",
     "1.3.2 (2026-08-04): Add gen_ai.usage.prompt_caching.read_tokens (AR-052) and gen_ai.usage.prompt_caching.write_tokens (AR-053) as optional attributes in a new caching-anthropic group; new anthropic profile (extends generic) in the e2e audit fixture. Live-verified against the ixq6468h sprint tenant on the anthropic/oneagent demo (AnthropicBedrock client + cache_control). Note: not yet visualised directly on any dashboard — these are the raw per-span inputs PPX's gen_ai.prompt.caching metric (AR-045) is computed from, not something a dashboard tile reads itself.",
@@ -229,7 +230,11 @@
       "gen_ai.guardrail.input.content": "AR-058",
       "gen_ai.guardrail.input.topic.names": "AR-059",
       "gen_ai.guardrail.output.contextual": "AR-060",
-      "gen_ai.guardrail.input.words.matches": "AR-061"
+      "gen_ai.guardrail.input.words.matches": "AR-061",
+      "gen_ai.guardrail.output.content": "AR-062",
+      "gen_ai.guardrail.input.words.lists": "AR-063",
+      "gen_ai.guardrail.output.words.lists": "AR-064",
+      "gen_ai.guardrail.output.sensitive_information.piis": "AR-065"
     },
     "non_sdk_rule_ids": {
       "dt.smartscape.service": "NS-001",
@@ -255,7 +260,8 @@
       "equivalents_any_of": [
         ["gen_ai.provider.name", "gen_ai.system"],
         ["gen_ai.usage.input_tokens", "gen_ai.usage.prompt_tokens"],
-        ["gen_ai.usage.output_tokens", "gen_ai.usage.completion_tokens"]
+        ["gen_ai.usage.output_tokens", "gen_ai.usage.completion_tokens"],
+        ["gen_ai.guardrail.input.content", "gen_ai.guardrail.output.content"]
       ],
       "legacy_fallbacks": {
         "gen_ai.input.messages": ["gen_ai.prompt.0.content"],
@@ -1165,10 +1171,10 @@
       "required_level": "provider-specific",
       "group": "guardrails-bedrock-oneagent",
       "type": "span_attribute",
-      "providers": ["bedrock"],
+      "providers": ["azure", "bedrock"],
       "owned_by": "oneagent",
       "used_by": [],
-      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.content (AR-018). Content policy result for the guardrail input check."
+      "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.content (AR-018). Content policy result for the guardrail input check. The Python OpenAI sensor populates the same attribute from Azure OpenAI prompt_filter_results, one record per triggered category (hate, sexual, violence, self_harm, harassment, jailbreak, indirect_attack, protected_material_code, protected_material_text), each carrying type plus an optional confidence derived from the Azure severity."
     },
     {
       "name": "gen_ai.guardrail.input.topic.names",
@@ -1202,6 +1208,50 @@
       "owned_by": "oneagent",
       "used_by": [],
       "note": "OneAgent equivalent of gen_ai.bedrock.guardrail.words (AR-021) scoped to the input side. Lists word/phrase matches triggered by the guardrail on the prompt."
+    },
+    {
+      "name": "gen_ai.guardrail.output.content",
+      "rule_id": "AR-062",
+      "required_level": "provider-specific",
+      "group": "guardrails-azure-oneagent",
+      "type": "span_attribute",
+      "providers": ["azure"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "Output-side counterpart of gen_ai.guardrail.input.content (AR-058), populated from the per-choice content_filter_results of an Azure OpenAI response. A request trips the input or the output side depending on what Azure filtered, so the two are listed as equivalents_any_of rather than both required."
+    },
+    {
+      "name": "gen_ai.guardrail.input.words.lists",
+      "rule_id": "AR-063",
+      "required_level": "optional",
+      "group": "guardrails-azure-oneagent",
+      "type": "span_attribute",
+      "providers": ["azure"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "Names of the Azure OpenAI custom blocklists that matched the prompt. Optional: present only when a custom blocklist is configured on the deployment."
+    },
+    {
+      "name": "gen_ai.guardrail.output.words.lists",
+      "rule_id": "AR-064",
+      "required_level": "optional",
+      "group": "guardrails-azure-oneagent",
+      "type": "span_attribute",
+      "providers": ["azure"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "Output-side counterpart of AR-063: custom blocklists that matched the completion."
+    },
+    {
+      "name": "gen_ai.guardrail.output.sensitive_information.piis",
+      "rule_id": "AR-065",
+      "required_level": "optional",
+      "group": "guardrails-azure-oneagent",
+      "type": "span_attribute",
+      "providers": ["azure"],
+      "owned_by": "oneagent",
+      "used_by": [],
+      "note": "PII sub-categories Azure detected in the completion. There is no input-side equivalent for Azure: the PII filter can only be enabled on output content, so it never appears in prompt_filter_results. Optional because the filter is opt-in per deployment."
     }
   ],
   "non_sdk_fields": [
