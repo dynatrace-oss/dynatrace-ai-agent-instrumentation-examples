@@ -16,7 +16,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # contrib v0.157.0 and bundles span_metrics/signal_to_metrics connectors used to derive
 # gen_ai.client.operation.duration / gen_ai.client.token.usage. Pinned so a
 # version bump surfaces regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
