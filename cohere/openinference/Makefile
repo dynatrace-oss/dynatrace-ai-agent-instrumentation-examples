@@ -13,7 +13,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 # span_metrics/signal_to_metrics connectors used below to derive
 # gen_ai.client.operation.duration / gen_ai.client.token.usage.
 # Pinned so a version bump surfaces regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: install run run-openpipeline build push request stop logs help

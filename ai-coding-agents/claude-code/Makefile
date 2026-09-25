@@ -6,7 +6,7 @@ DT_ENDPOINT ?=
 DT_API_TOKEN ?=
 CLAUDE_CODE_VERSION ?= 2.1.278
 
-override COLLECTOR_IMAGE := ghcr.io/observiq/bindplane-agent:1.108.0
+override COLLECTOR_IMAGE := ghcr.io/observiq/bindplane-agent:1.108.1
 override COLLECTOR_CONTAINER := claude-code-otel-collector
 
 .PHONY: install run run-collector stop logs help
