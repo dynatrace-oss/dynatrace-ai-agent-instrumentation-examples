@@ -5,33 +5,367 @@
   "processing": {
     "processors": [
       {
-        "type": "dql",
+        "description": "Map claude_code.llm_request spans to GenAI semconv (chat)",
+        "dql": {
+          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.request.model = model\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.usage.input_tokens = toLong(input_tokens)\n| fieldsAdd gen_ai.usage.output_tokens = toLong(output_tokens)\n| fieldsAdd gen_ai.usage.total_tokens = coalesce(toLong(input_tokens), 0) + coalesce(toLong(output_tokens), 0)\n| fieldsAdd gen_ai.conversation.id = session.id\n| fieldsAdd otel_duration_s = duration / 1s"
+        },
         "enabled": true,
         "id": "processor_Map_llm_request_to_GenAI_chat_4711",
-        "description": "Map claude_code.llm_request spans to GenAI semconv (chat)",
         "matcher": "matchesValue(span.name, \"claude_code.llm_request\")",
-        "dql": {
-          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.request.model = model\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.usage.input_tokens = toLong(input_tokens)\n| fieldsAdd gen_ai.usage.output_tokens = toLong(output_tokens)\n| fieldsAdd gen_ai.conversation.id = session.id"
-        }
+        "type": "dql"
       },
       {
-        "type": "dql",
-        "enabled": true,
-        "id": "processor_Map_interaction_to_GenAI_agent_4711",
         "description": "Map claude_code.interaction spans to GenAI semconv (invoke_agent)",
-        "matcher": "matchesValue(span.name, \"claude_code.interaction\")",
         "dql": {
           "script": "fieldsAdd gen_ai.operation.name = \"invoke_agent\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.agent.name = \"Claude Code\"\n| fieldsAdd gen_ai.agent.id = \"claude-code\"\n| fieldsAdd gen_ai.conversation.id = session.id\n| fieldsAdd tmp_prompt_escaped = replaceString(replaceString(replaceString(user_prompt, \"\\\\\", \"\\\\\\\\\"), \"\\\"\", \"\\\\\\\"\"), \"\\n\", \"\\\\n\")\n| fieldsAdd gen_ai.input.messages = concat(\"[{\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"\", tmp_prompt_escaped, \"\\\"}]\")\n| fieldsRemove tmp_prompt_escaped"
+        },
+        "enabled": true,
+        "id": "processor_Map_interaction_to_GenAI_agent_4711",
+        "matcher": "matchesValue(span.name, \"claude_code.interaction\")",
+        "type": "dql"
+      },
+      {
+        "description": "Map claude_code.tool spans to GenAI semconv (execute_tool)",
+        "dql": {
+          "script": "fieldsAdd gen_ai.operation.name = \"execute_tool\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.tool.name = tool_name\n| fieldsAdd gen_ai.conversation.id = session.id"
+        },
+        "enabled": true,
+        "id": "processor_Map_tool_to_GenAI_execute_tool_4711",
+        "matcher": "matchesValue(span.name, \"claude_code.tool\")",
+        "type": "dql"
+      },
+      {
+        "description": "Correlate claude_code.tool.execution / .blocked_on_user child spans to the conversation. Deliberately sets no gen_ai.operation.name: they are sub-phases of the parent claude_code.tool span, and typing them as execute_tool would triple-count every tool call.",
+        "dql": {
+          "script": "fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.conversation.id = session.id\n| fieldsAdd error.type = error_class\n| fieldsAdd otel_duration_s = duration / 1s"
+        },
+        "enabled": true,
+        "id": "processor_Correlate_tool_subspans_4711",
+        "matcher": "matchesValue(span.name, \"claude_code.tool.execution\") or matchesValue(span.name, \"claude_code.tool.blocked_on_user\")",
+        "type": "dql"
+      }
+    ]
+  },
+  "metricExtraction": {
+    "processors": [
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_input_4711",
+        "description": "Emit gen_ai.client.token.usage for input tokens, the OTel semconv metric the AI Observability tiles read.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(input_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "input_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "input"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
         }
       },
       {
-        "type": "dql",
+        "type": "valueMetric",
         "enabled": true,
-        "id": "processor_Map_tool_to_GenAI_execute_tool_4711",
-        "description": "Map claude_code.tool spans to GenAI semconv (execute_tool)",
-        "matcher": "matchesValue(span.name, \"claude_code.tool\")",
-        "dql": {
-          "script": "fieldsAdd gen_ai.operation.name = \"execute_tool\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.tool.name = tool_name\n| fieldsAdd gen_ai.conversation.id = session.id"
+        "id": "metric_gen_ai_token_usage_output_4711",
+        "description": "Emit gen_ai.client.token.usage for output tokens, the OTel semconv metric the AI Observability tiles read.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(output_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "output_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "output"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      },
+      {
+        "type": "samplingAwareHistogramMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_operation_duration_4711",
+        "description": "Emit gen_ai.client.operation.duration in SECONDS as the spec requires. Dynatrace's duration measurement emits microseconds, so the value is derived from duration_ms in the processing stage instead. error.type comes from error_class; OTel expresses GenAI failures as a dimension on this histogram rather than a separate error counter.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\")",
+        "samplingAwareHistogramMetric": {
+          "metricKey": "gen_ai.client.operation.duration",
+          "measurement": "field",
+          "aggregation": "enabled",
+          "dimensions": [
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "error_class",
+              "destinationFieldName": "error.type",
+              "strategy": "equals"
+            }
+          ],
+          "field": "otel_duration_s"
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_cacheread_4711",
+        "description": "Emit gen_ai.client.token.usage for cacheRead tokens. Claude Code splits token usage four ways; prompt caching is most of the volume for a coding agent, so omitting these understates real usage.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(cache_read_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "cache_read_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "cacheRead"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_cachecreation_4711",
+        "description": "Emit gen_ai.client.token.usage for cacheCreation tokens. Claude Code splits token usage four ways; prompt caching is most of the volume for a coding agent, so omitting these understates real usage.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(cache_creation_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "cache_creation_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "cacheCreation"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      },
+      {
+        "type": "samplingAwareHistogramMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_tool_operation_duration_4711",
+        "description": "Emit gen_ai.client.operation.duration in SECONDS as the spec requires. Dynatrace's duration measurement emits microseconds, so the value is derived from duration_ms in the processing stage instead. error.type comes from error_class; OTel expresses GenAI failures as a dimension on this histogram rather than a separate error counter.",
+        "matcher": "matchesValue(span.name, \"claude_code.tool.execution\")",
+        "samplingAwareHistogramMetric": {
+          "metricKey": "gen_ai.client.operation.duration",
+          "measurement": "field",
+          "aggregation": "enabled",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "error_class",
+              "destinationFieldName": "error.type",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "execute_tool"
+            }
+          ],
+          "field": "otel_duration_s"
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_otel_input_tokens_4711",
+        "description": "Emit gen_ai.client.inference.usage.input_tokens, the current OTel spec name. The spec replaced the single gen_ai.client.token.usage metric keyed by gen_ai.token.type with one counter per token kind. The legacy key is kept alongside because the AI Observability tiles still read it.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(input_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.inference.usage.input_tokens",
+          "field": "input_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.response.model",
+              "strategy": "equals"
+            }
+          ]
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_otel_output_tokens_4711",
+        "description": "Emit gen_ai.client.inference.usage.output_tokens, the current OTel spec name. The spec replaced the single gen_ai.client.token.usage metric keyed by gen_ai.token.type with one counter per token kind. The legacy key is kept alongside because the AI Observability tiles still read it.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(output_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.inference.usage.output_tokens",
+          "field": "output_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.response.model",
+              "strategy": "equals"
+            }
+          ]
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_otel_cache_read_tokens_4711",
+        "description": "Emit gen_ai.client.inference.usage.cache_read.input_tokens, the current OTel spec name. The spec replaced the single gen_ai.client.token.usage metric keyed by gen_ai.token.type with one counter per token kind. The legacy key is kept alongside because the AI Observability tiles still read it.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(cache_read_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.inference.usage.cache_read.input_tokens",
+          "field": "cache_read_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.response.model",
+              "strategy": "equals"
+            }
+          ]
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_otel_cache_write_tokens_4711",
+        "description": "Emit gen_ai.client.inference.usage.cache_write.input_tokens, the current OTel spec name. The spec replaced the single gen_ai.client.token.usage metric keyed by gen_ai.token.type with one counter per token kind. The legacy key is kept alongside because the AI Observability tiles still read it.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(cache_creation_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.inference.usage.cache_write.input_tokens",
+          "field": "cache_creation_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.response.model",
+              "strategy": "equals"
+            }
+          ]
         }
       }
     ]
