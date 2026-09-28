@@ -19,7 +19,7 @@ The processors also map `session.id` to `gen_ai.conversation.id`. Native Claude 
 
 Two details are worth calling out, because both were wrong in an earlier revision of this example:
 
-- `gen_ai.usage.total_tokens` is computed as the sum of the input and output tokens. Several AI Observability tiles read that field directly rather than summing the two halves themselves, so a pipeline that sets only `input_tokens` and `output_tokens` leaves those tiles reporting **No data available** while a table on the same screen shows a token count.
+- `gen_ai.usage.total_tokens` is computed as the sum of the input and output tokens, completing the span-side token mapping for anything querying spans directly. It does **not** drive the app's Token usage tile; see the metrics section below for what does.
 - Claude Code emits `claude_code.tool.execution` and `claude_code.tool.blocked_on_user` as children of `claude_code.tool`. The matcher `matchesValue(span.name, "claude_code.tool")` is an exact match and does not cover them. They are correlated to the conversation but deliberately left without a `gen_ai.operation.name`, because typing them as `execute_tool` would count every tool call three times.
 
 ## Create the pipeline with dtctl
@@ -105,6 +105,32 @@ If you do not want to use `dtctl`, recreate the complete setup in the **OpenPipe
 4. Open **Spans → Dynamic routing**.
 5. Add a route with matcher `matchesValue(service.name, "claude-code")` targeting the new pipeline.
 6. Save without deleting or replacing other routes.
+
+## Emit the GenAI metrics the app tiles read
+
+The **Token usage**, **Average request duration** and **Overall cost** tiles are metric-backed, not span-backed. They read the OpenTelemetry GenAI semantic convention metrics, chiefly `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`. Enriching spans alone therefore leaves those tiles showing *No data available* even while the table beside them reports a healthy token count from the same spans.
+
+Claude Code cannot close this gap on its own. It exports eight metrics, all named `claude_code.*`, and its documentation states that no GenAI semantic convention metrics are exported. Its *span* attributes do follow the conventions, which is why the span mapping works while the metrics do not.
+
+`spans-pipeline.json` therefore carries a `metricExtraction` stage next to the `processing` stage, which derives the semconv metrics from the spans already being enriched:
+
+| Processor | Metric | Source |
+|---|---|---|
+| four value metrics | `gen_ai.client.token.usage` | `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_creation_tokens` |
+| one sampling-aware histogram | `gen_ai.client.operation.duration` | span duration |
+
+Each token processor writes the same metric key and distinguishes itself with a constant `gen_ai.token.type` dimension, matching the four types Claude Code reports natively. Prompt caching dominates token volume for a coding agent, so extracting only input and output would understate real usage substantially.
+
+Dimensions are deliberately limited to model, provider and operation. Do not add `session.id` or `gen_ai.conversation.id` as metric dimensions: both are effectively unbounded and would create a cardinality problem.
+
+> [!NOTE]
+> A `dtctl apply --dry-run` does not validate these payloads fully. A duration histogram requires `sampling` to be `enabled`, and the dry run reports success before the real apply rejects it. Treat the first non-dry apply as the real validation step.
+
+## Telemetry attributes and privacy
+
+Claude Code attaches a standard attribute set to every metric, span and log event it exports, including `user.email`, `user.id`, `user.account_uuid`, `organization.id` and `session.id`. Account UUID and session id inclusion are on by default.
+
+None of that is introduced by this pipeline, but it does end up in your tenant, so decide it deliberately rather than by default. The relevant switches are `OTEL_METRICS_INCLUDE_ACCOUNT_UUID`, `OTEL_METRICS_INCLUDE_SESSION_ID`, `OTEL_METRICS_INCLUDE_VERSION`, `OTEL_METRICS_INCLUDE_ENTRYPOINT`, `OTEL_METRICS_INCLUDE_RESOURCE_ATTRIBUTES` and `OTEL_METRICS_INCLUDE_REPOSITORY`. Setting the first two to `false` removes the per-user identifiers from metrics and lowers cardinality at the same time. Note that dropping `session.id` also removes the key this pipeline maps to `gen_ai.conversation.id`, so conversation grouping goes with it.
 
 ## Choose one enrichment path
 
