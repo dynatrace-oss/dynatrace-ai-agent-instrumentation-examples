@@ -114,17 +114,45 @@ Claude Code cannot close this gap on its own. It exports eight metrics, all name
 
 `spans-pipeline.json` therefore carries a `metricExtraction` stage next to the `processing` stage, which derives the semconv metrics from the spans already being enriched:
 
-| Processor | Metric | Source |
-|---|---|---|
-| four value metrics | `gen_ai.client.token.usage` | `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_creation_tokens` |
-| one sampling-aware histogram | `gen_ai.client.operation.duration` | span duration |
+### Both token conventions are emitted, on purpose
 
-Each token processor writes the same metric key and distinguishes itself with a constant `gen_ai.token.type` dimension, matching the four types Claude Code reports natively. Prompt caching dominates token volume for a coding agent, so extracting only input and output would understate real usage substantially.
+The GenAI token metrics were restructured. The current [specification](https://github.com/open-telemetry/semantic-conventions-genai) has no `gen_ai.client.token.usage` and no `gen_ai.token.type` attribute. It defines one counter per token kind instead.
+
+The AI Observability tiles still read the legacy key. Emitting only the current names would be conformant and would leave the tiles empty, which defeats the point of this example. So the stage emits both, and this is deliberate rather than an oversight:
+
+| Metric | Convention | Source field |
+|---|---|---|
+| `gen_ai.client.token.usage` | legacy, keyed by `gen_ai.token.type` | all four token fields |
+| `gen_ai.client.inference.usage.input_tokens` | current | `input_tokens` |
+| `gen_ai.client.inference.usage.output_tokens` | current | `output_tokens` |
+| `gen_ai.client.inference.usage.cache_read.input_tokens` | current | `cache_read_tokens` |
+| `gen_ai.client.inference.usage.cache_write.input_tokens` | current | `cache_creation_tokens` |
+| `gen_ai.client.operation.duration` | current, histogram in **seconds** | derived, see below |
+
+Drop the legacy processors once the app reads the current names. The spec also defines `gen_ai.client.inference.usage.reasoning.output_tokens`, which is omitted because Claude Code spans carry no reasoning token count; emitting a zero would be worse than emitting nothing.
+
+Prompt caching dominates token volume for a coding agent. On a real session, a single request showed 338,966 cache read tokens against 2 input tokens, so extracting only input and output understates usage by orders of magnitude.
+
+### Duration must be in seconds, and two field traps
+
+The spec requires `gen_ai.client.operation.duration` in seconds. Dynatrace's built-in `measurement: duration` emits **microseconds**, which reports a 10 second call as 10,879,245. The stage therefore derives the value in the processing stage and feeds the histogram from that field instead.
+
+The derivation must use `duration / 1s`, not `duration_ms`. `duration_ms` exists at query time but is **not available during ingest processing**, so a processor referencing it silently produces nothing: the field is simply absent on the ingested span, and the metric never appears. There is no error anywhere.
+
+Errors follow the convention too. OTel expresses GenAI failures as an `error.type` dimension on the duration histogram rather than a separate error counter, so error counts are derived by filtering that metric. `error.type` is sourced from the span's `error_class`, whose values are canonical exception names such as `ShellError` and `McpToolCallError`, exactly the low-cardinality identifier the spec asks for. The free-text `error` field is deliberately not used as a dimension.
 
 Dimensions are deliberately limited to model, provider and operation. Do not add `session.id` or `gen_ai.conversation.id` as metric dimensions: both are effectively unbounded and would create a cardinality problem.
 
 > [!NOTE]
 > A `dtctl apply --dry-run` does not validate these payloads fully. A duration histogram requires `sampling` to be `enabled`, and the dry run reports success before the real apply rejects it. Treat the first non-dry apply as the real validation step.
+
+### The stock error tiles cannot be filled
+
+**Invocation error count**, **Failure rate** and **Error rate over time** read `dt.service.request.failure_count`, joined to the GenAI service through Smartscape. That metric is derived from entry-point spans of `server` or `consumer` kind.
+
+Every Claude Code span is `span.kind: internal`, without exception. No request count or failure count is ever produced for the service, so those tiles stay empty and Failure rate reads a confident 0% that means *no measurements*, not *no errors*.
+
+No pipeline can change this. A processor cannot turn an internal span into an entry point, and manufacturing request counts for an agent that serves no inbound requests would be dishonest. Use the `error.type` dimension on `gen_ai.client.operation.duration` instead, which reflects real failures.
 
 ## Telemetry attributes and privacy
 
