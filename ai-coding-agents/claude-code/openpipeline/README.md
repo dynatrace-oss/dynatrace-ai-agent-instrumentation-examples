@@ -75,7 +75,16 @@ This needs `OTEL_LOG_ASSISTANT_RESPONSES=1`, plus `OTEL_LOG_USER_PROMPTS=1` for 
 
 ### Correlate the response log back to the span
 
-The response log and the LLM span share `request_id`. That is the reliable join key:
+There are two valid join keys, and which one you want depends on what you are correlating.
+
+| Log field | Matches | Granularity |
+|---|---|---|
+| `span_id` | `claude_code.interaction` | the whole user turn |
+| `request_id` | `claude_code.llm_request` | one API call |
+
+A turn makes several model calls, so several response logs legitimately share one `span_id`. Use `span_id` to reassemble a turn, and `request_id` to tie a response to the specific call that produced it, which is the one that carries the tokens and the model.
+
+Joining on `request_id`:
 
 ```dql
 fetch spans, from:now()-1h
@@ -88,10 +97,15 @@ fetch spans, from:now()-1h
   ], on:{left[request_id] == right[request_id]}, fields:{gen_ai.output.messages}
 ```
 
-> [!NOTE]
-> Do not join on `span_id`. These log events carry a `span_id`, but it does not correspond to any exported Claude Code span, and many log events share one value. Joining on it returns no rows.
+> [!IMPORTANT]
+> Cast the span id when joining on `span_id`. On the span it is `span.id`, a **uid**; on the log it is `span_id`, a **string**. Comparing them directly returns **zero rows with no error**, which looks exactly like missing data. Use `toString(span.id)`:
 >
-> Note also that the log field is `event.name == "assistant_response"`, without the `claude_code.` prefix. The prefixed form appears in `content`, not in `event.name`.
+> ```dql
+> | fields sid = toString(span.id)
+> | join [ ... ], on: {left[sid] == right[span_id]}
+> ```
+>
+> The log field is also `event.name == "assistant_response"`, without the `claude_code.` prefix. The prefixed form appears in `content`, not in `event.name`.
 
 This enrichment makes the response queryable and joinable as GenAI-shaped data. It does not fill the **Output** column of the AI Observability prompt stream, which reads spans only. Populating that column would require the response to be on the span itself, which is an upstream Claude Code instrumentation change.
 
