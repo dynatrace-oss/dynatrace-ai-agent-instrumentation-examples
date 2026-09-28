@@ -45,5 +45,176 @@
         }
       }
     ]
+  },
+  "metricExtraction": {
+    "processors": [
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_input_4711",
+        "description": "Emit gen_ai.client.token.usage for input tokens, the OTel semconv metric the AI Observability tiles read.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(input_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "input_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "input"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_output_4711",
+        "description": "Emit gen_ai.client.token.usage for output tokens, the OTel semconv metric the AI Observability tiles read.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(output_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "output_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "output"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      },
+      {
+        "type": "samplingAwareHistogramMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_operation_duration_4711",
+        "description": "Emit gen_ai.client.operation.duration from the span duration.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\")",
+        "samplingAwareHistogramMetric": {
+          "metricKey": "gen_ai.client.operation.duration",
+          "measurement": "duration",
+          "aggregation": "enabled",
+          "dimensions": [
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ],
+          "sampling": "enabled"
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_cacheread_4711",
+        "description": "Emit gen_ai.client.token.usage for cacheRead tokens. Claude Code splits token usage four ways; prompt caching is most of the volume for a coding agent, so omitting these understates real usage.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(cache_read_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "cache_read_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "cacheRead"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      },
+      {
+        "type": "valueMetric",
+        "enabled": true,
+        "id": "metric_gen_ai_token_usage_cachecreation_4711",
+        "description": "Emit gen_ai.client.token.usage for cacheCreation tokens. Claude Code splits token usage four ways; prompt caching is most of the volume for a coding agent, so omitting these understates real usage.",
+        "matcher": "matchesValue(span.name, \"claude_code.llm_request\") and isNotNull(cache_creation_tokens)",
+        "valueMetric": {
+          "metricKey": "gen_ai.client.token.usage",
+          "field": "cache_creation_tokens",
+          "dimensions": [
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.token.type",
+              "constantValue": "cacheCreation"
+            },
+            {
+              "extractionType": "field",
+              "sourceFieldName": "model",
+              "destinationFieldName": "gen_ai.request.model",
+              "strategy": "equals"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.provider.name",
+              "constantValue": "anthropic"
+            },
+            {
+              "extractionType": "constant",
+              "constantFieldName": "gen_ai.operation.name",
+              "constantValue": "chat"
+            }
+          ]
+        }
+      }
+    ]
   }
 }
