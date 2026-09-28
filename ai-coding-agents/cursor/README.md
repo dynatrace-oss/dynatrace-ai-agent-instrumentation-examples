@@ -1,6 +1,7 @@
 # Cursor Enterprise OpenTelemetry export to Dynatrace
 
 This example sends Cursor's native Enterprise OpenTelemetry export to Dynatrace and analyzes the available GenAI-adjacent telemetry with a premade dashboard.
+![dashboardview.png](dashboardview.png)
 
 > **Verified 2026-09-25:** Cursor's server-side exporter sends **metrics and logs only** over OTLP/HTTP protobuf. It does **not send traces**, trace/span IDs, or native `gen_ai.*` semantic-convention spans. This example is deliberately log/metric-driven and does not populate the span-based Dynatrace AI Observability topology or trace views.
 
