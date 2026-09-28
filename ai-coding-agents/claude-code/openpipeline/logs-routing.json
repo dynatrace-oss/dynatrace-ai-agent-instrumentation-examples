@@ -1,0 +1,11 @@
+{
+  "routingEntries": [
+    {
+      "description": "Claude Code GenAI log events (assistant_response / user_prompt) -> GenAI semconv",
+      "enabled": true,
+      "matcher": "matchesValue(service.name, \"claude-code\") and (matchesValue(event.name, \"assistant_response\") or matchesValue(event.name, \"user_prompt\"))",
+      "pipelineId": "<object-id-of-the-Claude-Code-GenAI-logs-pipeline>",
+      "pipelineType": "custom"
+    }
+  ]
+}

@@ -11,7 +11,7 @@
         "description": "Map claude_code.llm_request spans to GenAI semconv (chat)",
         "matcher": "matchesValue(span.name, \"claude_code.llm_request\")",
         "dql": {
-          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.request.model = model\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.usage.input_tokens = toLong(input_tokens)\n| fieldsAdd gen_ai.usage.output_tokens = toLong(output_tokens)\n| fieldsAdd gen_ai.conversation.id = session.id"
+          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.request.model = model\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.usage.input_tokens = toLong(input_tokens)\n| fieldsAdd gen_ai.usage.output_tokens = toLong(output_tokens)\n| fieldsAdd gen_ai.usage.total_tokens = coalesce(toLong(input_tokens), 0) + coalesce(toLong(output_tokens), 0)\n| fieldsAdd gen_ai.conversation.id = session.id"
         }
       },
       {
@@ -32,6 +32,16 @@
         "matcher": "matchesValue(span.name, \"claude_code.tool\")",
         "dql": {
           "script": "fieldsAdd gen_ai.operation.name = \"execute_tool\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.tool.name = tool_name\n| fieldsAdd gen_ai.conversation.id = session.id"
+        }
+      },
+      {
+        "type": "dql",
+        "enabled": true,
+        "id": "processor_Correlate_tool_subspans_4711",
+        "description": "Correlate the claude_code.tool.execution and claude_code.tool.blocked_on_user child spans to the conversation. Deliberately sets no gen_ai.operation.name: these are sub-phases of the parent claude_code.tool span, and typing them as execute_tool would count every tool call three times.",
+        "matcher": "matchesValue(span.name, \"claude_code.tool.execution\") or matchesValue(span.name, \"claude_code.tool.blocked_on_user\")",
+        "dql": {
+          "script": "fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.conversation.id = session.id"
         }
       }
     ]
