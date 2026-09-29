@@ -351,7 +351,7 @@ Assistant response text is exported as a log event when response capture is enab
 ```dql
 fetch logs, from: now()-30m
 | filter service.name == "claude-code"
-| filter event.name == "claude_code.assistant_response"
+| filter event.name == "assistant_response"
 | fields
     timestamp,
     event.name,
@@ -432,7 +432,9 @@ Set:
 OTEL_LOG_ASSISTANT_RESPONSES=1
 ```
 
-Then query `claude_code.assistant_response` log events. The text is not stored on the `claude_code.llm_request` span.
+Then query the assistant response log events. The text is not stored on the `claude_code.llm_request` span.
+
+Filter on `event.name == "assistant_response"`. The prefixed form `claude_code.assistant_response` appears in `content`, not in `event.name`, so filtering `event.name` on the prefixed value returns nothing.
 
 ### Prompt content is empty
 
