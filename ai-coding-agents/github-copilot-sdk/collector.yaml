@@ -33,6 +33,17 @@ receivers:
         endpoint: 0.0.0.0:4318   # Copilot otlpProtocol: http/protobuf or http/json
 
 processors:
+  # The runtime puts the prompt and response on both the chat span and the
+  # invoke_agent span that parents it. The app lists one prompt per span, so
+  # the same exchange shows up twice. Keep the copy on the chat span, which is
+  # the one carrying the model name.
+  transform/agent_span_messages:
+    error_mode: ignore
+    trace_statements:
+      - delete_key(span.attributes, "gen_ai.input.messages") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
+      - delete_key(span.attributes, "gen_ai.output.messages") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
+      - delete_key(span.attributes, "gen_ai.system_instructions") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
+
   # Dynatrace rejects cumulative OTLP metrics with HTTP 400.
   cumulativetodelta:
     include:
@@ -58,6 +69,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [transform/agent_span_messages]
       exporters: [otlphttp]
     metrics:
       receivers: [otlp]

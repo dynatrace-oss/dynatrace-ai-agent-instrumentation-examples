@@ -117,6 +117,9 @@ Telemetry is reported under `service.name = github-copilot`.
 | `session.provisioning` / `session.first_turn` | Session lifecycle |
 
 > [!NOTE]
+> The runtime sets `gen_ai.input.messages`, `gen_ai.output.messages`, and `gen_ai.system_instructions` on both the `chat {model}` span and the `invoke_agent` span above it. The AI Observability app lists one prompt per span, so the same exchange appears twice in the Prompts stream. [`collector.yaml`](./collector.yaml) deletes the three attributes from `invoke_agent` and keeps them on `chat {model}`, the span that also carries the model name.
+
+> [!NOTE]
 > Requires `@github/copilot-sdk` 1.0.15 or later. Earlier versions emit a second, placeholder `chat {model}` span per inference and report `gen_ai.usage.*` and the message content twice on a single span, so token counts and `gen_ai.input.messages` / `gen_ai.output.messages` arrive doubled.
 
 ### Span Attributes
