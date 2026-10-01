@@ -50,7 +50,7 @@ Prompt messages, model responses, tool definitions, tool arguments, tool results
 
 Never commit the token to source control.
 
-## Configure direct export to Dynatrace
+## Configure direct export to Dynatrace from Bash
 
 Dynatrace SaaS uses this OTLP base endpoint:
 
@@ -64,44 +64,34 @@ OTLP/HTTP appends the standard signal paths:
 - `/v1/metrics`
 - `/v1/logs`
 
-Dynatrace's OTLP API accepts `http/protobuf`; it does not accept direct OTLP/gRPC or OTLP/JSON.
-
-### macOS or Linux
-
-Copy [`.env.example`](./.env.example) to `.env` in this directory if you don't already have one, then replace the placeholder token and environment ID. The root `.gitignore` excludes `.env`; keep the real token only in that local file and never commit it. VS Code does not load `.env` automatically, so load it and launch VS Code from the same shell:
+Dynatrace's OTLP API accepts `http/protobuf`; it does not accept direct OTLP/gRPC or OTLP/JSON. This setup sends telemetry directly from VS Code to Dynatrace, without a local Collector or a workspace `.env` file.
 
 If `code` is not found on macOS, open the Command Palette in VS Code and run **Shell Command: Install 'code' command in PATH**, then open a new terminal.
 
+Fully quit all VS Code instances before launching from this shell so the running app receives the environment variables. Replace the endpoint's environment ID, then paste this block into Bash:
+
 ```bash
-set -a
-source .env
-set +a
+export DYNATRACE_API_TOKEN="token"
+export OTEL_EXPORTER_OTLP_ENDPOINT="https://<environment-id>.live.dynatrace.com/api/v2/otlp"
+export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token ${DYNATRACE_API_TOKEN}"
+export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE="delta"
+export COPILOT_OTEL_ENABLED="true"
+export COPILOT_OTEL_CAPTURE_CONTENT="false"
+export OTEL_SERVICE_NAME="copilot-chat"
+export OTEL_RESOURCE_ATTRIBUTES="service.namespace=developer-tools,deployment.environment.name=development"
 
 code .
 ```
 
-`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` is important for Dynatrace metric ingestion.
-
-### PowerShell
-
-```powershell
-Get-Content .env | ForEach-Object {
-  if ($_ -match '^\s*([^#][^=]*)=(.*)$') {
-    Set-Item -Path "Env:$($matches[1].Trim())" -Value $matches[2].Trim()
-  }
-}
-$env:OTEL_EXPORTER_OTLP_HEADERS = "Authorization=Api-Token $env:DYNATRACE_API_TOKEN"
-
-code .
-```
+The token is read without terminal echo or being typed into the shell command, but it is still present in the exported OTLP header and available to the VS Code process and its extensions. This avoids storing it in a workspace file or VS Code settings, but it is not as isolated as using a Collector to hold the credential. `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` is important for Dynatrace metric ingestion.
 
 > [!IMPORTANT]
-> Only load a `.env` file you trust. Do not put a real token in checked-in files, VS Code workspace settings, shell scripts, or JSON examples.
+> Do not put a real token in checked-in files, VS Code workspace settings, shell scripts, or JSON examples. Keep `.env` files closed and do not attach or select them in chat; workspace exclusions reduce accidental discovery but do not prevent explicit attachment.
 
 ## Optional user settings
 
-The included [`settings.example.json`](./settings.example.json) is an optional VS Code user-settings fragment. Merge its top-level properties into your User `settings.json` (or set the same options in the Settings UI); it is not a `managed-settings.json` file. The local `.env` setup above configures the exporter, endpoint, authentication header, and metric temporality without putting a token in `settings.json`.
+The included [`settings.example.json`](./settings.example.json) is an optional VS Code user-settings fragment. Merge its top-level properties into your User `settings.json` (or set the same options in the Settings UI); it is not a `managed-settings.json` file. The Bash launch above configures the exporter endpoint, authentication header, and metric temporality without putting a token in `settings.json`.
 
 Current user-facing keys are under `github.copilot.chat.otel.*`. Internal enterprise-policy mappings may use `chat.agentHost.otel.*`; do not paste those internal keys into normal user settings.
 
