@@ -56,9 +56,9 @@ request: ## Run the agent once against an already-running collector
 	@COPILOT_OTLP_ENDPOINT=http://localhost:$(OTLP_PORT) $(NODE) dist/index.js
 
 collector: ## Start the OTel collector on its own
-	@if [[ "$(DT_OTEL_ENDPOINT)" == *your-tenant* || "$(DT_OTEL_ENDPOINT)" == *YOUR_ENV_ID* || \
-	      "$(DT_API_TOKEN)" == "dt0c01.*****" || "$(DT_API_TOKEN)" == *YOUR_TOKEN_HERE* || \
-	      "$(DT_API_TOKEN)" != dt0c01.* ]]; then \
+	@if [[ -z "$(DT_OTEL_ENDPOINT)" || -z "$(DT_API_TOKEN)" || \
+	      "$(DT_OTEL_ENDPOINT)" == *your-tenant* || "$(DT_OTEL_ENDPOINT)" == *YOUR_ENV_ID* || \
+	      "$(DT_API_TOKEN)" == "dt0c01.*****" || "$(DT_API_TOKEN)" == *YOUR_TOKEN_HERE* ]]; then \
 	  echo "ERROR: DT_ENDPOINT / DT_API_TOKEN are unset or still placeholders;"; \
 	  echo "       the collector would ship to a host that 404s and silently drop everything."; \
 	  echo "       Set them in .env before running."; exit 1; \
