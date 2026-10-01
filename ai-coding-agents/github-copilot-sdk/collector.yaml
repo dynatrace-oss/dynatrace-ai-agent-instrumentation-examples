@@ -33,9 +33,6 @@ receivers:
         endpoint: 0.0.0.0:4318   # Copilot otlpProtocol: http/protobuf or http/json
 
 processors:
-  batch:
-    timeout: 5s
-
   # Dynatrace rejects cumulative OTLP metrics with HTTP 400.
   cumulativetodelta:
     include:
@@ -50,14 +47,19 @@ exporters:
     headers:
       Authorization: "Api-Token ${env:DT_API_TOKEN}"
     # otlphttp sends binary Protobuf by default, as Dynatrace requires
+    # Batching belongs to the exporter queue; the standalone batch processor is
+    # deprecated. A one-shot CLI run flushes on the timeout or on shutdown.
+    sending_queue:
+      enabled: true
+      batch:
+        flush_timeout: 5s
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
       exporters: [otlphttp]
     metrics:
       receivers: [otlp]
-      processors: [cumulativetodelta, batch]
+      processors: [cumulativetodelta]
       exporters: [otlphttp]
