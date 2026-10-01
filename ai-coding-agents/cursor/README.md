@@ -2,12 +2,9 @@
 
 This example sends Cursor's native Enterprise OpenTelemetry export to Dynatrace and analyzes the available GenAI-adjacent telemetry with a premade dashboard.
 
-> **Verified 2026-09-25:** Cursor's server-side exporter sends **metrics and logs only** over OTLP/HTTP protobuf. It does **not send traces**, trace/span IDs, or native `gen_ai.*` semantic-convention spans. This example is deliberately log/metric-driven and does not populate the span-based Dynatrace AI Observability topology or trace views.
-
 ## Included
 
 - `cursor-monitoring-dashboard.json`: dashboard for requests, tokens, cost, errors, latency, conversations, tools, skills, hooks, users, surfaces, and optional content.
-- `k8s/cursor-real-test.yaml`: a Kubernetes Job that installs and runs the real Cursor headless CLI against an embedded, deliberately broken Node.js repository.
 - `docker/Dockerfile`, `docker/docker-compose.yml`: Docker files to build a self-contained test image and run it locally with docker compose.
 - `cursor-test_connection.py` (or `test_connection.py` in older bundles): optional synthetic Cursor-shaped OTLP emitter for connectivity diagnostics only. It is not used by the real test and does not instrument Cursor.
 - `cursor-test_dashboard.py` (or `test_dashboard.py`): dashboard contract checks.
@@ -91,7 +88,7 @@ cp .env.example .env
 # Edit .env; never commit it.
 ```
 
-Option A — Run the emitter directly (no Docker)
+Option A — Run the emitter directly (no Docker fake data)
 
 ```bash
 python3 -m venv .venv
