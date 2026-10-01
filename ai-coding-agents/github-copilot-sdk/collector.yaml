@@ -1,9 +1,9 @@
 # OpenTelemetry Collector config: GitHub Copilot -> Dynatrace bridge
 #
-# The Collector authenticates to Dynatrace, restores the conventional
-# gen_ai.client.token.usage metric the runtime no longer emits, and keeps the
-# prompt on a single span. The runtime has no per-signal endpoint setting, so
-# traces and metrics both route here.
+# The Collector authenticates to Dynatrace, maps the runtime's token metrics
+# to the name the Dynatrace app queries, and keeps the prompt on a single
+# span. The runtime has no per-signal endpoint setting, so traces and metrics
+# both route here.
 #
 # Required environment variables (set before starting the Collector):
 #   DT_OTEL_ENDPOINT: Dynatrace OTLP base URL, e.g.
@@ -43,9 +43,9 @@ processors:
       - delete_key(span.attributes, "gen_ai.output.messages") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
       - delete_key(span.attributes, "gen_ai.system_instructions") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
 
-  # From 1.0.15 the runtime stopped emitting the semantic-convention metric
-  # gen_ai.client.token.usage and split it into its own input/output names.
-  # The app queries the conventional name, so map it back.
+  # The GenAI semantic conventions replaced gen_ai.client.token.usage with
+  # per-direction histograms, and the runtime follows the new shape as of
+  # 1.0.15. The Dynatrace app still queries the old name, so map back to it.
   transform/token_usage_semconv:
     error_mode: ignore
     metric_statements:

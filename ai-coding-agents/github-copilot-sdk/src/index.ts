@@ -7,7 +7,7 @@
  *
  * Point COPILOT_OTLP_ENDPOINT at the OTel Collector from collector.yaml, which
  * adds the Dynatrace auth header and maps the runtime's token metrics to the
- * conventional gen_ai.client.token.usage.
+ * gen_ai.client.token.usage name the Dynatrace app queries.
  */
 
 import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";

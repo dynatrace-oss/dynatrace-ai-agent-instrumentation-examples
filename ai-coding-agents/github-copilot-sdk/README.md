@@ -5,7 +5,7 @@ This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.
 Like the other coding agents in this section, Copilot ships with native OTel support. No code changes are required: you configure telemetry and run Copilot normally.
 
 > [!IMPORTANT]
-> **An OpenTelemetry Collector is required.** It does three jobs that the runtime cannot do itself: it holds the Dynatrace API token, it renames the runtime's own token metrics back to the conventional `gen_ai.client.token.usage` the AI Observability app charts, and it keeps the prompt on a single span so each exchange appears once in the Prompts stream. The included [`collector.yaml`](./collector.yaml) does all three.
+> **An OpenTelemetry Collector is required.** It does three jobs that the runtime cannot do itself: it holds the Dynatrace API token, it maps the runtime's token metrics to the `gen_ai.client.token.usage` the AI Observability app charts, and it keeps the prompt on a single span so each exchange appears once in the Prompts stream. The included [`collector.yaml`](./collector.yaml) does all three.
 >
 > Dynatrace [only accepts delta temporality](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#api-limitations). Runtime 1.0.16 exports delta already, so the `cumulativetodelta` processor is a guard rather than a requirement.
 
@@ -145,9 +145,12 @@ Not emitted by the runtime: `gen_ai.agent.name` (it sends `gen_ai.agent.id` and 
 
 ### Metrics
 
+> [!NOTE]
+> The [GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai) replaced the `gen_ai.client.token.usage` histogram, and the `gen_ai.token.type` attribute it relied on, with per-direction metrics: `gen_ai.client.inference.operation.{input,output}_tokens` (histograms) and `gen_ai.client.inference.usage.*` (counters). Runtime 1.0.15 and later emit the new shape. The Dynatrace AI Observability app still queries the replaced name, so [`collector.yaml`](./collector.yaml) maps back to it.
+
 | Metric | Type | Description |
 |---|---|---|
-| `gen_ai.client.token.usage` | Histogram | Tokens per operation, split by `gen_ai.token.type`. Mapped by the Collector from the runtime's `gen_ai.client.inference.operation.{input,output}_tokens` |
+| `gen_ai.client.token.usage` | Histogram | Tokens per operation, split by `gen_ai.token.type`. Mapped by the Collector from the runtime's spec-current `gen_ai.client.inference.operation.{input,output}_tokens` |
 | `gen_ai.client.operation.duration` | Histogram | End-to-end operation latency |
 | `gen_ai.invoke_agent.duration` | Histogram | Agent invocation duration |
 | `gen_ai.invoke_agent.inference_calls` | Histogram | LLM calls per invocation |

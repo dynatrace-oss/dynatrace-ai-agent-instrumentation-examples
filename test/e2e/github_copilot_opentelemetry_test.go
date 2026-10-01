@@ -14,8 +14,9 @@ import (
 // sends inference to the shared OpenAI-compatible mock instead.
 //
 // Metrics must go through the collector in ../../ai-coding-agents/github-copilot-sdk/collector.yaml:
-// the runtime emits its own token metric names, and the collector maps them to
-// the conventional gen_ai.client.token.usage this test asserts on.
+// the runtime emits the per-direction token metrics the GenAI conventions moved
+// to, and the collector maps them to the gen_ai.client.token.usage this test
+// asserts on.
 func TestGitHubCopilotOpenTelemetry(t *testing.T) {
 	startOpenAICompatibleMock(t, "COPILOT_PROVIDER_API_KEY", "COPILOT_PROVIDER_BASE_URL")
 
