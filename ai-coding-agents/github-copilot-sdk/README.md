@@ -117,7 +117,7 @@ Telemetry is reported under `service.name = github-copilot`.
 | `session.provisioning` / `session.first_turn` | Session lifecycle |
 
 > [!NOTE]
-> The runtime emits **two** `chat {model}` spans per inference: a placeholder that opens and closes within microseconds, and the real one. Only the real span carries `gen_ai.usage.*`, `gen_ai.response.id`, and `gen_ai.response.model`. Left alone, the placeholder doubles the chat operation count in Dynatrace, so [`collector.yaml`](./collector.yaml) drops spans named `chat *` that have no input token count.
+> Requires `@github/copilot-sdk` 1.0.15 or later. Earlier versions emit a second, placeholder `chat {model}` span per inference and report `gen_ai.usage.*` and the message content twice on a single span, so token counts and `gen_ai.input.messages` / `gen_ai.output.messages` arrive doubled.
 
 ### Span Attributes
 

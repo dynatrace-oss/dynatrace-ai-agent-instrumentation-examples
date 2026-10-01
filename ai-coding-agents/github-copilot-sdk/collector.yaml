@@ -36,15 +36,6 @@ processors:
   batch:
     timeout: 5s
 
-  # The runtime emits two spans per inference: a placeholder that opens and
-  # closes in microseconds, and the real one. Only the real span carries token
-  # usage, so drop the other to stop the app double counting chat operations.
-  filter/placeholder_chat_span:
-    error_mode: ignore
-    traces:
-      span:
-        - 'IsMatch(name, "^chat ") and attributes["gen_ai.usage.input_tokens"] == nil'
-
   # Dynatrace rejects cumulative OTLP metrics with HTTP 400.
   cumulativetodelta:
     include:
@@ -64,7 +55,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [filter/placeholder_chat_span, batch]
+      processors: [batch]
       exporters: [otlphttp]
     metrics:
       receivers: [otlp]
