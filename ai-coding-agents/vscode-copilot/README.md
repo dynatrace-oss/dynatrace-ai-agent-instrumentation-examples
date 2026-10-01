@@ -68,18 +68,15 @@ Dynatrace's OTLP API accepts `http/protobuf`; it does not accept direct OTLP/gRP
 
 ### macOS or Linux
 
-Create the token in Dynatrace and expose it from an approved secret store or the current shell. Then launch VS Code from that same shell:
+Copy [`.env.example`](./.env.example) to `.env` in this directory if you don't already have one, then replace the placeholder token and environment ID. The root `.gitignore` excludes `.env`; keep the real token only in that local file and never commit it. VS Code does not load `.env` automatically, so load it and launch VS Code from the same shell:
+
+If `code` is not found on macOS, open the Command Palette in VS Code and run **Shell Command: Install 'code' command in PATH**, then open a new terminal.
 
 ```bash
-export DYNATRACE_API_TOKEN="<set-outside-source-control>"
-export COPILOT_OTEL_ENABLED=true
-export COPILOT_OTEL_CAPTURE_CONTENT=false
-export OTEL_EXPORTER_OTLP_ENDPOINT="https://<environment-id>.live.dynatrace.com/api/v2/otlp"
-export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
+set -a
+source .env
+set +a
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token ${DYNATRACE_API_TOKEN}"
-export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE="delta"
-export OTEL_SERVICE_NAME="copilot-chat"
-export OTEL_RESOURCE_ATTRIBUTES="service.namespace=developer-tools,deployment.environment.name=development"
 
 code .
 ```
@@ -89,29 +86,26 @@ code .
 ### PowerShell
 
 ```powershell
-$env:DYNATRACE_API_TOKEN = "<set-outside-source-control>"
-$env:COPILOT_OTEL_ENABLED = "true"
-$env:COPILOT_OTEL_CAPTURE_CONTENT = "false"
-$env:OTEL_EXPORTER_OTLP_ENDPOINT = "https://<environment-id>.live.dynatrace.com/api/v2/otlp"
-$env:OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^\s*([^#][^=]*)=(.*)$') {
+    Set-Item -Path "Env:$($matches[1].Trim())" -Value $matches[2].Trim()
+  }
+}
 $env:OTEL_EXPORTER_OTLP_HEADERS = "Authorization=Api-Token $env:DYNATRACE_API_TOKEN"
-$env:OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = "delta"
-$env:OTEL_SERVICE_NAME = "copilot-chat"
-$env:OTEL_RESOURCE_ATTRIBUTES = "service.namespace=developer-tools,deployment.environment.name=development"
 
 code .
 ```
 
 > [!IMPORTANT]
-> Do not put a real token in a checked-in `.env` file, VS Code workspace settings, shell script, or JSON example.
+> Only load a `.env` file you trust. Do not put a real token in checked-in files, VS Code workspace settings, shell scripts, or JSON examples.
 
 ## Optional user settings
 
-The included [`settings.example.json`](./settings.example.json) contains non-secret user settings. Copy the values into VS Code user settings, replace the environment ID, and provide the authorization header through the environment or an approved secret mechanism.
+The included [`settings.example.json`](./settings.example.json) is an optional VS Code user-settings fragment. Merge its top-level properties into your User `settings.json` (or set the same options in the Settings UI); it is not a `managed-settings.json` file. The local `.env` setup above configures the exporter, endpoint, authentication header, and metric temporality without putting a token in `settings.json`.
 
 Current user-facing keys are under `github.copilot.chat.otel.*`. Internal enterprise-policy mappings may use `chat.agentHost.otel.*`; do not paste those internal keys into normal user settings.
 
-Environment variables take precedence over user settings. Enterprise-managed policy takes precedence over both.
+Environment variables take precedence over user settings. Managed telemetry overrides user settings, but environment variables can still override managed values in the Copilot Chat extension. To ensure managed telemetry takes effect, admins should remove conflicting OTel environment variables.
 
 ## Enterprise-managed configuration
 
