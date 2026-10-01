@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  cursor-test:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: cursor-test
+    env_file:
+      - ../.env
+    restart: "no"
+    # If you want to see logs after container exits, use 'docker logs' (no auto-remove)
+    # Remove volumes or mounts as needed.
