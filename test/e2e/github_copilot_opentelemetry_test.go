@@ -14,8 +14,8 @@ import (
 // sends inference to the shared OpenAI-compatible mock instead.
 //
 // Metrics must go through the collector in ../../ai-coding-agents/github-copilot-sdk/collector.yaml:
-// the runtime exports cumulative temporality with no option to change it, and
-// Dynatrace rejects cumulative metrics with HTTP 400.
+// the runtime emits its own token metric names, and the collector maps them to
+// the conventional gen_ai.client.token.usage this test asserts on.
 func TestGitHubCopilotOpenTelemetry(t *testing.T) {
 	startOpenAICompatibleMock(t, "COPILOT_PROVIDER_API_KEY", "COPILOT_PROVIDER_BASE_URL")
 

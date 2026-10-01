@@ -6,8 +6,8 @@
  * to CopilotClient and point it at an OTLP endpoint. No manual spans are needed.
  *
  * Point COPILOT_OTLP_ENDPOINT at the OTel Collector from collector.yaml, which
- * converts the runtime's cumulative metrics to the delta temporality Dynatrace
- * requires and adds the Dynatrace auth header.
+ * adds the Dynatrace auth header and maps the runtime's token metrics to the
+ * conventional gen_ai.client.token.usage.
  */
 
 import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";

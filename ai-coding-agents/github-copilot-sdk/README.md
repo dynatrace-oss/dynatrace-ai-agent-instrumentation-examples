@@ -5,11 +5,13 @@ This example shows how to enable built-in [OpenTelemetry](https://opentelemetry.
 Like the other coding agents in this section, Copilot ships with native OTel support. No code changes are required: you configure telemetry and run Copilot normally.
 
 > [!IMPORTANT]
-> **An OpenTelemetry Collector is required for metrics.** The Copilot runtime exports metrics with **cumulative** temporality and provides no setting to change it (`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` is ignored). Dynatrace [only accepts delta temporality](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#api-limitations) and rejects cumulative metrics with HTTP 400. The included [`collector.yaml`](./collector.yaml) converts them with the `cumulativetodelta` processor.
+> **An OpenTelemetry Collector is required.** It does three jobs that the runtime cannot do itself: it holds the Dynatrace API token, it renames the runtime's own token metrics back to the conventional `gen_ai.client.token.usage` the AI Observability app charts, and it keeps the prompt on a single span so each exchange appears once in the Prompts stream. The included [`collector.yaml`](./collector.yaml) does all three.
+>
+> Dynatrace [only accepts delta temporality](https://docs.dynatrace.com/docs/ingest-from/opentelemetry/otlp-api#api-limitations). Runtime 1.0.16 exports delta already, so the `cumulativetodelta` processor is a guard rather than a requirement.
 
 ```
 Copilot (CLI / VS Code / SDK)  ──OTLP HTTP:4318──▶  OTel Collector  ──HTTP/protobuf──▶  Dynatrace
-                                                    cumulativetodelta
+                                                    token metric mapping
                                                     Api-Token auth
 ```
 
@@ -145,7 +147,7 @@ Not emitted by the runtime: `gen_ai.agent.name` (it sends `gen_ai.agent.id` and 
 
 | Metric | Type | Description |
 |---|---|---|
-| `gen_ai.client.token.usage` | Histogram | Tokens per operation, split by `gen_ai.token.type` |
+| `gen_ai.client.token.usage` | Histogram | Tokens per operation, split by `gen_ai.token.type`. Mapped by the Collector from the runtime's `gen_ai.client.inference.operation.{input,output}_tokens` |
 | `gen_ai.client.operation.duration` | Histogram | End-to-end operation latency |
 | `gen_ai.invoke_agent.duration` | Histogram | Agent invocation duration |
 | `gen_ai.invoke_agent.inference_calls` | Histogram | LLM calls per invocation |
@@ -207,6 +209,6 @@ fetch spans
 | File | Purpose |
 |---|---|
 | `src/index.ts` | Example agent with native telemetry enabled |
-| `collector.yaml` | Collector config: cumulative-to-delta plus Dynatrace auth |
+| `collector.yaml` | Collector config: token metric mapping, prompt de-duplication, Dynatrace auth |
 | `Makefile` | `install`, `build`, `run`, `request`, `stop`, `logs` |
 | `.env.example` | Environment variable template |

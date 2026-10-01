@@ -1,10 +1,9 @@
 # OpenTelemetry Collector config: GitHub Copilot -> Dynatrace bridge
 #
-# The Copilot runtime exports its metrics with cumulative temporality and offers
-# no setting to change it (OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE is
-# ignored). Dynatrace only accepts delta, so metrics must pass through the
-# cumulativetodelta processor below. Traces would ingest directly, but the
-# runtime has no per-signal endpoint setting, so both signals route here.
+# The Collector authenticates to Dynatrace, restores the conventional
+# gen_ai.client.token.usage metric the runtime no longer emits, and keeps the
+# prompt on a single span. The runtime has no per-signal endpoint setting, so
+# traces and metrics both route here.
 #
 # Required environment variables (set before starting the Collector):
 #   DT_OTEL_ENDPOINT: Dynatrace OTLP base URL, e.g.
@@ -44,7 +43,18 @@ processors:
       - delete_key(span.attributes, "gen_ai.output.messages") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
       - delete_key(span.attributes, "gen_ai.system_instructions") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
 
-  # Dynatrace rejects cumulative OTLP metrics with HTTP 400.
+  # From 1.0.15 the runtime stopped emitting the semantic-convention metric
+  # gen_ai.client.token.usage and split it into its own input/output names.
+  # The app queries the conventional name, so map it back.
+  transform/token_usage_semconv:
+    error_mode: ignore
+    metric_statements:
+      - set(datapoint.attributes["gen_ai.token.type"], "input") where metric.name == "gen_ai.client.inference.operation.input_tokens"
+      - set(datapoint.attributes["gen_ai.token.type"], "output") where metric.name == "gen_ai.client.inference.operation.output_tokens"
+      - set(metric.name, "gen_ai.client.token.usage") where IsMatch(metric.name, "^gen_ai\\.client\\.inference\\.operation\\.(in|out)put_tokens$")
+
+  # 1.0.16 already exports delta. Kept as a guard: Dynatrace rejects cumulative
+  # OTLP metrics with HTTP 400.
   cumulativetodelta:
     include:
       match_type: regexp
@@ -73,5 +83,5 @@ service:
       exporters: [otlphttp]
     metrics:
       receivers: [otlp]
-      processors: [cumulativetodelta]
+      processors: [transform/token_usage_semconv, cumulativetodelta]
       exporters: [otlphttp]
