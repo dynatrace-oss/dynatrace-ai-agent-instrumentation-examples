@@ -13,8 +13,9 @@ APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
 # Bindplane Distro for OpenTelemetry (BDOT) collector. Bundles the
-# genainormalizer processor + signal_to_metrics connector used below. Pinned
-# so a version bump surfaces normalization regressions in the e2e test.
+# span_metrics/signal_to_metrics connectors used below to derive
+# gen_ai.client.operation.duration / gen_ai.client.token.usage. Pinned so a
+# version bump surfaces regressions in the e2e test.
 override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
@@ -27,9 +28,10 @@ install: ## Install Python dependencies
 	uv sync
 
 # ---------------------------------------------------------------------------
-# run: Bindplane collector normalizes OpenInference -> gen_ai.* locally
+# run: Bindplane collector derives gen_ai.* metrics locally (spans are already
+# gen_ai.* natively, via OPENINFERENCE_ENABLE_GENAI_SEMCONV=true in app.py)
 # ---------------------------------------------------------------------------
-run: ## Start Bindplane collector (genainormalizer) + app
+run: ## Start Bindplane collector (metrics only) + app
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@echo "Waiting for collector port to be ready..."
 	@sleep 3
