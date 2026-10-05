@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 
@@ -62,6 +63,10 @@ from pydantic import BaseModel
 
 from agent import academic_coordinator
 
+logger = logging.getLogger(__name__)
+
+MAX_ATTEMPTS = 3
+
 session_service = InMemorySessionService()
 
 app = FastAPI()
@@ -83,12 +88,6 @@ async def research(req: ResearchRequest) -> str:
         app_name="google-adk-samples",
         session_service=session_service,
     )
-    session = await session_service.create_session(
-        app_name="google-adk-samples",
-        user_id="e2e",
-        session_id=str(uuid.uuid4()),
-        state={"seminal_paper": req.topic},
-    )
     # The coordinator's value is delegation: it reaches academic_websearch_agent and
     # academic_newresearch_agent through AgentTool. Asking only for a summary of a
     # well-known paper lets the model answer from its own weights, producing a trace
@@ -98,12 +97,17 @@ async def research(req: ResearchRequest) -> str:
     # Ask for recent citing work instead, which the coordinator cannot answer without
     # the websearch tool. That makes the tool call part of the demo's happy path
     # rather than a coin flip.
+    #
+    # The summary is requested as a short paraphrase: asking for a plain summary of a
+    # famous paper tends to elicit near-verbatim abstract text, which Gemini aborts
+    # with finish_reason RECITATION and no content.
     message = Content(
         role="user",
         parts=[
             Part(
                 text=(
-                    f"Summarize the key contributions of the paper: {req.topic}. "
+                    f"In your own words, in at most three sentences, describe the key "
+                    f"contributions of the paper: {req.topic}. "
                     "Then use your tools to find recent papers citing it and to suggest "
                     "future research directions based on what you find."
                 )
@@ -111,7 +115,13 @@ async def research(req: ResearchRequest) -> str:
         ],
     )
 
-    async def _run() -> str:
+    async def _run() -> tuple[str, list[str]]:
+        session = await session_service.create_session(
+            app_name="google-adk-samples",
+            user_id="e2e",
+            session_id=str(uuid.uuid4()),
+            state={"seminal_paper": req.topic},
+        )
         # Drain the runner rather than returning from inside the loop. Returning early
         # abandons the async generator, which ADK reports as "Root node
         # academic_coordinator was cancelled" and OTel as a "Failed to detach context
@@ -120,19 +130,33 @@ async def research(req: ResearchRequest) -> str:
         # exported. Keeping the first final response but consuming the stream to
         # completion lets every span end normally.
         answer = ""
+        errors: list[str] = []
         async for event in runner.run_async(
             user_id="e2e",
             session_id=session.id,
             new_message=message,
         ):
+            # A failed model call (quota, safety block, ...) arrives as an event with an
+            # error code and no content; record it so an empty answer can be explained.
+            if event.error_code or event.error_message:
+                detail = f"{event.author}: {event.error_code}: {event.error_message}"
+                logger.error("ADK model error event: %s", detail)
+                errors.append(detail)
             if not answer and event.is_final_response() and event.content and event.content.parts:
                 for part in event.content.parts:
                     if part.text:
                         answer = part.text
                         break
-        return answer
+        return answer, errors
 
-    result = await _run()
+    # Model-side aborts such as RECITATION are non-deterministic; retry on a fresh session.
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        result, errors = await _run()
+        if result or not errors:
+            break
+        logger.warning("attempt %d/%d failed with model errors", attempt, MAX_ATTEMPTS)
     if not result:
+        if errors:
+            raise HTTPException(status_code=502, detail=f"agent model error: {'; '.join(errors)}")
         raise HTTPException(status_code=500, detail="agent returned no response")
     return result

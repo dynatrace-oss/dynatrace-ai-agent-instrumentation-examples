@@ -1,0 +1,9 @@
+{
+  "name": "cursor-real-otel-test",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

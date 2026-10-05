@@ -1,0 +1,296 @@
+{
+  "version": 17,
+  "variables": [],
+  "tiles": {
+    "header-exec-summary": {
+      "type": "markdown",
+      "content": "## KIRO USAGE MONITORING\nMonitors per-user credit consumption, messages, conversations, and per-model usage from [Kiro](https://kiro.dev/)'s native Enterprise OpenTelemetry export ([docs](https://kiro.dev/docs/enterprise/monitor-and-track/user-activity/opentelemetry/)). Kiro delivers one aggregated datapoint per active user (and per model, for model-level breakdowns) once a day, configured by an account administrator in the Kiro console."
+    },
+    "kpi-total-credits": {
+      "title": "Credits Used (30d)",
+      "type": "data",
+      "query": "timeseries credits = sum(kiro.daily.credits), from: -30d\n| fieldsAdd TotalCredits = arraySum(credits)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Credits Used",
+          "recordField": "TotalCredits",
+          "trend": { "isVisible": false },
+          "sparklineSettings": { "isVisible": false }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "kpi-overage-credits": {
+      "title": "Overage Credits Used (30d)",
+      "type": "data",
+      "query": "timeseries overage = sum(kiro.daily.overage_credits), from: -30d\n| fieldsAdd TotalOverage = arraySum(overage)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Overage Credits",
+          "recordField": "TotalOverage",
+          "trend": { "isVisible": false },
+          "sparklineSettings": { "isVisible": false }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "kpi-total-messages": {
+      "title": "Total Messages (30d)",
+      "type": "data",
+      "query": "timeseries messages = sum(kiro.daily.messages), from: -30d\n| fieldsAdd TotalMessages = arraySum(messages)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Messages",
+          "recordField": "TotalMessages",
+          "trend": { "isVisible": false },
+          "sparklineSettings": { "isVisible": false }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "kpi-total-conversations": {
+      "title": "Chat Conversations (30d)",
+      "type": "data",
+      "query": "timeseries conversations = sum(kiro.daily.conversations), from: -30d\n| fieldsAdd TotalConversations = arraySum(conversations)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Conversations",
+          "recordField": "TotalConversations",
+          "trend": { "isVisible": false },
+          "sparklineSettings": { "isVisible": false }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "header-trends": {
+      "type": "markdown",
+      "content": "### Daily trends\nOne datapoint per active user per day, reflecting the previous day's activity."
+    },
+    "chart-credits-over-time": {
+      "title": "Credits & Overage Credits Over Time",
+      "type": "data",
+      "query": "timeseries { credits = sum(kiro.daily.credits), overage = sum(kiro.daily.overage_credits) }",
+      "visualization": "barChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "chart-messages-conversations-over-time": {
+      "title": "Messages & Conversations Over Time",
+      "type": "data",
+      "query": "timeseries { messages = sum(kiro.daily.messages), conversations = sum(kiro.daily.conversations) }",
+      "visualization": "barChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "header-breakdowns": {
+      "type": "markdown",
+      "content": "### Breakdowns\nBy model, client type, and user."
+    },
+    "chart-messages-by-model": {
+      "title": "Messages by Model",
+      "type": "data",
+      "query": "timeseries mm = sum(kiro.daily.model_messages), by:{kiro.model.name}",
+      "visualization": "barChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "chart-messages-by-client-type": {
+      "title": "Messages by Client Type",
+      "type": "data",
+      "query": "timeseries msg = sum(kiro.daily.messages), by:{kiro.client.type}",
+      "visualization": "barChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": { "legend": { "position": "bottom" } },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "table-credits-by-user": {
+      "title": "Credits Used by User",
+      "type": "data",
+      "query": "timeseries credits = sum(kiro.daily.credits), by:{kiro.user.id, kiro.user.email, kiro.subscription.tier, kiro.client.type}, from: -30d\n| fieldsAdd TotalCredits = arraySum(credits)\n| fields kiro.user.id, kiro.user.email, kiro.subscription.tier, kiro.client.type, TotalCredits\n| sort TotalCredits desc",
+      "visualization": "table",
+      "visualizationSettings": { "autoSelectVisualization": false },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    },
+    "pie-new-vs-returning": {
+      "title": "New vs. Returning Users (by messages)",
+      "type": "data",
+      "query": "timeseries msg = sum(kiro.daily.messages), by:{kiro.user.new}, from: -30d\n| fieldsAdd TotalMessages = arraySum(msg)\n| fields kiro.user.new, TotalMessages",
+      "visualization": "pieChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": { "enabled": false, "davisVisualization": { "isAvailable": true } }
+    }
+  },
+  "layouts": {
+    "header-exec-summary": { "x": 0, "y": 0, "w": 24, "h": 4 },
+    "kpi-total-credits": { "x": 0, "y": 4, "w": 6, "h": 4 },
+    "kpi-overage-credits": { "x": 6, "y": 4, "w": 6, "h": 4 },
+    "kpi-total-messages": { "x": 12, "y": 4, "w": 6, "h": 4 },
+    "kpi-total-conversations": { "x": 18, "y": 4, "w": 6, "h": 4 },
+    "header-trends": { "x": 0, "y": 8, "w": 24, "h": 1 },
+    "chart-credits-over-time": { "x": 0, "y": 9, "w": 12, "h": 6 },
+    "chart-messages-conversations-over-time": { "x": 12, "y": 9, "w": 12, "h": 6 },
+    "header-breakdowns": { "x": 0, "y": 15, "w": 24, "h": 1 },
+    "chart-messages-by-model": { "x": 0, "y": 16, "w": 12, "h": 6 },
+    "chart-messages-by-client-type": { "x": 12, "y": 16, "w": 12, "h": 6 },
+    "table-credits-by-user": { "x": 0, "y": 22, "w": 16, "h": 6 },
+    "pie-new-vs-returning": { "x": 16, "y": 22, "w": 8, "h": 6 }
+  },
+  "importedWithCode": false,
+  "settings": {
+    "gridLayout": {
+      "mode": "responsive"
+    }
+  },
+  "annotations": []
+}

@@ -1,8 +1,8 @@
 # AI Coding Agent Observability
 
-This section covers how to instrument **AI coding agents** — CLI tools and gateways that autonomously write, edit, and commit code on behalf of developers — with Dynatrace for full observability into cost, token usage, session activity, and tool behavior.
+This section covers how to instrument **AI coding agents** - CLI tools, editor agents, and gateways that autonomously write, edit, and commit code on behalf of developers - with Dynatrace for full observability into cost, token usage, session activity, and tool behavior.
 
-Unlike traditional application instrumentation, coding agents run interactively in developer environments. Dynatrace captures their built-in OpenTelemetry signals with zero code changes required, giving engineering teams visibility into how AI is actually being used across their organization.
+Unlike traditional application instrumentation, coding agents run interactively in developer environments. Dynatrace captures their built-in OpenTelemetry signals where available, giving engineering teams visibility into how AI is actually being used across their organization.
 
 ## Supported Coding Agents
 
@@ -13,6 +13,9 @@ Unlike traditional application instrumentation, coding agents run interactively 
 - [OpenClaw](./openclaw/) — built-in `diagnostics-otel` plugin for full trace, metric, and log export
 - [OpenClaw + observability plugin](./openclaw-observability-plugin/) — community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
 - [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
+- [VS Code Copilot Chat](./vscode-copilot/) - native OTLP export for traces, metrics, and OTel events; no application code changes required
+- [GitHub Copilot](./github-copilot-sdk/) — native OTEL support via enterprise managed settings or the Copilot SDK, no code changes required (collector-assisted for metrics)
+- [Kiro](./kiro/) — native Enterprise OTel export of daily per-user usage metrics, configured by an account administrator
 
 ---
 
@@ -29,7 +32,7 @@ A single Dynatrace dashboard surfaces everything you need to understand AI codin
 | **Engineering Metrics** | Lines of code added/removed, git commits, pull requests created |
 | **Tool Events** | Tool calls accepted/rejected, API errors, prompt events |
 
-All signals are enriched with common attributes (`session.id`, `user.id`, `user.email`, `organization.id`, `app.version`) so you can slice data by user, team, or project.
+The exact attributes vary by coding agent. Use each agent's setup guide for its native schema and privacy controls.
 
 ---
 
@@ -44,7 +47,10 @@ Pick the coding agent you use and follow its setup guide:
 | [OpenAI Codex CLI](./openai-codex/) | `~/.codex/config.toml` | ~5 min |
 | [OpenCode](./opencode/) | Environment variables | ~5 min |
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |
+| [VS Code Copilot Chat](./vscode-copilot/) | Native OTLP/HTTP exporter | ~5 min |
 | [GitHub Copilot SDK](./github-copilot-sdk/) | Manual OTel spans in Node.js | ~15 min |
+| [GitHub Copilot](./github-copilot-sdk/) | Enterprise managed settings or SDK `TelemetryConfig` (+ Collector) | ~5 min |
+| [Kiro](./kiro/) | AWS Secrets Manager secret + Kiro console setting (admin) | ~10 min |
 
 > [!TIP]
 > For Dynatrace setup instructions, API token scopes, and advanced configuration, see the [AI Observability Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
