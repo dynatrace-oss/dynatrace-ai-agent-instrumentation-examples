@@ -184,14 +184,16 @@ This ensures that Dynatrace receives a representative dataset containing success
 
 ### Headless webhook workflow
 
-`workflows/Webhook-AI-Workflow.json` is a smaller variant of the sample above with a **Webhook** trigger instead of a chat trigger, so it can be driven from a script or from CI without opening the UI. Import it and its Gemini credential through the n8n CLI, restart n8n so it registers the production webhook, then call it:
+`workflows/Webhook-AI-Workflow-OpenAI.json` is a headless variant with a **Webhook** trigger, so it can be driven from a script or from CI without opening the UI. It uses the native **Message an Agent** node with an inline Azure OpenAI agent. This matters for observability: only n8n's native agent runtime emits `gen_ai.*` spans (model, token usage, prompts) when `N8N_AGENTS_TRACING_ENABLED=true`. The LangChain **AI Agent** node used in the template above emits only `n8n.*` node spans.
+
+Create an `azureOpenAiApi` credential with ID `e2eOpenAICred01`, set `inlineAgent.config.model` to `azure-openai/<your-deployment>`, import the workflow through the n8n CLI, restart n8n so it registers the production webhook, then call it:
 
 ```bash
 docker compose exec -T n8n n8n import:workflow --input=/tmp/workflow.json
 ```
 
 ```bash
-docker compose exec -T n8n n8n publish:workflow --id=e2eAIWorkflow01
+docker compose exec -T n8n n8n publish:workflow --id=e2eAIWorkflow02
 ```
 
 ```bash

@@ -1,7 +1,7 @@
 .PHONY: help install run stop logs request
 
 N8N_URL ?= http://localhost:5678
-WEBHOOK_PATH ?= e2e-trigger
+WEBHOOK_PATH ?= e2e-trigger-openai
 
 # CI exports the tenant as DT_ENDPOINT; the compose stack reads DT_ENVIRONMENT_URL.
 DT_ENVIRONMENT_URL ?= $(DT_ENDPOINT)

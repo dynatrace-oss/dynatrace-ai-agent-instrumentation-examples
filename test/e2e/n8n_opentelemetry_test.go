@@ -28,8 +28,9 @@ const (
 )
 
 // TestN8NOpenTelemetryOpenAI exercises the self-hosted n8n demo end to end
-// using the Azure OpenAI LangChain node (lmChatAzureOpenAi), because CI only
-// has Azure OpenAI credentials.
+// using the native "Message an Agent" node with an inline Azure OpenAI agent.
+// Only n8n's native agent runtime emits gen_ai.* spans (N8N_AGENTS_TRACING_ENABLED);
+// the LangChain AI Agent node does not. Azure because CI only has Azure credentials.
 //
 // Unlike every other suite in this repo there is no application to run: n8n is a
 // black-box container that emits its own native OTel traces, and the demo's value
@@ -70,7 +71,7 @@ func TestN8NOpenTelemetryOpenAI(t *testing.T) {
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`, service),
 		[]string{agentTracingDQL}, false,
-		"Azure OpenAI variant (lmChatAzureOpenAi).")
+		"Native n8n agent (messageAnAgent, inline Azure OpenAI agent).")
 
 	t.Run("agent-tracing", func(t *testing.T) {
 		auditN8NSpan(t, "opentelemetry-openai-agent", agentTracingDQL, true)
@@ -406,11 +407,13 @@ func seedN8NWorkflowOpenAI(t *testing.T, apiKey, endpoint, apiVersion string) {
 		nodes, _ := wf["nodes"].([]interface{})
 		for _, n := range nodes {
 			node, ok := n.(map[string]interface{})
-			if !ok || node["type"] != "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi" {
+			if !ok || node["type"] != "n8n-nodes-base.messageAnAgent" {
 				continue
 			}
-			if params, ok := node["parameters"].(map[string]interface{}); ok {
-				params["model"] = model
+			params, _ := node["parameters"].(map[string]interface{})
+			inline, _ := params["inlineAgent"].(map[string]interface{})
+			if cfg, ok := inline["config"].(map[string]interface{}); ok {
+				cfg["model"] = "azure-openai/" + model
 			}
 		}
 	}
