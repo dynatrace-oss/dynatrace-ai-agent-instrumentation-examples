@@ -11,6 +11,11 @@ model_list:
     litellm_params:
       model: ollama/all-minilm
       api_base: os.environ/OLLAMA_BASE_URL
+  # Pass any other model (e.g. azure/<deployment>, gpt-*) straight to its provider,
+  # using the provider credentials from the environment.
+  - model_name: "*"
+    litellm_params:
+      model: "*"
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

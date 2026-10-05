@@ -41,7 +41,18 @@ LiteLLMInstrumentor().instrument(
 import uvicorn
 from litellm.proxy.proxy_server import app
 
+
+
+# Unauthenticated liveness probe. LiteLLM's own /health needs the master key and
+# calls every configured model, so register this route ahead of the proxy routes.
+@app.get("/health", include_in_schema=False)
+async def health():
+    return {"status": "ok"}
+
+
+app.router.routes.insert(0, app.router.routes.pop())
+
 FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=4000, log_level="info", workers=1)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")), log_level="info", workers=1)

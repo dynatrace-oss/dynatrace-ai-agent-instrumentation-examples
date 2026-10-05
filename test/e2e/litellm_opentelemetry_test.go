@@ -17,5 +17,5 @@ func TestLiteLLMOpenTelemetry(t *testing.T) {
 | filter isNull(span.status_code) or span.status_code != "error"
 | filter isNotNull(gen_ai.provider.name) or isNotNull(gen_ai.system)
 | limit 1`,
-		"litellm-gateway", genAIClientMetrics)
+		"litellm-gateway-fastapi", genAIClientMetrics)
 }

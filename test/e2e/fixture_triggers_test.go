@@ -461,6 +461,8 @@ func triggerLiteLLMChat(t *testing.T) {
 		t.Fatalf("build request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// Required by the LiteLLM proxy gateway; ignored by the FastAPI demo.
+	req.Header.Set("Authorization", "Bearer "+envOr("LITELLM_MASTER_KEY", "sk-admin-local"))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

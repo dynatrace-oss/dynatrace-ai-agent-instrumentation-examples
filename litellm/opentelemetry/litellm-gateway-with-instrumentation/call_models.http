@@ -1,4 +1,4 @@
-@baseUrl = http://localhost:4000
+@baseUrl = http://localhost:8000
 @masterKey = replace-with-litellm-master-key
 
 ### List models

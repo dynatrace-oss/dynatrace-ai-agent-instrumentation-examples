@@ -56,7 +56,7 @@ uv sync
 uv run python basic.py
 ```
 
-The proxy is at `http://localhost:4000`; Admin UI is at `http://localhost:4000/ui`. Use `call_models.http` to send test requests. Generate and commit the lockfile with `uv lock`.
+The proxy is at `http://localhost:8000`; Admin UI is at `http://localhost:8000/ui`. Use `call_models.http` to send test requests. Generate and commit the lockfile with `uv lock`.
 
 ## Validate
 

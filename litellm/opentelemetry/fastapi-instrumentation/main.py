@@ -54,7 +54,7 @@ logging.getLogger().addHandler(LoggingHandler(logger_provider=_log_provider))
 logger = logging.getLogger("litellm-gateway")
 
 Traceloop.init(
-    app_name="litellm-gateway",
+    app_name="litellm-gateway-fastapi",
     api_endpoint=COLLECTOR_BASE_URL,
     disable_batch=True,
     should_enrich_metrics=True,
