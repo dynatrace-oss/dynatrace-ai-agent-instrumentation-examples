@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestLiteLLMOpenTelemetry(t *testing.T) {
+func TestLiteLLMOpenTelemetryGateway(t *testing.T) {
 	startApp(t, "litellm/opentelemetry")
 	triggerLiteLLMChat(t)
 
