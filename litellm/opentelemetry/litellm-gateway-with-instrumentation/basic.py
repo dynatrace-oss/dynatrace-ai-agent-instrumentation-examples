@@ -1,43 +1,47 @@
 import os
 
+from openinference.instrumentation import TraceConfig
+from openinference.instrumentation.litellm import LiteLLMInstrumentor
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-print ("Initializing Traceloop...")
-os.environ["CONFIG_FILE_PATH"] = "./config.yaml"
-# Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
-# Must be set before the OTLP metric exporter below is constructed.
-os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
+os.environ["CONFIG_FILE_PATH"] = os.getenv("CONFIG_FILE_PATH", "./config.yaml")
+COLLECTOR_BASE_URL = os.getenv("COLLECTOR_BASE_URL", "http://localhost:4318").rstrip("/")
+SERVICE_NAME = os.getenv("SERVICE_NAME", "litellm-gateway")
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OTEL_URL = os.getenv("OTEL_URL")
-OTEL_TOKEN = os.getenv("OTEL_TOKEN", "XYZ")
-SERVICE_NAME = os.getenv("SERVICE_NAME", "fastapi-gateway")
-COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
-from traceloop.sdk import Traceloop
-
-# Must run BEFORE litellm imports the proxy app
-Traceloop.init(
-    app_name="litellm-gateway",
-    api_endpoint= COLLECTOR_BASE_URL,
-    api_key="KEY",
-    disable_batch=True,
-    should_enrich_metrics=True,
-    metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL, insecure=True),
+tracer_provider = TracerProvider(
+    resource=Resource.create({"service.name": SERVICE_NAME})
 )
+tracer_provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{COLLECTOR_BASE_URL}/v1/traces"))
+)
+trace.set_tracer_provider(tracer_provider)
 
+# Instrument HTTPX first because LiteLLM can create clients at import time.
+HTTPXClientInstrumentor().instrument(tracer_provider=tracer_provider)
 
-# Instrument httpx BEFORE litellm import — LiteLLM creates httpx clients at import time
-HTTPXClientInstrumentor().instrument()
+# Content capture is intentionally enabled. Review before production use.
+# GenAI emission is additive; the Collector removes legacy attributes.
+LiteLLMInstrumentor().instrument(
+    tracer_provider=tracer_provider,
+    config=TraceConfig(
+        enable_genai_semconv=True,
+        hide_inputs=False,
+        hide_outputs=False,
+        hide_input_messages=False,
+        hide_output_messages=False,
+    ),
+)
 
 import uvicorn
 from litellm.proxy.proxy_server import app
 
-FastAPIInstrumentor.instrument_app(app)
+FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
 
-# Note: workers=1 only — Traceloop.init() only runs in this process
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=4000, log_level="debug")
-
-
+    uvicorn.run(app, host="0.0.0.0", port=4000, log_level="info", workers=1)
