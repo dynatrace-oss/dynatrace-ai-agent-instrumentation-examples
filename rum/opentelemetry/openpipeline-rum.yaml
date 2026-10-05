@@ -1,0 +1,123 @@
+---
+# OpenPipeline configuration for the RUM + pydantic-ai music-agent demo.
+#
+# `make run` exports gen_ai.* spans (and the gen_ai.client.token.usage metric)
+# straight to Dynatrace OTLP with no collector in between. Token usage arrives
+# natively, but pydantic-ai does NOT emit gen_ai.client.operation.duration, and
+# nothing emits gen_ai.invoke_agent.duration — so the AI Observability app's
+# latency tiles stay empty. Both metrics are backfilled here tenant-side from the
+# span durations, the same duration extraction used for OneAgent
+# (openpipeline/openpipeline-oneagent-genai-metrics.yaml) and for the pydantic-ai
+# sibling demo (pydantic-ai/opentelemetry/openpipeline-pydantic-ai.yaml).
+#
+# This is the tenant-side equivalent of the span_metrics connectors in
+# otel-collector-config.yaml. Dimensions and matchers are kept identical to that
+# collector config so both export paths produce the same series and a dashboard
+# cannot tell them apart.
+#
+# Deploy this pipeline in your Dynatrace tenant (Settings -> OpenPipeline -> Spans),
+# then add a routing entry:
+#   Matcher:  service.name == "rum/opentelemetry"
+#   Pipeline: rum-genai-metrics
+#
+# IMPORTANT: route only the direct-export service name. `make run-collector` uses
+# the distinct service name "rum/opentelemetry-collector", so the collector path
+# is never matched by this pipeline and the two paths cannot double-count.
+#
+# Span shapes in this demo (verified against pydantic-ai 2.9.0):
+#   "music_agent.ask"        — hand-rolled SERVER wrapper; gen_ai.request.model +
+#                              gen_ai.provider.name only, no operation.name
+#   "invoke_agent <name>"    — pydantic-ai agent run; gen_ai.operation.name ==
+#                              "invoke_agent", no request/response model
+#   "chat <model>"           — pydantic-ai model call; gen_ai.operation.name ==
+#                              "chat" and gen_ai.response.model set
+# Keying the client-duration extractor on gen_ai.response.model therefore selects
+# the LLM call alone and never the wrapper span (which also spans the demo's
+# provider-fallback retries).
+
+customId: "rum-genai-metrics"
+displayName: "RUM AI Observability - Metrics"
+
+processing:
+  processors:
+
+    # ============================================================================
+    # DURATION IN SECONDS (feeds both duration metrics below)
+    # ============================================================================
+    # The span `duration` field is in nanoseconds. The metric-extraction
+    # "duration" measurement emits MICROSECONDS, but the OTel semconv metrics
+    # gen_ai.client.operation.duration and gen_ai.invoke_agent.duration (and every
+    # native SDK emitter) are in SECONDS. Materialize a seconds value here and
+    # point the metrics at it via measurement: "field" (same fix as
+    # openpipeline-langfuse.yaml, PR #166).
+    #
+    # Scoped to the two span types that feed a metric: the LLM call (carries
+    # gen_ai.response.model) and the agent run. The music_agent.ask wrapper span
+    # matches neither, so no duration is materialized for it. isNotNull /
+    # equality only — OpenPipeline matcher queries reject startsWith().
+    # ============================================================================
+    - id: "rum-duration-seconds"
+      enabled: true
+      matcher: 'isNotNull(`gen_ai.response.model`) OR `gen_ai.operation.name` == "invoke_agent"'
+      type: "dql"
+      description: "Compute span duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
+# ==============================================================================
+# METRIC EXTRACTION
+# ==============================================================================
+# gen_ai.client.token.usage is NOT extracted here — pydantic-ai emits it natively
+# as an OTLP metric. Only the two durations are backfilled.
+#
+# gen_ai.execute_tool.duration is deliberately absent: the agent in
+# backend/main.py registers no tools, so there is no execute_tool span to derive
+# it from. gen_ai.invoke_workflow.duration is absent for the same class of
+# reason: single agent, no workflow primitive. Nothing is synthesized from a span
+# name to fill either gap.
+# ==============================================================================
+metricExtraction:
+  processors:
+
+    - id: "rum-operation-duration-metric"
+      enabled: true
+      matcher: 'isNotNull(duration_seconds) AND isNotNull(`gen_ai.response.model`)'
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from pydantic-ai LLM spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "rum-invoke-agent-duration-metric"
+      enabled: true
+      matcher: '`gen_ai.operation.name` == "invoke_agent"'
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.invoke_agent.duration from pydantic-ai agent-run spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.invoke_agent.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.agent.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"

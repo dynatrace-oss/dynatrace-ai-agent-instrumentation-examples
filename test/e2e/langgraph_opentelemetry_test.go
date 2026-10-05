@@ -78,12 +78,29 @@ func TestLangGraphOpenTelemetryOpenAI(t *testing.T) {
 | filter contains(`+"`gen_ai.input.messages`"+`, "launch codes")
 | limit 1`))
 
-	auditSpan(t, "langgraph-openai", "opentelemetry", GenericProfile,
+	auditSpanWithMetrics(t, "langgraph-openai", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "langgraph/opentelemetry/openai"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
-| limit 1`)
+| limit 1`,
+		"langgraph/opentelemetry/openai", langGraphAgentDurationMetric)
+}
+
+// langGraphAgentDurationMetric is the single agent metric the LangGraph demos
+// derive. opentelemetry-instrumentation-langchain labels the outermost chain span
+// — the compiled graph's invoke — gen_ai.operation.name = "invoke_agent" (despite
+// tagging it traceloop.span.kind = "workflow"), so a span_metrics connector
+// derives the duration straight from the enum the library already sets. No
+// collector-side rewriting is involved.
+//
+// genAIAgentDurationMetrics is not reused: neither graph calls a tool, so
+// gen_ai.execute_tool.duration has no span to be derived from. There is no
+// gen_ai.invoke_workflow.duration either — nothing in these traces claims to be
+// a workflow operation, and inventing one would mean overwriting an enum the
+// instrumentation sets deliberately.
+var langGraphAgentDurationMetric = []string{
+	"gen_ai.invoke_agent.duration",
 }
 
 // TestLangGraphOpenTelemetryBedrock exercises the LangGraph + Bedrock demo
@@ -93,10 +110,11 @@ func TestLangGraphOpenTelemetryBedrock(t *testing.T) {
 
 	makeRequest(t, "langgraph/opentelemetry/bedrock", "request")
 
-	auditSpan(t, "langgraph-bedrock", "opentelemetry", GenericProfile,
+	auditSpanWithMetrics(t, "langgraph-bedrock", "opentelemetry", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "langgraph/opentelemetry/bedrock"
 | filter isNotNull(gen_ai.request.model)
 | sort timestamp desc
-| limit 1`)
+| limit 1`,
+		"langgraph/opentelemetry/bedrock", langGraphAgentDurationMetric)
 }

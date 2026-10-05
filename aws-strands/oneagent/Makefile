@@ -6,7 +6,7 @@ APP_IMAGE        ?=
 BUILD_PLATFORM   ?= linux/amd64
 PORT             ?= 8000
 
-.PHONY: install run build push request help
+.PHONY: install run build push request request-guardrail help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -22,6 +22,9 @@ build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 
 push: ## Build and push container image to registry
 	docker buildx build --no-cache --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) --push .
+
+request-guardrail: ## POST /agent-guardrail to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/agent-guardrail | python3 -m json.tool
 
 request: ## POST /agent to localhost:$(PORT)
 	curl -s -X POST http://localhost:$(PORT)/agent \

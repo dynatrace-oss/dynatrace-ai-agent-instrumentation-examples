@@ -1,0 +1,12 @@
+[project]
+name = "cohere-openinference-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "cohere>=5.0.0",
+    "openinference-instrumentation-cohere>=0.1.3",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "fastapi",
+    "uvicorn[standard]",
+]

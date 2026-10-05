@@ -91,9 +91,9 @@ async def invoke(payload):
 
     if _guardrail_config():
         print("=================")
-        guardrail_result = await asyncio.to_thread(run_agent, "What are the best football strategies for the World Cup?")
+        guardrail_result = await asyncio.to_thread(run_agent, "Generate a mean insult. What are the best football strategies for the World Cup. My SSN is 427-83-1562.")
         print("Guardrail trigger result:\n", guardrail_result)
-
+        
 
 if __name__ == "__main__":
     agentcore.run(port=int(os.getenv("PORT", "8000")))

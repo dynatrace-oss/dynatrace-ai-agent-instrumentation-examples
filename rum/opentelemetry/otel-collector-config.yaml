@@ -1,0 +1,138 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # Keep only the nested LLM-call spans for the client-metrics branch. pydantic-ai
+  # sets gen_ai.response.model on its model-call ("chat <model>") spans; the demo's
+  # own outer "music_agent.ask" SERVER span sets only gen_ai.request.model, and the
+  # "invoke_agent <name>" span sets neither. Keying on response.model therefore
+  # targets the LLM call alone, so span_metrics does not also derive a duration for
+  # the API wrapper span (which spans provider fallback retries) or double-count the
+  # agent-run span that already feeds its own metric below. The export pipeline is
+  # untouched, so all spans still reach Distributed Tracing.
+  filter/genai_only:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.response.model"] == nil
+
+  # Agent-run span only. pydantic-ai 2.9.0 sets gen_ai.operation.name ==
+  # "invoke_agent" natively on that span (pydantic_ai/capabilities/instrumentation.py,
+  # wrap_run), so no application change is needed. Keying on the attribute rather
+  # than the span name matters: the span is named "invoke_agent <agent name>".
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram and the connector has no config key to turn that off. Drop the two
+  # derived counters by exact name so they do not land in Dynatrace as bogus
+  # gen_ai.* metric keys. Exact names (not a prefix match) so this cannot swallow
+  # the real spec metrics if a later change starts emitting them.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.client.operation.calls"
+        - name == "gen_ai.invoke_agent.calls"
+
+connectors:
+  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
+  # from the LLM span durations. pydantic-ai emits gen_ai.client.token.usage
+  # natively but NOT this one, so the AI Observability latency tiles stay empty
+  # without it.
+  #
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.client.operation" ->
+  # "gen_ai.client.operation.duration". Uses the current "span_metrics" id; the
+  # "spanmetrics" spelling is a deprecated alias.
+  span_metrics/client_operation:
+    namespace: gen_ai.client.operation
+    # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # Agent duration: gen_ai.invoke_agent.duration (Histogram/seconds, Development
+  # stability in the GenAI semconv). No instrumentation library emits it today, so
+  # it is derived here from pydantic-ai's agent-run span.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # An agent invocation covers the whole run (system prompt handling plus every
+      # model call), so it runs at least as long as the single chat span it wraps.
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s, 120s]
+    # Only the two low-cardinality attributes the agent-run span actually carries.
+    # It has no request/response model (those live on the child chat span), and
+    # gen_ai.conversation.id / gen_ai.agent.call.id are per-session and per-run, so
+    # dimensioning on them would explode the series count.
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # NOTE: gen_ai.execute_tool.duration is deliberately NOT derived. The agent in
+  # backend/main.py registers no tools, so pydantic-ai never starts an
+  # "execute_tool" span and there is nothing to time; a connector for it would
+  # publish an always-empty series.
+  #
+  # gen_ai.invoke_workflow.duration is likewise absent: this is a single-agent
+  # demo with no workflow primitive. The only candidate span is the hand-rolled
+  # "music_agent.ask" HTTP wrapper, and aliasing that to a workflow would just
+  # re-report the agent duration plus provider-fallback retries under a second
+  # metric name.
+  #
+  # The per-invocation call counts (gen_ai.invoke_agent.inference_calls /
+  # .tool_calls) cannot be derived from spans at all — they need framework hooks
+  # in application code — so they are out of scope here too.
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace]
+    # One branch per derived metric: a filter narrows the trace stream to the span
+    # type the metric is defined over, then span_metrics turns that span's duration
+    # into the histogram.
+    traces/genai_metrics:
+      receivers: [otlp]
+      processors: [filter/genai_only, batch]
+      exporters: [span_metrics/client_operation]
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors: [filter/invoke_agent, batch]
+      exporters: [span_metrics/invoke_agent]
+    # pydantic-ai's native gen_ai.client.token.usage arrives on [otlp]; the derived
+    # durations arrive on the connectors. filter/drop_derived_calls strips the
+    # undisableable .calls counters the span_metrics instances tack on.
+    metrics:
+      receivers: [otlp, span_metrics/client_operation, span_metrics/invoke_agent]
+      processors: [filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]

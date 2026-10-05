@@ -32,6 +32,12 @@ For example, `POST /haiku {"topic": "the secret launch codes"}` is redacted, whi
 
 Metrics are exported with delta temporality (Dynatrace ingests delta only), set at the SDK via `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`; the collector forwards them unchanged.
 
+### Derived agent duration
+
+`opentelemetry-instrumentation-langchain` labels the outermost chain span --- the compiled graph's `invoke` --- with `gen_ai.operation.name = invoke_agent`, even though it tags the same span `traceloop.span.kind = workflow`. A `span_metrics` connector in `otel-collector-config.yaml` derives `gen_ai.invoke_agent.duration` (Histogram, seconds) from it, with no application change and no collector-side rewriting of the enum.
+
+Spans nested inside the graph are labelled `execute_task`, a non-spec operation value, so they are not counted --- the metric records exactly one data point per graph run. There is no `gen_ai.invoke_workflow.duration`: nothing in these traces claims to be a workflow operation, and inventing one would mean overwriting an enum the library sets deliberately. `gen_ai.execute_tool.duration` is likewise absent because the graph calls no tools.
+
 ## Prerequisites
 
 - Python 3.10+

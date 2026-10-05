@@ -1,17 +1,29 @@
 import asyncio
 import os
+import uuid
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
 os.environ.setdefault("OTEL_SERVICE_NAME", "crewai")
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
 from traceloop.sdk import Traceloop
+from traceloop.sdk.tracing.tracing import set_conversation_id
 
+# Export target. `make run-collector` sets OTEL_ENDPOINT to a local OTel
+# Collector, which derives the GenAI agent and workflow duration metrics from the
+# spans. `make run` leaves it unset and the app exports straight to Dynatrace.
+#
+# The Authorization header is sent either way, deliberately. OTEL_ENDPOINT is a
+# shared convention across these demos and is often already exported in a shell
+# or CI environment pointing at the Dynatrace OTLP URL, not at a collector.
+# Dropping the header whenever the variable happens to be set would turn that
+# into a 401 on a plain `make run`. A local collector simply ignores it.
 _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
 _dt_token = os.environ.get("DT_API_TOKEN", "")
+_collector = os.environ.get("OTEL_ENDPOINT", "").rstrip("/")
 Traceloop.init(
     app_name="crewai",
-    api_endpoint=f"{_dt_base}/api/v2/otlp",
+    api_endpoint=_collector or f"{_dt_base}/api/v2/otlp",
     headers={"Authorization": f"Api-Token {_dt_token}"},
     disable_batch=True,
     should_enrich_metrics=True,
@@ -39,8 +51,11 @@ async def haiku() -> str:
         base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
+        temperature=0.7,
         is_litellm=True,
     )
+
+    set_conversation_id(str(uuid.uuid4()))
 
     def _call() -> str:
         poet = Agent(

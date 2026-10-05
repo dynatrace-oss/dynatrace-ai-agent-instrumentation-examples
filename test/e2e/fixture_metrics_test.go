@@ -9,9 +9,18 @@ import (
 
 // genAIClientMetrics are the two core OTel GenAI client metrics the AI
 // Observability app charts (cost and latency).
+//
+// Exported individually as well, because a demo can honestly emit one without the
+// other: pydantic-ai emits token usage natively but no duration metric at all, so
+// a direct-export run asserts genAIClientTokenUsageMetric alone.
+const (
+	genAIClientTokenUsageMetric        = "gen_ai.client.token.usage"
+	genAIClientOperationDurationMetric = "gen_ai.client.operation.duration"
+)
+
 var genAIClientMetrics = []string{
-	"gen_ai.client.token.usage",
-	"gen_ai.client.operation.duration",
+	genAIClientTokenUsageMetric,
+	genAIClientOperationDurationMetric,
 }
 
 // genAIAgentDurationMetrics are the GenAI agent and tool duration metrics. No
@@ -23,9 +32,20 @@ var genAIClientMetrics = []string{
 // only exists for frameworks that have a real workflow span, so demos that have
 // one append it themselves rather than every collector demo being asserted
 // against a metric it cannot honestly emit.
+//
+// The two are also exported individually, because a demo can honestly emit one
+// without the other: an agent with no registered tools starts no execute_tool
+// span, so it asserts genAIInvokeAgentDurationMetric alone rather than
+// hardcoding the key a second time.
+const (
+	genAIInvokeAgentDurationMetric    = "gen_ai.invoke_agent.duration"
+	genAIExecuteToolDurationMetric    = "gen_ai.execute_tool.duration"
+	genAIInvokeWorkflowDurationMetric = "gen_ai.invoke_workflow.duration"
+)
+
 var genAIAgentDurationMetrics = []string{
-	"gen_ai.invoke_agent.duration",
-	"gen_ai.execute_tool.duration",
+	genAIInvokeAgentDurationMetric,
+	genAIExecuteToolDurationMetric,
 }
 
 // pollMetricExists polls Dynatrace until the given OTel metric has at least one

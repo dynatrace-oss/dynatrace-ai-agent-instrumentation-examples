@@ -14,7 +14,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 # Bindplane Distro for OpenTelemetry (BDOT) collector. Used only by
 # `make run-collector` to derive the GenAI agent/tool duration metrics from spans
 # via the span_metrics connector.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: install run run-collector stop logs build push request help
@@ -51,7 +51,7 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) && \
+	  $(COLLECTOR_IMAGE) --config=/etc/otel/config.yaml && \
 	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
 	echo "Collector logs -> collector.log" && \
 	for i in $$(seq 1 15); do \

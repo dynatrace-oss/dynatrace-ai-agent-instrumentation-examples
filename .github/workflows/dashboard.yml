@@ -64,7 +64,8 @@ jobs:
             --output ../../site/index.html \
             --run-url "${{ github.event.workflow_run.html_url }}" \
             --history-file ../../history.json \
-            --history-output ../../site/history.json
+            --history-output ../../site/history.json \
+            --repo-root ../..
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -76,4 +77,4 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -22,7 +22,7 @@ func TestMicrosoftAgentFrameworkOpenTelemetryCollector(t *testing.T) {
 	// real workflow span, and demos without one must not be asserted against a
 	// metric they cannot honestly emit.
 	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentDurationMetrics...)
-	metrics = append(metrics, "gen_ai.invoke_workflow.duration")
+	metrics = append(metrics, genAIInvokeWorkflowDurationMetric)
 
 	auditSpanWithMetrics(t, "microsoft-agent-framework", "opentelemetry-collector", GenericProfile,
 		`fetch spans, from: now()-10m

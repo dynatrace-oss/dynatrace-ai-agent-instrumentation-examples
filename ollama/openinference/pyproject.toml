@@ -1,0 +1,12 @@
+[project]
+name = "ollama-openinference-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "ollama>=0.4.0",
+    "openinference-instrumentation-ollama>=0.1.6",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "fastapi",
+    "uvicorn[standard]",
+]

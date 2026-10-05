@@ -1,10 +1,12 @@
 ## Google Agent Development Kit (ADK) + OpenTelemetry
 
-Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents; one for web search and one for suggesting new research directions. Spans carry `gen_ai.system = google_generativeai`, and ADK also records the OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`.
+Demonstrates tracing and metering a multi-agent Google ADK application with Dynatrace using ADK's built-in OpenTelemetry instrumentation. The app exposes an academic research agent (`POST /research`) that coordinates two sub-agents; one for web search and one for suggesting new research directions. Spans carry `gen_ai.provider.name = gemini`, and ADK also records the OTel GenAI client metrics `gen_ai.client.token.usage` and `gen_ai.client.operation.duration`. With the opt-in configured in [`app.py`](./app.py), ADK also emits message content as `gen_ai.input.messages` / `gen_ai.output.messages` / `gen_ai.system_instructions` span attributes.
 
 Optionally, `make run-collector` routes the app through a local OTel Collector that derives the GenAI **agent and tool duration metrics** from the spans.
 
-![Google ADK: AI Observability Prompt View](./assets/google-adk-prompt-view.png)
+> ℹ️ **Message content requires two opt-in flags set before `google.adk` is imported.** Without them, ADK writes content only into GCP-internal blobs (`gcp.vertex.agent.llm_request/response`) rather than OTel semconv attributes. `app.py` sets both via `os.environ.setdefault`: `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` activates ADK's experimental semconv path, and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=SPAN_ONLY` routes content onto span attributes instead of log-based events.
+
+![Google ADK: Gen AI span attributes including input/output messages](./assets/google-adk-prompt-view.png)
 
 ### Derived agent and tool metrics
 

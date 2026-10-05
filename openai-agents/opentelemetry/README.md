@@ -36,6 +36,22 @@ Traceloop.init(
 
 The token is read from the `DT_API_TOKEN` environment variable first, falling back to `/etc/secrets/dynatrace_otel` for Kubernetes deployments.
 
+### Derived agent metrics
+
+`make run-collector` starts the app behind a local OpenTelemetry Collector (`otel-collector-config.yaml`) that derives three GenAI semconv metrics from the spans, with no change to the agent code:
+
+| Metric | Derived from |
+|---|---|
+| `gen_ai.invoke_agent.duration` | the agent span (`gen_ai.operation.name = invoke_agent`) |
+| `gen_ai.execute_tool.duration` | the function-tool span (`gen_ai.operation.name = execute_tool`) |
+| `gen_ai.invoke_workflow.duration` | the per-trace root span (`Agent Workflow`) |
+
+`opentelemetry-instrumentation-openai-agents` already sets the spec operation name on the agent and tool spans, so those two need no rewriting. The root workflow span is the gap: it carries `traceloop.span.kind = workflow` and no `gen_ai.operation.name`, so `transform/traceloop_operation_name` maps the kind onto the enum --- and only where the enum is absent, which leaves the instrumentation's own `chat` and `handoff` values intact.
+
+All three are Histograms in seconds, exported with delta temporality because Dynatrace OTLP metric ingest rejects cumulative metrics. The collector also renames `service.name` to `openai-cs-agents-collector`, so a collector run stays distinguishable from a direct-export run in Dynatrace.
+
+When `OTEL_ENDPOINT` is set (which `make run-collector` does), traces, metrics and logs all go to the collector and the Dynatrace credentials live only in the collector config.
+
 ## How to use
 
 ### Prerequisites
@@ -62,9 +78,10 @@ export AZURE_OPENAI_DEPLOYMENT=gpt-4o
 ### Install and run
 
 ```bash
-make install   # install Python dependencies
-make run       # start the backend on port 8000
-make request   # send a test question (in a second terminal)
+make install         # install Python dependencies
+make run             # start the backend on port 8000, exporting straight to Dynatrace
+make run-collector   # or: start it behind a collector that derives the agent metrics
+make request         # send a test question (in a second terminal)
 ```
 
 The backend API is available at [http://localhost:8000](http://localhost:8000). A Next.js frontend is available in the `ui/` folder:
