@@ -1,0 +1,61 @@
+{
+  "id": "e2eAIWorkflow02",
+  "name": "Webhook AI Workflow OpenAI",
+  "active": true,
+  "nodes": [
+    {
+      "id": "b2e1d3c5-0001-4a10-9b00-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "webhookId": "b2e1d3c5-0001-4a10-9b00-0000000000ff",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e2e-trigger-openai",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2e1d3c5-0002-4a10-9b00-000000000002",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.3,
+      "position": [60, 0],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a haiku about {{ $json.body.topic || 'observability' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2e1d3c5-0003-4a10-9b00-000000000003",
+      "name": "Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [60, 200],
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "e2eOpenAICred01",
+          "name": "E2E OpenAI"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
