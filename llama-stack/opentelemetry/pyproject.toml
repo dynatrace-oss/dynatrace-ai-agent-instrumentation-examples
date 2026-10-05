@@ -12,4 +12,6 @@ dependencies = [
     "opentelemetry-distro>=0.60b1",
     "opentelemetry-exporter-otlp-proto-http>=1.39.0",
     "opentelemetry-instrumentation-openai-v2==2.4b0",
+    # openai-v2 2.4b0 imports util.genai.instruments, which util-genai 1.2b0 removed
+    "opentelemetry-util-genai==1.1b0",
 ]
