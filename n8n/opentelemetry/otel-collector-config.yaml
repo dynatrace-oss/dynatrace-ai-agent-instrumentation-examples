@@ -68,6 +68,11 @@ processors:
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
             and IsMatch(attributes["n8n.node.type"], "lmChatOpenAi|lmOpenAi")
             and attributes["gen_ai.provider.name"] == nil
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai")
+            where IsMatch(name, "^node\\.execute/")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+            and IsMatch(attributes["n8n.node.type"], "lmChatAzureOpenAi")
+            and attributes["gen_ai.provider.name"] == nil
           - set(attributes["gen_ai.provider.name"], "anthropic")
             where IsMatch(name, "^node\\.execute/")
             and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"

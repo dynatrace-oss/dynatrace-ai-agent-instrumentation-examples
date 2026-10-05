@@ -7,16 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
 const (
-	n8nAppDir    = "n8n/opentelemetry"
-	n8nBaseURL   = "http://127.0.0.1:5678"
+	n8nAppDir  = "n8n/opentelemetry"
+	n8nBaseURL = "http://127.0.0.1:5678"
 
 	// n8nOpenAIWorkflowID must match the "id" in workflows/Webhook-AI-Workflow-OpenAI.json;
 	// publish:workflow addresses the workflow by id.
@@ -26,7 +28,8 @@ const (
 )
 
 // TestN8NOpenTelemetryOpenAI exercises the self-hosted n8n demo end to end
-// using the OpenAI LangChain node (lmChatOpenAi).
+// using the Azure OpenAI LangChain node (lmChatAzureOpenAi), because CI only
+// has Azure OpenAI credentials.
 //
 // Unlike every other suite in this repo there is no application to run: n8n is a
 // black-box container that emits its own native OTel traces, and the demo's value
@@ -41,15 +44,17 @@ const (
 // absent, and its spans do not satisfy scopedDQL's timestamp fallback either, so
 // applying it silently discards every span. See n8nServiceName.
 func TestN8NOpenTelemetryOpenAI(t *testing.T) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		t.Skip("OPENAI_API_KEY not set — skipping OpenAI n8n variant")
+	apiKey := os.Getenv("AZURE_OPENAI_API_KEY")
+	endpoint := os.Getenv("AZURE_OPENAI_ENDPOINT")
+	apiVersion := os.Getenv("AZURE_OPENAI_API_VERSION")
+	if apiKey == "" || endpoint == "" || apiVersion == "" {
+		t.Skip("AZURE_OPENAI_API_KEY / AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_VERSION not set — skipping n8n suite")
 	}
 
 	service := n8nServiceName(t)
 
 	startN8NStack(t)
-	seedN8NWorkflowOpenAI(t, apiKey)
+	seedN8NWorkflowOpenAI(t, apiKey, endpoint, apiVersion)
 	triggerN8NWebhookPath(t, n8nOpenAIWebhookPath)
 
 	agentTracingDQL := fmt.Sprintf(`fetch spans, from: now()-30m
@@ -65,7 +70,7 @@ func TestN8NOpenTelemetryOpenAI(t *testing.T) {
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`, service),
 		[]string{agentTracingDQL}, false,
-		"OpenAI variant — testing whether lmChatOpenAi emits gen_ai.request.model and other attributes that lmChatGoogleGemini does not.")
+		"Azure OpenAI variant (lmChatAzureOpenAi).")
 
 	t.Run("agent-tracing", func(t *testing.T) {
 		auditN8NSpan(t, "opentelemetry-openai-agent", agentTracingDQL, true)
@@ -369,16 +374,20 @@ func runIn(dir, name string, args ...string) error {
 // seedN8NWorkflowOpenAI imports the OpenAI credential and the OpenAI webhook
 // workflow, then publishes it. Restarting n8n is required to register the new
 // production webhook.
-func seedN8NWorkflowOpenAI(t *testing.T, apiKey string) {
+func seedN8NWorkflowOpenAI(t *testing.T, apiKey, endpoint, apiVersion string) {
 	t.Helper()
 	dir := filepath.Join(repoRoot(), n8nAppDir)
 
 	creds := []map[string]interface{}{{
 		"id":   n8nOpenAICredID,
 		"name": "E2E OpenAI",
-		"type": "openAiApi",
+		"type": "azureOpenAiApi",
 		"data": map[string]string{
-			"apiKey": apiKey,
+			"endpointType": "classic",
+			"apiKey":       apiKey,
+			"resourceName": azureResourceName(t, endpoint),
+			"apiVersion":   apiVersion,
+			"endpoint":     endpoint,
 		},
 	}}
 	credPath := filepath.Join(t.TempDir(), "credentials.json")
@@ -397,7 +406,7 @@ func seedN8NWorkflowOpenAI(t *testing.T, apiKey string) {
 		nodes, _ := wf["nodes"].([]interface{})
 		for _, n := range nodes {
 			node, ok := n.(map[string]interface{})
-			if !ok || node["type"] != "@n8n/n8n-nodes-langchain.lmChatOpenAi" {
+			if !ok || node["type"] != "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi" {
 				continue
 			}
 			if params, ok := node["parameters"].(map[string]interface{}); ok {
@@ -419,4 +428,15 @@ func seedN8NWorkflowOpenAI(t *testing.T, apiKey string) {
 		t.Fatalf("restart n8n for OpenAI workflow: %v", err)
 	}
 	waitN8NReady(t, 3*time.Minute)
+}
+
+// azureResourceName extracts <name> from https://<name>.openai.azure.com, which
+// the n8n credential requires even when endpoint is also set.
+func azureResourceName(t *testing.T, endpoint string) string {
+	t.Helper()
+	u, err := url.Parse(endpoint)
+	if err != nil || u.Hostname() == "" {
+		t.Fatalf("parse AZURE_OPENAI_ENDPOINT: %v", err)
+	}
+	return strings.SplitN(u.Hostname(), ".", 2)[0]
 }
