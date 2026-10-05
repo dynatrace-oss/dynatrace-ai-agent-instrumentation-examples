@@ -4,46 +4,50 @@ import os
 import time
 import uuid
 from fastapi import FastAPI, HTTPException
-from litellm.integrations.opentelemetry import OpenTelemetry as LiteLLMOTel
-from opentelemetry import metrics
+from openinference.instrumentation import TraceConfig, using_session
+from openinference.instrumentation.litellm import LiteLLMInstrumentor
+from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from pydantic import BaseModel
-from typing import Optional
-from traceloop.sdk import Traceloop
-from traceloop.sdk.tracing.tracing import set_conversation_id
-
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-
-# Instrument httpx BEFORE litellm import — LiteLLM creates httpx clients at import time
-HTTPXClientInstrumentor().instrument()
-
-import uvicorn
-from litellm.proxy.proxy_server import app
-
-# Must run BEFORE litellm imports the proxy app
-COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pydantic import BaseModel
+from typing import Optional
 
 # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is rejected (HTTP 400).
-# Must be set before the OTLP metric exporter is constructed in Traceloop.init below.
+# Must be set before the OTLP metric exporter is constructed below.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "delta")
 
-# Optional LLM provider keys — set in environment to enable each provider
-# Grok (xAI): use model prefix "xai/", e.g. "xai/grok-2-latest"
-# Groq:       use model prefix "groq/", e.g. "groq/llama-3.3-70b-versatile"
-if os.environ.get("XAI_API_KEY"):
-    litellm.xai_api_key = os.environ["XAI_API_KEY"]
-if os.environ.get("GROQ_API_KEY"):
-    litellm.groq_api_key = os.environ["GROQ_API_KEY"]
+COLLECTOR_BASE_URL = os.environ["COLLECTOR_BASE_URL"]
+SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "litellm-gateway-fastapi")
+resource = Resource.create({"service.name": SERVICE_NAME})
 
-litellm.callbacks = [LiteLLMOTel()]
+# App-owned OTLP/gRPC export of traces, metrics, and logs to the local Collector.
+tracer_provider = TracerProvider(resource=resource)
+tracer_provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint=COLLECTOR_BASE_URL, insecure=True))
+)
+trace.set_tracer_provider(tracer_provider)
 
-# Route Python logs to the local OTLP collector (same endpoint as metrics/spans)
-_log_provider = LoggerProvider()
+metrics.set_meter_provider(
+    MeterProvider(
+        resource=resource,
+        metric_readers=[
+            PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL, insecure=True))
+        ],
+    )
+)
+
+_log_provider = LoggerProvider(resource=resource)
 _log_provider.add_log_record_processor(
     BatchLogRecordProcessor(OTLPLogExporter(endpoint=COLLECTOR_BASE_URL, insecure=True))
 )
@@ -53,18 +57,25 @@ logging.getLogger().addHandler(LoggingHandler(logger_provider=_log_provider))
 
 logger = logging.getLogger("litellm-gateway")
 
-Traceloop.init(
-    app_name="litellm-gateway-fastapi",
-    api_endpoint=COLLECTOR_BASE_URL,
-    disable_batch=True,
-    should_enrich_metrics=True,
-    metrics_exporter=OTLPMetricExporter(endpoint=COLLECTOR_BASE_URL, insecure=True),
+# Instrument httpx BEFORE litellm import — LiteLLM creates httpx clients at import time
+HTTPXClientInstrumentor().instrument(tracer_provider=tracer_provider)
+
+# OpenInference owns the LLM spans; enable_genai_semconv adds gen_ai.* alongside llm.*.
+# Content capture is enabled. Review before production use.
+LiteLLMInstrumentor().instrument(
+    tracer_provider=tracer_provider,
+    config=TraceConfig(enable_genai_semconv=True),
 )
 
-# Register LiteLLM's built-in OTEL callback — automatically captures gen_ai.*
-# attributes (model, tokens, cost, finish reasons, provider) for every completion call
+# Optional LLM provider keys — set in environment to enable each provider
+# Grok (xAI): use model prefix "xai/", e.g. "xai/grok-2-latest"
+# Groq:       use model prefix "groq/", e.g. "groq/llama-3.3-70b-versatile"
+if os.environ.get("XAI_API_KEY"):
+    litellm.xai_api_key = os.environ["XAI_API_KEY"]
+if os.environ.get("GROQ_API_KEY"):
+    litellm.groq_api_key = os.environ["GROQ_API_KEY"]
 
-# Custom metrics — Traceloop has already registered the global MeterProvider above
+# Custom request metrics (OpenInference emits spans only).
 _meter = metrics.get_meter("litellm-gateway")
 _request_counter = _meter.create_counter(
     "llm.requests",
@@ -86,7 +97,8 @@ _token_counter = _meter.create_counter(
 
 app = FastAPI()
 
-FastAPIInstrumentor.instrument_app(app)
+# Drop the ASGI "http receive"/"http send" sub-spans; keep only the server span.
+FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider, exclude_spans=["receive", "send"])
 
 
 @app.get("/health")
@@ -116,18 +128,15 @@ async def chat_completions(request: ChatCompletionRequest):
         kwargs["max_tokens"] = request.max_tokens
     if request.temperature is not None:
         kwargs["temperature"] = request.temperature
-    if request.conversation_id:
-        set_conversation_id(request.conversation_id)
-    else:
-        set_conversation_id(str(uuid.uuid4()))
-
+    session_id = request.conversation_id or str(uuid.uuid4())
 
     attrs = {"model": request.model}
     logger.info("chat request: model=%s", request.model)
     _request_counter.add(1, attrs)
     start = time.time()
     try:
-        response = litellm.completion(**kwargs)
+        with using_session(session_id):
+            response = litellm.completion(**kwargs)
         _duration_histogram.record(time.time() - start, attrs)
         usage = getattr(response, "usage", None)
         if usage:

@@ -52,7 +52,7 @@ async def health():
 
 app.router.routes.insert(0, app.router.routes.pop())
 
-FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
+FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider, exclude_spans=["receive", "send"])
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")), log_level="info", workers=1)

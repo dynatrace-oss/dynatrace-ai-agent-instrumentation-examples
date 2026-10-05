@@ -20,7 +20,7 @@ install: ## Install Python dependencies
 	uv sync
 
 run: ## Start collector + LiteLLM proxy gateway (basic.py) on port $(PORT)
-	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
+	@$(MAKE) _collector CONFIG=../otel-collector-config.yaml
 	uv run python3 basic.py
 
 request: ## POST /chat/completions to the gateway on localhost:$(PORT)

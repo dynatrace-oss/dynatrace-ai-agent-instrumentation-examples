@@ -9,7 +9,7 @@ This migrated example replaces Traceloop/OpenLLMetry with `openinference-instrum
 - **GenAI attributes:** `TraceConfig(enable_genai_semconv=True)` emits `gen_ai.*` alongside OpenInference fields.
 - **Legacy cleanup:** the Collector maps required values first, then removes `llm.*` and `openinference.*` before Dynatrace ingest.
 - **Content capture:** prompts and completions are intentionally captured. Review this before production because content can contain sensitive data.
-- **Metrics:** Traceloop's SDK metrics are not retained. Derive metrics from spans separately if needed.
+- **Metrics:** OpenInference emits no metrics; the Collector derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from LLM spans.
 
 References: [Dynatrace OpenInference guidance](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/openinference), [OpenInference LiteLLM instrumentation](https://arize-ai.github.io/openinference/python/instrumentation/openinference-instrumentation-litellm/), and the [source example](https://github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/tree/main/litellm/opentelemetry/litellm-gateway-with-instrumentation).
 
@@ -36,17 +36,17 @@ set +a
 
 ## Start the Collector
 
-The configuration changes telemetry by normalizing and deleting legacy fields. Test outside production first.
+The shared [`otel-collector-config.yaml`](../otel-collector-config.yaml) fills `gen_ai.*` gaps from OpenInference's legacy attributes, then drops `llm.*`/`openinference.*`, and derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from LLM spans. It needs the [Bindplane Distro for OpenTelemetry](https://github.com/observIQ/bindplane-otel-collector) for the `signal_to_metrics` connector. `make run` starts it for you; to start it by hand from `litellm/opentelemetry`:
 
 ```bash
 docker run --rm \
-  --name litellm-otel-collector \
+  -p 127.0.0.1:4317:4317 \
   -p 127.0.0.1:4318:4318 \
-  -v "$(pwd)/otel-collector-config.yaml:/etc/otel/config.yaml:ro" \
+  -v "$(pwd)/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro" \
   -e DT_ENDPOINT \
   -e DT_API_TOKEN \
-  ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.53.1 \
-  --config=/etc/otel/config.yaml
+  ghcr.io/observiq/bindplane-agent:1.108.0 \
+  --config=/etc/otelcol/otel-collector-config.yaml
 ```
 
 ## Run

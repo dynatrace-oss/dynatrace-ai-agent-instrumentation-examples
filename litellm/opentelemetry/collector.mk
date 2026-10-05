@@ -1,7 +1,9 @@
 # Shared OTel Collector targets for the litellm/opentelemetry demos.
 # Include from a subdirectory Makefile and call: $(MAKE) _collector CONFIG=<path>
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.56.0
+# Bindplane Distro for OpenTelemetry (BDOT): bundles the span_metrics and signal_to_metrics
+# connectors that derive the gen_ai.client.* metrics from spans. Pinned like cohere/openinference.
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
 COLLECTOR_CONTAINER          ?= otel-collector
 
 .PHONY: _collector _collector-stop
