@@ -1,0 +1,63 @@
+{
+  "id": "e2eAIWorkflow02",
+  "name": "Webhook AI Workflow OpenAI",
+  "active": true,
+  "nodes": [
+    {
+      "id": "b2e1d3c5-0001-4a10-9b00-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "webhookId": "b2e1d3c5-0001-4a10-9b00-0000000000ff",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e2e-trigger-openai",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "agentSource": "inline",
+        "inlineAgent": {
+          "config": {
+            "name": "e2e-haiku-agent",
+            "model": "azure-openai/gpt-4o-mini",
+            "credential": "e2eOpenAICred01",
+            "instructions": "You write short haikus."
+          }
+        },
+        "message": "=Write a haiku about {{ $json.body.topic || 'observability' }}",
+        "advanced": {}
+      },
+      "id": "b2e1d3c5-0002-4a10-9b00-000000000002",
+      "name": "Message an Agent",
+      "type": "n8n-nodes-base.messageAnAgent",
+      "typeVersion": 3.1,
+      "position": [
+        60,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Message an Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
