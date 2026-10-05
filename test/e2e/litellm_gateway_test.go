@@ -5,7 +5,7 @@ import (
 )
 
 func TestLiteLLMOpenTelemetryGateway(t *testing.T) {
-	startApp(t, "litellm/opentelemetry")
+	startApp(t, "litellm/opentelemetry/litellm-gateway-with-instrumentation")
 	triggerLiteLLMChat(t)
 
 	// Traceloop emits the OTel GenAI client metrics; delta temporality and the
