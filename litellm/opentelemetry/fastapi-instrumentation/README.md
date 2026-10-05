@@ -9,8 +9,8 @@ A FastAPI application that acts as an LLM gateway, routing chat completion reque
 
 | Signal | Source | Details |
 |---|---|---|
-| **Traces** | `FastAPIInstrumentor` + `HTTPXClientInstrumentor` + `LiteLLMOTel` callback | HTTP request spans, outbound LLM call spans with `gen_ai.*` attributes (model, tokens, cost, finish reason) |
-| **Metrics** | Custom OTel instruments | `llm.requests`, `llm.errors`, `llm.request.duration` (s), `llm.tokens` (split by `input`/`output`) — all dimensioned by `model` |
+| **Traces** | `FastAPIInstrumentor` + `HTTPXClientInstrumentor` + OpenInference `LiteLLMInstrumentor` | One HTTP server span per request, plus an LLM span with `gen_ai.*` attributes (model, provider, tokens, messages) and `session.id` from `conversation_id` |
+| **Metrics** | Collector `span_metrics` / `signal_to_metrics` + custom OTel instruments | `gen_ai.client.operation.duration`, `gen_ai.client.token.usage` (derived from spans); `llm.requests`, `llm.errors`, `llm.request.duration` (s), `llm.tokens` (split by `input`/`output`) — all dimensioned by `model` |
 | **Logs** | `LoggingHandler` | Python `logging` bridged to OTel; correlated to the active trace span |
 
 All signals are forwarded via gRPC to a local OTel Collector at `localhost:4317`. See the [parent README](../README.md) for the collector configuration.
@@ -29,7 +29,7 @@ All signals are forwarded via gRPC to a local OTel Collector at `localhost:4317`
 
 ```bash
 # Required — points to your local OTel Collector
-export COLLECTOR_BASE_URL=http://localhost:4318
+export COLLECTOR_BASE_URL=localhost:4317
 
 # At least one of these must be set
 export XAI_API_KEY=<your-xai-key>              # for xai/grok-* models
@@ -39,47 +39,23 @@ export ANTHROPIC_API_KEY=<your-anthropic-key>  # for anthropic/* models
 
 ### Configure the OTel Collector
 
-Add the following to your collector config.yaml to receive from the app and forward to Dynatrace:
+The shared [`otel-collector-config.yaml`](../otel-collector-config.yaml) fills `gen_ai.*` gaps from OpenInference's legacy attributes, then drops `llm.*`/`openinference.*`, and derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from LLM spans. It needs the [Bindplane Distro for OpenTelemetry](https://github.com/observIQ/bindplane-otel-collector) for the `signal_to_metrics` connector. `make run` starts it for you; to start it by hand from `litellm/opentelemetry`:
 
-```yaml
-receivers:
-  otlp:
-    protocols:
-      http:
-        endpoint: 0.0.0.0:4318
-
-exporters:
-  otlphttp:
-    endpoint: https://<YOUR_ENV_ID>.live.dynatrace.com/api/v2/otlp
-    headers:
-      Authorization: "Api-Token <YOUR_DT_TOKEN>"
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [otlphttp]
-    logs:
-      receivers: [otlp]
-      exporters: [otlphttp]
-```
-
-After you saved your `config.yaml`, you can start the collector with
 ```bash
-docker run \
+docker run --rm \
   -p 127.0.0.1:4317:4317 \
   -p 127.0.0.1:4318:4318 \
-  -p 127.0.0.1:55679:55679 \
-  --mount type=bind,source="$(pwd)"/config.yaml,target=/config.yaml,readonly \
-  -it \
-  otel/opentelemetry-collector:0.151.0  \
-  --config=/config.yaml
+  -v "$(pwd)/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro" \
+  -e DT_ENDPOINT \
+  -e DT_API_TOKEN \
+  ghcr.io/observiq/bindplane-agent:1.108.0 \
+  --config=/etc/otelcol/otel-collector-config.yaml
 ```
 
 ### Run
 
 ```bash
-cd litellm/opentelemetry
+cd litellm/opentelemetry/fastapi-instrumentation
 make install
 make run
 ```
