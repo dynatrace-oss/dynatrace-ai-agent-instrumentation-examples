@@ -14,6 +14,7 @@ Unlike traditional application instrumentation, coding agents run interactively 
 - [OpenClaw + observability plugin](./openclaw-observability-plugin/) — community plugin for connected request/tool tracing, with optional Tetragon kernel-level security telemetry
 - [GitHub Copilot SDK](./github-copilot-sdk/) — manual OTel span instrumentation via Copilot SDK session events
 - [VS Code Copilot Chat](./vscode-copilot/) - native OTLP export for traces, metrics, and OTel events; no application code changes required
+- [GitHub Copilot](./github-copilot-sdk/) — native OTEL support via enterprise managed settings or the Copilot SDK, no code changes required (collector-assisted for metrics)
 - [Kiro](./kiro/) — native Enterprise OTel export of daily per-user usage metrics, configured by an account administrator
 
 ---
@@ -48,6 +49,7 @@ Pick the coding agent you use and follow its setup guide:
 | [OpenClaw](./openclaw/) | `openclaw config` CLI + env vars | ~5 min |
 | [VS Code Copilot Chat](./vscode-copilot/) | Native OTLP/HTTP exporter | ~5 min |
 | [GitHub Copilot SDK](./github-copilot-sdk/) | Manual OTel spans in Node.js | ~15 min |
+| [GitHub Copilot](./github-copilot-sdk/) | Enterprise managed settings or SDK `TelemetryConfig` (+ Collector) | ~5 min |
 | [Kiro](./kiro/) | AWS Secrets Manager secret + Kiro console setting (admin) | ~10 min |
 
 > [!TIP]
