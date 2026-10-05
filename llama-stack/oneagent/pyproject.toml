@@ -7,6 +7,16 @@ dependencies = [
     # llama-stack 0.7.3 imports McpError, which mcp 2.x renamed
     "mcp>=1.23.0,<2",
     "ollama>=0.3.0",
+    # provider deps for the Responses API (llama stack list-deps config.yaml)
+    "sqlite-vec",
+    "aiosqlite",
+    "pillow>=12.2.0",
+    "fonttools>=4.60.2",
+    "matplotlib",
+    "pandas",
+    "scikit-learn",
+    "pypdf>=6.7.2",
+    "chardet",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
 ]

@@ -1,5 +1,14 @@
 llama-stack[client]==0.7.3
 mcp>=1.23.0,<2
 ollama>=0.3.0
+sqlite-vec
+aiosqlite
+pillow>=12.2.0
+fonttools>=4.60.2
+matplotlib
+pandas
+scikit-learn
+pypdf>=6.7.2
+chardet
 fastapi>=0.115.0
 uvicorn>=0.30.0

@@ -25,12 +25,13 @@ def health():
 
 @app.post("/haiku", response_class=PlainTextResponse)
 async def haiku() -> str:
-    response = await client.chat.completions.create(
+    # Responses API: Llama Stack's agent runtime (used by the OpenShift AI Playground).
+    response = await client.responses.create(
         model=f"ollama/{MODEL}",
-        messages=[{"role": "user", "content": "Write a haiku."}],
+        instructions="You are a poet who answers only in haiku.",
+        input="Write a haiku.",
     )
-    return response.choices[0].message.content
-
+    return response.output_text
 
 if __name__ == "__main__":
     import uvicorn

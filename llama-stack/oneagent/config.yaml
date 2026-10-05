@@ -1,14 +1,48 @@
-# Minimal Llama Stack distribution: inference only, served by a local Ollama.
+# Minimal Llama Stack distribution: Responses (agent) API on top of a local Ollama.
 version: 2
 distro_name: ollama-oneagent
 apis:
+- files
 - inference
+- responses
+- tool_runtime
+- vector_io
 providers:
   inference:
   - provider_id: ollama
     provider_type: remote::ollama
     config:
       base_url: ${env.OLLAMA_URL:=http://localhost:11434/v1}
+  responses:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config:
+      persistence:
+        agent_state:
+          namespace: agents
+          backend: kv_default
+        responses:
+          table_name: responses
+          backend: sql_default
+  tool_runtime:
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+  vector_io:
+  - provider_id: sqlite-vec
+    provider_type: inline::sqlite-vec
+    config:
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-oneagent}/sqlite_vec.db
+      persistence:
+        namespace: vector_io::sqlite_vec
+        backend: kv_default
+  files:
+  - provider_id: builtin-files
+    provider_type: inline::localfs
+    config:
+      storage_dir: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-oneagent}/files
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
 storage:
   backends:
     kv_default:

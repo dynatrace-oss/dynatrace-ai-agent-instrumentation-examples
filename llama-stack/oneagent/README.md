@@ -2,7 +2,7 @@
 
 Runs [Llama Stack](https://github.com/llamastack/llama-stack) in library mode inside a FastAPI app, with inference served by a local Ollama, and traces it with Dynatrace OneAgent auto-instrumentation. Llama Stack is the runtime behind the GenAI Playground and GenAI Studio in Red Hat OpenShift AI 3.x.
 
-Llama Stack's Ollama provider sends inference requests through the `openai` Python client to Ollama's OpenAI-compatible `/v1` endpoint, so OneAgent captures them with its OpenAI sensor. OneAgent has no Llama Stack sensor, so Llama Stack's own agent and tool steps don't produce `gen_ai.*` agent spans.
+Llama Stack's Ollama provider sends inference requests through the `openai` Python client to Ollama's OpenAI-compatible `/v1` endpoint, so OneAgent captures them with its OpenAI sensor. OneAgent has no Llama Stack sensor, so agent spans (`invoke_agent`, `gen_ai.agent.name`) for Llama Stack's own Responses runtime are not expected.
 
 ## Prerequisites
 
@@ -38,4 +38,4 @@ Llama Stack's Ollama provider sends inference requests through the `openai` Pyth
 
 ## Llama Stack configuration
 
-`config.yaml` is a minimal distribution with only the inference API and the `remote::ollama` provider. Models are discovered from Ollama at startup and addressed as `ollama/<model>`.
+`config.yaml` is a minimal distribution with the Responses API (Llama Stack's agent runtime, `inline::builtin`), its required file, vector and tool providers, and the `remote::ollama` inference provider. `POST /haiku` runs one Responses API turn with agent instructions. Models are discovered from Ollama at startup and addressed as `ollama/<model>`.
