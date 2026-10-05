@@ -4,15 +4,15 @@ import (
 	"testing"
 )
 
-func TestLlamaStackOneAgent(t *testing.T) {
-	startApp(t, "llama-stack/oneagent")
+func TestOGXOneAgent(t *testing.T) {
+	startApp(t, "ogx/oneagent")
 	triggerHaiku(t, false)
 
-	// Llama Stack calls Ollama through the openai client, so the span comes
+	// OGX calls Ollama through the openai client, so the span comes
 	// from OneAgent's OpenAI sensor; the provider value is not pinned here.
-	auditSpan(t, "llama-stack", "oneagent", GenericProfile,
+	auditSpan(t, "ogx", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
-| filter service.name == "llama-stack/oneagent"
+| filter service.name == "ogx/oneagent"
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.request.model)
 | filter isNotNull(dt.smartscape.service)

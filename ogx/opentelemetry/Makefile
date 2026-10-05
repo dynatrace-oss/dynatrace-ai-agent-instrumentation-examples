@@ -4,7 +4,7 @@ export
 
 DT_ENDPOINT         ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN        ?= dt0c01.*****
-OTEL_SERVICE_NAME   ?= llama-stack/opentelemetry
+OTEL_SERVICE_NAME   ?= ogx/opentelemetry
 PORT                ?= 8000
 
 .PHONY: install run request help
@@ -12,8 +12,9 @@ PORT                ?= 8000
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install Python dependencies
+install: ## Install Python dependencies and the OTel instrumentations for them
 	uv sync
+	uv run opentelemetry-bootstrap -a requirements | uv pip install --requirement -
 
 run: ## Run app on port $(PORT), exporting traces and metrics directly to Dynatrace
 	@OTEL_TRACES_EXPORTER=otlp \

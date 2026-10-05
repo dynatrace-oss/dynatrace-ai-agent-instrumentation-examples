@@ -1,21 +1,18 @@
 [project]
-name = "llama-stack-opentelemetry-demo"
+name = "ogx-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "llama-stack[client]==0.7.3",
-    # llama-stack 0.7.3 imports McpError, which mcp 2.x renamed
-    "mcp>=1.23.0,<2",
+    "ogx[client]==1.4.0",
     "ollama>=0.3.0",
-    # provider deps for the Responses API (llama stack list-deps config.yaml)
+    # provider deps for the Responses API (ogx stack list-deps config.yaml)
     "sqlite-vec",
     "aiosqlite",
     "pillow>=12.2.0",
     "fonttools>=4.60.2",
     "matplotlib",
     "pandas",
-    "scikit-learn",
-    "pypdf>=6.7.2",
+    "pypdf>=6.13.0",
     "chardet",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",

@@ -3,14 +3,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
-from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
+from ogx.core.library_client import AsyncOGXAsLibraryClient
 
 MODEL: str = os.environ.get("MODEL", "llama3.2")
 
-app = FastAPI(title="llama-stack-oneagent")
+app = FastAPI(title="ogx-opentelemetry")
 
-# Llama Stack runs in-process (library mode); inference goes to Ollama.
-client = AsyncLlamaStackAsLibraryClient(str(Path(__file__).parent / "config.yaml"))
+# OGX runs in-process (library mode); inference goes to Ollama.
+client = AsyncOGXAsLibraryClient(str(Path(__file__).parent / "config.yaml"))
 
 
 @app.on_event("startup")
@@ -25,7 +25,7 @@ def health():
 
 @app.post("/haiku", response_class=PlainTextResponse)
 async def haiku() -> str:
-    # Responses API: Llama Stack's agent runtime (used by the OpenShift AI Playground).
+    # Responses API: OGX's agent runtime (used by the OpenShift AI Playground).
     response = await client.responses.create(
         model=f"ollama/{MODEL}",
         instructions="You are a poet who answers only in haiku.",

@@ -1,6 +1,6 @@
-# Minimal Llama Stack distribution: Responses (agent) API on top of a local Ollama.
+# Minimal OGX distribution: Responses (agent) API on top of a local Ollama.
 version: 2
-distro_name: ollama-oneagent
+distro_name: ogx-oneagent
 apis:
 - files
 - inference
@@ -18,12 +18,11 @@ providers:
     provider_type: inline::builtin
     config:
       persistence:
-        agent_state:
-          namespace: agents
-          backend: kv_default
         responses:
           table_name: responses
           backend: sql_default
+      memory_config:
+        default_vector_store_provider_id: sqlite-vec
   tool_runtime:
   - provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
@@ -31,7 +30,7 @@ providers:
   - provider_id: sqlite-vec
     provider_type: inline::sqlite-vec
     config:
-      db_path: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-opentelemetry}/sqlite_vec.db
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/sqlite_vec.db
       persistence:
         namespace: vector_io::sqlite_vec
         backend: kv_default
@@ -39,7 +38,7 @@ providers:
   - provider_id: builtin-files
     provider_type: inline::localfs
     config:
-      storage_dir: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-opentelemetry}/files
+      storage_dir: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/files
       metadata_store:
         table_name: files_metadata
         backend: sql_default
@@ -47,10 +46,10 @@ storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-opentelemetry}/kvstore.db
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/kvstore.db
     sql_default:
       type: sql_sqlite
-      db_path: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-opentelemetry}/sql_store.db
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/sql_store.db
   stores:
     metadata:
       namespace: registry
@@ -62,8 +61,8 @@ storage:
       table_name: openai_conversations
       backend: sql_default
     prompts:
-      namespace: prompts
-      backend: kv_default
+      table_name: prompts
+      backend: sql_default
     connectors:
-      namespace: connectors
-      backend: kv_default
+      table_name: connectors
+      backend: sql_default

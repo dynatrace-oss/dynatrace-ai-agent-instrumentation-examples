@@ -23,7 +23,7 @@ OA_ALL='[
   {"name":"anthropic-oneagent","app_dir":"anthropic/oneagent","test_file":"test/e2e/anthropic_oneagent_test.go","test_run":"TestAnthropicOneAgent","otel_service_name":"anthropic/oneagent"},
   {"name":"openai-oneagent","app_dir":"openai/oneagent","test_file":"test/e2e/openai_oneagent_test.go","test_run":"TestOpenAIOneAgent","otel_service_name":"openai/oneagent"},
   {"name":"ollama-oneagent","app_dir":"ollama/oneagent","test_file":"test/e2e/ollama_test.go","test_run":"TestOllamaOneAgent","otel_service_name":"ollama/oneagent","ollama_model":"tinyllama"},
-  {"name":"llama-stack-oneagent","app_dir":"llama-stack/oneagent","test_file":"test/e2e/llama_stack_oneagent_test.go","test_run":"TestLlamaStackOneAgent","otel_service_name":"llama-stack/oneagent","ollama_model":"tinyllama"},
+  {"name":"ogx-oneagent","app_dir":"ogx/oneagent","test_file":"test/e2e/ogx_oneagent_test.go","test_run":"TestOGXOneAgent","otel_service_name":"ogx/oneagent","ollama_model":"tinyllama"},
   {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
   {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
   {"name":"aws-strands-oneagent","app_dir":"aws-strands/oneagent","test_file":"test/e2e/aws_strands_oneagent_test.go","test_run":"TestAWSStrandsOneAgent","otel_service_name":"aws-strands/oneagent","oneagent_warmup_seconds":"60"},
@@ -71,7 +71,7 @@ OC_ALL='[
   {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true},
   {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"},
   {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true},
-  {"name":"llama-stack-opentelemetry","app_dir":"llama-stack/opentelemetry","test_file":"test/e2e/llama_stack_opentelemetry_test.go","test_run":"TestLlamaStackOpenTelemetry","otel_service_name":"llama-stack/opentelemetry","ollama_model":"tinyllama"}
+  {"name":"ogx-opentelemetry","app_dir":"ogx/opentelemetry","test_file":"test/e2e/ogx_opentelemetry_test.go","test_run":"TestOGXOpenTelemetry","otel_service_name":"ogx/opentelemetry","ollama_model":"tinyllama"}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then
