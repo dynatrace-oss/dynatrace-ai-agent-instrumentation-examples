@@ -198,7 +198,7 @@ var OneAgentGuardrailProfile = Profile{
 // attributes (AR-017..AR-019), which this SDK can never emit because it never talks
 // to Bedrock, and not the raw gen_ai.prompt.prompt_filter_results /
 // gen_ai.completion.content_filter_results blobs (AR-015/AR-016) either, which
-// OneAgent-sourced spans never carry (AI-497).
+// OneAgent-sourced spans never carry.
 //
 // Only the category-filter attribute is required, via an AnyOf over the input and
 // output side: which side fires depends on whether Azure filtered the prompt or the
