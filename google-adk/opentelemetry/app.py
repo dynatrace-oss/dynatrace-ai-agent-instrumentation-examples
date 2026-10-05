@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 
@@ -62,6 +63,8 @@ from pydantic import BaseModel
 
 from agent import academic_coordinator
 
+logger = logging.getLogger(__name__)
+
 session_service = InMemorySessionService()
 
 app = FastAPI()
@@ -111,7 +114,7 @@ async def research(req: ResearchRequest) -> str:
         ],
     )
 
-    async def _run() -> str:
+    async def _run() -> tuple[str, list[str]]:
         # Drain the runner rather than returning from inside the loop. Returning early
         # abandons the async generator, which ADK reports as "Root node
         # academic_coordinator was cancelled" and OTel as a "Failed to detach context
@@ -120,19 +123,28 @@ async def research(req: ResearchRequest) -> str:
         # exported. Keeping the first final response but consuming the stream to
         # completion lets every span end normally.
         answer = ""
+        errors: list[str] = []
         async for event in runner.run_async(
             user_id="e2e",
             session_id=session.id,
             new_message=message,
         ):
+            # A failed model call (quota, safety block, ...) arrives as an event with an
+            # error code and no content; record it so an empty answer can be explained.
+            if event.error_code or event.error_message:
+                detail = f"{event.author}: {event.error_code}: {event.error_message}"
+                logger.error("ADK model error event: %s", detail)
+                errors.append(detail)
             if not answer and event.is_final_response() and event.content and event.content.parts:
                 for part in event.content.parts:
                     if part.text:
                         answer = part.text
                         break
-        return answer
+        return answer, errors
 
-    result = await _run()
+    result, errors = await _run()
     if not result:
+        if errors:
+            raise HTTPException(status_code=502, detail=f"agent model error: {'; '.join(errors)}")
         raise HTTPException(status_code=500, detail="agent returned no response")
     return result
