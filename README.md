@@ -57,7 +57,7 @@ AI coding agents like Claude Code and OpenAI Codex CLI run autonomously in devel
 - **Tool observability** — trace every tool call, acceptance/rejection decision, and API error
 - **Session-level attribution** — slice all data by `user.id`, `session.id`, or `organization.id`
 
-See the **[AI Coding Agents](./ai-coding-agents/)** section for setup guides covering Claude Code, OpenAI Codex CLI, OpenClaw, and the GitHub Copilot SDK.
+See the **[AI Coding Agents](./ai-coding-agents/)** section for setup guides covering Antigravity, Claude Code, Cursor, GitHub Copilot in VS Code, Kiro, OpenAI Codex CLI, OpenClaw, OpenCode, and the GitHub Copilot SDK.
 
 ## Demos
 
@@ -106,8 +106,12 @@ Observe AI coding agents with zero code changes using built-in OpenTelemetry sig
 
 | Agent | Path |
 |-------|------|
+| [Antigravity](./ai-coding-agents/antigravity/) | ai-coding-agents/antigravity |
 | [Claude Code](./ai-coding-agents/claude-code/) | ai-coding-agents/claude-code |
+| [Cursor](./ai-coding-agents/cursor/) | ai-coding-agents/cursor |
+| [GitHub Copilot in VS Code](./ai-coding-agents/vscode-copilot/) | ai-coding-agents/vscode-copilot |
 | [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | ai-coding-agents/github-copilot-sdk |
+| [Kiro](./ai-coding-agents/kiro/) | ai-coding-agents/kiro |
 | [OpenAI Codex](./ai-coding-agents/openai-codex/) | ai-coding-agents/openai-codex |
 | [OpenClaw](./ai-coding-agents/openclaw/) | ai-coding-agents/openclaw |
 | [OpenClaw Observability Plugin](./ai-coding-agents/openclaw-observability-plugin/) | ai-coding-agents/openclaw-observability-plugin |
