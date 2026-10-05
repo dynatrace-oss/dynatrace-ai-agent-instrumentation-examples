@@ -1,0 +1,35 @@
+# Minimal Llama Stack distribution: inference only, served by a local Ollama.
+version: 2
+distro_name: ollama-oneagent
+apis:
+- inference
+providers:
+  inference:
+  - provider_id: ollama
+    provider_type: remote::ollama
+    config:
+      base_url: ${env.OLLAMA_URL:=http://localhost:11434/v1}
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-oneagent}/kvstore.db
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/llama-stack-oneagent}/sql_store.db
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default
+    connectors:
+      namespace: connectors
+      backend: kv_default
