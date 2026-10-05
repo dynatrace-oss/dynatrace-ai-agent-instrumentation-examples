@@ -653,7 +653,7 @@ func auditOneAgentGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, 
 // captured by OneAgent's Python OpenAI sensor against
 // OpenAIOneAgentGuardrailProfile. It cannot reuse auditSpanOptional: when Azure
 // filters the prompt the SDK raises BadRequestError and OneAgent marks the span
-// span.status_code = "error" (AI-497) — the expected outcome here — whereas
+// span.status_code = "error" — the expected outcome here — whereas
 // auditSpanOptional treats an error span as a failure via assertNotErrorSpan.
 // Skips (rather than fails) when no anchor span is found, since the trigger
 // no-ops off Azure and the filter only attaches attributes on a request it
