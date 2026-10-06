@@ -72,7 +72,7 @@ OC_ALL='[
   {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true},
   {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"},
   {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true},
-  {"name":"ogx-opentelemetry","app_dir":"ogx/opentelemetry","test_file":"test/e2e/ogx_opentelemetry_test.go","test_run":"TestOGXOpenTelemetry","otel_service_name":"ogx/opentelemetry","ollama_model":"tinyllama"}
+  {"name":"ogx-opentelemetry","app_dir":"ogx/opentelemetry","test_file":"test/e2e/ogx_opentelemetry_test.go","test_run":"TestOGXOpenTelemetry","otel_service_name":"ogx/opentelemetry","ollama_model":"tinyllama"},
   {"name":"n8n-opentelemetry","app_dir":"n8n/opentelemetry","test_file":"test/e2e/n8n_opentelemetry_test.go","test_run":"TestN8NOpenTelemetryOpenAI","otel_service_name":"n8n"},
   {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true}
 ]'
