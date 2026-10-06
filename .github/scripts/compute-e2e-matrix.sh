@@ -57,7 +57,8 @@ OC_ALL='[
   {"name":"pydantic-ai-opentelemetry","app_dir":"pydantic-ai/opentelemetry","test_file":"test/e2e/pydantic_ai_opentelemetry_test.go","test_run":"TestPydanticAIOpenTelemetry","otel_service_name":"pydantic-ai-music-agent"},
   {"name":"openai-agents-opentelemetry","app_dir":"openai-agents/opentelemetry","test_file":"test/e2e/openai_agents_opentelemetry_collector_test.go","test_run":"TestOpenAIAgentsOpenTelemetryCollector","otel_service_name":"openai-cs-agents"},
   {"name":"mcp-opentelemetry","app_dir":"mcp/opentelemetry","test_file":"test/e2e/mcp_opentelemetry_test.go","test_run":"TestMCPOpenTelemetry","otel_service_name":"mcp-agent-demo","node_version":"22"},
-  {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_file":"test/e2e/litellm_opentelemetry_test.go","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway"},
+  {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_file":"test/e2e/litellm_opentelemetry_test.go","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway-fastapi"},
+  { "name":"litellm-gateway-opentelemetry", "app_dir":"litellm/opentelemetry/litellm-gateway-with-instrumentation", "test_file":"test/e2e/litellm_gateway_test.go", "test_run":"TestLiteLLMOpenTelemetryGateway", "otel_service_name":"litellm-gateway" },
   {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_collector_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetryCollector","otel_service_name":"microsoft-agent-framework-collector"},
   {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_collector_test.go","test_run":"TestCrewAIOpenTelemetryCollector","otel_service_name":"crewai"},
   {"name":"langgraph-opentelemetry","app_dir":"langgraph/opentelemetry/openai","test_file":"test/e2e/langgraph_opentelemetry_test.go","test_run":"TestLangGraphOpenTelemetryOpenAI","otel_service_name":"langgraph/opentelemetry/openai"},
@@ -72,6 +73,8 @@ OC_ALL='[
   {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"},
   {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true},
   {"name":"ogx-opentelemetry","app_dir":"ogx/opentelemetry","test_file":"test/e2e/ogx_opentelemetry_test.go","test_run":"TestOGXOpenTelemetry","otel_service_name":"ogx/opentelemetry","ollama_model":"tinyllama"}
+  {"name":"n8n-opentelemetry","app_dir":"n8n/opentelemetry","test_file":"test/e2e/n8n_opentelemetry_test.go","test_run":"TestN8NOpenTelemetryOpenAI","otel_service_name":"n8n"},
+  {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then
