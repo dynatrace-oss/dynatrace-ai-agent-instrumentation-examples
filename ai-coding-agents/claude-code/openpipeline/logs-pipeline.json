@@ -1,0 +1,29 @@
+{
+  "customId": "pipeline_Claude_Code_GenAI_logs",
+  "displayName": "Claude Code GenAI (logs)",
+  "metadataList": [],
+  "processing": {
+    "processors": [
+      {
+        "type": "dql",
+        "enabled": true,
+        "id": "processor_Map_assistant_response_4711",
+        "description": "Map claude_code assistant_response log events to GenAI semconv. Carries the response text the spans never get, plus request_id as the join key back to claude_code.llm_request spans.",
+        "matcher": "matchesValue(event.name, \"assistant_response\") and matchesValue(service.name, \"claude-code\")",
+        "dql": {
+          "script": "fieldsAdd gen_ai.operation.name = \"chat\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.response.model = model\n| fieldsAdd gen_ai.conversation.id = session.id\n| fieldsAdd gen_ai.response.id = request_id\n| fieldsAdd tmp_resp_escaped = replaceString(replaceString(replaceString(response, \"\\\\\", \"\\\\\\\\\"), \"\\\"\", \"\\\\\\\"\"), \"\\n\", \"\\\\n\")\n| fieldsAdd gen_ai.output.messages = concat(\"[{\\\"role\\\":\\\"assistant\\\",\\\"content\\\":\\\"\", tmp_resp_escaped, \"\\\"}]\")\n| fieldsRemove tmp_resp_escaped"
+        }
+      },
+      {
+        "type": "dql",
+        "enabled": true,
+        "id": "processor_Map_user_prompt_log_4711",
+        "description": "Map claude_code user_prompt log events to GenAI semconv, so the log stream carries both halves of the exchange.",
+        "matcher": "matchesValue(event.name, \"user_prompt\") and matchesValue(service.name, \"claude-code\")",
+        "dql": {
+          "script": "fieldsAdd gen_ai.operation.name = \"invoke_agent\"\n| fieldsAdd gen_ai.provider.name = \"anthropic\"\n| fieldsAdd gen_ai.system = \"anthropic\"\n| fieldsAdd gen_ai.agent.name = \"Claude Code\"\n| fieldsAdd gen_ai.agent.id = \"claude-code\"\n| fieldsAdd gen_ai.conversation.id = session.id\n| fieldsAdd tmp_prompt_escaped = replaceString(replaceString(replaceString(prompt, \"\\\\\", \"\\\\\\\\\"), \"\\\"\", \"\\\\\\\"\"), \"\\n\", \"\\\\n\")\n| fieldsAdd gen_ai.input.messages = concat(\"[{\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"\", tmp_prompt_escaped, \"\\\"}]\")\n| fieldsRemove tmp_prompt_escaped"
+        }
+      }
+    ]
+  }
+}
