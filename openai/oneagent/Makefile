@@ -6,7 +6,7 @@ APP_IMAGE        ?=
 BUILD_PLATFORM   ?= linux/amd64
 PORT             ?= 8000
 
-.PHONY: install run build push request help
+.PHONY: install run build push request request-guardrail help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -27,3 +27,6 @@ request: ## POST /haiku to localhost:$(PORT)
 	curl -s -X POST http://localhost:$(PORT)/haiku \
 	  -H 'Content-Type: application/json' \
 	  -d '{"topic":"e2e test"}' | python3 -m json.tool
+
+request-guardrail: ## POST /haiku-guardrail to localhost:$(PORT) (trips the Azure content filter)
+	curl -s -X POST http://localhost:$(PORT)/haiku-guardrail
