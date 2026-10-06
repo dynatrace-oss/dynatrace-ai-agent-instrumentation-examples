@@ -1,0 +1,68 @@
+# Minimal OGX distribution: Responses (agent) API on top of a local Ollama.
+version: 2
+distro_name: ogx-oneagent
+apis:
+- files
+- inference
+- responses
+- tool_runtime
+- vector_io
+providers:
+  inference:
+  - provider_id: ollama
+    provider_type: remote::ollama
+    config:
+      base_url: ${env.OLLAMA_URL:=http://localhost:11434/v1}
+  responses:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config:
+      persistence:
+        responses:
+          table_name: responses
+          backend: sql_default
+      memory_config:
+        default_vector_store_provider_id: sqlite-vec
+  tool_runtime:
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+  vector_io:
+  - provider_id: sqlite-vec
+    provider_type: inline::sqlite-vec
+    config:
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/sqlite_vec.db
+      persistence:
+        namespace: vector_io::sqlite_vec
+        backend: kv_default
+  files:
+  - provider_id: builtin-files
+    provider_type: inline::localfs
+    config:
+      storage_dir: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/files
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/kvstore.db
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=/tmp/ogx-oneagent}/sql_store.db
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      table_name: prompts
+      backend: sql_default
+    connectors:
+      table_name: connectors
+      backend: sql_default
