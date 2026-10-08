@@ -186,6 +186,12 @@
       "separateMajorMinor": false
     },
     {
+      "description": "anthropic 1.x moved to httpx2; the OneAgent and OpenInference anthropic demos stop producing gen_ai spans on it. Stay on 0.x until both support 1.x.",
+      "matchDatasources": ["pypi"],
+      "matchPackageNames": ["anthropic"],
+      "allowedVersions": "<1.0.0"
+    },
+    {
       "description": "litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, removed in FastAPI 0.140.7. Keep renovate below it until litellm drops that import.",
       "matchManagers": ["pep621"],
       "matchFileNames": ["litellm/opentelemetry/**"],
