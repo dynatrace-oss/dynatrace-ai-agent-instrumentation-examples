@@ -3,8 +3,8 @@ name = "aws-strands-oneagent"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "strands-agents>=1.45.0",
-    "boto3>=1.43.36",
+    "strands-agents==1.50.2",
+    "boto3==1.43.108",
     "fastapi",
     "uvicorn[standard]",
 ]

@@ -1,2 +1,2 @@
-openai >= 2.38.0
+openai==2.54.0
 traceloop-sdk == 0.62.3

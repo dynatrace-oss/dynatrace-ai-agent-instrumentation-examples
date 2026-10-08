@@ -67,13 +67,13 @@ Monitor specific AI provider SDKs with Dynatrace.
 
 | Provider | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |----------|-------------|----------|---------------|---------------|
-| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.64 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [Anthropic](./anthropic/oneagent/) | `anthropic` 0.105.2 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
-| [Cohere](./cohere/oneagent/) | `cohere` 5.0.0 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
-| [Groq](./groq/oneagent/) | `groq` 0.9.0 <!-- renovate: datasource=pypi depName=groq --> | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
+| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.108 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [Anthropic](./anthropic/oneagent/) | `anthropic` 1.7.0 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | `cohere` 7.0.8 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
+| [Groq](./groq/oneagent/) | `groq` 0.37.1 <!-- renovate: datasource=pypi depName=groq --> | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
 | [Mistral](./mistral/) | `mistralai` 2.10.1 <!-- renovate: datasource=pypi depName=mistralai --> | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
-| [Ollama](./ollama/oneagent/) | `ollama` 0.4.0 <!-- renovate: datasource=pypi depName=ollama --> | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
-| [OpenAI](./openai/) | `openai` 2.38.0 <!-- renovate: datasource=pypi depName=openai --> | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
+| [Ollama](./ollama/oneagent/) | `ollama` 0.6.2 <!-- renovate: datasource=pypi depName=ollama --> | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
+| [OpenAI](./openai/) | `openai` 2.54.0 <!-- renovate: datasource=pypi depName=openai --> | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
@@ -84,18 +84,18 @@ Monitor AI agent frameworks with Dynatrace.
 
 | Framework | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |-----------|-------------|----------|---------------|---------------|
-| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.64 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
+| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.108 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | `strands-agents` 1.50.2 <!-- renovate: datasource=pypi depName=strands-agents --> | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [CrewAI](./crewai/opentelemetry/) | `crewai` 1.15.10 <!-- renovate: datasource=pypi depName=crewai --> | — | — | [✓](./crewai/opentelemetry/) |
-| [Google ADK](./google-adk/opentelemetry/) | `google-adk` 1.0.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
-| [Haystack](./haystack/) | `haystack-ai` 2.18.0 <!-- renovate: datasource=pypi depName=haystack-ai --> | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
-| [Langfuse](./langfuse/) | `langfuse` 4.0.0 <!-- renovate: datasource=pypi depName=langfuse --> | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
-| [LangGraph](./langgraph/) | `langgraph` 0.6.10 <!-- renovate: datasource=pypi depName=langgraph --> | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [Google ADK](./google-adk/opentelemetry/) | `google-adk` 2.8.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
+| [Haystack](./haystack/) | `haystack-ai` 2.31.0 <!-- renovate: datasource=pypi depName=haystack-ai --> | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
+| [Langfuse](./langfuse/) | `langfuse` 4.14.1 <!-- renovate: datasource=pypi depName=langfuse --> | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
+| [LangGraph](./langgraph/) | `langgraph` 1.2.10 <!-- renovate: datasource=pypi depName=langgraph --> | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [LiteLLM](./litellm/opentelemetry/) | `litellm` 1.95.0 <!-- renovate: datasource=pypi depName=litellm --> | — | — | [✓](./litellm/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [MCP (Model Context Protocol)](mcp/opentelemetry/) | `@modelcontextprotocol/sdk` 1.24.0 <!-- renovate: datasource=npm depName=@modelcontextprotocol/sdk --> | — | — | [✓](mcp/opentelemetry/) |
-| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | `agent-framework` 1.0.0 <!-- renovate: datasource=pypi depName=agent-framework --> | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
+| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | `agent-framework` 1.20.0 <!-- renovate: datasource=pypi depName=agent-framework --> | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
 | [OpenAI Agents SDK](./openai-agents/opentelemetry/) | `openai-agents` 0.19.4 <!-- renovate: datasource=pypi depName=openai-agents --> | — | — | [✓](./openai-agents/opentelemetry/) |
-| [Pydantic AI](./pydantic-ai/opentelemetry/) | `pydantic-ai` 1.0.0 <!-- renovate: datasource=pypi depName=pydantic-ai --> | — | — | [✓](./pydantic-ai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [Pydantic AI](./pydantic-ai/opentelemetry/) | `pydantic-ai` 2.9.0 <!-- renovate: datasource=pypi depName=pydantic-ai --> | — | — | [✓](./pydantic-ai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Real User Monitoring](./rum/opentelemetry/) | — | — | — | [✓](./rum/opentelemetry/) |
 
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).

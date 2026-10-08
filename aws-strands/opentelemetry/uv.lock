@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12, <3.14"
 
 [[package]]
@@ -144,7 +144,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.33.0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.54b1" },
     { name = "opentelemetry-instrumentation-urllib3", specifier = ">=0.54b1" },
-    { name = "strands-agents", specifier = ">=1.50.2" },
+    { name = "strands-agents", specifier = "==1.50.2" },
     { name = "strands-agents-tools", specifier = ">=0.8.5" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]

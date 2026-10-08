@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -715,7 +715,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "google-adk", specifier = ">=1.0.0" },
+    { name = "google-adk", specifier = "==2.8.0" },
     { name = "opentelemetry-distro", specifier = ">=0.50b0" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.28.0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.50b0" },
