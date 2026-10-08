@@ -68,7 +68,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | Provider | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |----------|-------------|----------|---------------|---------------|
 | [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.109 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [Anthropic](./anthropic/oneagent/) | `anthropic` 1.12.1 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
+| [Anthropic](./anthropic/oneagent/) | `anthropic` 0.125.0 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
 | [Cohere](./cohere/oneagent/) | `cohere` 7.2.0 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
 | [Groq](./groq/oneagent/) | `groq` 1.7.0 <!-- renovate: datasource=pypi depName=groq --> | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
 | [Mistral](./mistral/) | `mistralai` 3.1.0 <!-- renovate: datasource=pypi depName=mistralai --> | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |

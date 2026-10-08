@@ -55,8 +55,10 @@ class SessionIdExporter(SpanExporter):
                 continue
             session_id = attrs.get(_STAGING_ATTR)
             if session_id:
-                attrs[GEN_AI_CONVERSATION_ID_ATTR] = session_id
-                del attrs[_STAGING_ATTR]
+                # Ended spans hold immutable attributes, so swap in an updated copy.
+                updated = {k: v for k, v in attrs.items() if k != _STAGING_ATTR}
+                updated[GEN_AI_CONVERSATION_ID_ATTR] = session_id
+                span._attributes = updated
         return self._inner.export(spans)
 
     def shutdown(self) -> None:

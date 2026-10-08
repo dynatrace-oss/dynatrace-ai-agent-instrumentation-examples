@@ -5,4 +5,5 @@ requires-python = ">=3.10"
 dependencies = [
     "openai==3.26.0",
     "traceloop-sdk==0.62.3",
+    "httpx==0.28.1",
 ]

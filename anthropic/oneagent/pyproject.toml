@@ -3,7 +3,7 @@ name = "oneagent-demo-app"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
-    "anthropic[bedrock]==1.12.1",
+    "anthropic[bedrock]==0.125.0",
     "oneagent-sdk",
     "fastapi",
     "uvicorn[standard]",
