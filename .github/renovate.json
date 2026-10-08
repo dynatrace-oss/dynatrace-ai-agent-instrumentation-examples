@@ -175,6 +175,12 @@
     },
     {
       "matchDatasources": ["npm"],
+      "matchPackageNames": ["@github/copilot-sdk"],
+      "groupName": "@github/copilot-sdk",
+      "separateMajorMinor": false
+    },
+    {
+      "matchDatasources": ["npm"],
       "matchPackageNames": ["@modelcontextprotocol/sdk"],
       "groupName": "@modelcontextprotocol/sdk",
       "separateMajorMinor": false
