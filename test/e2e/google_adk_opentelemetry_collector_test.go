@@ -30,10 +30,15 @@ func TestGoogleADKOpenTelemetryCollector(t *testing.T) {
 	// execute_tool span, which is what made this assertion flaky before.
 	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentDurationMetrics...)
 
+	// Anchor on an execute_tool span so the audit lands on a trace that completed
+	// delegation. app.py retries model aborts (e.g. RECITATION) on a fresh session,
+	// and each attempt is its own trace; anchoring on any gemini span can pick the
+	// aborted attempt, whose chat span has no output messages or output tokens.
+
 	auditSpanWithMetrics(t, "google-adk", "opentelemetry-collector", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "google-adk-collector"
-| filter gen_ai.provider.name == "gemini"
+| filter gen_ai.operation.name == "execute_tool"
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
