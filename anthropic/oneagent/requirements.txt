@@ -1,2 +1,2 @@
-anthropic[bedrock]
+anthropic[bedrock]>=0.105.2
 oneagent-sdk

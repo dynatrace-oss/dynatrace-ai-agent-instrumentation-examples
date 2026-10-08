@@ -65,15 +65,15 @@ See the **[AI Coding Agents](./ai-coding-agents/)** section for setup guides cov
 
 Monitor specific AI provider SDKs with Dynatrace.
 
-| Provider | OneAgent | OpenInference | OpenTelemetry |
-|----------|----------|---------------|---------------|
-| [AWS Bedrock](./aws-bedrock/) | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [Anthropic](./anthropic/oneagent/) | [✓](./anthropic/oneagent/) | — | — |
-| [Cohere](./cohere/oneagent/) | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
-| [Groq](./groq/oneagent/) | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
-| [Mistral](./mistral/) | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
-| [Ollama](./ollama/oneagent/) | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
-| [OpenAI](./openai/) | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
+| Provider | SDK version | OneAgent | OpenInference | OpenTelemetry |
+|----------|-------------|----------|---------------|---------------|
+| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.64 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [Anthropic](./anthropic/oneagent/) | `anthropic` 0.105.2 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
+| [Cohere](./cohere/oneagent/) | `cohere` 5.0.0 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
+| [Groq](./groq/oneagent/) | `groq` 0.9.0 <!-- renovate: datasource=pypi depName=groq --> | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
+| [Mistral](./mistral/) | `mistralai` 2.10.1 <!-- renovate: datasource=pypi depName=mistralai --> | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
+| [Ollama](./ollama/oneagent/) | `ollama` 0.4.0 <!-- renovate: datasource=pypi depName=ollama --> | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
+| [OpenAI](./openai/) | `openai` 2.38.0 <!-- renovate: datasource=pypi depName=openai --> | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
@@ -82,21 +82,21 @@ Monitor specific AI provider SDKs with Dynatrace.
 
 Monitor AI agent frameworks with Dynatrace.
 
-| Framework | OneAgent | OpenInference | OpenTelemetry |
-|-----------|----------|---------------|---------------|
-| [AWS Bedrock Agents](./aws-bedrock-agents/) | [✓](./aws-bedrock-agents/oneagent/) | — | — |
-| [AWS Strands Agents](./aws-strands/) | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [CrewAI](./crewai/opentelemetry/) | — | — | [✓](./crewai/opentelemetry/) |
-| [Google ADK](./google-adk/opentelemetry/) | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
-| [Haystack](./haystack/) | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
-| [Langfuse](./langfuse/) | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
-| [LangGraph](./langgraph/) | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [LiteLLM](./litellm/opentelemetry/) | — | — | [✓](./litellm/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [MCP (Model Context Protocol)](mcp/opentelemetry/) | — | — | [✓](mcp/opentelemetry/) |
-| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
-| [OpenAI Agents SDK](./openai-agents/opentelemetry/) | — | — | [✓](./openai-agents/opentelemetry/) |
-| [Pydantic AI](./pydantic-ai/opentelemetry/) | — | — | [✓](./pydantic-ai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [Real User Monitoring](./rum/opentelemetry/) | — | — | [✓](./rum/opentelemetry/) |
+| Framework | SDK version | OneAgent | OpenInference | OpenTelemetry |
+|-----------|-------------|----------|---------------|---------------|
+| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.64 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
+| [AWS Strands Agents](./aws-strands/) | `strands-agents` 1.50.2 <!-- renovate: datasource=pypi depName=strands-agents --> | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [CrewAI](./crewai/opentelemetry/) | `crewai` 1.15.10 <!-- renovate: datasource=pypi depName=crewai --> | — | — | [✓](./crewai/opentelemetry/) |
+| [Google ADK](./google-adk/opentelemetry/) | `google-adk` 1.0.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
+| [Haystack](./haystack/) | `haystack-ai` 2.18.0 <!-- renovate: datasource=pypi depName=haystack-ai --> | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
+| [Langfuse](./langfuse/) | `langfuse` 4.0.0 <!-- renovate: datasource=pypi depName=langfuse --> | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
+| [LangGraph](./langgraph/) | `langgraph` 0.6.10 <!-- renovate: datasource=pypi depName=langgraph --> | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [LiteLLM](./litellm/opentelemetry/) | `litellm` 1.95.0 <!-- renovate: datasource=pypi depName=litellm --> | — | — | [✓](./litellm/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [MCP (Model Context Protocol)](mcp/opentelemetry/) | `@modelcontextprotocol/sdk` 1.24.0 <!-- renovate: datasource=npm depName=@modelcontextprotocol/sdk --> | — | — | [✓](mcp/opentelemetry/) |
+| [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | `agent-framework` 1.0.0 <!-- renovate: datasource=pypi depName=agent-framework --> | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
+| [OpenAI Agents SDK](./openai-agents/opentelemetry/) | `openai-agents` 0.19.4 <!-- renovate: datasource=pypi depName=openai-agents --> | — | — | [✓](./openai-agents/opentelemetry/) |
+| [Pydantic AI](./pydantic-ai/opentelemetry/) | `pydantic-ai` 1.0.0 <!-- renovate: datasource=pypi depName=pydantic-ai --> | — | — | [✓](./pydantic-ai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [Real User Monitoring](./rum/opentelemetry/) | — | — | — | [✓](./rum/opentelemetry/) |
 
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
 
@@ -106,16 +106,16 @@ Observe AI coding agents with zero code changes using built-in OpenTelemetry sig
 
 | Agent | Path |
 |-------|------|
-| [Antigravity](./ai-coding-agents/antigravity/) | ai-coding-agents/antigravity |
-| [Claude Code](./ai-coding-agents/claude-code/) | ai-coding-agents/claude-code |
-| [Cursor](./ai-coding-agents/cursor/) | ai-coding-agents/cursor |
-| [GitHub Copilot in VS Code](./ai-coding-agents/vscode-copilot/) | ai-coding-agents/vscode-copilot |
-| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | ai-coding-agents/github-copilot-sdk |
-| [Kiro](./ai-coding-agents/kiro/) | ai-coding-agents/kiro |
-| [OpenAI Codex](./ai-coding-agents/openai-codex/) | ai-coding-agents/openai-codex |
-| [OpenClaw](./ai-coding-agents/openclaw/) | ai-coding-agents/openclaw |
-| [OpenClaw Observability Plugin](./ai-coding-agents/openclaw-observability-plugin/) | ai-coding-agents/openclaw-observability-plugin |
-| [OpenCode](./ai-coding-agents/opencode/) | ai-coding-agents/opencode |
+| [Antigravity](./ai-coding-agents/antigravity/) | — | ai-coding-agents/antigravity |
+| [Claude Code](./ai-coding-agents/claude-code/) | — | ai-coding-agents/claude-code |
+| [Cursor](./ai-coding-agents/cursor/) | — | ai-coding-agents/cursor |
+| [GitHub Copilot in VS Code](./ai-coding-agents/vscode-copilot/) | — | ai-coding-agents/vscode-copilot |
+| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | — | ai-coding-agents/github-copilot-sdk |
+| [Kiro](./ai-coding-agents/kiro/) | — | ai-coding-agents/kiro |
+| [OpenAI Codex](./ai-coding-agents/openai-codex/) | — | ai-coding-agents/openai-codex |
+| [OpenClaw](./ai-coding-agents/openclaw/) | — | ai-coding-agents/openclaw |
+| [OpenClaw Observability Plugin](./ai-coding-agents/openclaw-observability-plugin/) | — | ai-coding-agents/openclaw-observability-plugin |
+| [OpenCode](./ai-coding-agents/opencode/) | — | ai-coding-agents/opencode |
 
 ## Getting Started
 

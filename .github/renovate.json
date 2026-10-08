@@ -25,6 +25,14 @@
       ],
       "depNameTemplate": "ghcr.io/observiq/bindplane-agent",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "SDK versions shown in the README demo tables. Grouped with the demos' own pins below so both move in one PR.",
+      "managerFilePatterns": ["/^README\\.md$/"],
+      "matchStrings": [
+        "(?<currentValue>\\d[^\\s|]*) <!-- renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+) -->"
+      ]
     }
   ],
   "prHourlyLimit": 20,
@@ -114,6 +122,62 @@
       "matchManagers": ["npm"],
       "matchFileNames": ["openai-agents/opentelemetry/ui/**"],
       "groupName": "npm dependencies (openai-agents)"
+    },
+    {
+      "description": "One PR per main demo SDK covering every demo and the README table, so all examples stay on the same version. Must come after the generic python group to override its groupName; separateMajorMinor off so demos on an older major still land in the same PR.",
+      "matchDatasources": ["pypi"],
+      "matchPackageNames": [
+        "openai",
+        "anthropic",
+        "boto3",
+        "cohere",
+        "groq",
+        "mistralai",
+        "ollama",
+        "strands-agents",
+        "crewai",
+        "google-adk",
+        "haystack-ai",
+        "langfuse",
+        "langgraph",
+        "litellm",
+        "agent-framework",
+        "openai-agents",
+        "pydantic-ai"
+      ],
+      "groupName": "{{depName}} sdk",
+      "separateMajorMinor": false
+    },
+    {
+      "description": "Converting '>=' floors to exact pins is a one-time step per dependency. Pin updates don't expand the templated groupName above, so give them their own group.",
+      "matchDatasources": ["pypi"],
+      "matchUpdateTypes": ["pin"],
+      "groupName": "pin sdk versions",
+      "matchPackageNames": [
+        "openai",
+        "anthropic",
+        "boto3",
+        "cohere",
+        "groq",
+        "mistralai",
+        "ollama",
+        "strands-agents",
+        "crewai",
+        "google-adk",
+        "haystack-ai",
+        "langfuse",
+        "langgraph",
+        "litellm",
+        "agent-framework",
+        "openai-agents",
+        "pydantic-ai"
+      ]
+    },
+    {
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@modelcontextprotocol/sdk"],
+      "groupName": "@modelcontextprotocol/sdk",
+      "separateMajorMinor": false
     },
     {
       "description": "litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, removed in FastAPI 0.140.7. Keep renovate below it until litellm drops that import.",
