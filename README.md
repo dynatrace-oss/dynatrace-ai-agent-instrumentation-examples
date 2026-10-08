@@ -104,13 +104,13 @@ Monitor AI agent frameworks with Dynatrace.
 
 Observe AI coding agents with zero code changes using built-in OpenTelemetry signals.
 
-| Agent | Path |
-|-------|------|
+| Agent | SDK version | Path |
+|-------|-------------|------|
 | [Antigravity](./ai-coding-agents/antigravity/) | — | ai-coding-agents/antigravity |
 | [Claude Code](./ai-coding-agents/claude-code/) | — | ai-coding-agents/claude-code |
 | [Cursor](./ai-coding-agents/cursor/) | — | ai-coding-agents/cursor |
 | [GitHub Copilot in VS Code](./ai-coding-agents/vscode-copilot/) | — | ai-coding-agents/vscode-copilot |
-| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | — | ai-coding-agents/github-copilot-sdk |
+| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | `@github/copilot-sdk` 1.0.16 <!-- renovate: datasource=npm depName=@github/copilot-sdk --> | ai-coding-agents/github-copilot-sdk |
 | [Kiro](./ai-coding-agents/kiro/) | — | ai-coding-agents/kiro |
 | [OpenAI Codex](./ai-coding-agents/openai-codex/) | — | ai-coding-agents/openai-codex |
 | [OpenClaw](./ai-coding-agents/openclaw/) | — | ai-coding-agents/openclaw |
