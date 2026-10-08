@@ -1,5 +1,5 @@
 ogx[client]==1.4.0
-ollama>=0.3.0
+ollama==0.6.3
 sqlite-vec
 aiosqlite
 pillow>=12.2.0

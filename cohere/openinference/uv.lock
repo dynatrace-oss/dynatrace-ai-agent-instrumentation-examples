@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.11'",
@@ -224,7 +224,7 @@ wheels = [
 
 [[package]]
 name = "cohere"
-version = "7.0.8"
+version = "7.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastavro" },
@@ -236,9 +236,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/16/62ba386903ea854a2fce2cc2f959b9e0c8fa1d3e5699a3a523a6c691ffc9/cohere-7.0.8.tar.gz", hash = "sha256:5d9986b9b13cfe5590021474540648ff3c9e9ce4bfddc3d7f8e31acf1898c4d7", size = 213501, upload-time = "2026-07-23T19:31:41.066Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/49/631a5fac290b704ba0be751d0370f8fb931ad7cb2de3c2f8e4b6a4ffb141/cohere-7.2.0.tar.gz", hash = "sha256:eb74b46882dcff913f826945ae9630cee6b67237ca05d763005c4ad9c4ad5bba", size = 219040, upload-time = "2026-09-28T20:41:03.903Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/52/255cefc27e058853b8750fcb22c549fd52684214d4fc1e4169ab23320644/cohere-7.0.8-py3-none-any.whl", hash = "sha256:a4fe9b9e148cb277ee152009d3566434b055db9d41fc7433abda78add22632ab", size = 357010, upload-time = "2026-07-23T19:31:39.432Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/a7/823e5bed159b0df507757743db3e0fb8de2deb39271b83bf6e97897e7536/cohere-7.2.0-py3-none-any.whl", hash = "sha256:d35cb91814d13eac6587e62bf78302b7683cdd036e7697a8e173ec76f2fb4e37", size = 370672, upload-time = "2026-09-28T20:41:02.334Z" },
 ]
 
 [[package]]
@@ -256,7 +256,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cohere", specifier = ">=5.0.0" },
+    { name = "cohere", specifier = "==7.2.0" },
     { name = "fastapi" },
     { name = "openinference-instrumentation-cohere", specifier = ">=0.1.3" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -278,7 +278,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [

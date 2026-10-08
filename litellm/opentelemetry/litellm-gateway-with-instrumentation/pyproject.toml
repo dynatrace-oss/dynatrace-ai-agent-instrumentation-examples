@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "LiteLLM proxy with OpenInference and OTel GenAI semantic conventions"
 requires-python = ">=3.10,<3.15"
 dependencies = [
-  "litellm[proxy]==1.95.0",
+  "litellm[proxy]==1.104.1",
   # litellm.proxy imports get_flat_dependant, removed in FastAPI 0.140.7.
   "fastapi>=0.140.0,<0.140.7",
   "openinference-instrumentation-litellm==0.1.48",
