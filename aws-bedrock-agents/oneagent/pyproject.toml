@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "bedrock-agentcore",
-    "boto3",
+    "boto3>=1.40.14",
     "langchain-aws",
-    "langgraph",
+    "langgraph>=0.6.6",
     "ddgs",
     "oneagent-sdk",
     "fastapi",
