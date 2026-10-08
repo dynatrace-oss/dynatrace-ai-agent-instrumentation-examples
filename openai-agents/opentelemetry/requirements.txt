@@ -1,4 +1,4 @@
-openai-agents==0.19.4
+openai-agents==0.23.1
 pydantic
 fastapi
 uvicorn

@@ -1,4 +1,4 @@
-langfuse==4.14.1
-openai==2.54.0
+langfuse==4.17.0
+openai==3.26.0
 opentelemetry-sdk >= 1.25.0
 opentelemetry-exporter-otlp >= 1.25.0

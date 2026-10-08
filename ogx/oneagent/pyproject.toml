@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "ogx[client]==1.4.0",
-    "ollama==0.6.2",
+    "ollama==0.6.3",
     # provider deps for the Responses API (ogx stack list-deps config.yaml)
     "sqlite-vec",
     "aiosqlite",
