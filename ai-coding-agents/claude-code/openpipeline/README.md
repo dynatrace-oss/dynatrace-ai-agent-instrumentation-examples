@@ -181,7 +181,7 @@ Use either:
 - **OpenPipeline enrichment** for Claude Code spans sent directly to Dynatrace, or
 - **Collector enrichment** when Claude Code sends telemetry through the provided OpenTelemetry Collector configuration.
 
-Applying both is redundant. The mappings intentionally use the same values so both paths produce equivalent GenAI attributes.
+The mappings intentionally use the same values so both paths produce equivalent GenAI attributes and metrics. Applying both is redundant for attributes, and it counts every extracted GenAI metric twice.
 
 The repository E2E test uses the **Collector path**. This OpenPipeline configuration is the customer-facing alternative and does not control that E2E test.
 
