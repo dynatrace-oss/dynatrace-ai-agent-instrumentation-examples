@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Called by the notify job in e2e.yml after nightly runs complete.
 # Alerts on two independent conditions:
-#   1. Job failure (no spans found — t.Fatalf in test)
+#   1. Job failure (any failed test job, named individually)
 #   2. Attribute regression (attribute present before, missing now)
 # Required env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_RUN_ID,
 #               CURRENT_ONEAGENT, CURRENT_OTELCOL
@@ -14,7 +14,14 @@ RUN_URL="https://github.com/${REPO}/actions/runs/${CURRENT_RUN_ID}"
 # --- Job-level failure check ---
 FAILING_JOBS=""
 [ "${CURRENT_ONEAGENT:-}" = "failure" ] && FAILING_JOBS="oneagent-nightly"
-[ "${CURRENT_OTELCOL:-}"  = "failure" ] && FAILING_JOBS="${FAILING_JOBS:+$FAILING_JOBS, }otelcol"
+if [ "${CURRENT_OTELCOL:-}" = "failure" ]; then
+  # otelcol is a matrix job; name the failing entries rather than the matrix.
+  OTELCOL_FAILED=$(gh api --paginate \
+    "repos/${REPO}/actions/runs/${CURRENT_RUN_ID}/jobs?per_page=100" \
+    --jq '.jobs[] | select(.conclusion == "failure") | .name | select(startswith("E2E / ")) | ltrimstr("E2E / ")' \
+    | grep -v "^oneagent" | paste -sd, - | sed 's/,/, /g' || true)
+  FAILING_JOBS="${FAILING_JOBS:+$FAILING_JOBS, }${OTELCOL_FAILED:-otelcol}"
+fi
 
 # --- Attribute diff ---
 PREV_RUN=$(gh api \
@@ -75,7 +82,7 @@ OPEN_ISSUE=$(gh issue list \
 BODY_PARTS=""
 
 if [ "$HAS_JOB_FAILURE" = "true" ]; then
-  BODY_PARTS="${BODY_PARTS}$(printf '%b' "## Test failure\n\nOne or more jobs failed (no spans received).\n\n**Failing jobs:** ${FAILING_JOBS}\n")"
+  BODY_PARTS="${BODY_PARTS}$(printf '%b' "## Test failure\n\nOne or more jobs failed. See the job logs for the failing assertion.\n\n**Failing jobs:** ${FAILING_JOBS}\n")"
 fi
 
 if [ "$HAS_ATTR_REGRESSION" = "true" ]; then
