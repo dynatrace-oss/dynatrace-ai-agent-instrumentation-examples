@@ -20,8 +20,8 @@ Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/ope
 ## What you'll build
 
 - Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body).
-- Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI.
-- Produces OpenTelemetry traces with OpenInference semantic conventions.
+- Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI, executes an inspiration tool, and calls the model again to write the haiku.
+- Produces OpenTelemetry traces with both OpenInference and opt-in OTel GenAI semantic conventions.
 - Routes traces through a local Bindplane collector that normalizes `llm.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
 - Shows the trace in the Dynatrace AI Observability app with model name, token usage, and message content.
 
@@ -98,7 +98,11 @@ The server runs on port 8000. `make run` starts a Bindplane collector on port 43
 
 ## How it works
 
-`openinference-instrumentation-langchain` instruments LangChain/LangGraph via the callback system, producing spans with OpenInference semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.). These are not natively understood by Dynatrace AI Observability, which expects `gen_ai.*` OTel semantic conventions.
+`openinference-instrumentation-langchain` instruments LangChain/LangGraph via the callback system, producing spans with OpenInference semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.). The sample enables `TraceConfig(enable_genai_semconv=True)` to emit OTel `gen_ai.*` attributes alongside them, including finish reasons and tool definitions. Other applications can opt in using `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`.
+
+The first model call is forced to use `get_haiku_inspiration`, ensuring a tool execution span is captured on every request. The tool records the model-provided `tool_call.id` on its instrumented span, which is converted to `gen_ai.tool.call.id` alongside `gen_ai.tool.name`. The second model call uses the tool result to produce the plain-text haiku.
+
+Requests may include a `conversation_id` (for example, `{"topic": "nature", "conversation_id": "haiku-session-1"}`) to correlate multiple requests. If omitted, a UUID is generated per request. `using_attributes(session_id=...)` propagates it as `session.id` and `gen_ai.conversation.id` across the graph, model, and tool spans.
 
 The Bindplane collector's `genainormalizer` processor translates them:
 
