@@ -94,12 +94,13 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
+          # Newest version the tenant offers; latest/metainfo returns the tenant's default, which can lag behind.
           VERSION=$(curl -sS --fail \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
-            | jq -r '.latestAgentVersion')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "Error: could not resolve latest OneAgent version from metainfo endpoint"; exit 1
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/versions/unix/default?arch=x86" \
+            | jq -r '.availableVersions | sort_by(split(".") | map(split("-")[0] | tonumber)) | last // empty')
+          if [ -z "$VERSION" ]; then
+            echo "Error: could not resolve newest OneAgent version from versions endpoint"; exit 1
           fi
           echo "resolved OneAgent version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -256,12 +257,13 @@ jobs:
             https://*) ;;
             *) echo "Error: DT_ENDPOINT must start with https://"; exit 1 ;;
           esac
+          # Newest version the tenant offers; latest/metainfo returns the tenant's default, which can lag behind.
           VERSION=$(curl -sS --fail \
             --header "Authorization: Api-Token ${DT_INSTALLER_TOKEN}" \
-            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/unix/default/latest/metainfo?arch=x86" \
-            | jq -r '.latestAgentVersion')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "Error: could not resolve latest OneAgent version from metainfo endpoint"; exit 1
+            "${DT_ENDPOINT}/api/v1/deployment/installer/agent/versions/unix/default?arch=x86" \
+            | jq -r '.availableVersions | sort_by(split(".") | map(split("-")[0] | tonumber)) | last // empty')
+          if [ -z "$VERSION" ]; then
+            echo "Error: could not resolve newest OneAgent version from versions endpoint"; exit 1
           fi
           echo "resolved OneAgent version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"

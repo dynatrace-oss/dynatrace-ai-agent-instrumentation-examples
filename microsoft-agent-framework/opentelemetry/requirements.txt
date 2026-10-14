@@ -1,4 +1,4 @@
-agent-framework
+agent-framework==1.20.0
 agent-framework-openai
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http

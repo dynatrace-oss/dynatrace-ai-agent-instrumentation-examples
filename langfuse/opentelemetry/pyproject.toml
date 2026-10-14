@@ -3,8 +3,8 @@ name = "langfuse-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "langfuse>=3.0.0",
-    "openai>=1.0.0",
+    "langfuse==4.17.0",
+    "openai==3.26.0",
     "opentelemetry-sdk>=1.25.0",
     "opentelemetry-exporter-otlp>=1.25.0",
 ]
