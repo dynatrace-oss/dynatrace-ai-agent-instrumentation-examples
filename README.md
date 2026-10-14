@@ -86,7 +86,7 @@ Monitor AI agent frameworks with Dynatrace.
 |-----------|-------------|----------|---------------|---------------|
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.113 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | `strands-agents` 1.58.1 <!-- renovate: datasource=pypi depName=strands-agents --> | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [CrewAI](./crewai/opentelemetry/) | `crewai` 1.15.25 <!-- renovate: datasource=pypi depName=crewai --> | — | — | [✓](./crewai/opentelemetry/) |
+| [CrewAI](./crewai/opentelemetry/) | `crewai` 1.15.28 <!-- renovate: datasource=pypi depName=crewai --> | — | — | [✓](./crewai/opentelemetry/) |
 | [Google ADK](./google-adk/opentelemetry/) | `google-adk` 2.11.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
 | [Haystack](./haystack/) | `haystack-ai` 3.3.0 <!-- renovate: datasource=pypi depName=haystack-ai --> | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
 | [Langfuse](./langfuse/) | `langfuse` 4.17.0 <!-- renovate: datasource=pypi depName=langfuse --> | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |

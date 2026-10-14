@@ -3,7 +3,7 @@ name = "crewai-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.10,<3.14"
 dependencies = [
-    "crewai[litellm,azure-ai-inference]==1.15.25",
+    "crewai[litellm,azure-ai-inference]==1.15.28",
     "traceloop-sdk==0.62.4",
     "fastapi==0.138.1",
     "uvicorn==0.49.0",
