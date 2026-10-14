@@ -1,7 +1,7 @@
 [project]
 name = "oneagent-demo-app"
 version = "0.1.0"
-requires-python = ">=3.13"
+requires-python = "==3.15.0"
 dependencies = [
     "boto3==1.43.109",
     "oneagent-sdk",

@@ -3,7 +3,7 @@ name = "aws-bedrock-agents-oneagent"
 version = "0.1.0"
 description = "Personal Assistant Agent built on top of Bedrock AgentCore, auto-instrumented by Dynatrace OneAgent"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "==3.15.0"
 dependencies = [
     "bedrock-agentcore",
     "boto3==1.43.109",

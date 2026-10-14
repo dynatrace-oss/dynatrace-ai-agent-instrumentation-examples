@@ -1,15 +1,15 @@
 [project]
 name = "aws-bedrock-opentelemetry-demo"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = "==3.15.0"
 dependencies = [
     "boto3==1.43.109",
-    "traceloop-sdk==0.62.3",
-    "opentelemetry-instrumentation-bedrock>=0.61.0",
-    "opentelemetry-instrumentation-botocore>=0.61.0",
-    "opentelemetry-instrumentation-requests>=0.61.0",
-    "opentelemetry-instrumentation-asyncio>=0.61.0",
-    "requests>=2.32.0",
-    "tenacity>=9.0.0",
-    "httpx>=0.27.0",
+    "traceloop-sdk==0.62.4",
+    "opentelemetry-instrumentation-bedrock==0.62.3",
+    "opentelemetry-instrumentation-botocore==0.65b0",
+    "opentelemetry-instrumentation-requests==0.65b0",
+    "opentelemetry-instrumentation-asyncio==0.65b0",
+    "requests==2.34.2",
+    "tenacity==9.1.4",
+    "httpx==0.28.1",
 ]
