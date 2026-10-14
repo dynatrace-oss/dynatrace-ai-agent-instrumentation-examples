@@ -64,6 +64,9 @@ def _get_client():
 
 
 def write_haiku(topic: str) -> str:
+    from opentelemetry import trace as trace_api
+    current_span = trace_api.get_current_span()
+    current_span.set_attribute("primary_tags.haiku_topic", topic)
     kwargs = {
         "modelId": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         "system": [{"text": _SYSTEM_PROMPT}],
