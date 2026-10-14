@@ -3,7 +3,7 @@ name = "langgraph-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "langgraph==1.2.14",
+    "langgraph==1.2.15",
     "langchain-openai==1.3.5",
     "traceloop-sdk==0.62.4",
     "fastapi==0.139.2",
