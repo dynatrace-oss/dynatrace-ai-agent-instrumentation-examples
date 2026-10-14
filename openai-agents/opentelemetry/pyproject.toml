@@ -5,9 +5,9 @@ requires-python = ">=3.10"
 dependencies = [
     "openai-agents==0.23.1",
     "pydantic",
-    "fastapi>=0.115.0",
-    "uvicorn>=0.30.0",
-    "traceloop-sdk==0.62.3",
+    "fastapi==0.141.1",
+    "uvicorn==0.52.1",
+    "traceloop-sdk==0.62.4",
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
 ]

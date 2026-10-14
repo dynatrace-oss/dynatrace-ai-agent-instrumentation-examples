@@ -1,10 +1,11 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
-    "python_full_version == '3.12.*'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.12.*' and sys_platform != 'emscripten'",
     "python_full_version == '3.11.*'",
     "python_full_version < '3.11'",
 ]
@@ -668,7 +669,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -1260,8 +1261,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -1634,15 +1635,15 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.140.0,<0.140.7" },
+    { name = "fastapi", specifier = "==0.140.6" },
     { name = "litellm", extras = ["proxy"], specifier = "==1.104.1" },
-    { name = "openinference-instrumentation-litellm", specifier = "==0.1.48" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.43.0" },
-    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.63b0" },
-    { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.63b0" },
-    { name = "opentelemetry-sdk", specifier = ">=1.43.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "uvicorn", specifier = ">=0.50.0" },
+    { name = "openinference-instrumentation-litellm", specifier = "==0.1.50" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = "==1.44.0" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = "==0.65b0" },
+    { name = "opentelemetry-sdk", specifier = "==1.44.0" },
+    { name = "pydantic", specifier = "==2.13.4" },
+    { name = "uvicorn", specifier = "==0.52.1" },
 ]
 
 [[package]]
@@ -2116,7 +2117,8 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
-    "python_full_version == '3.12.*'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.12.*' and sys_platform != 'emscripten'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/22/fd/89965aa4ac08c74998539fcbf24fa3540f3e15237fbeb6bcf9c908f4aade/numpy-2.5.1.tar.gz", hash = "sha256:a48a113e6afea91f5608793bafa7ef2ad481fefbda87ec5069f483de61cb9fa3", size = 20755553, upload-time = "2026-07-04T17:08:00.933Z" }
 wheels = [
@@ -2195,7 +2197,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation"
-version = "0.1.70"
+version = "0.1.71"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-semantic-conventions" },
@@ -2203,14 +2205,14 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/d0/250f80a1ee358d2872cbd30b59d1de62cca0eaf853e45e67e6d557fec94e/openinference_instrumentation-0.1.70.tar.gz", hash = "sha256:7ae8f12910faad31633dafebb1ddd367b01306421a1a2ad68f67230c989db61f", size = 46350, upload-time = "2026-10-01T22:23:56.383Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/ec/ef1ca7e409ee6bddb7278b9760e0941f65911748f5dc84d17c115f6648f1/openinference_instrumentation-0.1.71.tar.gz", hash = "sha256:4d267b6ce8e067572a740d6a0dbf6b4d4c6e386c5a52a7e7f61e3a714a49849d", size = 46600, upload-time = "2026-10-07T20:26:41.084Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/55/ca49c75272a171926e6df463a527c909fd9f884682c223d98557abfc81a0/openinference_instrumentation-0.1.70-py3-none-any.whl", hash = "sha256:50faba441fd1a1be39159c700630a573ff6d5e3d934c2d7e4446e3e3113537c2", size = 54249, upload-time = "2026-10-01T22:23:54.597Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/8c/330101bedf614dc937d8690462ed0ad4efd7f6c3248a76a5484ba6f885e3/openinference_instrumentation-0.1.71-py3-none-any.whl", hash = "sha256:07833fcf5d493a2ed15da16a0af70d6127d39f18ffa68f4d6827107e49fc6753", size = 54511, upload-time = "2026-10-07T20:26:39.634Z" },
 ]
 
 [[package]]
 name = "openinference-instrumentation-litellm"
-version = "0.1.48"
+version = "0.1.50"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -2221,9 +2223,9 @@ dependencies = [
     { name = "setuptools" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cf/0f/9b80edc82f1a7488d5c79e94fad3bd438621bfb4940ab9dc2be53e9d0c3c/openinference_instrumentation_litellm-0.1.48.tar.gz", hash = "sha256:f5a955776c2fa2a9d606e1cf0a0106d6c9e19034eb1bfdb3de62cdb0199a440b", size = 115222, upload-time = "2026-10-01T22:23:56.644Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/06/8c3b91c2399726c9286e1b1894b48898a19f7a49c1435adf232054766522/openinference_instrumentation_litellm-0.1.50.tar.gz", hash = "sha256:ab483a9455313cae3d572ff21b65e665ad9f2964f7d8ccaaecee06605851f174", size = 115691, upload-time = "2026-10-09T18:29:10.739Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/41/6377b396b1a6bf5a290b581189de3ca08da0eb3e2dbf12b64ec89dc8d45b/openinference_instrumentation_litellm-0.1.48-py3-none-any.whl", hash = "sha256:b1c9d171442fb57c68f78bf914aa86a3ff847deaa2d6839f77e0944f41c479a0", size = 26164, upload-time = "2026-10-01T22:23:55.395Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/a9/8c39b26a1431a1d92c91a1d6bfb1526e0b1a999737b2abc5dbdd150d34a2/openinference_instrumentation_litellm-0.1.50-py3-none-any.whl", hash = "sha256:27f7e48ab06f91df988ece48bac608b4518eb3f271e08ffb8969d18d2db520bb", size = 26196, upload-time = "2026-10-09T18:29:09.419Z" },
 ]
 
 [[package]]
@@ -3341,7 +3343,8 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
-    "python_full_version == '3.12.*'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.12.*' and sys_platform != 'emscripten'",
     "python_full_version == '3.11.*'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/aa/2a/9618a122aeb2a169a28b03889a2995fe297588964333d4a7d67bdf46e147/rpds_py-2026.6.3.tar.gz", hash = "sha256:1cebd1337c242e4ec2293e541f712b2da849b29f48f0c293684b71c0632625d4", size = 64051, upload-time = "2026-06-30T07:17:53.009Z" }

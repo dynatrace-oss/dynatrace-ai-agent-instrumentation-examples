@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12, <3.14"
 
 [[package]]
@@ -140,13 +140,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.12" },
-    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.33.0" },
-    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.54b1" },
-    { name = "opentelemetry-instrumentation-urllib3", specifier = ">=0.54b1" },
+    { name = "fastapi", specifier = "==0.115.12" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.44.0" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
+    { name = "opentelemetry-instrumentation-urllib3", specifier = "==0.65b0" },
     { name = "strands-agents", specifier = "==1.58.1" },
-    { name = "strands-agents-tools", specifier = ">=0.8.5" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
+    { name = "strands-agents-tools", specifier = "==0.8.5" },
+    { name = "uvicorn", extras = ["standard"], specifier = "==0.34.2" },
 ]
 
 [[package]]
