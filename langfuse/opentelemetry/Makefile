@@ -68,9 +68,10 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otelcol/otel-collector-config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \
