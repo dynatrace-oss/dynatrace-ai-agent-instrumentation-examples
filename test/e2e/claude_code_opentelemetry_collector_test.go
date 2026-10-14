@@ -23,7 +23,15 @@ func TestClaudeCodeOpenTelemetryCollector(t *testing.T) {
 | sort timestamp desc
 | limit 1`
 
-	auditSpan(t, "claude-code", "opentelemetry-collector", GenericProfile, anchor,
+	// Claude Code exports no GenAI metrics of its own; the collector's
+	// signal_to_metrics connector derives these from the enriched spans. The
+	// cache-token counters are not asserted: the mock reports zero cache tokens,
+	// and pollMetricExists requires a non-zero sum.
+	auditSpanWithMetrics(t, "claude-code", "opentelemetry-collector", GenericProfile, anchor, "claude-code",
+		append([]string{
+			"gen_ai.client.inference.usage.input_tokens",
+			"gen_ai.client.inference.usage.output_tokens",
+		}, genAIClientMetrics...),
 		"Backend mocked when Anthropic credentials are absent: an in-process httptest server serves the Messages API via ANTHROPIC_BASE_URL.")
 	assertSpanWithAttrs(t, scopedDQL(anchor), []string{
 		"gen_ai.provider.name",
@@ -43,5 +51,19 @@ func TestClaudeCodeOpenTelemetryCollector(t *testing.T) {
 | limit 1`), []string{
 		"gen_ai.agent.name",
 		"gen_ai.agent.id",
+	}, nil)
+
+	// The assistant response never reaches a span; the collector maps the
+	// assistant_response log event instead (the Makefile sets
+	// OTEL_LOG_ASSISTANT_RESPONSES=1).
+	assertSpanWithAttrs(t, scopedDQL(`fetch logs, from: now()-10m
+| filter service.name == "claude-code"
+| filter event.name == "assistant_response"
+| filter gen_ai.operation.name == "chat"
+| sort timestamp desc
+| limit 1`), []string{
+		"gen_ai.provider.name",
+		"gen_ai.response.model",
+		"gen_ai.output.messages",
 	}, nil)
 }
