@@ -55,6 +55,12 @@
       "rangeStrategy": "pin"
     },
     {
+      "description": "Leave requires-python alone. The pin strategy above would turn it into '==<newest CPython>', which forces uv onto a Python that native-extension deps and OneAgent don't support yet. The runtime version is managed by the 'python runtime' rule instead.",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["requires-python"],
+      "enabled": false
+    },
+    {
       "description": "Keep the openllmetry family moving together. traceloop-sdk and its opentelemetry-instrumentation-* packages share one version line, and demo collector configs depend on their attribute behaviour, so they should be reviewed as a single change rather than drifting apart.",
       "matchManagers": ["pep621", "pip_requirements"],
       "matchPackageNames": [

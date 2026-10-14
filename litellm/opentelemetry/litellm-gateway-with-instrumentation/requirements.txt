@@ -4,5 +4,5 @@ fastapi==0.140.6
 openinference-instrumentation-litellm==0.1.50
 opentelemetry-sdk==1.45.1
 opentelemetry-exporter-otlp-proto-http==1.45.1
-opentelemetry-instrumentation-fastapi==0.65b0
-opentelemetry-instrumentation-httpx==0.65b0
+opentelemetry-instrumentation-fastapi==0.66b1
+opentelemetry-instrumentation-httpx==0.66b1
