@@ -74,6 +74,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [Mistral](./mistral/) | `mistralai` 3.1.0 <!-- renovate: datasource=pypi depName=mistralai --> | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
 | [Ollama](./ollama/oneagent/) | `ollama` 0.6.3 <!-- renovate: datasource=pypi depName=ollama --> | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
 | [OpenAI](./openai/) | `openai` 3.26.0 <!-- renovate: datasource=pypi depName=openai --> | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
+| [vLLM](./vllm/openinference/) | `vllm` 0.31.0 <!-- renovate: datasource=pypi depName=vllm --> | — | [✓](./vllm/openinference/) | — |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).

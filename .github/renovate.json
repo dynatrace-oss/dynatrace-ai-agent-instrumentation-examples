@@ -28,6 +28,17 @@
     },
     {
       "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/"
+      ],
+      "matchStrings": [
+        "vllm/vllm-openai-cpu:(?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "vllm/vllm-openai-cpu",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
       "description": "SDK versions shown in the README demo tables. Grouped with the demos' own pins below so both move in one PR.",
       "managerFilePatterns": ["/^README\\.md$/"],
       "matchStrings": [
@@ -98,6 +109,11 @@
         "ghcr.io/observiq/bindplane-agent"
       ],
       "groupName": "collector image"
+    },
+    {
+      "description": "Keep the vLLM image tag and the README's vllm version in one PR.",
+      "matchPackageNames": ["vllm/vllm-openai-cpu", "vllm"],
+      "groupName": "vllm"
     },
     {
       "matchManagers": ["npm"],
