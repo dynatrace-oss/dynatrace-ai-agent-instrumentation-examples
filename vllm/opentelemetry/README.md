@@ -10,7 +10,8 @@ The benchmark compares four setups against the same model:
 |---|---|---|
 | `off` | none | n/a |
 | `traced-1.0` | `--otlp-traces-endpoint` | 100% |
-| `traced-0.1` | `--otlp-traces-endpoint` | 10% (parent-based, via the `traceparent` sampled flag) |
+| `traced-0.1` | `--otlp-traces-endpoint` | 10% (caller-side, via the `traceparent` sampled flag) |
+| `traced-1.0-vllm0.1` | `--otlp-traces-endpoint`, `OTEL_TRACES_SAMPLER=traceidratio` at 0.1 | 100% from the caller, 10% kept by vLLM |
 | `detailed-1.0` | `--otlp-traces-endpoint --collect-detailed-traces all` | 100% |
 
 Spans go to `span_sink.py`, a small OTLP/HTTP receiver that counts spans per trace. It stands in for a node-local collector, so the network cost is close to zero.
@@ -47,18 +48,20 @@ vLLM 0.31.0 CPU image, Qwen2.5-0.5B-Instruct, 128 requests at concurrency 8, 64 
 | `off` | 75.2 | 6.81 s | n/a |
 | `traced-1.0` | 75.4 | 6.79 s | 1 (`llm_request`) |
 | `traced-0.1` | 73.7 | 6.95 s | 1 (18 of 128 requests traced) |
+| `traced-1.0-vllm0.1` | 68.7 | 7.45 s | 1 (15 of 128 requests traced) |
 | `detailed-1.0` | 75.2 | 6.81 s | 1 (`llm_request`) |
 
-All differences are within run-to-run noise (about 2%). vLLM emits one span per request and exports it from a background thread, so tracing doesn't slow token generation here. Parent-based sampling works without vLLM configuration: only requests with a sampled `traceparent` get a span, and that span joins the caller's trace.
+All differences are within run-to-run noise: the same `off` setup measured between 69.2 and 75.2 tokens/s across runs. vLLM emits one span per request and exports it from a background thread, so tracing doesn't slow token generation here. By default vLLM follows the caller's `traceparent` sampled flag. With `OTEL_TRACES_SAMPLER=traceidratio`, vLLM keeps its own share of requests regardless of the caller, and kept spans still join the caller's trace.
 
 Recommended setup for a high-throughput path:
 
 - Enable `--otlp-traces-endpoint`; leave `--collect-detailed-traces` off, since vLLM documents it as possibly costly and blocking.
-- Head-sample at the gateway or agent with `OTEL_TRACES_SAMPLER=parentbased_traceidratio`; vLLM follows the caller's decision.
+- Keep the gateway and agent `gen_ai` spans at 100%. The AI Observability app computes token, cost, and latency views from those spans, so sampling them makes the app undercount.
+- Sample only the vLLM span, with `OTEL_TRACES_SAMPLER=traceidratio` and `OTEL_TRACES_SAMPLER_ARG` (for example `0.05`) on the vLLM container. Don't use `parentbased_traceidratio` there: with callers at 100%, vLLM would follow their decision and keep everything. The vLLM span is a leaf, so dropping it leaves the rest of the trace intact.
 - Export to a node-local collector for batching and routing.
 - Keep Prometheus scraping for always-on metrics (TTFT, inter-token latency, KV cache usage).
 
 ## Limits
 
 - The CPU image shows relative overhead only. GPU decode is much faster, so any per-step cost (such as the timing that `--collect-detailed-traces` adds) takes a larger share there. Rerun on the target GPU node before quoting numbers.
-- Without a `traceparent` header, vLLM samples by the SDK default (`parentbased_always_on`), so every request gets traced. Set `OTEL_TRACES_SAMPLER` on the vLLM container if callers don't send trace context.
+- Without `OTEL_TRACES_SAMPLER`, vLLM uses the SDK default (`parentbased_always_on`): it traces every request that arrives without trace context or with a sampled `traceparent`.

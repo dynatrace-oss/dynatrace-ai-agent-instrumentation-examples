@@ -10,6 +10,8 @@ VLLM_CONTAINER   ?= vllm-otel
 # off | traced | detailed
 MODE             ?= traced
 SAMPLE_RATIO     ?= 1.0
+# Optional vLLM-side traceidratio sampler, independent of the caller's decision
+VLLM_SAMPLE_RATIO ?=
 
 TRACE_ARGS_off      :=
 TRACE_ARGS_traced   := --otlp-traces-endpoint http://host.docker.internal:$(SINK_PORT)/v1/traces
@@ -28,6 +30,7 @@ run: stop ## Start vLLM (CPU image) on port $(PORT); MODE=off|traced|detailed
 	  -e VLLM_CPU_KVCACHE_SPACE=2 \
 	  -e OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf \
 	  -e OTEL_SERVICE_NAME=vllm \
+	  $(if $(VLLM_SAMPLE_RATIO),-e OTEL_TRACES_SAMPLER=traceidratio -e OTEL_TRACES_SAMPLER_ARG=$(VLLM_SAMPLE_RATIO)) \
 	  -v vllm-hf-cache:/root/.cache/huggingface \
 	  $(VLLM_IMAGE) --model $(MODEL) --max-model-len 2048 $(TRACE_ARGS_$(MODE))
 	@until curl -sf http://localhost:$(PORT)/health >/dev/null; do \
@@ -47,10 +50,11 @@ request: ## POST one completion to localhost:$(PORT)
 	  -d '{"model":"$(MODEL)","prompt":"Write a haiku about e2e test","max_tokens":32}' | python3 -m json.tool
 
 bench: ## Benchmark the running vLLM; SAMPLE_RATIO sets the sampled share of traceparents
-	uv run python bench.py --label $(MODE)-$(SAMPLE_RATIO) --sample-ratio $(SAMPLE_RATIO)
+	uv run python bench.py --label $(MODE)-$(SAMPLE_RATIO)$(if $(VLLM_SAMPLE_RATIO),-vllm$(VLLM_SAMPLE_RATIO)) --sample-ratio $(SAMPLE_RATIO)
 
-compare: ## Run off / traced / traced 10% / detailed back to back (needs `make sink` running)
+compare: ## Run off / traced / caller 10% / vLLM 10% / detailed back to back (needs `make sink` running)
 	@$(MAKE) -s run MODE=off      && $(MAKE) -s bench MODE=off
 	@$(MAKE) -s run MODE=traced   && $(MAKE) -s bench MODE=traced && $(MAKE) -s bench MODE=traced SAMPLE_RATIO=0.1
+	@$(MAKE) -s run MODE=traced VLLM_SAMPLE_RATIO=0.1 && $(MAKE) -s bench MODE=traced VLLM_SAMPLE_RATIO=0.1
 	@$(MAKE) -s run MODE=detailed && $(MAKE) -s bench MODE=detailed
 	@$(MAKE) -s stop
