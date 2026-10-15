@@ -112,7 +112,7 @@ Observe AI coding agents with zero code changes using built-in OpenTelemetry sig
 | [Claude Code](./ai-coding-agents/claude-code/) | — | ai-coding-agents/claude-code |
 | [Cursor](./ai-coding-agents/cursor/) | — | ai-coding-agents/cursor |
 | [GitHub Copilot in VS Code](./ai-coding-agents/vscode-copilot/) | — | ai-coding-agents/vscode-copilot |
-| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | `@github/copilot-sdk` 1.0.21 <!-- renovate: datasource=npm depName=@github/copilot-sdk --> | ai-coding-agents/github-copilot-sdk |
+| [GitHub Copilot SDK](./ai-coding-agents/github-copilot-sdk/) | `@github/copilot-sdk` 1.0.22 <!-- renovate: datasource=npm depName=@github/copilot-sdk --> | ai-coding-agents/github-copilot-sdk |
 | [Kiro](./ai-coding-agents/kiro/) | — | ai-coding-agents/kiro |
 | [OpenAI Codex](./ai-coding-agents/openai-codex/) | — | ai-coding-agents/openai-codex |
 | [OpenClaw](./ai-coding-agents/openclaw/) | — | ai-coding-agents/openclaw |
