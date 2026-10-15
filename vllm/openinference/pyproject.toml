@@ -1,5 +1,5 @@
 [project]
-name = "vllm-opentelemetry"
+name = "vllm-openinference"
 version = "0.1.0"
 description = "vLLM built-in OpenTelemetry tracing: overhead benchmark and traced client"
 requires-python = ">=3.11"

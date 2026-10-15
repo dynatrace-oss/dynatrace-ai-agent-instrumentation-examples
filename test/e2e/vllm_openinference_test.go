@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-func TestVLLMOpenTelemetry(t *testing.T) {
+func TestVLLMOpenInference(t *testing.T) {
 	// CLI app: make e2e starts vLLM (CPU image) with traceidratio 0.25, exporting
 	// its own spans to Dynatrace, then makes 20 OpenInference-traced client calls.
-	startCLIAppWithTarget(t, "vllm/opentelemetry", "e2e")
+	startCLIAppWithTarget(t, "vllm/openinference", "e2e")
 
-	auditSpan(t, "vllm", "opentelemetry", GenericProfile,
+	auditSpan(t, "vllm", "openinference", GenericProfile,
 		scopedDQL(`fetch spans, from: now()-15m
-| filter service.name == "vllm/opentelemetry"
+| filter service.name == "vllm/openinference"
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | sort timestamp desc
@@ -21,7 +21,7 @@ func TestVLLMOpenTelemetry(t *testing.T) {
 
 	// Client gen_ai spans are not sampled: all 20 must arrive.
 	assertSpanExists(t, scopedDQL(`fetch spans, from: now()-15m
-| filter service.name == "vllm/opentelemetry" and isNotNull(gen_ai.request.model)
+| filter service.name == "vllm/openinference" and isNotNull(gen_ai.request.model)
 | summarize n = count()
 | filter n >= 20`))
 
@@ -30,7 +30,7 @@ func TestVLLMOpenTelemetry(t *testing.T) {
 | filter service.name == "vllm" and span.name == "llm_request"
 | join [
     fetch spans, from: now()-15m
-    | filter service.name == "vllm/opentelemetry" and isNotNull(gen_ai.request.model)
+    | filter service.name == "vllm/openinference" and isNotNull(gen_ai.request.model)
     | fields trace.id
   ], on: { trace.id }
 | summarize n = count()`)

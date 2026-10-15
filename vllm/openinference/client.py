@@ -32,7 +32,7 @@ else:
 
 # Client spans are never sampled: the app's token and cost views need all of them.
 tracer_provider = TracerProvider(
-    resource=Resource.create({"service.name": os.environ.get("OTEL_SERVICE_NAME", "vllm/opentelemetry")})
+    resource=Resource.create({"service.name": os.environ.get("OTEL_SERVICE_NAME", "vllm/openinference")})
 )
 tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter(endpoint=endpoint, headers=headers)))
 trace.set_tracer_provider(tracer_provider)

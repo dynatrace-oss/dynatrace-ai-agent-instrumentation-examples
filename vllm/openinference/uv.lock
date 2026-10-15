@@ -882,7 +882,7 @@ wheels = [
 ]
 
 [[package]]
-name = "vllm-opentelemetry"
+name = "vllm-openinference"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -47,7 +47,7 @@ make bench MODE=detailed
 DT_ENDPOINT=https://<env-id>.live.dynatrace.com DT_API_TOKEN=<token> make e2e
 ```
 
-Set `DT_AUTH_SCHEME=Bearer` when using a platform token instead of a classic API token. The nightly e2e suite runs this target (`test/e2e/vllm_opentelemetry_test.go`) and checks that all client spans arrive, and that vLLM kept more than zero but fewer than all of its spans, each joined to a client trace.
+Set `DT_AUTH_SCHEME=Bearer` when using a platform token instead of a classic API token. The nightly e2e suite runs this target (`test/e2e/vllm_openinference_test.go`) and checks that all client spans arrive, and that vLLM kept more than zero but fewer than all of its spans, each joined to a client trace.
 
 ## Results
 
