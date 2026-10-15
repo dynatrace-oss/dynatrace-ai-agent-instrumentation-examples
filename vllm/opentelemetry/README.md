@@ -39,6 +39,16 @@ make run MODE=detailed
 make bench MODE=detailed
 ```
 
+## Send traces to Dynatrace
+
+`make e2e` starts vLLM exporting its own spans to Dynatrace, then runs `client.py`. The client is an OpenAI SDK app instrumented with Traceloop that calls vLLM. Its `gen_ai.*` chat span appears in AI Observability, and vLLM's `llm_request` span joins the same trace through the `traceparent` header.
+
+```bash
+DT_ENDPOINT=https://<env-id>.live.dynatrace.com DT_API_TOKEN=<token> make e2e
+```
+
+Set `DT_AUTH_SCHEME=Bearer` when using a platform token instead of a classic API token. The nightly e2e suite runs this target (`test/e2e/vllm_opentelemetry_test.go`).
+
 ## Results
 
 vLLM 0.31.0 CPU image, Qwen2.5-0.5B-Instruct, 128 requests at concurrency 8, 64 output tokens each, on a 6-core Apple silicon laptop:

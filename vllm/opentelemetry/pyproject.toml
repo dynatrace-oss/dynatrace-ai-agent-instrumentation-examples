@@ -1,11 +1,13 @@
 [project]
 name = "vllm-opentelemetry"
 version = "0.1.0"
-description = "Measure the throughput cost of vLLM's built-in OpenTelemetry tracing"
+description = "vLLM built-in OpenTelemetry tracing: overhead benchmark and traced client"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
-    "httpx>=0.28",
+    "httpx==0.28.1",
+    "openai==3.26.0",
     "opentelemetry-proto>=1.30",
+    "traceloop-sdk==0.62.4",
     "uvicorn>=0.34",
 ]

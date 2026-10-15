@@ -7,17 +7,25 @@ SINK_PORT        ?= 14318
 MODEL            ?= Qwen/Qwen2.5-0.5B-Instruct
 VLLM_IMAGE       ?= vllm/vllm-openai-cpu:v0.31.0
 VLLM_CONTAINER   ?= vllm-otel
-# off | traced | detailed
+# off | traced | detailed | dt (export vLLM spans to Dynatrace)
 MODE             ?= traced
 SAMPLE_RATIO     ?= 1.0
 # Optional vLLM-side traceidratio sampler, independent of the caller's decision
 VLLM_SAMPLE_RATIO ?=
 
+DT_ENDPOINT      ?=
+DT_API_TOKEN     ?=
+# Api-Token for classic API tokens, Bearer for platform tokens
+DT_AUTH_SCHEME   ?= Api-Token
+# Passed to the container by name only, so make never prints the token
+export OTEL_EXPORTER_OTLP_TRACES_HEADERS = Authorization=$(DT_AUTH_SCHEME)%20$(DT_API_TOKEN)
+
 TRACE_ARGS_off      :=
 TRACE_ARGS_traced   := --otlp-traces-endpoint http://host.docker.internal:$(SINK_PORT)/v1/traces
 TRACE_ARGS_detailed := $(TRACE_ARGS_traced) --collect-detailed-traces all
+TRACE_ARGS_dt       := --otlp-traces-endpoint $(DT_ENDPOINT)/api/v2/otlp/v1/traces
 
-.PHONY: install run sink stop request bench compare help
+.PHONY: install run sink stop request bench compare e2e help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -25,11 +33,12 @@ help: ## Show available targets
 install: ## Install Python dependencies for the sink and benchmark
 	uv sync
 
-run: stop ## Start vLLM (CPU image) on port $(PORT); MODE=off|traced|detailed
+run: stop ## Start vLLM (CPU image) on port $(PORT); MODE=off|traced|detailed|dt
 	docker run -d --name $(VLLM_CONTAINER) -p $(PORT):8000 --shm-size 1g \
 	  -e VLLM_CPU_KVCACHE_SPACE=2 \
 	  -e OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf \
 	  -e OTEL_SERVICE_NAME=vllm \
+	  $(if $(filter dt,$(MODE)),-e OTEL_EXPORTER_OTLP_TRACES_HEADERS) \
 	  $(if $(VLLM_SAMPLE_RATIO),-e OTEL_TRACES_SAMPLER=traceidratio -e OTEL_TRACES_SAMPLER_ARG=$(VLLM_SAMPLE_RATIO)) \
 	  -v vllm-hf-cache:/root/.cache/huggingface \
 	  $(VLLM_IMAGE) --model $(MODEL) --max-model-len 2048 $(TRACE_ARGS_$(MODE))
@@ -58,3 +67,7 @@ compare: ## Run off / traced / caller 10% / vLLM 10% / detailed back to back (ne
 	@$(MAKE) -s run MODE=traced VLLM_SAMPLE_RATIO=0.1 && $(MAKE) -s bench MODE=traced VLLM_SAMPLE_RATIO=0.1
 	@$(MAKE) -s run MODE=detailed && $(MAKE) -s bench MODE=detailed
 	@$(MAKE) -s stop
+
+e2e: ## Start vLLM exporting to Dynatrace, then run client.py (needs DT_ENDPOINT, DT_API_TOKEN)
+	@$(MAKE) -s run MODE=dt
+	uv run python client.py
