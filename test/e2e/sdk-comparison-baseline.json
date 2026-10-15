@@ -1,10 +1,11 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "scope": "current-state",
-  "date": "2026-09-23",
+  "date": "2026-10-15",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.7.0 (2026-10-15): Add gen_ai.operation.kind (AR-066). The AI guardrail coverage dashboard counts a span with gen_ai.operation.kind == \"guardrail\" as a custom guardrail (\"Custom / Other\" provider). Optional: no demo SDK emits it today.",
     "1.6.0 (2026-09-23): Add OneAgent Azure-OpenAI guardrail attributes (AR-062..AR-065) in a new guardrails-azure-oneagent group, backing the oneagent-openai-guardrail profile in the e2e audit fixture. OneAgent's Python OpenAI sensor derives guardrail signals from Azure content-filter payloads into its own gen_ai.guardrail.* namespace; it emits neither the Bedrock-scoped gen_ai.bedrock.guardrail.* attributes (AR-017..AR-019) nor the raw prompt_filter_results/content_filter_results blobs (AR-015/AR-016) the OTel path carries (AI-497). gen_ai.guardrail.input.content (AR-058) now spans both the bedrock and azure OneAgent groups: same attribute, different provider payload. Added input/output content to equivalents_any_of because a single request trips one side or the other, never reliably both.",
     "1.5.0 (2026-08-25): Add OneAgent-specific Bedrock guardrail attributes (AR-057..AR-061) in a new guardrails-bedrock-oneagent group. OneAgent emits these under different names than the OTel SDK path; gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) are shared. Updated OneAgentGuardrailProfile in the e2e audit fixture.",
     "1.4.0 (2026-08-07): Add AR-054/AR-055/AR-056 for the GenAI agent, tool and workflow duration metrics (gen_ai.invoke_agent.duration, gen_ai.execute_tool.duration, gen_ai.invoke_workflow.duration). All three are Development-stability semconv metrics that no instrumentation library emits under these names, so demos derive them from spans via a collector span_metrics connector or an OpenPipeline metric extractor (AI-352). Recorded as optional with an empty used_by: no AI Observability view consumes them yet, so they are semconv coverage tracking rather than a dashboard dependency and are deliberately not added to any profile metrics list, where absence would fail the audit.",
@@ -234,7 +235,8 @@
       "gen_ai.guardrail.output.content": "AR-062",
       "gen_ai.guardrail.input.words.lists": "AR-063",
       "gen_ai.guardrail.output.words.lists": "AR-064",
-      "gen_ai.guardrail.output.sensitive_information.piis": "AR-065"
+      "gen_ai.guardrail.output.sensitive_information.piis": "AR-065",
+      "gen_ai.operation.kind": "AR-066"
     },
     "non_sdk_rule_ids": {
       "dt.smartscape.service": "NS-001",
@@ -1252,6 +1254,17 @@
       "owned_by": "oneagent",
       "used_by": [],
       "note": "PII sub-categories Azure detected in the completion. There is no input-side equivalent for Azure: the PII filter can only be enabled on output content, so it never appears in prompt_filter_results. Optional because the filter is opt-in per deployment."
+    },
+    {
+      "name": "gen_ai.operation.kind",
+      "rule_id": "AR-066",
+      "required_level": "optional",
+      "group": "guardrails-custom",
+      "type": "span_attribute",
+      "providers": ["generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": ["guardrail_coverage"],
+      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider)."
     }
   ],
   "non_sdk_fields": [
