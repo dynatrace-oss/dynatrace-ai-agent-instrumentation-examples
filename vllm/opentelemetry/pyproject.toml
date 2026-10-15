@@ -8,6 +8,8 @@ dependencies = [
     "httpx==0.28.1",
     "openai==3.26.0",
     "opentelemetry-proto>=1.30",
-    "traceloop-sdk==0.62.4",
+    "openinference-instrumentation-openai>=0.1.49",
+    "opentelemetry-exporter-otlp-proto-http>=1.42.0",
+    "opentelemetry-sdk>=1.42.0",
     "uvicorn>=0.34",
 ]

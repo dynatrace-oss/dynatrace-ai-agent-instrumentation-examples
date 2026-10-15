@@ -41,13 +41,13 @@ make bench MODE=detailed
 
 ## Send traces to Dynatrace
 
-`make e2e` starts vLLM exporting its own spans to Dynatrace, then runs `client.py`. The client is an OpenAI SDK app instrumented with Traceloop that calls vLLM. Its `gen_ai.*` chat span appears in AI Observability, and vLLM's `llm_request` span joins the same trace through the `traceparent` header.
+`make e2e` starts vLLM with `OTEL_TRACES_SAMPLER=traceidratio` at 0.25, exporting its own spans to Dynatrace, then runs `client.py` 20 times. The client is an OpenAI SDK app instrumented with OpenInference that calls vLLM. Its `gen_ai.*` chat spans are not sampled, so all 20 appear in AI Observability. vLLM keeps about a quarter of its `llm_request` spans, and each one joins the client's trace through the `traceparent` header. Tune with `E2E_RUNS` and `E2E_SAMPLE_RATIO`.
 
 ```bash
 DT_ENDPOINT=https://<env-id>.live.dynatrace.com DT_API_TOKEN=<token> make e2e
 ```
 
-Set `DT_AUTH_SCHEME=Bearer` when using a platform token instead of a classic API token. The nightly e2e suite runs this target (`test/e2e/vllm_opentelemetry_test.go`).
+Set `DT_AUTH_SCHEME=Bearer` when using a platform token instead of a classic API token. The nightly e2e suite runs this target (`test/e2e/vllm_opentelemetry_test.go`) and checks that all client spans arrive, and that vLLM kept more than zero but fewer than all of its spans, each joined to a client trace.
 
 ## Results
 

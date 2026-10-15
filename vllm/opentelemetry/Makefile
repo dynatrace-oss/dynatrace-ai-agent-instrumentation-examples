@@ -37,7 +37,7 @@ run: stop ## Start vLLM (CPU image) on port $(PORT); MODE=off|traced|detailed|dt
 	docker run -d --name $(VLLM_CONTAINER) -p $(PORT):8000 --shm-size 1g \
 	  -e VLLM_CPU_KVCACHE_SPACE=2 \
 	  -e OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf \
-	  -e OTEL_SERVICE_NAME=vllm \
+	  -e OTEL_SERVICE_NAME=vllm -e OTEL_RESOURCE_ATTRIBUTES \
 	  $(if $(filter dt,$(MODE)),-e OTEL_EXPORTER_OTLP_TRACES_HEADERS) \
 	  $(if $(VLLM_SAMPLE_RATIO),-e OTEL_TRACES_SAMPLER=traceidratio -e OTEL_TRACES_SAMPLER_ARG=$(VLLM_SAMPLE_RATIO)) \
 	  -v vllm-hf-cache:/root/.cache/huggingface \
@@ -68,6 +68,9 @@ compare: ## Run off / traced / caller 10% / vLLM 10% / detailed back to back (ne
 	@$(MAKE) -s run MODE=detailed && $(MAKE) -s bench MODE=detailed
 	@$(MAKE) -s stop
 
-e2e: ## Start vLLM exporting to Dynatrace, then run client.py (needs DT_ENDPOINT, DT_API_TOKEN)
-	@$(MAKE) -s run MODE=dt
-	uv run python client.py
+E2E_RUNS ?= 20
+E2E_SAMPLE_RATIO ?= 0.25
+
+e2e: ## Run vLLM sampled at E2E_SAMPLE_RATIO exporting to Dynatrace, then E2E_RUNS client calls (needs DT_ENDPOINT, DT_API_TOKEN)
+	@$(MAKE) -s run MODE=dt VLLM_SAMPLE_RATIO=$(E2E_SAMPLE_RATIO)
+	MAX_RUNS=$(E2E_RUNS) uv run python client.py
