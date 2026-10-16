@@ -1,0 +1,10 @@
+[project]
+name = "together-openinference-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "together==2.41.0",
+    "openinference-instrumentation-together==0.1.12",
+    "opentelemetry-sdk==1.45.1",
+    "opentelemetry-exporter-otlp==1.45.1",
+]
