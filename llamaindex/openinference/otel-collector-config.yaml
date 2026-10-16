@@ -9,6 +9,15 @@ processors:
     send_batch_size: 512
     timeout: 5s
 
+  # The LlamaIndex response payload has no top-level "model" key, so OpenInference
+  # cannot set gen_ai.response.model. Fall back to the request model when unset.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+
   # Keep only LLM call spans for the metrics branch. With
   # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference emits gen_ai.*
   # attributes natively, so no llm.* -> gen_ai.* normalization is required.
@@ -57,9 +66,13 @@ connectors:
           - key: gen_ai.token.type
             default_value: input
           - key: gen_ai.request.model
+            optional: true
           - key: gen_ai.response.model
+            optional: true
           - key: gen_ai.provider.name
+            optional: true
           - key: gen_ai.operation.name
+            optional: true
       - name: gen_ai.client.token.usage
         description: "Number of tokens used per LLM call, by direction"
         unit: "{token}"
@@ -72,9 +85,15 @@ connectors:
           - key: gen_ai.token.type
             default_value: output
           - key: gen_ai.request.model
+            optional: true
           - key: gen_ai.response.model
+            optional: true
           - key: gen_ai.provider.name
+            optional: true
           - key: gen_ai.operation.name
+            optional: true
+      # Dimensions are optional: a non-optional attribute missing from a span
+      # would drop that span from the metric entirely.
       # service.name is a resource attribute included by default: no
       # include_resource_attributes filter needed, same as span_metrics.
 
@@ -88,14 +107,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/response_model, batch]
       exporters: [otlp_http/dynatrace]
     # Second branch of the same spans: keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only, batch]
+      processors: [transform/response_model, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]

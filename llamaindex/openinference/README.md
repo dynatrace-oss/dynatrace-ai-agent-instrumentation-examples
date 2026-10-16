@@ -113,9 +113,26 @@ make request  # re-run the app once against a collector already running
 
 ## Native gen_ai attributes
 
-`OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` makes the OpenInference tracer add OTel GenAI attributes (for example `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.input.messages`, `gen_ai.output.messages`) alongside its own `llm.*` attributes when each span ends. The collector does not rename or maps attributes. The exact set of `gen_ai.*` attributes depends on the installed `openinference-instrumentation` package version.
+`OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` makes the OpenInference tracer add OTel GenAI attributes (for example `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.input.messages`, `gen_ai.output.messages`) alongside its own `llm.*` attributes when each span ends. The collector does not rename or map attributes. The exact set of `gen_ai.*` attributes depends on the installed `openinference-instrumentation` package version.
 
 ---
+
+### Attributes filled outside OpenInference
+
+| Attribute | How it is set |
+|-----------|---------------|
+| `gen_ai.conversation.id` | Native: `app.py` wraps each turn in `using_session(conversation_id)`, and OpenInference maps `session.id` to it. |
+| `gen_ai.request.temperature` | `app.py` sets it on the LLM span; the LlamaIndex instrumentor records only `LLMMetadata` as invocation parameters, which has no temperature. |
+| `gen_ai.system_instructions` | `app.py` sets it on the LLM span; OpenInference keeps the system prompt in `gen_ai.input.messages` only. |
+| `gen_ai.response.model` | Collector `transform/response_model` copies `gen_ai.request.model` when unset; the LlamaIndex response payload has no top-level `model` key. |
+
+### Conversations
+
+`app.py` sends two turns of one conversation, each in its own trace, and prints the conversation ID. To continue that conversation, pass it back:
+
+```bash
+CONVERSATION_ID=<id printed by the previous run> make request
+```
 
 ## Metrics
 
