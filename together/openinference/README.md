@@ -20,7 +20,7 @@ The app sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits O
 
 ## What you'll build
 
-- Calls Together AI to generate a haiku using the `openinference-instrumentation-together` instrumentation library.
+- Runs a 2-turn haiku conversation with Together AI using the `openinference-instrumentation-together` instrumentation library.
 - Produces OpenTelemetry traces with native `gen_ai.*` attributes (enabled by `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` in [`app.py`](app.py)).
 - Derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from the spans in the Bindplane collector.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, and message content.
@@ -170,6 +170,20 @@ OpenInference is span-only by design (its instrumentors emit no metric instrumen
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signal_to_metrics` connector, two sum defs |
 
 The collector reads the native `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Both metrics use delta temporality -- Dynatrace rejects cumulative.
+
+---
+
+## Conversation attributes
+
+- `gen_ai.conversation.id`: each run is one conversation of two turns (two traces). The id comes from `CONVERSATION_ID` when set, otherwise a new UUID is generated and printed. It is set with OpenInference `using_session`, which maps `session.id` to `gen_ai.conversation.id`. Continue a conversation with:
+
+  ```bash
+  make request CONVERSATION_ID=my-conversation-1
+  make request CONVERSATION_ID=my-conversation-1
+  ```
+
+- `gen_ai.request.temperature`: the app passes `temperature=0.7`; OpenInference maps it from the invocation parameters.
+- `gen_ai.system_instructions`: OpenInference does not emit it, so a small span processor in [`app.py`](app.py) sets it on the LLM span as a JSON array of parts.
 
 ---
 

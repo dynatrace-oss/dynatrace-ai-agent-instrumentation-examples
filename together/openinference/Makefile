@@ -79,8 +79,8 @@ build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 push: ## Build and push container image to registry
 	docker buildx build --no-cache --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) --push .
 
-request: ## Run a haiku request through the running collector
-	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+request: ## Run a 2-turn haiku conversation (set CONVERSATION_ID to continue one)
+	@CONVERSATION_ID=$(CONVERSATION_ID) OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
 	  uv run python3 app.py
 
