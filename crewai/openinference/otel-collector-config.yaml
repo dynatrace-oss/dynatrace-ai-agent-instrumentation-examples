@@ -5,6 +5,16 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # The LiteLLM instrumentor records only the reply text as output.value, so
+  # OpenInference has no response model to emit. Mirror the request model when
+  # gen_ai.response.model is unset.
+  transform/response_model:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+
   # Keep only spans that represent model calls for the metrics branch. With
   # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference emits gen_ai.*
   # attributes natively, so no llm.* -> gen_ai.* normalization is required.
@@ -85,13 +95,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [transform/response_model]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: keep only LLM spans and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only]
+      processors: [transform/response_model, filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [span_metrics, signal_to_metrics]

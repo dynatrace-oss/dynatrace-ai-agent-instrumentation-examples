@@ -28,10 +28,20 @@ run: ## Start Bindplane collector (metric derivation) + app on port $(PORT)
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
 
-request: ## POST /haiku to the running server
+ifndef CONVERSATION_ID
+CONVERSATION_ID     := $(shell python3 -c 'import uuid; print(uuid.uuid4())')
+endif
+
+request: ## POST /haiku twice with the same conversation_id (two-turn conversation)
+	@echo "conversation_id: $(CONVERSATION_ID)"
 	curl -s -X POST http://localhost:$(PORT)/haiku \
 	  -H "Content-Type: application/json" \
-	  -d '{"topic": "cherry blossoms in spring"}'
+	  -d '{"topic": "cherry blossoms in spring", "conversation_id": "$(CONVERSATION_ID)"}'
+	@echo
+	curl -s -X POST http://localhost:$(PORT)/haiku \
+	  -H "Content-Type: application/json" \
+	  -d '{"topic": "autumn leaves", "conversation_id": "$(CONVERSATION_ID)"}'
+	@echo
 
 stop: ## Stop and remove the OTel collector container
 	@docker stop $(COLLECTOR_CONTAINER) >/dev/null 2>&1 && docker rm $(COLLECTOR_CONTAINER) >/dev/null 2>&1 || true

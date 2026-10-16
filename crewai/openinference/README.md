@@ -23,7 +23,7 @@ This is the OpenInference counterpart of [`crewai/opentelemetry`](../opentelemet
 
 ## What you'll build
 
-- Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body).
+- Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "...", "conversation_id": "..."}` body; `conversation_id` is optional and is returned in the `X-Conversation-Id` response header).
 - Kicks off a one-agent CrewAI crew (a "Poet" agent with one task) that calls Azure OpenAI through LiteLLM.
 - Produces OpenTelemetry traces with OpenInference, with OTel GenAI `gen_ai.*` attributes emitted natively.
 - Routes traces through a local Bindplane collector that forwards them to Dynatrace and derives GenAI client metrics.
@@ -84,7 +84,7 @@ In one terminal, start the collector and server:
 make run
 ```
 
-In a second terminal, send a haiku request:
+In a second terminal, send a two-turn conversation (two requests with the same `conversation_id`):
 
 ```bash
 make request
@@ -111,9 +111,15 @@ The server runs on port 8000. `make run` starts a Bindplane collector on port 43
 - `gen_ai.operation.name`
 - `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`
 - `gen_ai.input.messages` and `gen_ai.output.messages`
+- `gen_ai.request.temperature` (from the `temperature` set on the CrewAI `LLM`)
 - `gen_ai.conversation.id`
 
-Requests may include a `conversation_id` (for example, `{"topic": "nature", "conversation_id": "haiku-session-1"}`). If omitted, a UUID is generated per request. `using_attributes(session_id=...)` propagates it as `session.id`, which OpenInference also emits as `gen_ai.conversation.id`.
+Requests may include a `conversation_id` (for example, `{"topic": "nature", "conversation_id": "haiku-session-1"}`). Reuse it across turns to group them into one conversation. If omitted, a new UUID is generated; either way it is returned in the `X-Conversation-Id` header. `using_attributes(session_id=...)` propagates it as `session.id` on every span of the turn, which OpenInference also emits as `gen_ai.conversation.id`.
+
+Two attributes are filled outside the instrumentors:
+
+- `gen_ai.system_instructions`: OpenInference leaves the system prompt inside `gen_ai.input.messages`. A small span processor in `app.py` sets it on the LiteLLM span from the agent role, backstory, and goal (the same text CrewAI sends as the system message).
+- `gen_ai.response.model`: the LiteLLM instrumentor records only the reply text, so no response model is emitted. A collector `transform` copies `gen_ai.request.model` when the response model is unset.
 
 `OPENINFERENCE_ENABLE_GENAI_SEMCONV` depends on OpenInference package behavior. It is supported by `openinference-instrumentation` 0.1.71, which both instrumentors use.
 

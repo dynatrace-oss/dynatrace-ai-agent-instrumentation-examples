@@ -1,4 +1,6 @@
 import asyncio
+import contextvars
+import json
 import os
 from uuid import uuid4
 
@@ -9,6 +11,7 @@ from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import SpanProcessor
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 # Disable CrewAI's own anonymous telemetry so only OpenInference spans are exported.
@@ -21,6 +24,26 @@ os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
 _service_name = os.environ.get("OTEL_SERVICE_NAME", "crewai/openinference")
 _resource = Resource.create({SERVICE_NAME: _service_name})
 _tracer_provider = trace_sdk.TracerProvider(resource=_resource)
+
+# OpenInference keeps the system prompt inside gen_ai.input.messages and does
+# not set gen_ai.system_instructions, so set it on the LiteLLM spans from the
+# agent persona of the current request.
+_system_instructions: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "system_instructions", default=None
+)
+
+
+class SystemInstructionsSpanProcessor(SpanProcessor):
+    def on_start(self, span, parent_context=None):
+        instructions = _system_instructions.get()
+        if instructions and span.name in ("completion", "acompletion"):
+            span.set_attribute(
+                "gen_ai.system_instructions",
+                json.dumps([{"type": "text", "content": instructions}]),
+            )
+
+
+_tracer_provider.add_span_processor(SystemInstructionsSpanProcessor())
 _tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
 trace.set_tracer_provider(_tracer_provider)
 
@@ -30,7 +53,7 @@ CrewAIInstrumentor().instrument(tracer_provider=_tracer_provider)
 LiteLLMInstrumentor().instrument(tracer_provider=_tracer_provider)
 
 from crewai import LLM, Agent, Crew, Task
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -51,9 +74,11 @@ def health():
 
 
 @app.post("/haiku", response_class=PlainTextResponse)
-async def haiku(req: HaikuRequest | None = None) -> str:
+async def haiku(response: Response, req: HaikuRequest | None = None) -> str:
     topic = req.topic if req else "nature"
+    # Reuse the client's conversation id across turns; start a new one if absent.
     conversation_id = (req.conversation_id if req else None) or str(uuid4())
+    response.headers["X-Conversation-Id"] = conversation_id
 
     def _call() -> str:
         llm = LLM(
@@ -75,6 +100,11 @@ async def haiku(req: HaikuRequest | None = None) -> str:
             expected_output="A haiku (3 lines, 5-7-5 syllables).",
             agent=poet,
         )
+        # Same text CrewAI renders as the system message for this agent.
+        _system_instructions.set(
+            f"You are {poet.role}. {poet.backstory}\nYour personal goal is: {poet.goal}"
+        )
+        # session.id is emitted as gen_ai.conversation.id on every span of the turn.
         with using_attributes(session_id=conversation_id):
             result = Crew(agents=[poet], tasks=[task]).kickoff()
         return str(result)
