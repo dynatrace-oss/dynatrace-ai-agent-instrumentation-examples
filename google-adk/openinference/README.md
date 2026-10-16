@@ -1,7 +1,9 @@
 # Google ADK + OpenInference + Dynatrace AI Observability
 
 Instrument a [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/) agent that runs on Gemini with OpenInference, and send traces to Dynatrace AI Observability.
-Uses [`openinference-instrumentation-google-adk`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-google-adk) to auto-instrument ADK, and a [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) with the `genainormalizer` processor to translate OpenInference attributes to Dynatrace `gen_ai.*` format.
+Uses [`openinference-instrumentation-google-adk`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-google-adk) to auto-instrument ADK, and a [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) to derive metrics.
+
+This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits `gen_ai.*` attributes natively. No OpenInference to `gen_ai.*` normalization is needed downstream. The collector is still used to derive metrics, because OpenInference instrumentors are span-only.
 
 For the native ADK OpenTelemetry instrumentation of the same agent, see [`../opentelemetry`](../opentelemetry/).
 
@@ -11,8 +13,8 @@ For the native ADK OpenTelemetry instrumentation of the same agent, see [`../ope
 
 - Runs a FastAPI server exposing `POST /research` (accepts a `{"topic": "..."}` body).
 - Runs the ADK academic research coordinator (`LlmAgent` on Gemini) that delegates to a web search sub-agent and a new research sub-agent through `AgentTool`.
-- Produces OpenTelemetry traces with OpenInference and opt-in OTel GenAI semantic conventions (agent, LLM, and tool spans).
-- Routes traces through a local Bindplane collector that normalizes `llm.*` attributes to `gen_ai.*`, and derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` metrics from the LLM spans.
+- Produces OpenTelemetry traces with native `gen_ai.*` attributes (agent, LLM, and tool spans).
+- Routes traces through a local Bindplane collector that derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` metrics from the LLM spans.
 
 ---
 
@@ -66,9 +68,9 @@ Open the [AI Observability app](https://docs.dynatrace.com/docs/shortlink/app-ai
 
 ## How it works
 
-`app.py` registers `GoogleADKInstrumentor` with `TraceConfig(enable_genai_semconv=True)` before ADK runs, and exports spans over OTLP HTTP to the endpoint in `OTEL_EXPORTER_OTLP_ENDPOINT` (`make run` points it at the local collector).
+`app.py` sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` and registers `GoogleADKInstrumentor` before ADK runs, and exports spans over OTLP HTTP to the endpoint in `OTEL_EXPORTER_OTLP_ENDPOINT` (`make run` points it at the local collector).
 
-`otel-collector-config.yaml` uses the `gen_ai_normalizer` processor with the `openinference` source to map OpenInference attributes to `gen_ai.*`, copies `gen_ai.request.model` to `gen_ai.response.model`, and derives the GenAI client metrics from LLM spans with the `span_metrics` and `signal_to_metrics` connectors.
+`otel-collector-config.yaml` does not normalize attributes. It copies `gen_ai.request.model` to `gen_ai.response.model` (ADK responses carry no model field for OpenInference to map), and derives the GenAI client metrics from LLM spans with the `span_metrics` and `signal_to_metrics` connectors.
 
 ---
 

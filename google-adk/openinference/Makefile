@@ -18,7 +18,7 @@ help: ## Show this help
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start Bindplane collector (genainormalizer) + app on port $(PORT)
+run: ## Start Bindplane collector (metrics only) + app on port $(PORT)
 	@$(MAKE) _collector
 	@echo "Waiting for collector port to be ready..."
 	@until curl -s -o /dev/null http://localhost:4318/v1/traces -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null; do \

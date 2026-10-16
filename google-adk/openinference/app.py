@@ -6,9 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Emit OTel GenAI semantic-convention attributes (gen_ai.*) natively from
+# OpenInference instrumentors.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (make run points it at the
-# local collector, which normalizes OpenInference attributes to gen_ai.*).
-from openinference.instrumentation import TraceConfig
+# local collector, which derives gen_ai.* metrics from the spans).
 from openinference.instrumentation.google_adk import GoogleADKInstrumentor
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -20,10 +23,7 @@ _service_name = os.environ.get("OTEL_SERVICE_NAME", "google-adk/openinference")
 provider = TracerProvider(resource=Resource.create({SERVICE_NAME: _service_name}))
 provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
 trace.set_tracer_provider(provider)
-GoogleADKInstrumentor().instrument(
-    tracer_provider=provider,
-    config=TraceConfig(enable_genai_semconv=True),
-)
+GoogleADKInstrumentor().instrument(tracer_provider=provider)
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse

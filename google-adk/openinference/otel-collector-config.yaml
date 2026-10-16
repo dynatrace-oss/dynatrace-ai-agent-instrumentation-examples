@@ -5,21 +5,10 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool,
-  # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
-  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
-  # so the exported spans carry only gen_ai.* fields.
-  gen_ai_normalizer:
-    sources:
-      - name: openinference
-        remove_originals: true
-
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
+  # OpenInference only emits gen_ai.response.model when the LLM output payload has
+  # a "model" field, which ADK's LlmResponse does not. The Dynatrace AI
+  # Observability app requires gen_ai.response.model, so mirror the request model
+  # when the response has not set one.
   transform/response_model:
     error_mode: ignore
     trace_statements:
@@ -27,8 +16,9 @@ processors:
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
 
-  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
-  # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
+  # Keep only spans that represent an LLM call. With
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference emits gen_ai.*
+  # attributes natively, so gen_ai.request.model is set on LLM spans. Feeds the metrics connectors so the derived metrics
   # cover LLM calls only, not chain/tool/agent spans. Used solely on the metrics
   # branch; the export pipeline is left untouched so all spans still reach
   # Distributed Tracing.
@@ -109,14 +99,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model]
+      processors: [transform/response_model]
       exporters: [debug, otlp_http/dynatrace]
-    # Second branch of the same spans: normalize, keep only LLM spans, and feed
+    # Second branch of the same spans: keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, filter/genai_only]
+      processors: [transform/response_model, filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [span_metrics, signal_to_metrics]
