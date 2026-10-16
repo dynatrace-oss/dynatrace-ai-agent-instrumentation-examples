@@ -1,5 +1,7 @@
 # Google ADK + OpenInference + Dynatrace AI Observability
 
+![AI Observability -- google-adk/openinference service explorer](assets/google-adk-openinference-explorer.png)
+
 Instrument a [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/) agent that runs on Gemini with OpenInference, and send traces to Dynatrace AI Observability.
 Uses [`openinference-instrumentation-google-adk`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-google-adk) to auto-instrument ADK, and a [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) to derive metrics.
 
@@ -67,6 +69,8 @@ Run `make help` for all targets.
 Open the [AI Observability app](https://docs.dynatrace.com/docs/shortlink/app-ai-observability) and filter by service `google-adk/openinference`. Each request shows the agent, LLM, and tool spans with model name, token usage, and message content.
 
 ---
+
+![AI Observability -- google-adk/openinference service explorer](assets/google-adk-openinference-explorer.png)
 
 ## How it works
 
