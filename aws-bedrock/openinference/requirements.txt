@@ -1,4 +1,4 @@
-boto3==1.43.113
+boto3==1.43.114
 
 # openinference
 openinference-instrumentation-bedrock
