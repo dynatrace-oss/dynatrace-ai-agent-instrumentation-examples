@@ -49,6 +49,7 @@ func startOpenAICompatibleMock(t *testing.T, apiKeyEnvVar, baseURLEnvVar string)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/openai/v1/chat/completions", handler)
 	mux.HandleFunc("/v1/chat/completions", handler)
+	mux.HandleFunc("/chat/completions", handler) // Together AI: base URL already includes /v1
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	t.Setenv(baseURLEnvVar, srv.URL)

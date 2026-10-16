@@ -71,6 +71,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [Anthropic](./anthropic/oneagent/) | `anthropic` 1.12.1 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
 | [Cohere](./cohere/oneagent/) | `cohere` 7.2.0 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
 | [Groq](./groq/oneagent/) | `groq` 1.7.0 <!-- renovate: datasource=pypi depName=groq --> | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
+| [Together AI](./together/openinference/) | `together` 2.41.0 <!-- renovate: datasource=pypi depName=together --> | — | [✓](./together/openinference/) | — |
 | [Mistral](./mistral/) | `mistralai` 3.1.0 <!-- renovate: datasource=pypi depName=mistralai --> | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
 | [Ollama](./ollama/oneagent/) | `ollama` 0.6.3 <!-- renovate: datasource=pypi depName=ollama --> | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
 | [OpenAI](./openai/) | `openai` 3.26.0 <!-- renovate: datasource=pypi depName=openai --> | [✓](./openai/oneagent/) | [✓](./openai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./openai/opentelemetry/) |
