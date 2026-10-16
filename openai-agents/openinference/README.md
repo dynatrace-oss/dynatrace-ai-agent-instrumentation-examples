@@ -1,5 +1,7 @@
 # OpenAI Agents SDK + OpenInference + Dynatrace AI Observability
 
+![AI Observability -- openai-agents/openinference service explorer](assets/openai-agents-openinference-explorer.png)
+
 Instrument an [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) multi-agent app with OpenInference and send traces to Dynatrace AI Observability.
 This is the same airline customer-service app as [`openai-agents/opentelemetry`](../opentelemetry/) (triage, FAQ, seat booking, flight status, and cancellation agents with tools, handoffs, and input guardrails), instrumented with [`openinference-instrumentation-openai-agents`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-openai-agents) instead of Traceloop.
 This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` (set in `api.py`), so OpenInference emits `gen_ai.*` attributes natively and no downstream attribute normalization is needed.
@@ -34,6 +36,8 @@ make request          # in a second terminal
 ## Visualize in Dynatrace
 
 Open the [AI Observability app](https://docs.dynatrace.com/docs/shortlink/app-ai-observability) and look for the `openai-agents/openinference` service. Each `/chat` request is one trace; agent, LLM, and tool spans appear as children of the `/chat` span.
+
+![AI Observability -- openai-agents/openinference service explorer](assets/openai-agents-openinference-explorer.png)
 
 ## How it works
 

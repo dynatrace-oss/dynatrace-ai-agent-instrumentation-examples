@@ -1,5 +1,7 @@
 # Gemini + OpenInference + Dynatrace AI Observability
 
+![AI Observability -- gemini/openinference service explorer](assets/gemini-openinference-explorer.png)
+
 Generate a haiku with Google Gemini through the [`google-genai`](https://pypi.org/project/google-genai/) SDK, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
 
 The app is instrumented with [`openinference-instrumentation-google-genai`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-google-genai). This example sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` in `app.py`, so OpenInference emits `gen_ai.*` attributes natively. No downstream OpenInference to `gen_ai.*` normalization is needed. A local collector is still used to derive metrics, because OpenInference instrumentors are span-only.
@@ -102,6 +104,8 @@ make request TOPIC="mountains" CONVERSATION_ID=<id printed above>
 3. Open a prompt trace to inspect the request and response content.
 
 ---
+
+![AI Observability -- gemini/openinference service explorer](assets/gemini-openinference-explorer.png)
 
 ## Attribute reference
 

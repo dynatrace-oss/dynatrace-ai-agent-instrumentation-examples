@@ -1,5 +1,7 @@
 # LlamaIndex + OpenInference Demo
 
+![AI Observability -- llamaindex/openinference service explorer](assets/llamaindex-openinference-explorer.png)
+
 Demonstrates tracing a [LlamaIndex](https://www.llamaindex.ai/) LLM call (Azure OpenAI backend) with Dynatrace via OpenInference instrumentation ([`LlamaIndexInstrumentor`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-llama-index)).
 The app sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits OTel GenAI `gen_ai.*` attributes natively; no attribute normalization is needed. OpenInference emits no metrics, so this example uses a Bindplane collector to derive `gen_ai.client.*` metrics from the spans.
 
@@ -110,6 +112,8 @@ make request  # re-run the app once against a collector already running
 3. Open a prompt trace to inspect the request/response content and the agents topology graph.
 
 ---
+
+![AI Observability -- llamaindex/openinference service explorer](assets/llamaindex-openinference-explorer.png)
 
 ## Native gen_ai attributes
 

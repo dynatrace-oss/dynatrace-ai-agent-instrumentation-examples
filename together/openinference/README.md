@@ -1,5 +1,7 @@
 # Together AI + OpenInference + Dynatrace AI Observability
 
+![AI Observability -- together/openinference service explorer](assets/together-openinference-explorer.png)
+
 Generate a haiku with Together AI, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
 The app sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits OTel GenAI semantic-convention attributes (`gen_ai.*`) natively. No attribute normalization is needed; the collector only derives the `gen_ai.client.*` metrics.
 
@@ -159,6 +161,8 @@ docker stop bindplane-otel-collector && docker rm bindplane-otel-collector
 3. Open a prompt trace to inspect the request/response content and the agents topology graph.
 
 ---
+
+![AI Observability -- together/openinference service explorer](assets/together-openinference-explorer.png)
 
 ## Metrics
 
