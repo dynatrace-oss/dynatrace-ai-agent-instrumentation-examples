@@ -9,7 +9,7 @@ import (
 func TestVLLMOpenInference(t *testing.T) {
 	// CLI app: make e2e starts vLLM (CPU image) with traceidratio 0.25, exporting
 	// its own spans to Dynatrace, then makes 20 OpenInference-traced client calls.
-	startCLIAppWithTarget(t, "vllm/openinference", "e2e")
+	runCLIAppWithTarget(t, "vllm/openinference", "e2e")
 
 	auditSpan(t, "vllm", "openinference", GenericProfile,
 		scopedDQL(`fetch spans, from: now()-15m

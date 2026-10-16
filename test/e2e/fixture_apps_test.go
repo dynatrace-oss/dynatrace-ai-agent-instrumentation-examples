@@ -146,3 +146,26 @@ func startCLIAppWithTarget(t *testing.T, appDir, target string) {
 		}
 	})
 }
+
+// runCLIAppWithTarget is like startCLIAppWithTarget but blocks until make <target>
+// exits, so slow startups (image pull, model load) don't eat the span poll timeout.
+func runCLIAppWithTarget(t *testing.T, appDir, target string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot(), appDir)
+	t.Cleanup(func() {
+		if err := exec.Command("make", "-C", dir, "stop").Run(); err != nil {
+			t.Logf("warning: make stop in %s: %v", appDir, err)
+		}
+	})
+
+	for _, args := range [][]string{{"install"}, {"-e", target}} {
+		cmd := exec.Command("make", args...)
+		cmd.Dir = dir
+		cmd.Env = os.Environ()
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("make %v in %s: %v", args, appDir, err)
+		}
+	}
+}
