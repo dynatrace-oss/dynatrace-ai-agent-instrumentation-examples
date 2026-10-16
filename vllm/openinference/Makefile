@@ -43,7 +43,7 @@ run: stop ## Start vLLM (CPU image) on port $(PORT); MODE=off|traced|detailed|dt
 	  -v vllm-hf-cache:/root/.cache/huggingface \
 	  $(VLLM_IMAGE) --model $(MODEL) --max-model-len 2048 $(TRACE_ARGS_$(MODE))
 	@until curl -sf http://localhost:$(PORT)/health >/dev/null; do \
-	  [ "$$(docker inspect -f {{.State.Running}} $(VLLM_CONTAINER))" = true ] || { docker logs --tail 20 $(VLLM_CONTAINER); exit 1; }; \
+	  [ "$$(docker inspect -f {{.State.Running}} $(VLLM_CONTAINER))" = true ] || { docker logs $(VLLM_CONTAINER); exit 1; }; \
 	  sleep 3; done; echo "vLLM ready (MODE=$(MODE))"
 
 sink: ## Run the OTLP span-counting sink on port $(SINK_PORT)

@@ -37,6 +37,7 @@ Worked around with hand-written `transform/fix_input_messages` / `transform/fix_
 ## Quick Start
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
+   - To use a different model, select it with `BEDROCK_MODEL_ID`, for example `BEDROCK_MODEL_ID=us.deepseek.r1-v1:0` for DeepSeek-R1
 2. `make install` — install dependencies
 3. `make run` — start the app on port 8000
 4. `make request` — send a test haiku request (in a second terminal)
@@ -50,7 +51,7 @@ Worked around with hand-written `transform/fix_input_messages` / `transform/fix_
 | `AWS_ACCESS_KEY_ID` | Yes | — | AWS access key ID |
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
-| `BEDROCK_MODEL_ID` | No | `anthropic.claude-3-5-sonnet-20241022-v2:0` | Bedrock model ID |
+| `BEDROCK_MODEL_ID` | No | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model ID |
 | `OTEL_SERVICE_NAME` | No | `haiku-writer` | Service name reported in traces |
 
 ## Makefile Targets

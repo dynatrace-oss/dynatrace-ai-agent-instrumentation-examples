@@ -70,6 +70,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.113 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Anthropic](./anthropic/oneagent/) | `anthropic` 1.12.1 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
 | [Cohere](./cohere/oneagent/) | `cohere` 7.2.0 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
+| [Gemini](./gemini/openinference/) | `google-genai` 2.31.0 <!-- renovate: datasource=pypi depName=google-genai --> | — | [✓](./gemini/openinference/) | — |
 | [Groq](./groq/oneagent/) | `groq` 1.7.0 <!-- renovate: datasource=pypi depName=groq --> | [✓\*](./groq/oneagent/) | [✓](./groq/openinference/) | — |
 | [Mistral](./mistral/) | `mistralai` 3.1.0 <!-- renovate: datasource=pypi depName=mistralai --> | [✓\*](./mistral/oneagent/) | [✓](./mistral/openinference/) | — |
 | [Ollama](./ollama/oneagent/) | `ollama` 0.6.3 <!-- renovate: datasource=pypi depName=ollama --> | [✓\*](./ollama/oneagent/) | [✓](./ollama/openinference/) | — |
@@ -88,8 +89,9 @@ Monitor AI agent frameworks with Dynatrace.
 | [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.113 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | `strands-agents` 1.58.1 <!-- renovate: datasource=pypi depName=strands-agents --> | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [CrewAI](./crewai/) | `crewai` 1.15.28 <!-- renovate: datasource=pypi depName=crewai --> | — | [✓](./crewai/openinference/) | [✓](./crewai/opentelemetry/) |
-| [Google ADK](./google-adk/opentelemetry/) | `google-adk` 2.11.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | — | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
+| [Google ADK](./google-adk/opentelemetry/) | `google-adk` 2.11.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | [✓](./google-adk/openinference/) | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
 | [Haystack](./haystack/) | `haystack-ai` 3.3.0 <!-- renovate: datasource=pypi depName=haystack-ai --> | [✓](./haystack/oneagent/) | [✓](./haystack/openinference/) | — |
+| [LlamaIndex](./llamaindex/openinference/) | `llama-index-core` 0.14.25 <!-- renovate: datasource=pypi depName=llama-index-core --> | — | [✓](./llamaindex/openinference/) | — |
 | [Langfuse](./langfuse/) | `langfuse` 4.17.0 <!-- renovate: datasource=pypi depName=langfuse --> | — | — | [✓](./langfuse/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Python / [✓ Node](./langfuse/opentelemetry-node/) |
 | [LangGraph](./langgraph/) | `langgraph` 1.2.15 <!-- renovate: datasource=pypi depName=langgraph --> | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [LiteLLM](./litellm/opentelemetry/) | `litellm` 1.104.1 <!-- renovate: datasource=pypi depName=litellm --> | — | — | [✓](./litellm/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
