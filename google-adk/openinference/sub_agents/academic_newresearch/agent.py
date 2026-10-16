@@ -18,12 +18,16 @@ import os
 
 from google.adk import Agent
 
+from genai_config import GENERATE_CONTENT_CONFIG, record_system_instructions
+
 from . import prompt
 
 MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 
 academic_newresearch_agent = Agent(
     model=MODEL,
+    generate_content_config=GENERATE_CONTENT_CONFIG,
+    before_model_callback=record_system_instructions,
     name="academic_newresearch_agent",
     instruction=prompt.ACADEMIC_NEWRESEARCH_PROMPT,
 )

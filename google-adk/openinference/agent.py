@@ -20,6 +20,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
 import prompt
+from genai_config import GENERATE_CONTENT_CONFIG, record_system_instructions
 from sub_agents.academic_newresearch import academic_newresearch_agent
 from sub_agents.academic_websearch import academic_websearch_agent
 
@@ -38,6 +39,8 @@ academic_coordinator = LlmAgent(
     ),
     instruction=prompt.ACADEMIC_COORDINATOR_PROMPT,
     output_key="seminal_paper",
+    generate_content_config=GENERATE_CONTENT_CONFIG,
+    before_model_callback=record_system_instructions,
     tools=[
         AgentTool(agent=academic_websearch_agent),
         AgentTool(agent=academic_newresearch_agent),

@@ -13,6 +13,7 @@ os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (make run points it at the
 # local collector, which derives gen_ai.* metrics from the spans).
 from openinference.instrumentation.google_adk import GoogleADKInstrumentor
+from openinference.instrumentation import using_session
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME
@@ -26,7 +27,6 @@ trace.set_tracer_provider(provider)
 GoogleADKInstrumentor().instrument(tracer_provider=provider)
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import PlainTextResponse
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai.types import Content, Part
@@ -37,6 +37,8 @@ from agent import academic_coordinator
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 3
+APP_NAME = "google-adk-openinference"
+USER_ID = "e2e"
 
 session_service = InMemorySessionService()
 
@@ -45,6 +47,13 @@ app = FastAPI()
 
 class ResearchRequest(BaseModel):
     topic: str = "Attention is All You Need"
+    # Reuse to continue a conversation; a new id is generated when absent.
+    conversation_id: str | None = None
+
+
+class ResearchResponse(BaseModel):
+    conversation_id: str
+    answer: str
 
 
 @app.get("/health")
@@ -52,11 +61,26 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/research", response_class=PlainTextResponse)
-async def research(req: ResearchRequest) -> str:
+async def _get_or_create_session(conversation_id: str, topic: str):
+    session = await session_service.get_session(
+        app_name=APP_NAME, user_id=USER_ID, session_id=conversation_id
+    )
+    if session is None:
+        session = await session_service.create_session(
+            app_name=APP_NAME,
+            user_id=USER_ID,
+            session_id=conversation_id,
+            state={"seminal_paper": topic},
+        )
+    return session
+
+
+@app.post("/research", response_model=ResearchResponse)
+async def research(req: ResearchRequest) -> ResearchResponse:
+    conversation_id = req.conversation_id or str(uuid.uuid4())
     runner = Runner(
         agent=academic_coordinator,
-        app_name="google-adk-openinference",
+        app_name=APP_NAME,
         session_service=session_service,
     )
     # The coordinator's value is delegation: it reaches academic_websearch_agent and
@@ -87,12 +111,9 @@ async def research(req: ResearchRequest) -> str:
     )
 
     async def _run() -> tuple[str, list[str]]:
-        session = await session_service.create_session(
-            app_name="google-adk-openinference",
-            user_id="e2e",
-            session_id=str(uuid.uuid4()),
-            state={"seminal_paper": req.topic},
-        )
+        # The ADK session id is the conversation id, so multi-turn history and
+        # gen_ai.conversation.id (from OpenInference session.id) stay aligned.
+        session = await _get_or_create_session(conversation_id, req.topic)
         # Drain the runner rather than returning from inside the loop. Returning early
         # abandons the async generator, which ADK reports as "Root node
         # academic_coordinator was cancelled" and OTel as a "Failed to detach context
@@ -103,7 +124,7 @@ async def research(req: ResearchRequest) -> str:
         answer = ""
         errors: list[str] = []
         async for event in runner.run_async(
-            user_id="e2e",
+            user_id=USER_ID,
             session_id=session.id,
             new_message=message,
         ):
@@ -120,14 +141,16 @@ async def research(req: ResearchRequest) -> str:
                         break
         return answer, errors
 
-    # Model-side aborts such as RECITATION are non-deterministic; retry on a fresh session.
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        result, errors = await _run()
-        if result or not errors:
-            break
-        logger.warning("attempt %d/%d failed with model errors", attempt, MAX_ATTEMPTS)
+    # Model-side aborts such as RECITATION are non-deterministic; retry the turn.
+    # using_session puts the conversation id on every span of the turn.
+    with using_session(conversation_id):
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            result, errors = await _run()
+            if result or not errors:
+                break
+            logger.warning("attempt %d/%d failed with model errors", attempt, MAX_ATTEMPTS)
     if not result:
         if errors:
             raise HTTPException(status_code=502, detail=f"agent model error: {'; '.join(errors)}")
         raise HTTPException(status_code=500, detail="agent returned no response")
-    return result
+    return ResearchResponse(conversation_id=conversation_id, answer=result)

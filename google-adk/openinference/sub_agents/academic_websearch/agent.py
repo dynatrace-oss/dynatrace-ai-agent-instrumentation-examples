@@ -19,6 +19,8 @@ import os
 from google.adk import Agent
 from google.adk.tools import google_search
 
+from genai_config import GENERATE_CONTENT_CONFIG, record_system_instructions
+
 from . import prompt
 
 MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
@@ -26,6 +28,8 @@ MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
 
 academic_websearch_agent = Agent(
     model=MODEL,
+    generate_content_config=GENERATE_CONTENT_CONFIG,
+    before_model_callback=record_system_instructions,
     name="academic_websearch_agent",
     instruction=prompt.ACADEMIC_WEBSEARCH_PROMPT,
     output_key="recent_citing_papers",

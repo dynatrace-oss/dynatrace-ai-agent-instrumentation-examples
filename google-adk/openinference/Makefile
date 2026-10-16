@@ -28,10 +28,16 @@ run: ## Start Bindplane collector (metrics only) + app on port $(PORT)
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
 
-request: ## POST /research to the running server
+CONVERSATION_ID ?= demo-$(shell date +%s)
+
+request: ## POST two /research turns sharing one conversation_id
 	curl -s -X POST http://localhost:$(PORT)/research \
 	  -H "Content-Type: application/json" \
-	  -d '{"topic": "Attention is All You Need"}'
+	  -d '{"topic": "Attention is All You Need", "conversation_id": "$(CONVERSATION_ID)"}'
+	@echo
+	curl -s -X POST http://localhost:$(PORT)/research \
+	  -H "Content-Type: application/json" \
+	  -d '{"topic": "BERT: Pre-training of Deep Bidirectional Transformers", "conversation_id": "$(CONVERSATION_ID)"}'
 
 build: ## Not applicable: no container defined for this demo
 	@echo "build: no Dockerfile for this demo"
