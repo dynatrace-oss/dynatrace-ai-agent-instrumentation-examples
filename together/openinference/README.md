@@ -1,7 +1,7 @@
 # Together AI + OpenInference + Dynatrace AI Observability
 
 Generate a haiku with Together AI, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
-OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) -- this example shows two ways to normalize them into the Dynatrace `gen_ai.*` format: the Bindplane collector's `genainormalizer` processor, or Dynatrace OpenPipeline.
+The app sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits OTel GenAI semantic-convention attributes (`gen_ai.*`) natively. No attribute normalization is needed; the collector or OpenPipeline only derives the `gen_ai.client.*` metrics.
 
 ---
 
@@ -11,10 +11,9 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - [Prerequisites](#prerequisites)
 - [Configuration options](#configuration-options)
 - [Setup](#setup)
-- [Option A -- Bindplane collector with genainormalizer](#option-a----bindplane-collector-with-genainormalizer)
+- [Option A -- Bindplane collector](#option-a----bindplane-collector)
 - [Option B -- Dynatrace OpenPipeline](#option-b----dynatrace-openpipeline)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
-- [Attribute mapping reference](#attribute-mapping-reference)
 - [Metrics](#metrics)
 - [Known gaps & limitations](#known-gaps--limitations)
 - [Troubleshooting](#troubleshooting)
@@ -24,16 +23,17 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 ## What you'll build
 
 - Calls Together AI to generate a haiku using the `openinference-instrumentation-together` instrumentation library.
-- Produces OpenTelemetry traces with OpenInference semantic conventions.
-- Normalizes OpenInference attributes to Dynatrace `gen_ai.*` format -- either via the Bindplane collector's `genainormalizer` processor or via Dynatrace OpenPipeline.
+- Produces OpenTelemetry traces with native `gen_ai.*` attributes (enabled by `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` in [`app.py`](app.py)).
+- Derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from the spans, either in the Bindplane collector or in Dynatrace OpenPipeline.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, and message content.
 
 Together AI exposes an OpenAI-compatible chat completions API for open models (Llama, Qwen, DeepSeek, and more). `TogetherInstrumentor` wraps the native `together` Python SDK (v2+).
 
+> `OPENINFERENCE_ENABLE_GENAI_SEMCONV` depends on OpenInference package behavior: it is implemented in `openinference-instrumentation` 0.1.71+, which `openinference-instrumentation-together` 0.1.12 requires. The OpenInference `llm.*` attributes are still emitted alongside `gen_ai.*`.
+
 ---
 
 ## Prerequisites
-
 - A Dynatrace tenant -- start a free trial at https://dt-url.net/trial
 - Docker installed and running (Option A only)
 - Python 3.10+
@@ -44,19 +44,17 @@ Together AI exposes an OpenAI-compatible chat completions API for open models (L
 
 ## Configuration options
 
-OpenInference uses its own semantic conventions that the Dynatrace AI Observability app does not natively understand. Two equivalent approaches normalize the attributes:
+OpenInference is span-only, so the AI Observability metrics must be derived from spans. Two equivalent approaches do this:
 
 |  | Option A -- Bindplane collector | Option B -- OpenPipeline |
 |---|---|---|
-| **Where normalization runs** | In the collector process, via the `genainormalizer` processor | Server-side, in your Dynatrace tenant |
+| **Where metric derivation runs** | In the collector process, via the `span_metrics` and `signal_to_metrics` connectors | Server-side, in your Dynatrace tenant |
 | **Requires Docker** | Yes | No |
 | **Requires Dynatrace config** | No | Yes -- one-time deploy |
 | **Good for** | Full control over the pipeline, works anywhere you can run a collector, no need to manually add pipeline configurations on your tenant | Simpler ops -- no collector to manage |
 | **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
 
-> Why not the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) for Option A? Its manifest does include `genainormalizerprocessor`, but it does not ship a `signal_to_metrics`-equivalent connector, so the token-usage metric (`gen_ai.client.token.usage`) couldn't be derived -- the same gap that led `openai/openinference`, `aws-bedrock/openinference`, and `langgraph/openinference` to pin the Bindplane collector instead. Option B has no such gap since the metric is extracted server-side.
-
-Both paths surface the request in the AI Observability app. Option A also reconstructs the full message history into `gen_ai.input.messages` / `gen_ai.output.messages`; Option B uses an interim fallback for message content (see [Known gaps & limitations](#known-gaps--limitations)).
+> Why not the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) for Option A? It does not ship a `signal_to_metrics`-equivalent connector, so the token-usage metric (`gen_ai.client.token.usage`) couldn't be derived. Option B has no such gap since the metric is extracted server-side.
 
 ---
 
@@ -98,22 +96,17 @@ make install
 
 ---
 
-## Option A -- Bindplane collector with genainormalizer
+## Option A -- Bindplane collector
 
-The [Bindplane Distro for OpenTelemetry (BDOT)](https://github.com/observIQ/bindplane-otel-collector) collector intercepts spans and normalizes OpenInference attributes to `gen_ai.*` with its built-in `genainormalizer` processor before forwarding to Dynatrace. No Dynatrace configuration needed.
+The [Bindplane Distro for OpenTelemetry (BDOT)](https://github.com/observIQ/bindplane-otel-collector) collector forwards the spans to Dynatrace and derives the `gen_ai.client.*` metrics from them. No Dynatrace configuration needed.
 
 ```
-App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
+App (native gen_ai.*)  ->  Bindplane collector (metrics)  ->  Dynatrace Grail
 ```
 
-This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.109.0`, matching the version pinned by the [`openai/openinference`](../../openai/openinference/) example. The pin means a future version bump surfaces normalization changes in the e2e test.
+This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.109.0`, matching the version pinned by the [`openai/openinference`](../../openai/openinference/) example. The pin means a future version bump surfaces regressions in the e2e test.
 
 The collector needs your Dynatrace credentials because **it is the component that forwards spans to Dynatrace**. The app itself only knows about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
-
-The pipeline runs two processors (see [`otel-collector-config.yaml`](otel-collector-config.yaml)):
-
-1. **`genainormalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
-2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
 
 ### Step 1 -- Start the collector and run the app
 
@@ -153,8 +146,8 @@ The BDOT image reads its config from `/etc/otel/config.yaml` by default in stand
 
 What happens:
 - The collector listens on port `4318` for incoming OTLP/HTTP spans from the app.
-- The `genainormalizer` processor maps OpenInference attributes to `gen_ai.*` and reconstructs the message history.
-- The processed spans are forwarded to `$DT_ENDPOINT/api/v2/otlp` authenticated with the API token.
+- A second pipeline branch keeps only LLM spans and feeds the metric connectors.
+- Spans and derived metrics are forwarded to `$DT_ENDPOINT/api/v2/otlp` authenticated with the API token.
 
 If you started the collector manually, run the app once against it:
 
@@ -177,10 +170,10 @@ docker stop bindplane-otel-collector && docker rm bindplane-otel-collector
 
 ## Option B -- Dynatrace OpenPipeline
 
-OpenPipeline is a server-side processing pipeline in Dynatrace that applies the same attribute mappings before spans are stored. The app sends spans directly to Dynatrace -- no collector needed.
+OpenPipeline is a server-side processing pipeline in Dynatrace. The app sends spans directly to Dynatrace -- no collector needed. The pipeline only derives the `gen_ai.client.*` metrics; the spans already carry `gen_ai.*`.
 
 ```
-App  ->  Dynatrace OpenPipeline (transform)  ->  Dynatrace Grail
+App (native gen_ai.*)  ->  Dynatrace OpenPipeline (metrics)  ->  Dynatrace Grail
 ```
 
 ### Step 1 -- Deploy the OpenPipeline configuration using the Dynatrace UI
@@ -198,7 +191,7 @@ This is a one-time setup per tenant.
 
 ### Step 2 -- Run the app
 
-The app sends spans directly to `$DT_ENDPOINT/api/v2/otlp`, authenticated with the API token. OpenPipeline intercepts and transforms the spans server-side before they are stored.
+The app sends spans directly to `$DT_ENDPOINT/api/v2/otlp`, authenticated with the API token. OpenPipeline derives the metrics server-side.
 
 ```bash
 # with make (reads .env automatically)
@@ -218,30 +211,6 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 
 ---
 
-## Attribute mapping reference
-
-Both options apply the same translations; the collector's `genainormalizer` (source `openinference`) reconstructs the full conversation from indexed per-message attributes, while OpenPipeline uses an interim fallback (see [Known gaps & limitations](#known-gaps--limitations)). This mirrors the mapping documented in the `openinference-to-genai` skill.
-
-| OpenInference source | Dynatrace target |
-|---|---|
-| `llm.token_count.prompt` | `gen_ai.usage.input_tokens` |
-| `llm.token_count.completion` | `gen_ai.usage.output_tokens` |
-| `llm.model_name` | `gen_ai.request.model` |
-| `llm.provider` | `gen_ai.provider.name` (set to `together` by `TogetherInstrumentor`) |
-| `llm.finish_reason` | `gen_ai.response.finish_reasons` (scalar -> `[value]` slice) |
-| `llm.invocation_parameters` (`.temperature`, `.max_tokens`, `.top_p`) | `gen_ai.request.temperature` / `.max_tokens` / `.top_p` |
-| `agent.name` | `gen_ai.agent.name` |
-| `tool.name` / `tool.description` | `gen_ai.tool.name` / `gen_ai.tool.description` |
-| `openinference.span.kind` | `gen_ai.operation.name` (`LLM` -> `chat`) |
-| `llm.input_messages.N.*` / `llm.output_messages.N.*` | `gen_ai.input.messages` / `gen_ai.output.messages` |
-| _(both options)_ | `gen_ai.response.model` (mirrored from `gen_ai.request.model`) |
-
-`session.id` and `user.id` already match the OTel standard and pass through unchanged in both options.
-
-> **Note on request parameters:** `TogetherInstrumentor` never emits discrete `llm.temperature` / `llm.max_tokens` / `llm.top_p` span attributes -- only a single `llm.invocation_parameters` JSON string, containing only the keyword arguments passed to `chat.completions.create()` (minus `messages` and `tools`). Option A's collector parses it with OTTL's `ParseJSON` (see `transform/pre_normalize` in [`otel-collector-config.yaml`](otel-collector-config.yaml), which extracts `temperature` only); Option B's OpenPipeline parses it with DQL's `parse` command and DPL's `JSON` matcher (see the `openinference-request-params` processor in [`openpipeline-openinference.yaml`](openpipeline-openinference.yaml), which extracts all three) -- DQL's `jsonField()` function is not enabled in this OpenPipeline context.
-
----
-
 ## Metrics
 
 OpenInference is span-only by design (its instrumentors emit no metric instruments), so the two metrics the AI Observability app charts must be derived from the spans. Both options do this, so the cost and latency tiles populate either way:
@@ -251,29 +220,15 @@ OpenInference is span-only by design (its instrumentors emit no metric instrumen
 | `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on LLM spans | `samplingAwareHistogramMetric` extractor on `duration_seconds` |
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signal_to_metrics` connector, two sum defs | two `samplingAwareValueMetric` extractors, one per direction |
 
-Both read the normalized `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` (mapped from OpenInference's `llm.token_count.*`). Both metrics use delta temporality -- Dynatrace rejects cumulative.
+Both read the native `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Both metrics use delta temporality -- Dynatrace rejects cumulative.
 
 ---
 
 ## Known gaps & limitations
 
-### Attributes genainormalizer does not yet map (Option A)
-
-The `genainormalizer` `openinference` source does not set the following attributes. They are optional for the AI Observability app, and are candidates for upstream contribution to the processor:
-
-- `gen_ai.request.temperature` / `gen_ai.request.top_p` / `gen_ai.request.max_tokens`
-- `gen_ai.response.finish_reasons`
-
-To close these locally, add statements to the `transform` processor in [`otel-collector-config.yaml`](otel-collector-config.yaml). Option B (OpenPipeline) already maps these server-side.
-
-
 ### No embeddings coverage
 
-`TogetherInstrumentor` only wraps Together AI's `chat.completions` endpoint (not its embeddings, images, or audio endpoints), so neither option's pipeline needs to handle `embedding.*` OpenInference attributes -- unlike [`openai/openinference`](../../openai/openinference/), whose `OpenAIInstrumentor` also covers the embeddings endpoint.
-
-### Full conversation message history (Option B)
-
-Option A reconstructs the full message history via `genainormalizer`. Option B (OpenPipeline) cannot: DQL cannot iterate over the indexed per-message attributes (`llm.input_messages.0.message.role`, `llm.input_messages.1.message.role`, …) at transform time, so it copies the serialized conversation from `input.value` → `gen_ai.input.messages` as a fallback.
+`TogetherInstrumentor` only wraps Together AI's `chat.completions` endpoint (not its embeddings, images, or audio endpoints) -- unlike [`openai/openinference`](../../openai/openinference/), whose `OpenAIInstrumentor` also covers the embeddings endpoint.
 
 ---
 
@@ -290,8 +245,8 @@ Option A reconstructs the full message history via `genainormalizer`. Option B (
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
 
 **Spans visible in Distributed Tracing but not in AI Observability:**
-- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) to be set on the span -- `genainormalizer` sets `gen_ai.provider.name` from `llm.provider`, which `TogetherInstrumentor` always sets to `together`.
-- Option A: confirm the `genainormalizer` processor ran -- the raw `llm.*` attributes should be gone and `gen_ai.*` attributes present in the collector debug output (`make logs`).
+- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) on the span. With `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, OpenInference sets it from `llm.provider` (`together`).
+- Check the console span output of `app.py`: `gen_ai.*` attributes should be present. If only `llm.*` attributes appear, the installed `openinference-instrumentation` is older than 0.1.71.
 - Option B: confirm the OpenPipeline routing entry is active; go to **Settings -> OpenPipeline -> Spans** in Dynatrace and verify the `together-openinference-ai-spans` pipeline is enabled and the routing matcher is `isNotNull(openinference.span.kind) AND service.name == "together/openinference-openpipeline"`.
 
 **Port conflict (Option A):**

@@ -13,6 +13,10 @@ from opentelemetry.semconv.attributes import service_attributes
 
 MODEL: str = os.environ.get("MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo")
 
+# Emit OTel GenAI semantic-convention attributes (gen_ai.*) natively from
+# OpenInference instrumentors.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(

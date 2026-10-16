@@ -13,8 +13,8 @@ APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
 # Bindplane Distro for OpenTelemetry (BDOT) collector. Bundles the
-# genainormalizer processor + signal_to_metrics connector used below. Pinned
-# so a version bump surfaces normalization regressions in the e2e test.
+# span_metrics/signal_to_metrics connectors used to derive gen_ai.* metrics.
+# Pinned so a version bump surfaces regressions in the e2e test.
 override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
@@ -27,9 +27,10 @@ install: ## Install Python dependencies
 	uv sync
 
 # ---------------------------------------------------------------------------
-# run: Bindplane collector normalizes OpenInference -> gen_ai.* locally
+# run: Bindplane collector derives gen_ai.* metrics locally (spans already
+# emit gen_ai.* natively via OPENINFERENCE_ENABLE_GENAI_SEMCONV=true in app.py)
 # ---------------------------------------------------------------------------
-run: ## Start Bindplane collector (genainormalizer) + app
+run: ## Start Bindplane collector (metrics only) + app
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@echo "Waiting for collector port to be ready..."
 	@sleep 3
@@ -42,7 +43,7 @@ run: ## Start Bindplane collector (genainormalizer) + app
 	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------
-# run-openpipeline: app sends directly to Dynatrace -- OpenPipeline transforms
+# run-openpipeline: app sends directly to Dynatrace -- OpenPipeline derives metrics
 # Deploy first with the steps in README.md, "Option B".
 # ---------------------------------------------------------------------------
 run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
