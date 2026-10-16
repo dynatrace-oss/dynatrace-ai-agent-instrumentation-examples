@@ -28,10 +28,15 @@ run: ## Start Bindplane collector (metrics only) + app on port $(PORT)
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn api:app --host 0.0.0.0 --port $(PORT)
 
-request: ## POST /chat to the running server
+request: ## POST two /chat turns sharing one conversation_id
+	@CID=$$(curl -s -X POST http://localhost:$(PORT)/chat \
+	  -H "Content-Type: application/json" \
+	  -d '{"message": "What is the baggage allowance for economy class?"}' \
+	  | python3 -c 'import json,sys; r=json.load(sys.stdin); print(json.dumps(r, indent=2), file=sys.stderr); print(r["conversation_id"])') && \
+	echo "conversation_id: $$CID" && \
 	curl -s -X POST http://localhost:$(PORT)/chat \
 	  -H "Content-Type: application/json" \
-	  -d '{"topic": "What is the baggage allowance for economy class?"}' | python3 -m json.tool
+	  -d "{\"conversation_id\": \"$$CID\", \"message\": \"And can I change my seat to a window seat?\"}" | python3 -m json.tool
 
 build: ## Not applicable, no container defined for this demo
 	@echo "build: no Dockerfile for this demo"

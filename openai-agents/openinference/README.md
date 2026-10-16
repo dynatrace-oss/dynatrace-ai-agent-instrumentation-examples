@@ -38,7 +38,10 @@ Open the [AI Observability app](https://docs.dynatrace.com/docs/shortlink/app-ai
 ## How it works
 
 - `api.py` sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, creates a `TracerProvider` that exports OTLP/HTTP to `OTEL_EXPORTER_OTLP_ENDPOINT`, then calls `OpenAIAgentsInstrumentor().instrument(...)`. The instrumentor registers an Agents SDK trace processor that turns SDK spans into OpenTelemetry spans and replaces the default export to the OpenAI tracing backend.
-- `main.py` defines the agents, tools, handoffs, and guardrails (unchanged from the OpenTelemetry variant).
-- `otel-collector-config.yaml` leaves span attributes untouched and only derives the GenAI client metrics from LLM spans with the `span_metrics` and `signal_to_metrics` connectors.
+- `main.py` defines the agents, tools, handoffs, and guardrails. Every agent uses `ModelSettings(temperature=0.7)`, which OpenInference records as `gen_ai.request.temperature`.
+- `/chat` reuses a client-supplied `conversation_id` (or generates a UUID when absent) and returns it, so a client can continue the conversation. `make request` sends two turns with the same id; each turn is its own trace.
+- `otel-collector-config.yaml` derives the GenAI client metrics from LLM spans with the `span_metrics` and `signal_to_metrics` connectors (`gen_ai.client.token.usage` carries `gen_ai.token.type` `input`/`output`). It also fills two attributes the instrumentation does not emit:
+  - `gen_ai.response.model`: the Agents SDK chat-completions span does not keep the response model, so the collector copies `gen_ai.request.model` when it is unset.
+  - `gen_ai.system_instructions`: OpenInference keeps the agent instructions as the leading `system` message in `gen_ai.input.messages`; the collector copies that message's parts.
 
 See [Get started with OpenInference](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/openinference) for more details.
