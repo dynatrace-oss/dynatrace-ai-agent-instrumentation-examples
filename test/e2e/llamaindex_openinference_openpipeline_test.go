@@ -4,8 +4,8 @@ import "testing"
 
 func TestLlamaIndexOpenInferenceOpenPipeline(t *testing.T) {
 	// CLI app: make run-openpipeline sends spans directly to Dynatrace (no
-	// collector). Attribute transformation happens server-side via the
-	// OpenPipeline llamaindex-openinference-ai-spans pipeline, which must be
+	// collector). Spans carry gen_ai.* natively; the OpenPipeline
+	// llamaindex-openinference-ai-spans pipeline only derives metrics and must be
 	// deployed in the tenant first (see llamaindex/openinference/README.md, Option B).
 	startCLIAppWithTarget(t, "llamaindex/openinference", "run-openpipeline")
 

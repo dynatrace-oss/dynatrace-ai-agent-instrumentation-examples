@@ -5,37 +5,15 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool,
-  # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
-  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
-  # so the exported spans carry only gen_ai.* fields.
-  gen_ai_normalizer:
-    sources:
-      - name: openinference
-        remove_originals: true
-
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
-  transform/response_model:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
-
   batch:
     send_batch_size: 512
     timeout: 5s
 
-  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
-  # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
-  # cover LLM calls only, not the chain spans. Used solely
-  # on the metrics branch: the export pipeline is left untouched so all spans
-  # still reach Distributed Tracing.
+  # Keep only LLM call spans for the metrics branch. With
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference emits gen_ai.*
+  # attributes natively, so no llm.* -> gen_ai.* normalization is required.
+  # The export pipeline is left untouched so all spans still reach
+  # Distributed Tracing.
   filter/genai_only:
     error_mode: ignore
     traces:
@@ -61,7 +39,7 @@ connectors:
     metrics_flush_interval: 15s
 
   # Token usage: OpenInference is span-only (no metric instruments). Re-create
-  # gen_ai.client.token.usage from the span token attributes with two sum defs
+  # gen_ai.client.token.usage from the native gen_ai.usage.* span attributes with two sum defs
   # sharing one metric name; the gen_ai.token.type dimension is synthesized per
   # direction via default_value. signal_to_metrics emits delta per batch, which
   # Dynatrace requires. Collector-path equivalent of the OpenPipeline
@@ -111,14 +89,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, batch]
+      processors: [batch]
       exporters: [otlp_http/dynatrace]
-    # Second branch of the same spans: normalize, keep only LLM spans, and feed
+    # Second branch of the same spans: keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
+      processors: [filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]
