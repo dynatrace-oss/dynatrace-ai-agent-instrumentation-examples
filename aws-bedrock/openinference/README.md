@@ -37,6 +37,7 @@ Worked around with hand-written `transform/fix_input_messages` / `transform/fix_
 ## Quick Start
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
+   - To use a different model, select it with `BEDROCK_MODEL_ID`, for example `BEDROCK_MODEL_ID=us.deepseek.r1-v1:0` for DeepSeek-R1
 2. `make install` — install dependencies
 3. `make run` — start the app on port 8000
 4. `make request` — send a test haiku request (in a second terminal)
