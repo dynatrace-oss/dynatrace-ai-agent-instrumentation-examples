@@ -7,7 +7,7 @@ PORT                ?= 8000
 DT_ENDPOINT         ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN        ?= dt0c01.*****
 
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
+override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.110.1
 override COLLECTOR_CONTAINER := openai-agents-openinference-otel-collector
 
 .PHONY: run request stop logs install build push help
