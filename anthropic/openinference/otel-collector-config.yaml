@@ -78,7 +78,7 @@ processors:
 
 connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
-  # from the LLM span durations — same connector the langfuse demo uses. namespace +
+  # from the LLM span durations. namespace +
   # the connector's "duration" histogram => gen_ai.client.operation.duration.
   span_metrics:
     namespace: gen_ai.client.operation

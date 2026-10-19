@@ -117,11 +117,6 @@
     },
     {
       "matchManagers": ["npm"],
-      "matchFileNames": ["langfuse/opentelemetry-node/**"],
-      "groupName": "npm dependencies (langfuse)"
-    },
-    {
-      "matchManagers": ["npm"],
       "matchFileNames": ["rum/opentelemetry/nextjs-frontend/**"],
       "groupName": "npm dependencies (rum)"
     },
@@ -161,7 +156,6 @@
         "crewai",
         "google-adk",
         "haystack-ai",
-        "langfuse",
         "langgraph",
         "litellm",
         "agent-framework",
@@ -189,7 +183,6 @@
         "crewai",
         "google-adk",
         "haystack-ai",
-        "langfuse",
         "langgraph",
         "litellm",
         "agent-framework",

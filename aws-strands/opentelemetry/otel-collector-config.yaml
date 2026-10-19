@@ -90,7 +90,7 @@ processors:
 
 connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
-  # from the LLM span durations — same connector the langfuse demo uses. Strands'
+  # from the LLM span durations. Strands'
   # native metrics live under strands.* names, so this recreates the semconv one.
   #
   # The connector always names its histogram "duration", so the spec metric name

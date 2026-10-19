@@ -36,7 +36,7 @@ processors:
   # necessarily what answered (an alias like "gemini-2.0-flash" can resolve to a
   # dated build). ADK does not expose the resolved version on the span, so the
   # request model is the closest available value, and it is the same mirroring the
-  # aws-strands and langfuse configs already do.
+  # aws-strands config already does.
   transform/response_model:
     error_mode: ignore
     trace_statements:

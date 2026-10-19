@@ -87,7 +87,7 @@ processors:
 
 connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
-  # from the LLM span durations — same connector the langfuse demo uses.
+  # from the LLM span durations.
   span_metrics:
     namespace: gen_ai.client.operation
     # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.

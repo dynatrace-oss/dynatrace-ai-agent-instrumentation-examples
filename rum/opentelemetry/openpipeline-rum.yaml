@@ -48,8 +48,7 @@ processing:
     # "duration" measurement emits MICROSECONDS, but the OTel semconv metrics
     # gen_ai.client.operation.duration and gen_ai.invoke_agent.duration (and every
     # native SDK emitter) are in SECONDS. Materialize a seconds value here and
-    # point the metrics at it via measurement: "field" (same fix as
-    # openpipeline-langfuse.yaml, PR #166).
+    # point the metrics at it via measurement: "field".
     #
     # Scoped to the two span types that feed a metric: the LLM call (carries
     # gen_ai.response.model) and the agent run. The music_agent.ask wrapper span
