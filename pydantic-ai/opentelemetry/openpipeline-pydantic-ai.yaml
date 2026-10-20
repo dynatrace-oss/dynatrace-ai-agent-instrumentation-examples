@@ -75,7 +75,7 @@ processing:
     # "duration" measurement emits MICROSECONDS, but the OTel semconv metric
     # gen_ai.client.operation.duration (and every native SDK emitter) is in
     # SECONDS. Materialize a seconds value here and point the metric at it via
-    # measurement: "field" (same fix as openpipeline-langfuse.yaml, PR #166).
+    # measurement: "field".
     # ============================================================================
     - id: "pydantic-ai-duration-seconds"
       enabled: true

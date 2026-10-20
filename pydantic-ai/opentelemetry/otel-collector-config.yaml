@@ -55,7 +55,7 @@ processors:
 connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
   # from the LLM span durations — pydantic-ai emits the token metric natively but
-  # NOT this one. Same connector the langfuse demo uses.
+  # NOT this one.
   span_metrics:
     namespace: gen_ai.client.operation
     # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.

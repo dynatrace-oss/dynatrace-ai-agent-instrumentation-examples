@@ -36,7 +36,7 @@ func assertSpanExistsWithin(t *testing.T, dql string, timeout time.Duration) {
 // (timeseries avg(gen_ai.client.operation.duration)); the OTel Collector path
 // emits it via the span_metrics connector in otel-collector-config.yaml, and the
 // OpenPipeline path via the samplingAwareHistogramMetric processor in
-// openpipeline-langfuse.yaml. Both carry service.name as a dimension.
+// the demo's openpipeline-*.yaml. Both carry service.name as a dimension.
 //
 // Scoping is by service.name — not the app's coalesce(service.name,
 // getNodeName(dt.smartscape.service)), whose Smartscape lookup needs the

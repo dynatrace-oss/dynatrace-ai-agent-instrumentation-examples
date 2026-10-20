@@ -11,9 +11,8 @@ set -euo pipefail
 #
 # The workflow runs `go test -run "^${TEST_RUN}$"`, anchored, so test_run must name
 # a function exactly. Before anchoring, an unanchored prefix match meant
-# TestGoogleADKOpenTelemetry also ran TestGoogleADKOpenTelemetryCollector, and
-# TestLangfuseOpenTelemetry also ran the Node and OpenPipeline suites (which have
-# their own entries, so they ran twice per PR). Keep test_run exact.
+# TestGoogleADKOpenTelemetry also ran TestGoogleADKOpenTelemetryCollector (which has
+# its own entry, so it ran twice per PR). Keep test_run exact.
 #
 # test_file must be the file that defines that function: on pull requests a suite is
 # selected only if its app_dir or its test_file changed, so a stale path means edits
@@ -53,10 +52,7 @@ OC_ALL='[
   {"name":"together-openinference","app_dir":"together/openinference","test_file":"test/e2e/together_openinference_test.go","test_run":"TestTogetherOpenInference","otel_service_name":"together/openinference","model":"meta-llama/Llama-3.3-70B-Instruct-Turbo"},
   {"name":"gemini-openinference","app_dir":"gemini/openinference","test_file":"test/e2e/gemini_openinference_test.go","test_run":"TestGeminiOpenInference","otel_service_name":"gemini/openinference","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},
-  {"name":"langfuse-opentelemetry","app_dir":"langfuse/opentelemetry","test_file":"test/e2e/langfuse_opentelemetry_test.go","test_run":"TestLangfuseOpenTelemetry","otel_service_name":"langfuse"},
-  {"name":"langfuse-opentelemetry-node","app_dir":"langfuse/opentelemetry-node","test_file":"test/e2e/langfuse_opentelemetry_node_test.go","test_run":"TestLangfuseOpenTelemetryNode","otel_service_name":"langfuse-node","needs_node":true},
   {"name":"github-copilot-opentelemetry","app_dir":"ai-coding-agents/github-copilot-sdk","test_file":"test/e2e/github_copilot_opentelemetry_test.go","test_run":"TestGitHubCopilotOpenTelemetry","otel_service_name":"github-copilot","needs_node":true},
-  {"name":"langfuse-opentelemetry-openpipeline","app_dir":"langfuse/opentelemetry","test_file":"test/e2e/langfuse_opentelemetry_openpipeline_test.go","test_run":"TestLangfuseOpenTelemetryOpenPipeline","otel_service_name":"langfuse-openpipeline"},
   {"name":"pydantic-ai-opentelemetry","app_dir":"pydantic-ai/opentelemetry","test_file":"test/e2e/pydantic_ai_opentelemetry_test.go","test_run":"TestPydanticAIOpenTelemetry","otel_service_name":"pydantic-ai-music-agent"},
   {"name":"openai-agents-opentelemetry","app_dir":"openai-agents/opentelemetry","test_file":"test/e2e/openai_agents_opentelemetry_collector_test.go","test_run":"TestOpenAIAgentsOpenTelemetryCollector","otel_service_name":"openai-cs-agents"},
   {"name":"openai-agents-openinference","app_dir":"openai-agents/openinference","test_file":"test/e2e/openai_agents_openinference_test.go","test_run":"TestOpenAIAgentsOpenInference","otel_service_name":"openai-agents/openinference"},
