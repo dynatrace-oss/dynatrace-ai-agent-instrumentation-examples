@@ -8,6 +8,6 @@ dependencies = [
     "openinference-instrumentation-litellm==0.1.50",
     "opentelemetry-sdk==1.45.1",
     "opentelemetry-exporter-otlp-proto-http==1.45.1",
-    "fastapi==0.143.2",
+    "fastapi==0.156.4",
     "uvicorn==0.54.0",
 ]

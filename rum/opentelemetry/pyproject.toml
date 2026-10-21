@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic-ai==2.54.0",
-    "fastapi==0.139.0",
-    "uvicorn[standard]==0.51.0",
+    "fastapi==0.156.4",
+    "uvicorn[standard]==0.54.0",
     "python-dotenv",
     "boto3==1.43.113",
     "openai==3.26.0",
@@ -14,4 +14,4 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-demo = ["playwright==1.61.0"]
+demo = ["playwright==1.64.0"]

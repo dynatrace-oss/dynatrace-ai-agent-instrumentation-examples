@@ -5,11 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "fastapi==0.115.12",
+    "fastapi==0.156.4",
     "opentelemetry-instrumentation-fastapi==0.65b0",
     "opentelemetry-instrumentation-urllib3==0.65b0",
-    "opentelemetry-exporter-otlp-proto-http==1.44.0",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
     "strands-agents==1.58.1",
-    "strands-agents-tools==0.8.5",
-    "uvicorn[standard]==0.34.2",
+    "strands-agents-tools==0.8.9",
+    "uvicorn[standard]==0.54.0",
 ]
