@@ -114,10 +114,10 @@ This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.105.1`, t
 
 The collector needs your Dynatrace credentials because **it is the component that forwards spans to Dynatrace**. The app itself only knows about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
 
-The pipeline runs two processors (see [`otel-collector-config.yaml`](otel-collector-config.yaml)):
+The pipeline includes these model-mapping processors (see [`otel-collector-config.yaml`](otel-collector-config.yaml)):
 
-1. **`genainormalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
-2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+1. **`genainormalizer`** (source `openinference`, `remove_originals: false`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. Raw `llm.*` attributes are retained for the transforms below and dropped by `transform/cleanup_raw_attrs` afterward.
+2. **`transform/response_model`** maps `llm.response.model_name` to `gen_ai.response.model`, which the AI Observability app requires, while preserving an existing response model.
 
 ### Step 1 -- Start the collector and run the app
 
@@ -187,7 +187,7 @@ OpenPipeline is a server-side processing pipeline in Dynatrace that applies the 
 App  ->  Dynatrace OpenPipeline (transform)  ->  Dynatrace Grail
 ```
 
-[`openpipeline-openinference.yaml`](openpipeline-openinference.yaml) in this directory is byte-identical to the one in `openai/openinference/` -- the pipeline matches on the generic `openinference.span.kind` attribute, not on anything provider-specific, so it is the same pipeline in your tenant regardless of which OpenInference example produced it. **If you already deployed it while working through `openai/openinference`, skip straight to [Step 2](#step-2----run-the-app).**
+[`openpipeline-openinference.yaml`](openpipeline-openinference.yaml) in this directory maps the Anthropic instrumentor's `llm.response.model_name` to `gen_ai.response.model`. If you already deployed the pipeline from `openai/openinference/`, update its response-model mapping before continuing to [Step 2](#step-2----run-the-app).
 
 ### Step 1 -- Deploy the OpenPipeline configuration using the Dynatrace UI
 This is a one-time setup per tenant.
@@ -231,7 +231,7 @@ source .env && OTEL_EXPORTER_OTLP_ENDPOINT=$DT_ENDPOINT/api/v2/otlp OTEL_EXPORTE
 
 ### Option A -- genainormalizer (`openinference` source)
 
-The `genainormalizer` processor applies these translations, then `remove_originals` drops the source `llm.*` attributes. The collector config adds the `gen_ai.response.model` mirror.
+The `genainormalizer` processor applies these translations. The collector config maps `llm.response.model_name` to `gen_ai.response.model` before cleaning up the source `llm.*` attributes.
 
 | OpenInference source | Dynatrace target |
 |---|---|
@@ -244,7 +244,7 @@ The `genainormalizer` processor applies these translations, then `remove_origina
 | `session.id` | `gen_ai.conversation.id` |
 | `openinference.span.kind` | `gen_ai.operation.name` (`LLM`→`chat`) |
 | `llm.input_messages.N.*` | `gen_ai.input.messages` (full reconstruction, including the synthesized `system` message -- see [Known gaps & limitations](#known-gaps--limitations)) |
-| _(added by collector config)_ | `gen_ai.response.model` (mirrored from `gen_ai.request.model`) |
+| `llm.response.model_name` | `gen_ai.response.model` |
 | _(added by collector config)_ | `gen_ai.output.messages` -- `genainormalizer` itself produces this with an empty `parts` array for Anthropic responses; see [Known gaps & limitations](#known-gaps--limitations) for the hand-written processor that fixes it |
 
 Unlike a hand-written transform, `genainormalizer` reconstructs the full input conversation from the indexed per-message attributes, so `gen_ai.input.messages` contains the complete message history rather than a serialized fallback. `gen_ai.output.messages` needs the extra processor above to get the same result.

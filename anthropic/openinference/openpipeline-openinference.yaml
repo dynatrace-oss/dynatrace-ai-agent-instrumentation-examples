@@ -243,9 +243,9 @@ processing:
       description: "Map LLM response metadata to official attributes"
       dql:
         script: |
-          // Mirror request model to response model (OpenInference has no separate response model field)
+          // Map the model emitted in the response, which can differ from the request model
           // Set gen_ai.system for Azure-hosted OpenAI
-          fieldsAdd gen_ai.response.model = gen_ai.request.model,
+          fieldsAdd gen_ai.response.model = llm.response.model_name,
             gen_ai.system = if(gen_ai.provider.name == "azure", "azure.ai.openai", else: null)
     
     # ============================================================================

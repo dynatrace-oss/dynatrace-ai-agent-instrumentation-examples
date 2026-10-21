@@ -28,16 +28,14 @@ processors:
           - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["temperature"]) where attributes["temp.invocation_params"]["temperature"] != nil
           - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
 
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
+  # Map the model emitted in the response, which can differ from the request
+  # model, without overwriting an existing gen_ai.response.model.
   transform/response_model:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+          - set(attributes["gen_ai.response.model"], attributes["llm.response.model_name"]) where attributes["llm.response.model_name"] != nil and attributes["gen_ai.response.model"] == nil
 
   # gen_ai_normalizer reconstructs gen_ai.output.messages with empty `parts`
   # for Anthropic responses: OpenInference always nests a single text reply
