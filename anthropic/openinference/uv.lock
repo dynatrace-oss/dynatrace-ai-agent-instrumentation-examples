@@ -55,7 +55,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", extras = ["bedrock"], specifier = "==1.12.1" },
-    { name = "openinference-instrumentation-anthropic", specifier = "==3.0.1" },
+    { name = "openinference-instrumentation-anthropic", specifier = "==3.0.3" },
     { name = "opentelemetry-exporter-otlp", specifier = "==1.44.0" },
     { name = "opentelemetry-sdk", specifier = "==1.44.0" },
 ]
@@ -587,7 +587,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-anthropic"
-version = "3.0.1"
+version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -598,9 +598,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/e9/7dfd385b5b7fb635720310ab344acb4bb339aa2744d5f7c51b4e5a1c13bf/openinference_instrumentation_anthropic-3.0.1.tar.gz", hash = "sha256:2d26bb5a18c1804fcd4b71453627ab94fe3441729b101b484b098f690dd5c177", size = 18295, upload-time = "2026-10-01T22:23:58.341Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/f4/b25dd37b61cd9942d1f738d79e1661526c81b0a0ded3e3af0fc5b81fab66/openinference_instrumentation_anthropic-3.0.3.tar.gz", hash = "sha256:f0c866eac8b900451a806bfb2c8d2ebb248e15557ee4357d75a36c7bdce287c8", size = 18056, upload-time = "2026-10-10T06:23:47.348Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/77/d89576c12b50504ca3e6315f4d0dfeade260069c2b30301676e209faa19a/openinference_instrumentation_anthropic-3.0.1-py3-none-any.whl", hash = "sha256:4e7913854ebd51beecb3201a5b6c3164d51062fb714dabe58b5c40a9a9a1b111", size = 22006, upload-time = "2026-10-01T22:23:57.139Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/d8/b4b76f630767bdb44a379c5df114fd5ecb5f9e815a68a7866af5b848eac4/openinference_instrumentation_anthropic-3.0.3-py3-none-any.whl", hash = "sha256:15b79dd35c5b84479c9e968f6557181ddb71f5261feb630555889c04a72323d9", size = 21625, upload-time = "2026-10-10T06:23:46.16Z" },
 ]
 
 [[package]]
