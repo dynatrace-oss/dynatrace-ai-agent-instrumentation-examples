@@ -11,7 +11,7 @@ dependencies = [
     "openinference-instrumentation-litellm==0.1.50",
     "opentelemetry-sdk==1.45.1",
     "opentelemetry-exporter-otlp-proto-grpc==1.45.1",
-    "opentelemetry-instrumentation-fastapi==0.65b0",
-    "opentelemetry-instrumentation-httpx==0.65b0",
+    "opentelemetry-instrumentation-fastapi==0.66b1",
+    "opentelemetry-instrumentation-httpx==0.66b1",
     "pydantic==2.14.1",
 ]
