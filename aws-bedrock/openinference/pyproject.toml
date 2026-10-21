@@ -4,7 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
     "boto3==1.43.113",
-    "openinference-instrumentation-bedrock",
+    "openinference-instrumentation==0.1.71",
+    "openinference-instrumentation-bedrock==0.1.60",
+    "openinference-semantic-conventions==0.1.41",
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
     "fastapi",

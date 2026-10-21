@@ -2,6 +2,8 @@ import os
 
 import boto3
 
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 
 def _guardrail_config():
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")

@@ -4,7 +4,7 @@ Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with D
 
 ## How it works
 
-OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) that the Dynatrace AI Observability app does not natively understand. This example normalizes them to the Dynatrace `gen_ai.*` format in the collector, so no Dynatrace-side configuration is needed:
+The app enables OpenInference's native OTel GenAI semantic conventions, so spans include `gen_ai.*` attributes alongside the OpenInference attributes (`llm.model_name`, `llm.token_count.*`, etc.) that the Dynatrace AI Observability app does not natively understand. The collector retains its normalizer and message/model adjustments for compatibility and the known message-content gap, so no Dynatrace-side configuration is needed:
 
 ```
 App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
