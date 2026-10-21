@@ -1,6 +1,6 @@
 litellm[proxy]==1.104.1
 # litellm.proxy imports get_flat_dependant, removed in FastAPI 0.140.7.
-fastapi==0.140.6
+fastapi==0.156.4
 openinference-instrumentation-litellm==0.1.50
 opentelemetry-sdk==1.45.1
 opentelemetry-exporter-otlp-proto-http==1.45.1

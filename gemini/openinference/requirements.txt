@@ -1,4 +1,4 @@
-google-genai==2.31.0
+google-genai==2.32.0
 openinference-instrumentation-google-genai==1.4.13
 opentelemetry-sdk==1.45.1
 opentelemetry-exporter-otlp==1.45.1

@@ -5,11 +5,11 @@ requires-python = ">=3.10"
 dependencies = [
     "boto3==1.43.113",
     "traceloop-sdk==0.62.4",
-    "opentelemetry-instrumentation-bedrock==0.62.3",
+    "opentelemetry-instrumentation-bedrock==0.62.4",
     "opentelemetry-instrumentation-botocore==0.65b0",
     "opentelemetry-instrumentation-requests==0.65b0",
     "opentelemetry-instrumentation-asyncio==0.65b0",
     "requests==2.34.2",
-    "tenacity==9.1.4",
+    "tenacity==9.2.1",
     "httpx==0.28.1",
 ]

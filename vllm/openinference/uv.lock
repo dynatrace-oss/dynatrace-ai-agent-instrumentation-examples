@@ -1,13 +1,13 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten'",
-    "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
+    "python_full_version < '3.12' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
 ]
 
 [[package]]
@@ -262,8 +262,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -898,14 +898,14 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115" },
+    { name = "fastapi", specifier = "==0.143.1" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "openai", specifier = "==3.26.0" },
-    { name = "openinference-instrumentation-openai", specifier = ">=0.1.49" },
-    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.42.0" },
-    { name = "opentelemetry-proto", specifier = ">=1.30" },
-    { name = "opentelemetry-sdk", specifier = ">=1.42.0" },
-    { name = "uvicorn", specifier = ">=0.34" },
+    { name = "openinference-instrumentation-openai", specifier = "==0.1.65" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.1" },
+    { name = "opentelemetry-proto", specifier = "==1.45.1" },
+    { name = "opentelemetry-sdk", specifier = "==1.45.1" },
+    { name = "uvicorn", specifier = "==0.54.0" },
 ]
 
 [[package]]

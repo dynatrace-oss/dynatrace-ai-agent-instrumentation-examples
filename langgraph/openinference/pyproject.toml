@@ -4,10 +4,10 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "langgraph==1.2.15",
-    "langchain-openai==1.4.1",
-    "openinference-instrumentation-langchain==0.1.67",
-    "opentelemetry-sdk==1.44.0",
-    "opentelemetry-exporter-otlp-proto-http==1.44.0",
-    "fastapi==0.140.1",
-    "uvicorn==0.51.0",
+    "langchain-openai==1.7.2",
+    "openinference-instrumentation-langchain==0.1.79",
+    "opentelemetry-sdk==1.45.1",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
+    "fastapi==0.156.4",
+    "uvicorn==0.54.0",
 ]
