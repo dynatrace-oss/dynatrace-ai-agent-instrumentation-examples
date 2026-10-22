@@ -3,7 +3,7 @@
 ![AI Observability -- crewai/openinference service explorer](assets/crewai-openinference-explorer.png)
 
 Instrument a [CrewAI](https://docs.crewai.com/) crew with OpenInference and send traces to Dynatrace AI Observability.
-Uses [`openinference-instrumentation-crewai`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-crewai) for crew, agent, and task spans, [`openinference-instrumentation-litellm`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-litellm) for the LLM calls CrewAI makes through LiteLLM, and a [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) to derive GenAI client metrics.
+Uses [`openinference-instrumentation-crewai`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-crewai) for crew, agent, and task spans, [`openinference-instrumentation-litellm`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-litellm) for the LLM calls CrewAI makes through LiteLLM, and a [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) to derive GenAI client metrics.
 
 This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` (set in `app.py`), so OpenInference emits `gen_ai.*` attributes natively. No downstream OpenInference to `gen_ai.*` normalization is needed. The collector is still used to derive metrics, because OpenInference instrumentors are span-only.
 

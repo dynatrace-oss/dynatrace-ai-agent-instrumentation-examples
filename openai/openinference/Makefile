@@ -12,11 +12,11 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.105.0 tracks OTel
-# contrib v0.157.0 and bundles span_metrics/signal_to_metrics connectors used to derive
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). v1.1.2 tracks OTel
+# contrib v0.162.0 and bundles span_metrics/signal_to_metrics connectors used to derive
 # gen_ai.client.operation.duration / gen_ai.client.token.usage. Pinned so a
 # version bump surfaces regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run run-openpipeline build push request stop logs install help
