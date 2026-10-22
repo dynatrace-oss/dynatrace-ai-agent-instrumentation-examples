@@ -254,7 +254,7 @@ A healthy model request has:
 | `claude_code.tool_result` | Tool execution result, duration, and decision |
 | `claude_code.tool_decision` | Tool accept or reject decision |
 
-The assistant-response event is a log record, not a span attribute. The Collector and OpenPipeline mappings do not synthesize `gen_ai.output.messages` from this event.
+The assistant-response event is a log record, not a span attribute. The Collector and OpenPipeline mappings add `gen_ai.output.messages` and `gen_ai.response.id` to this log event, which makes the response queryable and joinable to its `claude_code.llm_request` span. They cannot move it onto the span.
 
 ## Dynatrace AI Observability enrichment
 
@@ -272,9 +272,9 @@ OpenPipeline enriches the spans at ingest. See [`openpipeline/README.md`](./open
 
 Use [`collector/`](./collector/) when Claude Code sends telemetry through the provided OpenTelemetry Collector.
 
-The Collector applies the same mappings in transit using OTTL. See [`collector/README.md`](./collector/README.md).
+The Collector applies the same span and log mappings in transit using OTTL, and derives the same GenAI metrics with the `signal_to_metrics` connector. See [`collector/README.md`](./collector/README.md).
 
-Use one enrichment path. Applying both is redundant.
+Use one enrichment path. Applying both is redundant for attributes and double-counts the GenAI metrics.
 
 ### Mappings
 
@@ -283,6 +283,7 @@ Use one enrichment path. Applying both is redundant.
 | `claude_code.interaction` | `invoke_agent` | Provider, agent identity, conversation ID, and `gen_ai.input.messages` when prompt capture is enabled |
 | `claude_code.llm_request` | `chat` | Provider, request/response model, response ID, token usage, and conversation ID |
 | `claude_code.tool` | `execute_tool` | Provider, tool name, and conversation ID |
+| `claude_code.tool.execution`, `claude_code.tool.blocked_on_user` | none (sub-phases of the tool call) | Provider, conversation ID, and `error.type` from `error_class` |
 
 The enrichment does not create or modify trace IDs, span IDs, or parent-child relationships. Claude Code must emit the hierarchy correctly.
 
@@ -351,7 +352,7 @@ Assistant response text is exported as a log event when response capture is enab
 ```dql
 fetch logs, from: now()-30m
 | filter service.name == "claude-code"
-| filter event.name == "claude_code.assistant_response"
+| filter event.name == "assistant_response"
 | fields
     timestamp,
     event.name,
@@ -432,7 +433,9 @@ Set:
 OTEL_LOG_ASSISTANT_RESPONSES=1
 ```
 
-Then query `claude_code.assistant_response` log events. The text is not stored on the `claude_code.llm_request` span.
+Then query the assistant response log events. The text is not stored on the `claude_code.llm_request` span.
+
+Filter on `event.name == "assistant_response"`. The prefixed form `claude_code.assistant_response` appears in `content`, not in `event.name`, so filtering `event.name` on the prefixed value returns nothing.
 
 ### Prompt content is empty
 
