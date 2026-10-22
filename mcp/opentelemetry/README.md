@@ -81,6 +81,13 @@ make request        # send a test weather request (in a second terminal)
 
 The agent API is available at [http://localhost:8000](http://localhost:8000). The MCP server runs on port `3000` by default.
 
+Each `/invoke` response includes a `conversation_id`. Send it back in the next request to continue the same conversation; omit it to start a new one. The agent passes the id to LangGraph as `thread_id`, which keeps the message history (in memory) and which the instrumentation reports as `gen_ai.conversation.id`, so all turns of a conversation can be grouped in Dynatrace.
+
+```bash
+curl -s -X POST http://localhost:8000/invoke -H 'Content-Type: application/json' \
+  -d '{"message":"And tomorrow?","conversation_id":"<ID_FROM_PREVIOUS_RESPONSE>"}'
+```
+
 You can also run the agent as a standalone script (requires the MCP server already running):
 
 ```bash
