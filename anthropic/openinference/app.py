@@ -14,6 +14,9 @@ from opentelemetry.semconv.attributes import service_attributes
 
 MODEL: str = os.environ.get("ANTHROPIC_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
+# Emit OTel GenAI semantic-convention attributes natively from OpenInference.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
 # For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 # For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
