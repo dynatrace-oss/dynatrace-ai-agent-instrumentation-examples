@@ -17,7 +17,7 @@ The app knows only about `http://localhost:4318`; the collector is the component
 3. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
 4. **`transform/cleanup_raw_attrs`** strips the raw `llm.*` attributes left behind by turning off `remove_originals`, so exported spans still end up `gen_ai.*`-only.
 
-The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane Distro for OpenTelemetry), which tracks OTel Collector contrib v0.156.0 and bundles the `genainormalizer` processor. The pin means a future version bump surfaces normalization changes in the e2e test.
+The collector is pinned to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2` (Dynatrace Bindplane Distribution of OpenTelemetry Collector), which tracks OTel Collector contrib v0.162.0 and bundles the `genainormalizer` processor. The pin means a future version bump surfaces normalization changes in the e2e test.
 
 ## Known gaps & limitations
 

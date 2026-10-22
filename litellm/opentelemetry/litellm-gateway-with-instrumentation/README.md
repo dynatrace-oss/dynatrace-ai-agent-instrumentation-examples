@@ -36,7 +36,7 @@ set +a
 
 ## Start the Collector
 
-The shared [`otel-collector-config.yaml`](../otel-collector-config.yaml) fills `gen_ai.*` gaps from OpenInference's legacy attributes, then drops `llm.*`/`openinference.*`, and derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from LLM spans. It needs the [Bindplane Distro for OpenTelemetry](https://github.com/observIQ/bindplane-otel-collector) for the `signal_to_metrics` connector. `make run` starts it for you; to start it by hand from `litellm/opentelemetry`:
+The shared [`otel-collector-config.yaml`](../otel-collector-config.yaml) fills `gen_ai.*` gaps from OpenInference's legacy attributes, then drops `llm.*`/`openinference.*`, and derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from LLM spans. It needs the [Dynatrace Bindplane Distribution of OpenTelemetry Collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) for the `signal_to_metrics` connector. `make run` starts it for you; to start it by hand from `litellm/opentelemetry`:
 
 ```bash
 docker run --rm \
@@ -45,7 +45,7 @@ docker run --rm \
   -v "$(pwd)/otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml:ro" \
   -e DT_ENDPOINT \
   -e DT_API_TOKEN \
-  ghcr.io/observiq/bindplane-agent:1.108.0 \
+  ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2 \
   --config=/etc/otelcol/otel-collector-config.yaml
 ```
 

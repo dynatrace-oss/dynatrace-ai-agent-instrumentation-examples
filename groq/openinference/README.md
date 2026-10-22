@@ -100,13 +100,13 @@ make install
 
 ## Option A -- Bindplane collector with genainormalizer
 
-The [Bindplane Distro for OpenTelemetry (BDOT)](https://github.com/observIQ/bindplane-otel-collector) collector intercepts spans and normalizes OpenInference attributes to `gen_ai.*` with its built-in `genainormalizer` processor before forwarding to Dynatrace. No Dynatrace configuration needed.
+The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) intercepts spans and normalizes OpenInference attributes to `gen_ai.*` with its built-in `genainormalizer` processor before forwarding to Dynatrace. No Dynatrace configuration needed.
 
 ```
 App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
 ```
 
-This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.106.0`, matching the version pinned by the [`openai/openinference`](../../openai/openinference/) example. The pin means a future version bump surfaces normalization changes in the e2e test.
+This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`, matching the version pinned by the [`openai/openinference`](../../openai/openinference/) example. The pin means a future version bump surfaces normalization changes in the e2e test.
 
 The collector needs your Dynatrace credentials because **it is the component that forwards spans to Dynatrace**. The app itself only knows about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
 
@@ -133,7 +133,7 @@ docker run -d \
   -v $(pwd)/otel-collector-config.yaml:/etc/otel/config.yaml:ro \
   -e DT_ENDPOINT=$DT_ENDPOINT \
   -e DT_API_TOKEN=$DT_API_TOKEN \
-  ghcr.io/observiq/bindplane-agent:1.106.0
+  ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
 ```
 
 **Windows CMD:**
@@ -146,10 +146,10 @@ docker run -d ^
   -v %cd%/otel-collector-config.yaml:/etc/otel/config.yaml:ro ^
   -e DT_ENDPOINT=%DT_ENDPOINT% ^
   -e DT_API_TOKEN=%DT_API_TOKEN% ^
-  ghcr.io/observiq/bindplane-agent:1.106.0
+  ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
 ```
 
-The BDOT image reads its config from `/etc/otel/config.yaml` by default in standalone mode, so no `--config` argument is needed.
+The DBDOT image reads its config from `/etc/otel/config.yaml` by default in standalone mode, so no `--config` argument is needed.
 
 What happens:
 - The collector listens on port `4318` for incoming OTLP/HTTP spans from the app.

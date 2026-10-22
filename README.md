@@ -6,7 +6,7 @@ This project demonstrates how to instrument AI agents with Dynatrace to gain obs
 
 By integrating Dynatrace with AI agents, developers can monitor agent execution, understand tool interactions, trace prompt and response flows, and analyze dependencies across distributed AI-driven systems.
 
-Telemetry can be shipped directly via OneAgent or the OpenTelemetry (OTel) SDK, or routed through an **OTel Collector** — including the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
+Telemetry can be shipped directly via OneAgent or the OpenTelemetry (OTel) SDK, or routed through an **OTel Collector** — including the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Dynatrace Bindplane Distribution of OpenTelemetry Collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector).
 
 ## Key Features
 
@@ -79,7 +79,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 | [vLLM](./vllm/openinference/) | `vllm` 0.31.0 <!-- renovate: datasource=pypi depName=vllm --> | — | [✓](./vllm/openinference/) | — |
 
 \* Experimental sensor — prompt input and output capture not yet supported.  
-<img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
+<img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Dynatrace Bindplane Distribution of OpenTelemetry Collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector).
 
 ### Agent Framework Demos
 
@@ -102,7 +102,7 @@ Monitor AI agent frameworks with Dynatrace.
 | [Pydantic AI](./pydantic-ai/opentelemetry/) | `pydantic-ai` 2.54.0 <!-- renovate: datasource=pypi depName=pydantic-ai --> | — | — | [✓](./pydantic-ai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Real User Monitoring](./rum/opentelemetry/) | — | — | — | [✓](./rum/opentelemetry/) |
 
-<img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Bindplane OP](https://github.com/observiq/bindplane-otel-collector).
+<img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Dynatrace Bindplane Distribution of OpenTelemetry Collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector).
 
 ### AI Coding Agent Demos
 

@@ -21,9 +21,9 @@
         "/(^|/)Makefile$/"
       ],
       "matchStrings": [
-        "ghcr\\.io/observiq/bindplane-agent:(?<currentValue>[^\\s]+)"
+        "ghcr\\.io/dynatrace/dynatrace-bindplane-otel-collector:(?<currentValue>[^\\s]+)"
       ],
-      "depNameTemplate": "ghcr.io/observiq/bindplane-agent",
+      "depNameTemplate": "ghcr.io/dynatrace/dynatrace-bindplane-otel-collector",
       "datasourceTemplate": "docker"
     },
     {
@@ -113,7 +113,7 @@
       "matchManagers": ["custom.regex"],
       "matchDepNames": [
         "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
-        "ghcr.io/observiq/bindplane-agent"
+        "ghcr.io/dynatrace/dynatrace-bindplane-otel-collector"
       ],
       "groupName": "collector image"
     },
