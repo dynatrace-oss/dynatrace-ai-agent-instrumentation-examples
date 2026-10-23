@@ -116,7 +116,7 @@ func startCLIApp(t *testing.T, appDir string) {
 }
 
 // startCLIAppWithTarget runs make install then starts make <target> in <repoRoot>/<appDir>.
-// Use when a non-default make target is needed (e.g. "run-openpipeline").
+// Use when a non-default make target is needed (e.g. "run-collector").
 func startCLIAppWithTarget(t *testing.T, appDir, target string) {
 	t.Helper()
 	dir := filepath.Join(repoRoot(), appDir)

@@ -129,7 +129,7 @@ Profile precedence:
 | `gen_ai.token.type` | AR-024 | recommended | cost_dashboard — splits cost lanes; values: `input`, `output`, `cache_read`, `cache_creation` |
 | `gen_ai.client.operation.duration` | AR-025 | required | latency_charts — p99 and mean latency (OTel histogram metric) |
 | `gen_ai.client.token.usage` | AR-044 | recommended | cost_dashboard — OTel counter metric; used as `timeseries sum(gen_ai.client.token.usage)` filtered by `gen_ai.token.type` dimension. Distinct from the span attributes AR-006/AR-007. Missing → all cost tiles show $0 silently. |
-| `gen_ai.invoke_agent.duration` | AR-054 | optional | _(no view yet)_ — agent invocation duration; OTel histogram in seconds. Derived from the `invoke_agent` span by a collector `span_metrics` connector or an OpenPipeline extractor; no library emits it under this name. |
+| `gen_ai.invoke_agent.duration` | AR-054 | optional | _(no view yet)_ — agent invocation duration; OTel histogram in seconds. Derived from the `invoke_agent` span by a collector `span_metrics` connector; no library emits it under this name. |
 | `gen_ai.execute_tool.duration` | AR-055 | optional | _(no view yet)_ — tool execution duration; derived from the `execute_tool` span the same two ways as AR-054. |
 | `gen_ai.invoke_workflow.duration` | AR-056 | optional | _(no view yet)_ — workflow run duration; only derivable where the framework opens a workflow span (of the AI-352 demos, only microsoft-agent-framework does). |
 

@@ -202,16 +202,9 @@ Two metrics from the GenAI semconv are deliberately **not** derived here:
 
 The per-invocation call counts (`gen_ai.invoke_agent.inference_calls` / `.tool_calls`) cannot be derived from spans at all; they need framework hooks in application code.
 
-Two export paths cover the derivation, and both produce the same metric names, units (seconds) and dimensions:
+`make run` starts a local OTel Collector ([`otel-collector-config.yaml`](./otel-collector-config.yaml)) in Docker on port 4318 and runs the backend exporting through it. The collector derives both durations (seconds, delta temporality) with `span_metrics` connectors and forwards everything to Dynatrace. The backend reports under the service name `rum/opentelemetry-collector`. Stop the collector with `make stop`.
 
-| Path | Command | How the durations are produced |
-|---|---|---|
-| Direct to Dynatrace (default) | `make run` | Deploy [`openpipeline-rum.yaml`](./openpipeline-rum.yaml) in your tenant (**Settings → OpenPipeline → Spans**) and route `service.name == "rum/opentelemetry"` to it |
-| Through a local collector | `make run-collector` | [`otel-collector-config.yaml`](./otel-collector-config.yaml) derives both with `span_metrics` connectors and forwards everything to Dynatrace |
-
-`make run-collector` reports under the distinct service name `rum/opentelemetry-collector` so the two paths can never double-count the same series; route only the direct-export service name to the OpenPipeline pipeline.
-
-The e2e suite covers the collector path only: `TestRUMOpenTelemetry` drives `make run-collector` and asserts token usage plus both durations. That single run exercises the same app, browser flow, spans and profile as a direct-export run, plus the derived metrics, so a second suite for `make run` would add nothing except a dependency on the tenant-side pipeline above being deployed.
+The e2e suite drives `make run` in `TestRUMOpenTelemetry` and asserts token usage plus both durations.
 
 Here is the AI Observability Explorer tab showing rum/opentelemetry service with 24 LLM requests and prompt trace list.
 <img src="./assets/ai-observability-prompt-trace-list.png" width="800" alt="AI Observability Explorer showing rum/opentelemetry service with 24 LLM requests and prompt trace list">
