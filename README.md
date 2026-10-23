@@ -67,7 +67,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 
 | Provider | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |----------|-------------|----------|---------------|---------------|
-| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.113 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.43.118 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Anthropic](./anthropic/oneagent/) | `anthropic` 1.12.1 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | — | — |
 | [Cohere](./cohere/oneagent/) | `cohere` 7.2.0 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) | — |
 | [Gemini](./gemini/openinference/) | `google-genai` 2.31.0 <!-- renovate: datasource=pypi depName=google-genai --> | — | [✓](./gemini/openinference/) | — |
@@ -87,7 +87,7 @@ Monitor AI agent frameworks with Dynatrace.
 
 | Framework | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |-----------|-------------|----------|---------------|---------------|
-| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.113 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
+| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.43.118 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
 | [AWS Strands Agents](./aws-strands/) | `strands-agents` 1.58.1 <!-- renovate: datasource=pypi depName=strands-agents --> | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [CrewAI](./crewai/) | `crewai` 1.15.28 <!-- renovate: datasource=pypi depName=crewai --> | — | [✓](./crewai/openinference/) | [✓](./crewai/opentelemetry/) |
 | [Google ADK](./google-adk/opentelemetry/) | `google-adk` 2.11.0 <!-- renovate: datasource=pypi depName=google-adk --> | — | [✓](./google-adk/openinference/) | [✓](./google-adk/opentelemetry/) / [✓ zero-code](./google-adk/zero-code/) |
