@@ -79,7 +79,7 @@ func StartCLI(dir string) (*App, error) {
 
 // StartCLIWithTarget runs "make -e <target>" in dir as a background process
 // without waiting for an HTTP readiness endpoint. Use this when a non-default
-// make target is needed (e.g. "run-openpipeline" instead of "run").
+// make target is needed (e.g. "run-collector" instead of "run").
 func StartCLIWithTarget(dir, target string) (*App, error) {
 	cmd := exec.Command("make", "-e", target)
 	cmd.Dir = dir

@@ -120,8 +120,6 @@ No ADK span satisfies both conditions, so **spans appear in Distributed Tracing 
 
 Verified against a tenant: the `generate_content` span alone carries the messages, model, token counts, `gen_ai.agent.name`, `gen_ai.conversation.id` and `gen_ai.system_instructions`, so removing `call_llm` from the gate loses nothing.
 
-In a Dynatrace-native deployment the same statements are an OpenPipeline processor behind a `gen_ai.operation.name == "generate_content"` matcher.
-
 Three things to know when reading this in Dynatrace:
 
 - ADK opens **two nested spans per LLM call** (`call_llm`, and a child `generate_content <model>`), both from `google/adk/telemetry/tracing.py`. This is ADK's own span model, not double instrumentation.
@@ -140,7 +138,7 @@ This works wherever you own the container command, which includes the Dockerfile
 
 That is defensible because the root agent invocation genuinely is the entry point of a remotely triggered operation. Promoting every internal span is not: it invents entry points for each nested LLM call and tool execution.
 
-None of this is reachable from environment variables; normalization has to happen in a collector or in OpenPipeline.
+None of this is reachable from environment variables; normalization has to happen in the collector.
 
 The config also derives the two spec-named agent metrics with `span_metrics` connectors: `gen_ai.invoke_agent.duration` and `gen_ai.execute_tool.duration`. ADK records equivalents under its own pre-semconv names (`gen_ai.agent.invocation.duration`, `gen_ai.tool.execution.duration`), which still flow through untouched; the connectors add the spec-named versions alongside them. Each connector reads a filtered branch carrying only its own span type, kept separate from the export pipeline so a filter can never drop a span from Distributed Tracing.
 
