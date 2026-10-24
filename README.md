@@ -95,7 +95,7 @@ Monitor AI agent frameworks with Dynatrace.
 | [LlamaIndex](./llamaindex/openinference/) | `llama-index-core` 0.14.25 <!-- renovate: datasource=pypi depName=llama-index-core --> | — | [✓](./llamaindex/openinference/) | — |
 | [LangGraph](./langgraph/) | `langgraph` 1.2.15 <!-- renovate: datasource=pypi depName=langgraph --> | [✓](./langgraph/oneagent/) | — | [✓ OpenAI](./langgraph/opentelemetry/openai/) / [✓ Bedrock](./langgraph/opentelemetry/bedrock/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [LiteLLM](./litellm/opentelemetry/) | `litellm` 1.104.1 <!-- renovate: datasource=pypi depName=litellm --> | — | — | [✓](./litellm/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
-| [MCP (Model Context Protocol)](mcp/opentelemetry/) | `@modelcontextprotocol/sdk` 1.24.0 <!-- renovate: datasource=npm depName=@modelcontextprotocol/sdk --> | — | — | [✓](mcp/opentelemetry/) |
+| [MCP (Model Context Protocol)](mcp/opentelemetry/) | `@modelcontextprotocol/sdk` 1.32.2 <!-- renovate: datasource=npm depName=@modelcontextprotocol/sdk --> | — | — | [✓](mcp/opentelemetry/) |
 | [Microsoft Agent Framework](./microsoft-agent-framework/opentelemetry/) | `agent-framework` 1.20.0 <!-- renovate: datasource=pypi depName=agent-framework --> | — | — | [✓](./microsoft-agent-framework/opentelemetry/) |
 | [OGX](./ogx/) | `ogx` 1.5.0 <!-- renovate: datasource=pypi depName=ogx --> | [✓](./ogx/oneagent/) | — | [✓](./ogx/opentelemetry/) |
 | [OpenAI Agents SDK](./openai-agents/opentelemetry/) | `openai-agents` 0.23.1 <!-- renovate: datasource=pypi depName=openai-agents --> | — | [✓](./openai-agents/openinference/) | [✓](./openai-agents/opentelemetry/) |
