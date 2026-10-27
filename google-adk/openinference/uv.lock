@@ -411,7 +411,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.140.1"
+version = "0.141.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -420,9 +420,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/04/90178464ab31cf2534ab6da71b72864b39360fa0b529854b6eb2515b3461/fastapi-0.140.1.tar.gz", hash = "sha256:8c10f75cf17c46f9d27c512a6f9bcc3643ffef2029a9ac956f8bf821ef47ceea", size = 421119, upload-time = "2026-07-27T12:07:52.666Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/02/91e3416a8fdd715abb903a952a6bec7cdd8d14eed55d415fc8595524c319/fastapi-0.141.1.tar.gz", hash = "sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1", size = 425799, upload-time = "2026-07-29T17:18:05.568Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/b6/aaa42a7793c87e434036801225c1ff135ec22ddfc4b945d46c6159faeff2/fastapi-0.140.1-py3-none-any.whl", hash = "sha256:1b4944b5ca29a67783d0edc42078c3edb4aaeb13faecc1a9c131de88458a59c8", size = 130909, upload-time = "2026-07-27T12:07:51.034Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/03/10388a42375ee7e4ac9b94eb2c5c569c8b5795e377e701c9ac3ad63de890/fastapi-0.141.1-py3-none-any.whl", hash = "sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3", size = 131954, upload-time = "2026-07-29T17:18:04.364Z" },
 ]
 
 [[package]]
@@ -477,9 +477,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = "==0.140.1" },
+    { name = "fastapi", specifier = "==0.141.1" },
     { name = "google-adk", specifier = "==2.12.0" },
-    { name = "openinference-instrumentation-google-adk", specifier = "==1.0.4" },
+    { name = "openinference-instrumentation-google-adk", specifier = "==1.0.5" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.42.1" },
     { name = "opentelemetry-sdk", specifier = "==1.42.1" },
     { name = "pydantic", specifier = "==2.14.1" },
@@ -652,7 +652,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-google-adk"
-version = "1.0.4"
+version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -663,9 +663,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/71/f821b7203de966bbc93f737b080ccd3664c0f22615296ddc950d2d0fcab1/openinference_instrumentation_google_adk-1.0.4.tar.gz", hash = "sha256:7bf35eb4912a71bc7a09c54b1450db95f2a71aaf57e98923c09e435fe090f8f1", size = 19122, upload-time = "2026-10-09T18:29:08.172Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/e6/57348d22a20914913ca55c68b8f0b033a31342f79392871f76b0f018a9f4/openinference_instrumentation_google_adk-1.0.5.tar.gz", hash = "sha256:ad5381b277f5394a0f6519565184d7965b1d25a2cda315283284dc1d92dce951", size = 19033, upload-time = "2026-10-23T20:49:49.455Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/c5/5237c43889f4057f127dad39ad2a7a9dc34c2217754b768009257f0d31a5/openinference_instrumentation_google_adk-1.0.4-py3-none-any.whl", hash = "sha256:27a78e6766772556f70be2e027d370cde24c565dca24ea84d3bafb9a0692efd6", size = 21361, upload-time = "2026-10-09T18:29:06.89Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/f3/fa81630ab3cef3ca13c891f82751bd325a508e0dfda3960f943e7c73e7b6/openinference_instrumentation_google_adk-1.0.5-py3-none-any.whl", hash = "sha256:5509293c42264813ebbcc46a619ccde74de8bcbb1424019e0423f8dc8473ef98", size = 21265, upload-time = "2026-10-23T20:49:48.175Z" },
 ]
 
 [[package]]
