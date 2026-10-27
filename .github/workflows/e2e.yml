@@ -674,3 +674,14 @@ jobs:
           CURRENT_ONEAGENT: ${{ needs.oneagent-nightly.result }}
           CURRENT_OTELCOL: ${{ needs.otelcol.result }}
         run: bash .github/scripts/notify-nightly.sh
+
+  # Stable check name for branch protection: the per-suite job names change with each PR's matrix.
+  result:
+    name: E2E / result
+    needs: [filter, oneagent, otelcol]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any e2e job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
