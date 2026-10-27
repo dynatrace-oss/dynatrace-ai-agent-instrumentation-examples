@@ -3,7 +3,7 @@ name = "aws-bedrock-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "boto3==1.43.113",
+    "boto3==1.43.119",
     "traceloop-sdk==0.62.4",
     "opentelemetry-instrumentation-bedrock==0.62.4",
     "opentelemetry-instrumentation-botocore==0.65b0",
