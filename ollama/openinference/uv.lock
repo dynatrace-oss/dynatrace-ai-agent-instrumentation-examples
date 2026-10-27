@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.11'",
@@ -224,7 +224,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -385,7 +385,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi" },
     { name = "ollama", specifier = "==0.6.3" },
-    { name = "openinference-instrumentation-ollama", specifier = "==0.1.12" },
+    { name = "openinference-instrumentation-ollama", specifier = "==0.1.13" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
     { name = "uvicorn", extras = ["standard"] },
@@ -408,7 +408,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-ollama"
-version = "0.1.12"
+version = "0.1.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -419,9 +419,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/66/216564d71459f585610e074d80d3352d744d863383de69658eec14b543a3/openinference_instrumentation_ollama-0.1.12.tar.gz", hash = "sha256:ba85ed8aa1241447f71c249bf50d4ae3c05ddaa04526da2a2b2ba54ddb669e5f", size = 15007, upload-time = "2026-10-09T18:29:01.53Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/64/1607f3d8b7eec85f022c484c667aa9c611e28c58478e304d45afbb87ec6e/openinference_instrumentation_ollama-0.1.13.tar.gz", hash = "sha256:9e88870acb5b63d2f0e782f5579e2d662952e196cfb3bedd106767a67e2b7eee", size = 14809, upload-time = "2026-10-23T20:49:54.007Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/f0/22c3bb8022d129b49c76695303340047620f98305d4c78488a9fd2a93930/openinference_instrumentation_ollama-0.1.12-py3-none-any.whl", hash = "sha256:a7081f41a677507f9ffcb2f311db1a01e5ab71c8da624b5049f170ce61023a81", size = 20094, upload-time = "2026-10-09T18:29:00.189Z" },
+    { url = "https://files.pythonhosted.org/packages/23/53/49e63e206eda7b07b3ce4d21be0306d23c9a27adae2815e0ebab28dac582/openinference_instrumentation_ollama-0.1.13-py3-none-any.whl", hash = "sha256:3557d242fc66476f0463134ec8dc8adc55301d4de04f6e2db4963c5b8f08b916", size = 19667, upload-time = "2026-10-23T20:49:52.782Z" },
 ]
 
 [[package]]
