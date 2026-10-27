@@ -18,8 +18,8 @@ OTEL_EXPORTER_OTLP_HEADERS                         ?= Authorization=Api-Token $(
 # collector's own egress settings, not the app's.
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT).
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
 override COLLECTOR_CONTAINER := otel-collector
 # Dynatrace OTLP metric ingest accepts delta temporality only (cumulative -> HTTP 400).
 OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE  ?= delta

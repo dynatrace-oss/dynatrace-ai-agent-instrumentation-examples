@@ -21,9 +21,9 @@
         "/(^|/)Makefile$/"
       ],
       "matchStrings": [
-        "ghcr\\.io/observiq/bindplane-agent:(?<currentValue>[^\\s]+)"
+        "ghcr\\.io/dynatrace/dynatrace-bindplane-otel-collector:(?<currentValue>[^\\s]+)"
       ],
-      "depNameTemplate": "ghcr.io/observiq/bindplane-agent",
+      "depNameTemplate": "ghcr.io/dynatrace/dynatrace-bindplane-otel-collector",
       "datasourceTemplate": "docker"
     },
     {
@@ -55,6 +55,13 @@
     "groupName": "lockfile refresh"
   },
   "packageRules": [
+    {
+      "description": "Automerge minor, patch, digest and pin updates once all PR checks (including e2e) pass; majors still need review. A grouped PR only automerges if every update in it qualifies, so a demo pin and its README table row always merge together.",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false
+    },
     {
       "matchUpdateTypes": ["major"],
       "prConcurrentLimit": 2,
@@ -106,7 +113,7 @@
       "matchManagers": ["custom.regex"],
       "matchDepNames": [
         "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
-        "ghcr.io/observiq/bindplane-agent"
+        "ghcr.io/dynatrace/dynatrace-bindplane-otel-collector"
       ],
       "groupName": "collector image"
     },
@@ -152,6 +159,7 @@
         "together",
         "mistralai",
         "ollama",
+        "ogx",
         "strands-agents",
         "crewai",
         "google-adk",
@@ -179,6 +187,7 @@
         "together",
         "mistralai",
         "ollama",
+        "ogx",
         "strands-agents",
         "crewai",
         "google-adk",

@@ -13,6 +13,9 @@ processors:
     trace_statements:
       - context: span
         statements:
+          # OpenInference guardrail spans carry an unnamespaced validator_name
+          - set(attributes["gen_ai.guardrail.name"], attributes["validator_name"]) where attributes["validator_name"] != nil
+          - delete_key(attributes, "validator_name") where attributes["gen_ai.guardrail.name"] != nil
           - delete_matching_keys(attributes, "^llm\\..*")
 
   # Keep only spans that represent an LLM call (gen_ai.request.model is emitted
@@ -50,8 +53,6 @@ connectors:
   # them with two sum defs sharing one metric name; the gen_ai.token.type dimension
   # is synthesized per direction via default_value (the span carries no such
   # attribute). signal_to_metrics emits delta per batch, which Dynatrace requires.
-  # (This is the collector-path equivalent of the OpenPipeline two-extractor
-  # pattern in openpipeline-openinference.yaml.)
   signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage

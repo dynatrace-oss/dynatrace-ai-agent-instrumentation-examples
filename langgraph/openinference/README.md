@@ -1,7 +1,7 @@
 # LangGraph + OpenInference + Dynatrace AI Observability
 
 Instrument a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with OpenInference and send traces to Dynatrace AI Observability.
-Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-langchain) to auto-instrument LangGraph, and a [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) with the `genainormalizer` processor to translate OpenInference attributes to Dynatrace `gen_ai.*` format.
+Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-langchain) to auto-instrument LangGraph, and a [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) with the `genainormalizer` processor to translate OpenInference attributes to Dynatrace `gen_ai.*` format.
 
 ---
 

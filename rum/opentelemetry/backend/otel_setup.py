@@ -11,18 +11,15 @@ def setup_otel(service_name: str = "rum-music-agent", exporter_wrapper=None):
     Returns (tracer_provider, meter_provider).
 
     Two export paths:
-      - Direct (`make run`, default): spans + metrics go straight to Dynatrace
-        OTLP. pydantic-ai emits gen_ai.client.token.usage natively, but neither
-        gen_ai.client.operation.duration nor gen_ai.invoke_agent.duration, so
-        those are backfilled tenant-side (openpipeline-rum.yaml).
-      - Collector (`make run-collector`): set OTEL_COLLECTOR_ENDPOINT (e.g.
-        http://localhost:4318) to route through the local OTel Collector, which
-        derives both durations from the spans (span_metrics) and forwards
-        everything to Dynatrace. The collector holds the DT token, so no
-        Authorization header is sent from the app.
+      - Collector (`make run`): OTEL_COLLECTOR_ENDPOINT (e.g.
+        http://localhost:4318) routes through the local OTel Collector, which
+        derives gen_ai.client.operation.duration and gen_ai.invoke_agent.duration
+        from the spans and forwards everything to Dynatrace. The collector holds
+        the DT token, so no Authorization header is sent from the app.
+      - Direct (fallback): spans + metrics go straight to Dynatrace OTLP. Only
+        the native gen_ai.client.token.usage metric is sent; no durations.
 
-    OTEL_SERVICE_NAME overrides service_name. The collector path must use a
-    distinct service name so the two paths never produce the same series twice.
+    OTEL_SERVICE_NAME overrides service_name.
     """
     service_name = os.environ.get("OTEL_SERVICE_NAME") or service_name
     collector_endpoint = os.environ.get("OTEL_COLLECTOR_ENDPOINT", "").rstrip("/")

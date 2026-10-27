@@ -81,8 +81,7 @@ connectors:
   # gen_ai.client.token.usage from the span token attributes with two sum defs
   # sharing one metric name; the gen_ai.token.type dimension is synthesized per
   # direction via default_value. signal_to_metrics emits delta per batch, which
-  # Dynatrace requires. Collector-path equivalent of the OpenPipeline
-  # two-extractor pattern.
+  # Dynatrace requires.
   signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage
