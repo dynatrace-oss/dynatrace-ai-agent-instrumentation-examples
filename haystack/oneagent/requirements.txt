@@ -1,3 +1,4 @@
 haystack-ai==3.3.0
+openai==3.26.0
 fastapi==0.156.4
 uvicorn==0.54.0
