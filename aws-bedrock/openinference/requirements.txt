@@ -1,6 +1,8 @@
 boto3==1.43.113
 
 # openinference
-openinference-instrumentation-bedrock
+openinference-instrumentation==0.1.71
+openinference-instrumentation-bedrock==0.1.60
+openinference-semantic-conventions==0.1.41
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http
