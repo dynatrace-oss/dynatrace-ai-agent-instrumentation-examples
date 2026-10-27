@@ -80,7 +80,7 @@ make install
 App (native gen_ai.* spans)  ->  Bindplane collector (metrics)  ->  Dynatrace Grail
 ```
 
-The app emits `gen_ai.*` spans natively and only sends to `http://localhost:4318`. The [Bindplane Distro for OpenTelemetry (BDOT)](https://github.com/observIQ/bindplane-otel-collector) collector does not normalize attributes; it forwards spans and derives the two metrics (see [`otel-collector-config.yaml`](otel-collector-config.yaml)). It also fills `gen_ai.response.model` from `gen_ai.request.model` when missing (see [Known gaps and limitations](#known-gaps-and-limitations)).
+The app emits `gen_ai.*` spans natively and only sends to `http://localhost:4318`. The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) does not normalize attributes; it forwards spans and derives the two metrics (see [`otel-collector-config.yaml`](otel-collector-config.yaml)). It also fills `gen_ai.response.model` from `gen_ai.request.model` when missing (see [Known gaps and limitations](#known-gaps-and-limitations)).
 
 ```bash
 make run    # starts the collector, then runs app.py once

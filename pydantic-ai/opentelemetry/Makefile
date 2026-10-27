@@ -7,13 +7,13 @@ PORT             ?= 8000
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.104.0 tracks OTel
-# contrib v0.156.0. Used only by `make run-collector` to derive
-# gen_ai.client.operation.duration from spans via the span_metrics connector.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). v1.1.2 tracks OTel
+# contrib v0.162.0. Derives gen_ai.client.operation.duration from spans via the
+# span_metrics connector.
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
 override COLLECTOR_CONTAINER := otel-collector
 
-.PHONY: install run run-collector build push request stop logs help
+.PHONY: install run build push request stop logs help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -21,10 +21,7 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Run the backend, exporting straight to Dynatrace [needs OpenPipeline for duration]
-	PYTHONPATH=backend uv run python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT)
-
-run-collector: ## Start the OTel Collector, then run the backend exporting through it
+run: ## Start the OTel Collector, then run the backend exporting through it
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	OTEL_COLLECTOR_ENDPOINT=http://localhost:4318 \
 	  PYTHONPATH=backend uv run python3 -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT)

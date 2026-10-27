@@ -21,9 +21,12 @@ processors:
           - set(attributes["gen_ai.input.messages"], attributes["gen_ai.prompt"]) where attributes["gen_ai.prompt"] != nil and attributes["gen_ai.input.messages"] == nil
           - set(attributes["gen_ai.output.messages"], attributes["gen_ai.completion"]) where attributes["gen_ai.completion"] != nil and attributes["gen_ai.output.messages"] == nil
           # Delete the legacy source attributes after the fallback remap so downstream
-          # (e.g. OpenPipeline) sees only the gen_ai.input.messages / gen_ai.output.messages names.
+          # sees only the gen_ai.input.messages / gen_ai.output.messages names.
           - delete_key(attributes, "gen_ai.prompt") where attributes["gen_ai.input.messages"] != nil
           - delete_key(attributes, "gen_ai.completion") where attributes["gen_ai.output.messages"] != nil
+          # Fallback for spans that carry the non-namespaced tool attributes.
+          - set(attributes["gen_ai.tool.name"], attributes["tool.name"]) where attributes["tool.name"] != nil and attributes["gen_ai.tool.name"] == nil
+          - set(attributes["gen_ai.tool.call.arguments"], attributes["tool.parameters"]) where attributes["tool.parameters"] != nil and attributes["gen_ai.tool.call.arguments"] == nil
           # Strands does not emit gen_ai.response.model; mirror the request model.
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
           # Rename legacy token attribute names to current OTel GenAI convention.
@@ -165,8 +168,7 @@ connectors:
   # gen_ai.token.type dimension is synthesized per direction via default_value.
   # signaltometrics emits delta per batch, which Dynatrace requires. This needs
   # the Bindplane collector (signaltometrics is not in the Dynatrace collector
-  # distro) — see the COLLECTOR_IMAGE in the Makefile. Collector-path equivalent
-  # of the OpenPipeline two-extractor pattern in openpipeline-strands.yaml.
+  # distro); see the COLLECTOR_IMAGE in the Makefile.
   signaltometrics:
     spans:
       - name: gen_ai.client.token.usage

@@ -187,6 +187,31 @@ jobs:
           path: test/e2e/reports/
           retention-days: 30
 
+      - name: Collect OneAgent logs
+        if: always()
+        run: |
+          # Copy before uninstall, which removes the agent's log directories.
+          dest="$RUNNER_TEMP/oneagent-logs"
+          mkdir -p "$dest"
+          for d in /var/log/dynatrace/oneagent /opt/dynatrace/oneagent/log; do
+            if [ -d "$d" ]; then sudo cp -r "$d" "$dest/$(echo "$d" | tr / _)"; fi
+          done
+          ctl=/opt/dynatrace/oneagent/agent/tools/oneagentctl
+          if [ -x "$ctl" ]; then
+            sudo "$ctl" --version > "$dest/oneagentctl.txt" 2>&1 || true
+            sudo "$ctl" --get-server --get-host-id >> "$dest/oneagentctl.txt" 2>&1 || true
+          fi
+          sudo chown -R "$(id -u):$(id -g)" "$dest"
+
+      - name: Upload OneAgent logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oneagent-logs-${{ matrix.name }}
+          path: ${{ runner.temp }}/oneagent-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Uninstall OneAgent
         if: always()
         run: |
@@ -440,6 +465,31 @@ jobs:
           path: test/e2e/reports/
           retention-days: 30
 
+      - name: Collect OneAgent logs
+        if: always()
+        run: |
+          # Copy before uninstall, which removes the agent's log directories.
+          dest="$RUNNER_TEMP/oneagent-logs"
+          mkdir -p "$dest"
+          for d in /var/log/dynatrace/oneagent /opt/dynatrace/oneagent/log; do
+            if [ -d "$d" ]; then sudo cp -r "$d" "$dest/$(echo "$d" | tr / _)"; fi
+          done
+          ctl=/opt/dynatrace/oneagent/agent/tools/oneagentctl
+          if [ -x "$ctl" ]; then
+            sudo "$ctl" --version > "$dest/oneagentctl.txt" 2>&1 || true
+            sudo "$ctl" --get-server --get-host-id >> "$dest/oneagentctl.txt" 2>&1 || true
+          fi
+          sudo chown -R "$(id -u):$(id -g)" "$dest"
+
+      - name: Upload OneAgent logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oneagent-logs-nightly
+          path: ${{ runner.temp }}/oneagent-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Uninstall OneAgent
         if: always()
         run: |
@@ -495,7 +545,7 @@ jobs:
         if: ${{ matrix.needs_node || matrix.node_version != '' }}
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: ${{ matrix.node_version || '22' }}
+          node-version: ${{ matrix.node_version || '24.22.1' }}
 
       - name: Set up Google credentials
         if: matrix.needs_google

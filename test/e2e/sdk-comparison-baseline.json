@@ -1,10 +1,11 @@
 {
-  "version": "1.7.0",
+  "version": "1.7.1",
   "scope": "current-state",
-  "date": "2026-10-15",
+  "date": "2026-10-23",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.7.1 (2026-10-23): Drop the OpenPipeline derivation path from the AR-054 note; demos derive agent duration metrics on the collector path only.",
     "1.7.0 (2026-10-15): Add gen_ai.operation.kind (AR-066). The AI guardrail coverage dashboard counts a span with gen_ai.operation.kind == \"guardrail\" as a custom guardrail (\"Custom / Other\" provider). Optional: no demo SDK emits it today.",
     "1.6.0 (2026-09-23): Add OneAgent Azure-OpenAI guardrail attributes (AR-062..AR-065) in a new guardrails-azure-oneagent group, backing the oneagent-openai-guardrail profile in the e2e audit fixture. OneAgent's Python OpenAI sensor derives guardrail signals from Azure content-filter payloads into its own gen_ai.guardrail.* namespace; it emits neither the Bedrock-scoped gen_ai.bedrock.guardrail.* attributes (AR-017..AR-019) nor the raw prompt_filter_results/content_filter_results blobs (AR-015/AR-016) the OTel path carries (AI-497). gen_ai.guardrail.input.content (AR-058) now spans both the bedrock and azure OneAgent groups: same attribute, different provider payload. Added input/output content to equivalents_any_of because a single request trips one side or the other, never reliably both.",
     "1.5.0 (2026-08-25): Add OneAgent-specific Bedrock guardrail attributes (AR-057..AR-061) in a new guardrails-bedrock-oneagent group. OneAgent emits these under different names than the OTel SDK path; gen_ai.guardrail.id (AR-050) and gen_ai.guardrail.version (AR-051) are shared. Updated OneAgentGuardrailProfile in the e2e audit fixture.",
@@ -1130,7 +1131,7 @@
       "owned_by": "collector_processor",
       "used_by": [],
       "dimensions": ["gen_ai.agent.name", "gen_ai.operation.name"],
-      "note": "Duration of one GenAI agent invocation. Histogram, seconds, Development stability in the GenAI metrics semconv. No instrumentation library emits it under this name, so demos derive it from the invoke_agent span: a span_metrics connector on the collector path, a samplingAwareHistogramMetric extractor on the OpenPipeline path. used_by is empty on purpose — no AI Observability view consumes it yet, so it is coverage tracking, not a dashboard dependency, and must not gate a profile."
+      "note": "Duration of one GenAI agent invocation. Histogram, seconds, Development stability in the GenAI metrics semconv. No instrumentation library emits it under this name, so demos derive it from the invoke_agent span with a span_metrics connector on the collector path. used_by is empty on purpose — no AI Observability view consumes it yet, so it is coverage tracking, not a dashboard dependency, and must not gate a profile."
     },
     {
       "name": "gen_ai.execute_tool.duration",

@@ -76,13 +76,13 @@ make install
 
 ## Run with the Bindplane collector
 
-The [Bindplane Distro for OpenTelemetry (BDOT)](https://github.com/observIQ/bindplane-otel-collector) collector forwards spans unchanged to Dynatrace and derives `gen_ai.client.*` metrics from them. No Dynatrace configuration needed.
+The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) forwards spans unchanged to Dynatrace and derives `gen_ai.client.*` metrics from them. No Dynatrace configuration needed.
 
 ```
 App  ->  Bindplane collector (metric derivation)  ->  Dynatrace Grail
 ```
 
-This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.109.0`. The pin means a future version bump surfaces regressions in the e2e test.
+This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`. The pin means a future version bump surfaces regressions in the e2e test.
 
 The app knows only about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
 

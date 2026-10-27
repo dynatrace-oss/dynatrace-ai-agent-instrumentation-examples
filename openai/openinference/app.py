@@ -20,9 +20,6 @@ MODEL: str = os.environ.get("MODEL", "gpt-4o")
 os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
 
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
-# For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
-#                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
     {service_attributes.SERVICE_NAME: "openinference"}))

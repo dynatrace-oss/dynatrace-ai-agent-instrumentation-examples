@@ -20,9 +20,6 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.semconv.attributes import service_attributes
 
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
-# For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
-#                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(
     detectors=detectors,

@@ -5,7 +5,7 @@
 Instrument an [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) multi-agent app with OpenInference and send traces to Dynatrace AI Observability.
 This is the same airline customer-service app as [`openai-agents/opentelemetry`](../opentelemetry/) (triage, FAQ, seat booking, flight status, and cancellation agents with tools, handoffs, and input guardrails), instrumented with [`openinference-instrumentation-openai-agents`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-openai-agents) instead of Traceloop.
 This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` (set in `api.py`), so OpenInference emits `gen_ai.*` attributes natively and no downstream attribute normalization is needed.
-A [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) is still used to derive metrics, because OpenInference instrumentors are span-only.
+A [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) is still used to derive metrics, because OpenInference instrumentors are span-only.
 
 ## What you'll build
 

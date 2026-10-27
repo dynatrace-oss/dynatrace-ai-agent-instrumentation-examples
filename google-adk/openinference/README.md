@@ -3,7 +3,7 @@
 ![AI Observability -- google-adk/openinference service explorer](assets/google-adk-openinference-explorer.png)
 
 Instrument a [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/) agent that runs on Gemini with OpenInference, and send traces to Dynatrace AI Observability.
-Uses [`openinference-instrumentation-google-adk`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-google-adk) to auto-instrument ADK, and a [Bindplane OTel collector](https://github.com/observIQ/bindplane-agent) to derive metrics.
+Uses [`openinference-instrumentation-google-adk`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-google-adk) to auto-instrument ADK, and a [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) to derive metrics.
 
 This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits `gen_ai.*` attributes natively. No OpenInference to `gen_ai.*` normalization is needed downstream. The collector is still used to derive metrics, because OpenInference instrumentors are span-only.
 

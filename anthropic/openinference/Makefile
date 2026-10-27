@@ -12,13 +12,13 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. Same pin as openai/openinference —
-# tracks OTel contrib v0.157.0 and bundles genainormalizerprocessor + signal_to_metrics
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). Same pin as openai/openinference —
+# tracks OTel contrib v0.162.0 and bundles genainormalizerprocessor + signal_to_metrics
 # connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.109.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
 override COLLECTOR_CONTAINER := bindplane-otel-collector-anthropic
 
-.PHONY: run run-openpipeline build push request stop logs install help
+.PHONY: run build push request stop logs install help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -29,7 +29,7 @@ install: ## Install Python dependencies
 # ---------------------------------------------------------------------------
 # run: Bindplane collector normalizes OpenInference -> gen_ai.* locally
 # ---------------------------------------------------------------------------
-run: ## Start Bindplane collector (genainormalizer) + app  [no OpenPipeline needed]
+run: ## Start Bindplane collector (genainormalizer) + app
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@echo "Waiting for collector port to be ready..."
 	@sleep 3
@@ -39,15 +39,6 @@ run: ## Start Bindplane collector (genainormalizer) + app  [no OpenPipeline need
 	@echo "Collector port is responding"
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
-	  uv run python3 app.py
-
-# ---------------------------------------------------------------------------
-# run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
-# Deploy first: see "Option B -- Dynatrace OpenPipeline" in README.md
-# ---------------------------------------------------------------------------
-run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
-	@OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
-	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
 	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------

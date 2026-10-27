@@ -8,28 +8,16 @@ import (
 )
 
 func TestRUMOpenTelemetry(t *testing.T) {
-	// One test for this demo, on the collector path only.
+	// `make run` routes the backend through a local OTel Collector, which derives
+	// gen_ai.client.operation.duration from the pydantic-ai model-call span (the only
+	// span carrying gen_ai.response.model) and gen_ai.invoke_agent.duration from its
+	// agent-run span (gen_ai.operation.name == "invoke_agent") via two span_metrics
+	// connectors.
 	//
-	// `make run-collector` routes the backend through a local OTel Collector, which
-	// derives gen_ai.client.operation.duration from the pydantic-ai model-call span
-	// (the only span carrying gen_ai.response.model) and gen_ai.invoke_agent.duration
-	// from its agent-run span (gen_ai.operation.name == "invoke_agent", set natively)
-	// via two span_metrics connectors. Everything still reaches Dynatrace, so this run
-	// exercises the same app, the same browser flow, the same spans and the same
-	// profile as a direct-export run, plus the two derived metrics.
-	//
-	// A direct-export run is deliberately NOT tested. On that path the durations come
-	// from openpipeline-rum.yaml, a tenant-side config that a checkout cannot bring
-	// into existence, so the assertion would fail wherever the pipeline has not been
-	// deployed while telling us nothing the collector run does not already cover.
-	// (If the pipeline is ever deployed to the e2e tenant, add a second
-	// `-openpipeline` suite for it, as aws-strands does, rather than reinstating a
-	// direct run here.)
-	//
-	// The collector run reports under rum/opentelemetry-collector, set by the Makefile
-	// recipe. The RUM-to-backend correlation is unaffected: the browser links to the
-	// backend through the W3C traceparent header, not through service.name.
-	startAppWithTarget(t, "rum/opentelemetry", "run-collector")
+	// The run reports under rum/opentelemetry-collector, set by the Makefile recipe.
+	// The RUM-to-backend correlation is unaffected: the browser links to the backend
+	// through the W3C traceparent header, not through service.name.
+	startAppWithTarget(t, "rum/opentelemetry", "run")
 
 	driveRUMBrowserSession(t)
 

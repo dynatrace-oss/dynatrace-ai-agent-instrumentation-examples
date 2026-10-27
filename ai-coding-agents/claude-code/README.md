@@ -7,7 +7,7 @@ The integration provides:
 - Claude Code metrics and log events
 - Distributed traces for interactions, model requests, and tool executions
 - GenAI semantic-convention enrichment for Dynatrace AI Observability
-- Direct Dynatrace ingest through OpenPipeline, or enrichment through an OpenTelemetry Collector
+- GenAI enrichment through an OpenTelemetry Collector
 
 No application-code changes are required.
 
@@ -188,7 +188,7 @@ Run one deterministic headless Claude Code interaction and send telemetry direct
 make run
 ```
 
-For the full AI Observability experience, configure the provided OpenPipeline enrichment before using direct ingest.
+Direct ingest sends Claude Code's native telemetry without GenAI enrichment. For the full AI Observability experience, use the Collector instead.
 
 ### Collector enrichment
 
@@ -254,27 +254,13 @@ A healthy model request has:
 | `claude_code.tool_result` | Tool execution result, duration, and decision |
 | `claude_code.tool_decision` | Tool accept or reject decision |
 
-The assistant-response event is a log record, not a span attribute. The Collector and OpenPipeline mappings do not synthesize `gen_ai.output.messages` from this event.
+The assistant-response event is a log record, not a span attribute. The Collector mappings add `gen_ai.output.messages` and `gen_ai.response.id` to this log event, which makes the response queryable and joinable to its `claude_code.llm_request` span. They cannot move it onto the span.
 
 ## Dynatrace AI Observability enrichment
 
 The Dynatrace AI Observability app is span-driven and expects OpenTelemetry GenAI semantic-convention attributes.
 
-Claude Code emits native tracing spans, but additional mappings are needed for the complete Dynatrace experience. This repository provides two equivalent enrichment paths.
-
-### OpenPipeline enrichment
-
-Use [`openpipeline/`](./openpipeline/) when Claude Code sends OTLP telemetry directly to Dynatrace.
-
-OpenPipeline enriches the spans at ingest. See [`openpipeline/README.md`](./openpipeline/README.md) for configuration and safe routing instructions.
-
-### Collector enrichment
-
-Use [`collector/`](./collector/) when Claude Code sends telemetry through the provided OpenTelemetry Collector.
-
-The Collector applies the same mappings in transit using OTTL. See [`collector/README.md`](./collector/README.md).
-
-Use one enrichment path. Applying both is redundant.
+Claude Code emits native tracing spans, but additional mappings are needed for the complete Dynatrace experience. The provided [OpenTelemetry Collector](./collector/) applies the span and log mappings in transit using OTTL, and derives the GenAI metrics with the `signal_to_metrics` connector. See [`collector/README.md`](./collector/README.md).
 
 ### Mappings
 
@@ -283,6 +269,7 @@ Use one enrichment path. Applying both is redundant.
 | `claude_code.interaction` | `invoke_agent` | Provider, agent identity, conversation ID, and `gen_ai.input.messages` when prompt capture is enabled |
 | `claude_code.llm_request` | `chat` | Provider, request/response model, response ID, token usage, and conversation ID |
 | `claude_code.tool` | `execute_tool` | Provider, tool name, and conversation ID |
+| `claude_code.tool.execution`, `claude_code.tool.blocked_on_user` | none (sub-phases of the tool call) | Provider, conversation ID, and `error.type` from `error_class` |
 
 The enrichment does not create or modify trace IDs, span IDs, or parent-child relationships. Claude Code must emit the hierarchy correctly.
 
@@ -351,7 +338,7 @@ Assistant response text is exported as a log event when response capture is enab
 ```dql
 fetch logs, from: now()-30m
 | filter service.name == "claude-code"
-| filter event.name == "claude_code.assistant_response"
+| filter event.name == "assistant_response"
 | fields
     timestamp,
     event.name,
@@ -417,7 +404,7 @@ llm_request.span.parent_id == interaction.span.id
 llm_request.llm_request.context == "interaction"
 ```
 
-A Collector or OpenPipeline attribute transform cannot repair a broken span hierarchy.
+A Collector attribute transform cannot repair a broken span hierarchy.
 
 ### Assistant response is empty
 
@@ -432,7 +419,9 @@ Set:
 OTEL_LOG_ASSISTANT_RESPONSES=1
 ```
 
-Then query `claude_code.assistant_response` log events. The text is not stored on the `claude_code.llm_request` span.
+Then query the assistant response log events. The text is not stored on the `claude_code.llm_request` span.
+
+Filter on `event.name == "assistant_response"`. The prefixed form `claude_code.assistant_response` appears in `content`, not in `event.name`, so filtering `event.name` on the prefixed value returns nothing.
 
 ### Prompt content is empty
 

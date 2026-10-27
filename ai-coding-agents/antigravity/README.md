@@ -90,7 +90,7 @@ The SDK emits no metrics, so [`collector.yaml`](./collector.yaml) derives all fo
 
 One caveat worth knowing before you read the latency charts: `gen_ai.client.operation.duration` is derived from the agent turn, not from a single Gemini request, because the SDK opens no span around the client call. It therefore measures a whole turn (several model invocations plus tool execution). The turn is the narrowest boundary the SDK exposes, and the alternative is empty latency charts.
 
-This example pins the collector to `ghcr.io/observiq/bindplane-agent:1.107.0`. The pin means a future version bump surfaces normalization changes in the e2e test.
+This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`. The pin means a future version bump surfaces normalization changes in the e2e test.
 
 ## How to use
 

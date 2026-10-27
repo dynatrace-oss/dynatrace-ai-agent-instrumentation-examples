@@ -7,18 +7,15 @@ PORT             ?= 8000
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
-# Dynatrace Distro for OpenTelemetry Collector. Used only by `make run-collector`
-# to derive gen_ai.client.operation.duration and gen_ai.invoke_agent.duration from
-# spans via the span_metrics connector. Pinned so a version bump is a visible diff.
+# Dynatrace Distro for OpenTelemetry Collector. Derives gen_ai.client.operation.duration
+# and gen_ai.invoke_agent.duration from spans via the span_metrics connector. Pinned so a version bump is a visible diff.
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.57.0
 override COLLECTOR_CONTAINER := rum-otel-collector
 
-# The collector run must report under a DIFFERENT service.name than the direct
-# export run: otherwise the collector-derived durations and the OpenPipeline-derived
-# durations land on the same series and double-count.
+# Service name the backend reports under (the e2e test filters on it).
 COLLECTOR_SERVICE_NAME ?= rum/opentelemetry-collector
 
-.PHONY: install run run-collector stop build push request demo logs help
+.PHONY: install run stop build push request demo logs help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -26,10 +23,7 @@ help: ## Show available targets
 install: ## Install Python dependencies for backend
 	uv sync
 
-run: ## Run the backend on port $(PORT), exporting straight to Dynatrace [needs OpenPipeline for the duration metrics]
-	cd backend && uv run python3 -m uvicorn main:app --host 0.0.0.0 --port $(PORT)
-
-run-collector: ## Start the OTel Collector, then run the backend exporting through it (derives the duration metrics locally)
+run: ## Start the OTel Collector, then run the backend on port $(PORT) exporting through it
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	cd backend && OTEL_COLLECTOR_ENDPOINT=http://localhost:4318 \
 	  OTEL_SERVICE_NAME=$(COLLECTOR_SERVICE_NAME) \
