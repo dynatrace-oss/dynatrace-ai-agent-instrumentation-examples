@@ -1,12 +1,9 @@
-# OpenTelemetry Collector configuration — Claude Code → Dynatrace with GenAI
-# semconv enrichment done IN TRANSIT (collector-side).
+# OpenTelemetry Collector configuration: Claude Code to Dynatrace, with GenAI
+# semconv enrichment applied in transit.
 #
-# This is the collector equivalent of the ../openpipeline/ configuration:
-#   - the span mappings of spans-pipeline.json, as OTTL transform statements
-#   - the GenAI metrics of its metricExtraction stage, via the signal_to_metrics connector
-#   - the log mappings of logs-pipeline.json, as OTTL transform statements
-# Use ONE of the two — applying both is harmless for spans and logs (same
-# values) but double-counts the extracted metrics.
+#   - span mappings as OTTL transform statements
+#   - GenAI metrics derived from the enriched spans via signal_to_metrics
+#   - log mappings as OTTL transform statements
 #
 # Run:  otelcol-contrib --config config.yaml
 #       (`transform` and `signal_to_metrics` require the contrib distribution)
@@ -42,8 +39,7 @@ processors:
           - set(attributes["gen_ai.usage.input_tokens"], Int(attributes["input_tokens"])) where attributes["input_tokens"] != nil
           - set(attributes["gen_ai.response.id"], attributes["request_id"]) where attributes["request_id"] != nil
           - set(attributes["gen_ai.usage.output_tokens"], Int(attributes["output_tokens"])) where attributes["output_tokens"] != nil
-          # Mirrors the OpenPipeline coalesce(…, 0) sum: a missing side counts as zero
-          # (when both sides are missing, no attribute is written rather than 0).
+          # Written only when both token counts are present.
           - set(attributes["gen_ai.usage.total_tokens"], Int(attributes["input_tokens"]) + Int(attributes["output_tokens"])) where attributes["input_tokens"] != nil and attributes["output_tokens"] != nil
           - set(attributes["gen_ai.usage.total_tokens"], Int(attributes["input_tokens"])) where attributes["input_tokens"] != nil and attributes["output_tokens"] == nil
           - set(attributes["gen_ai.usage.total_tokens"], Int(attributes["output_tokens"])) where attributes["output_tokens"] != nil and attributes["input_tokens"] == nil
@@ -64,7 +60,7 @@ processors:
           - set(attributes["gen_ai.agent.id"], "claude-code")
           - set(attributes["gen_ai.conversation.id"], attributes["session.id"]) where attributes["session.id"] != nil
           # Build the semconv messages array from the raw user_prompt attribute.
-          # Same escaping order as the OpenPipeline DQL: backslash → quote → newline.
+          # Escape order: backslash, then quote, then newline.
           - set(attributes["tmp_prompt"], attributes["user_prompt"]) where attributes["user_prompt"] != nil
           - replace_pattern(attributes["tmp_prompt"], "\\\\", "\\\\") where attributes["tmp_prompt"] != nil
           - replace_pattern(attributes["tmp_prompt"], "\"", "\\\"") where attributes["tmp_prompt"] != nil
@@ -146,9 +142,9 @@ connectors:
   # Constant dimensions use `default_value` on a key the span does not carry
   # (gen_ai.token.type, and gen_ai.operation.name on tool.execution spans).
   #
-  # Both token conventions are emitted, as in the OpenPipeline variant: the
+  # Both token conventions are emitted: the
   # legacy gen_ai.client.token.usage keyed by gen_ai.token.type (still what the
-  # app reads — remove these four once it reads the current names), and the
+  # app reads; remove these four once it reads the current names), and the
   # current spec's one counter per token kind.
   signal_to_metrics:
     spans:

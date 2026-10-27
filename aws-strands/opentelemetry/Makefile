@@ -19,7 +19,7 @@ APPT_OTEL_ENDPOINT   ?= http://localhost:4318
 APPT_OTEL_HEADERS    ?=
 APPT_SERVICE_NAME    ?= aws-strands/appointments-service
 
-.PHONY: install run run-openpipeline build push request stop logs help _appointments _collector
+.PHONY: install run build push request stop logs help _appointments _collector
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -31,15 +31,6 @@ run: ## Start collector + appointments service + run the Strands agent demo
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@$(MAKE) _appointments
 	uv run python3 main.py
-
-run-openpipeline: ## Run app directly to Dynatrace (no collector) [requires OpenPipeline deployed]
-	@$(MAKE) _appointments \
-	  APPT_OTEL_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
-	  APPT_OTEL_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)"
-	@OTEL_SERVICE_NAME=aws-strands/opentelemetry-openpipeline \
-	  OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
-	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
-	  uv run python3 main.py
 
 build: ## Not applicable — no container defined for this demo
 	@echo "build: no Dockerfile for this demo"

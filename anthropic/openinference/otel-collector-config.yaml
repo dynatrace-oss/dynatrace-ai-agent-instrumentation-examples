@@ -27,6 +27,9 @@ processors:
           - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil
           - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["temperature"]) where attributes["temp.invocation_params"]["temperature"] != nil
           - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
+          # OpenInference guardrail spans carry an unnamespaced validator_name
+          - set(attributes["gen_ai.guardrail.name"], attributes["validator_name"]) where attributes["validator_name"] != nil
+          - delete_key(attributes, "validator_name") where attributes["gen_ai.guardrail.name"] != nil
 
   # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
   # emit gen_ai.response.model (OpenInference has no separate response-model
@@ -100,8 +103,6 @@ connectors:
   # them with two sum defs sharing one metric name; the gen_ai.token.type dimension
   # is synthesized per direction via default_value (the span carries no such
   # attribute). signal_to_metrics emits delta per batch, which Dynatrace requires.
-  # (This is the collector-path equivalent of the OpenPipeline two-extractor
-  # pattern in openpipeline-openinference.yaml.)
   signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage

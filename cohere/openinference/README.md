@@ -1,17 +1,15 @@
 # Cohere + OpenInference Demo
 
 Demonstrates tracing Cohere v2 chat API calls with Dynatrace via OpenInference instrumentation (`CohereInstrumentor`).
-This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits `gen_ai.*` attributes directly on spans (alongside `llm.*` / `openinference.*`). No collector/OpenPipeline attribute normalization is required.
+This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits `gen_ai.*` attributes directly on spans (alongside `llm.*` / `openinference.*`). No attribute normalization is required. The collector only derives metrics.
 
 ---
 
 ## Table of contents
 
 - [Prerequisites](#prerequisites)
-- [Configuration options](#configuration-options)
 - [Setup](#setup)
-- [Option A -- Bindplane collector for metrics](#option-a----bindplane-collector-for-metrics)
-- [Option B -- Dynatrace OpenPipeline](#option-b----dynatrace-openpipeline)
+- [Run with the Bindplane collector](#run-with-the-bindplane-collector)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
 - [Attribute mapping reference](#attribute-mapping-reference)
 - [Metrics](#metrics)
@@ -24,24 +22,9 @@ This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- Docker installed and running (Option A only)
+- Docker installed and running
 - A Cohere API key (`COHERE_API_KEY`)
 - Dynatrace tenant with an API token scoped to `openTelemetryTrace.ingest`
-
----
-
-## Configuration options
-
-Both options now pass native `gen_ai.*` spans through unchanged. They differ only in where the two required GenAI metrics are derived (`gen_ai.client.operation.duration`, `gen_ai.client.token.usage`), because OpenInference is span-only and emits no metric instruments.
-
-|  | Option A -- Bindplane collector | Option B -- OpenPipeline |
-|---|---|---|
-| **Where metrics are derived** | In the collector process via `span_metrics` / `signal_to_metrics` | Server-side in your Dynatrace tenant |
-| **Requires Docker** | Yes | No |
-| **Requires Dynatrace config** | No | Yes -- one-time deploy |
-| **Make target** | `make run` | `make run-openpipeline` (deploy once first) |
-
-Both paths surface the request in AI Observability with model, token usage, and message content.
 
 ---
 
@@ -74,7 +57,7 @@ make install
 
 ---
 
-## Option A -- Bindplane collector for metrics
+## Run with the Bindplane collector
 
 Collector mode keeps spans untouched and derives only metrics.
 
@@ -103,41 +86,10 @@ make stop
 
 ---
 
-## Option B -- Dynatrace OpenPipeline
-
-OpenPipeline mode also skips attribute mapping and only derives metrics server-side.
-
-```text
-App (native gen_ai.* spans) -> Dynatrace OpenPipeline (metrics derivation) -> Dynatrace
-```
-
-### Step 1 -- Deploy OpenPipeline configuration
-
-1. In Dynatrace press `Ctrl+K` and search for **OpenPipeline**.
-2. Select **Spans**.
-3. Add a pipeline `cohere-openinference-ai-spans` with processors from [`openpipeline-openinference.yaml`](openpipeline-openinference.yaml).
-4. Add routing:
-   - Matcher: `isNotNull(openinference.span.kind) AND service.name == "cohere/openinference-openpipeline"`
-   - Pipeline: `cohere-openinference-ai-spans`
-
-### Step 2 -- Run the app
-
-```bash
-make run-openpipeline
-```
-
-Then trigger a request:
-
-```bash
-make request
-```
-
----
-
 ## Visualize in Dynatrace AI Observability
 
 1. Open **AI Observability** in Dynatrace.
-2. Find service `cohere/openinference` (collector path) or `cohere/openinference-openpipeline` (OpenPipeline path).
+2. Find service `cohere/openinference`.
 3. Open a prompt trace to inspect input/output, model, and token usage.
 
 ---
@@ -150,7 +102,7 @@ No mapping table is needed now: `CohereInstrumentor` emits `gen_ai.*` natively w
 
 ## Metrics
 
-OpenInference still emits no metric instruments, so both options derive:
+OpenInference still emits no metric instruments, so the collector derives:
 
 - `gen_ai.client.operation.duration` (seconds)
 - `gen_ai.client.token.usage` (`gen_ai.token.type` = `input` / `output`)
@@ -163,7 +115,7 @@ Both rely on native `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` o
 
 ### `OPENINFERENCE_ENABLE_GENAI_SEMCONV` depends on OpenInference package behavior
 
-This demo relies on OpenInference core behavior used by `openinference-instrumentation-cohere`. If upstream behavior changes, collector/OpenPipeline configs may need revisiting.
+This demo relies on OpenInference core behavior used by `openinference-instrumentation-cohere`. If upstream behavior changes, the collector config may need revisiting.
 
 ### Prompt caching attributes
 
@@ -177,10 +129,9 @@ Prompt caching attributes (`gen_ai.prompt_caching` / `gen_ai.cache.type`) are no
 - Verify `DT_ENDPOINT` and `DT_API_TOKEN`.
 - Verify token scope `openTelemetryTrace.ingest`.
 
-**Collector issues (Option A)**
+**Collector issues**
 - Check logs: `make logs`
 - Confirm Docker is running and `4318` is free.
 
 **Spans in Distributed Tracing but not AI Observability**
 - Confirm spans include `gen_ai.provider.name` and `gen_ai.request.model`.
-- For Option B, verify OpenPipeline routing is enabled for `service.name == "cohere/openinference-openpipeline"`.
