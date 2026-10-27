@@ -495,7 +495,7 @@ jobs:
         if: ${{ matrix.needs_node || matrix.node_version != '' }}
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: ${{ matrix.node_version || '22' }}
+          node-version: ${{ matrix.node_version || '24.22.1' }}
 
       - name: Set up Google credentials
         if: matrix.needs_google
