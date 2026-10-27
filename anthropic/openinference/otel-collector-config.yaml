@@ -5,71 +5,21 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool,
-  # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* into gen_ai.input.messages. remove_originals is off
-  # here (unlike openai/openinference) because transform/fix_output_messages
-  # below needs the raw llm.output_messages.* attributes still present after
-  # this runs; transform/cleanup_raw_attrs strips them at the end of the
-  # pipeline instead so the exported spans still end up gen_ai.*-only.
-  gen_ai_normalizer:
-    sources:
-      - name: openinference
-        remove_originals: false
-
-  # Reads llm.* attributes before gen_ai_normalizer deletes them
-  transform/pre_normalize:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - set(attributes["temp.invocation_params"], ParseJSON(attributes["llm.invocation_parameters"])) where attributes["llm.invocation_parameters"] != nil
-          - set(attributes["gen_ai.request.temperature"], attributes["temp.invocation_params"]["temperature"]) where attributes["temp.invocation_params"]["temperature"] != nil
-          - delete_key(attributes, "temp.invocation_params") where attributes["temp.invocation_params"] != nil
-          # OpenInference guardrail spans carry an unnamespaced validator_name
-          - set(attributes["gen_ai.guardrail.name"], attributes["validator_name"]) where attributes["validator_name"] != nil
-          - delete_key(attributes, "validator_name") where attributes["gen_ai.guardrail.name"] != nil
-
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
-  transform/response_model:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
-
-  # gen_ai_normalizer reconstructs gen_ai.output.messages with empty `parts`
-  # for Anthropic responses: OpenInference always nests a single text reply
-  # under llm.output_messages.0.message.contents.0.message_content.* (a
-  # content-block array), never the flat .message.content string it uses for
-  # input messages, and the normalizer's output-message path only handles the
-  # flat shape. Rebuild it by hand from the raw attribute for the single
-  # text-block case this demo produces; a response with multiple content
-  # blocks or a tool call needs a corresponding statement added here, and
-  # would otherwise keep the normalizer's empty-parts version.
-  transform/fix_output_messages:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - 'set(attributes["gen_ai.output.messages"], [{"role": attributes["llm.output_messages.0.message.role"], "parts": [{"type": "text", "content": attributes["llm.output_messages.0.message.contents.0.message_content.text"]}], "finish_reason": attributes["llm.finish_reason"]}]) where attributes["llm.output_messages.0.message.contents.0.message_content.type"] == "text"'
-
-  # Drops the raw llm.* attributes that gen_ai_normalizer left in place (see
-  # above) so exported spans carry only gen_ai.* fields, same end result as
-  # remove_originals: true would have given.
+  # OpenInference emits gen_ai.* natively with
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true. Drop duplicate raw llm.* attributes
+  # without normalizing or overwriting the native model/message attributes.
   transform/cleanup_raw_attrs:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
+          # OpenInference guardrail spans carry an unnamespaced validator_name
+          - set(attributes["gen_ai.guardrail.name"], attributes["validator_name"]) where attributes["validator_name"] != nil
+          - delete_key(attributes, "validator_name") where attributes["gen_ai.guardrail.name"] != nil
           - delete_matching_keys(attributes, "^llm\\..*")
 
-  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
-  # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
+  # Keep only spans that represent an LLM call (gen_ai.request.model is emitted
+  # natively). Feeds the metrics connectors so the derived metrics
   # cover LLM calls only, not embedding/tool/chain spans. Used solely on the
   # metrics branch — the export pipeline is left untouched so all spans still
   # reach Distributed Tracing.
@@ -150,14 +100,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/fix_output_messages, transform/response_model, transform/cleanup_raw_attrs]
+      processors: [transform/cleanup_raw_attrs]
       exporters: [debug, otlp_http/dynatrace]
-    # Second branch of the same spans: normalize, keep only LLM spans, and feed
+    # Second branch of the same spans: keep only LLM spans and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/fix_output_messages, transform/response_model, transform/cleanup_raw_attrs, filter/genai_only]
+      processors: [filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [span_metrics, signal_to_metrics]

@@ -3,7 +3,7 @@
 ![AI Observability -- anthropic/openinference service explorer](assets/explorer.png)
 
 Generate a haiku with Claude via the Anthropic Python SDK's `AnthropicBedrock` client, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
-OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) This example normalizes them into the Dynatrace `gen_ai.*` format with the Bindplane collector's `genainormalizer` processor.
+This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` in `app.py`, so OpenInference emits `gen_ai.*` attributes natively alongside its `llm.*` attributes. No downstream normalization is needed. The Bindplane collector derives metrics from the spans.
 
 This mirrors [`openai/openinference`](../../openai/openinference/), swapping the OpenAI SDK + `openinference-instrumentation-openai` for the Anthropic SDK + [`openinference-instrumentation-anthropic`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-anthropic). It calls Claude through AWS Bedrock -- same as [`anthropic/oneagent`](../oneagent/) -- so it reuses the AWS credentials already configured for e2e CI instead of requiring a separate Anthropic API key.
 
@@ -28,8 +28,8 @@ This mirrors [`openai/openinference`](../../openai/openinference/), swapping the
 ## What you'll build
 
 - Calls Claude (via AWS Bedrock) to generate a haiku using the `anthropic` Python SDK's `AnthropicBedrock` client, instrumented with `openinference-instrumentation-anthropic`.
-- Produces OpenTelemetry traces with OpenInference semantic conventions.
-- Normalizes OpenInference attributes to Dynatrace `gen_ai.*` format with the Bindplane collector's `genainormalizer` processor.
+- Produces OpenTelemetry traces with native `gen_ai.*` semantic conventions, including the actual response model.
+- Derives GenAI metrics from spans via the Bindplane collector.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, and message content.
 
 ---
@@ -86,20 +86,19 @@ make install
 
 ## Run with the Bindplane collector
 
-The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) intercepts spans and normalizes OpenInference attributes to `gen_ai.*` with its built-in `genainormalizer` processor before forwarding to Dynatrace. No Dynatrace configuration needed.
+The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) forwards spans with their native `gen_ai.*` attributes and derives duration and token-usage metrics. No Dynatrace pipeline configuration is needed.
 
 ```
-App  ->  Bindplane collector (genainormalizer)  ->  Dynatrace Grail
+App  ->  Bindplane collector (metrics extraction)  ->  Dynatrace Grail
 ```
 
-This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`, the same version pinned by `openai/openinference` -- the config is identical because `genainormalizer`'s `openinference` source is provider-agnostic. The pin means a future version bump surfaces normalization changes in the e2e test.
+This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`, which bundles the `span_metrics` and `signal_to_metrics` connectors.
 
 The collector needs your Dynatrace credentials because **it is the component that forwards spans to Dynatrace**. The app itself only knows about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
 
-The pipeline runs two processors (see [`otel-collector-config.yaml`](otel-collector-config.yaml)):
+The pipeline removes duplicate raw `llm.*` attributes with `transform/cleanup_raw_attrs` and keeps only model-call spans on the metrics branch. It does not normalize or rebuild the native model/message attributes (see [`otel-collector-config.yaml`](otel-collector-config.yaml)).
 
-1. **`genainormalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
-2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+The collector preserves the native `gen_ai.input.messages` / `gen_ai.output.messages` JSON, including multi-block responses, and surfaces the request in the AI Observability app.
 
 ### Step 1 -- Start the collector and run the app
 
@@ -139,7 +138,7 @@ The DBDOT image reads its config from `/etc/otel/config.yaml` by default in stan
 
 What happens:
 - The collector listens on port `4318` for incoming OTLP/HTTP spans from the app.
-- The `genainormalizer` processor maps OpenInference attributes to `gen_ai.*` and reconstructs the message history.
+- Native `gen_ai.*` attributes are preserved, and metrics are derived from model-call spans.
 - The processed spans are forwarded to `$DT_ENDPOINT/api/v2/otlp` authenticated with the API token.
 
 If you started the collector manually, run the app once against it:
@@ -173,25 +172,23 @@ docker stop bindplane-otel-collector-anthropic && docker rm bindplane-otel-colle
 
 ## Attribute mapping reference
 
-The `genainormalizer` processor applies these translations, then `remove_originals` drops the source `llm.*` attributes. The collector config adds the `gen_ai.response.model` mirror.
+With `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, the pinned instrumentation emits these attributes before the collector receives the span:
 
-| OpenInference source | Dynatrace target |
+| Source | Native GenAI attribute |
 |---|---|
 | `llm.token_count.prompt` | `gen_ai.usage.input_tokens` |
 | `llm.token_count.completion` | `gen_ai.usage.output_tokens` |
-| `llm.token_count.prompt_details.cache_read` / `.cache_write` | `gen_ai.prompt_caching` (`"read"` / `"write"`) |
+| `llm.token_count.prompt_details.cache_read` / `.cache_write` | `gen_ai.usage.cache_read.input_tokens` / `gen_ai.usage.cache_creation.input_tokens` |
 | `llm.model_name` | `gen_ai.request.model` |
 | `llm.provider` / `llm.system` (both always `"anthropic"`, set by the instrumentor) | `gen_ai.provider.name` |
-| `agent.name` | `gen_ai.agent.name` |
 | `session.id` | `gen_ai.conversation.id` |
 | `openinference.span.kind` | `gen_ai.operation.name` (`LLM`→`chat`) |
-| `llm.input_messages.N.*` | `gen_ai.input.messages` (full reconstruction, including the synthesized `system` message -- see [Known gaps & limitations](#known-gaps--limitations)) |
-| _(added by collector config)_ | `gen_ai.response.model` (mirrored from `gen_ai.request.model`) |
-| _(added by collector config)_ | `gen_ai.output.messages` -- `genainormalizer` itself produces this with an empty `parts` array for Anthropic responses; see [Known gaps & limitations](#known-gaps--limitations) for the hand-written processor that fixes it |
+| `llm.input_messages.N.*` / `llm.output_messages.N.*` | `gen_ai.input.messages` / `gen_ai.output.messages` (JSON with roles and content parts) |
+| Response payload `model` (also emitted as `llm.response.model_name`) | `gen_ai.response.model` |
+| Response payload `id` / `llm.finish_reason` | `gen_ai.response.id` / `gen_ai.response.finish_reasons` |
+| `llm.invocation_parameters` | `gen_ai.request.*` parameters such as `max_tokens` |
 
-Unlike a hand-written transform, `genainormalizer` reconstructs the full input conversation from the indexed per-message attributes, so `gen_ai.input.messages` contains the complete message history rather than a serialized fallback. `gen_ai.output.messages` needs the extra processor above to get the same result.
-
-`session.id` and `user.id` already match the OTel standard and pass through unchanged.
+The response model comes from the actual response, not a copy of the request model. The collector preserves it.
 
 ---
 
@@ -204,30 +201,19 @@ OpenInference is span-only by design (its instrumentors emit no metric instrumen
 | `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on LLM spans |
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs |
 
-They read the normalized `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` (mapped from OpenInference's `llm.token_count.*`, which for Anthropic already folds in cache-write and cache-read tokens -- see [`_get_token_counts`](https://github.com/Arize-ai/openinference/blob/main/python/instrumentation/openinference-instrumentation-anthropic/src/openinference/instrumentation/anthropic/_utils.py)). The Bindplane collector derives both metrics. `signaltometrics` (token) is bundled there alongside `genainormalizer`. This requires the token's `metrics.ingest` scope, and both metrics use delta temporality (Dynatrace rejects cumulative).
+They read the native `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` (mapped from OpenInference's `llm.token_count.*`, which for Anthropic already folds in cache-write and cache-read tokens -- see [`_get_token_counts`](https://github.com/Arize-ai/openinference/blob/main/python/instrumentation/openinference-instrumentation-anthropic/src/openinference/instrumentation/anthropic/_utils.py)). The Bindplane collector derives both metrics. This requires the token's `metrics.ingest` scope, and both metrics use delta temporality (Dynatrace rejects cumulative).
 
 ---
 
 ## Known gaps & limitations
 
-### genainormalizer drops output message content (worked around locally)
+### Request-model attribution in the pinned instrumentation
 
-`genainormalizer`'s `openinference` source reconstructs `gen_ai.output.messages` with an empty `parts` array for every Anthropic response, even a plain one-block text reply -- confirmed by inspecting the raw pre-normalization span (via `ConsoleSpanExporter`) side by side with the normalized span on the live tenant. The instrumentation itself is not at fault: `openinference-instrumentation-anthropic` correctly captures the reply as
-`llm.output_messages.0.message.contents.0.message_content.text`. The bug is in the normalizer's output-message path, which apparently only handles the flat `.message.content` string shape used for `llm.input_messages.*` and doesn't handle the nested content-block array (`.message.contents.N.message_content.*`) that Anthropic responses always use, even for a single text block.
+The native converter in `openinference-instrumentation==0.1.71` derives `gen_ai.request.model` from `llm.model_name`, which the Anthropic instrumentor updates from the response. It may therefore reflect the returned model rather than the requested Bedrock model ID. The requested model ID is retained in `llm.request.model_name` on the raw span and in `input.value`; `gen_ai.response.model` correctly reflects the response.
 
-Worked around here with a hand-written `transform/fix_output_messages` processor in [`otel-collector-config.yaml`](otel-collector-config.yaml) that rebuilds `gen_ai.output.messages` from the raw attribute after `genainormalizer` runs (`remove_originals` is turned off, and a separate `transform/cleanup_raw_attrs` strips the raw `llm.*` attributes afterward instead). This only handles a single `"text"`-type content block -- a response with multiple content blocks or a tool call would need a corresponding statement added, and otherwise falls back to `genainormalizer`'s empty-parts version.
+### Optional attributes
 
-### Attributes genainormalizer does not yet map
-
-The `genainormalizer` `openinference` source, as bundled in the pinned collector image, does not set the following attributes (same gap list as `openai/openinference` -- see that example for the version this was last verified against). They are optional for the AI Observability app, and are candidates for upstream contribution to the processor:
-
-- `gen_ai.request.top_p` / `gen_ai.request.max_tokens`
-- `gen_ai.response.finish_reasons`
-- `gen_ai.prompt_caching` and `gen_ai.cache.type`
-- `gen_ai.system` (only `gen_ai.provider.name` is set)
-- `gen_ai.system_instructions` -- confirmed missing against a live run (`test/e2e/reports/anthropic-openinference.md`, AR-043); the synthesized system message is still present inside the reconstructed `gen_ai.input.messages`, just not lifted to this dedicated attribute
-
-To close any of these locally, add statements to the `transform/pre_normalize` processor in [`otel-collector-config.yaml`](otel-collector-config.yaml).
+Native emission uses `gen_ai.usage.cache_read.input_tokens` and `gen_ai.usage.cache_creation.input_tokens` rather than the custom `gen_ai.prompt_caching` flag. The synthesized system message is included in `gen_ai.input.messages`; the pinned converter does not emit a separate `gen_ai.system_instructions` for this request.
 
 ### System prompt is synthesized as `llm.input_messages.0`
 
@@ -235,7 +221,7 @@ The Anthropic Messages API takes `system` as a separate top-level request parame
 
 ### No prompt-caching demo in this example
 
-Anthropic prompt caching (`cache_control` blocks) requires a system/context block long enough to clear a per-model minimum cacheable token count -- 4,096 tokens for `claude-haiku-4-5` on Bedrock (see [`anthropic/oneagent`'s `style_guide.py`](../oneagent/style_guide.py) and its [prompt-caching notes](../oneagent/README.md#prompt-caching)). This example's one-line system prompt does not reach it. `anthropic/oneagent` demonstrates a cache write + read pair with a longer style-guide block if you want to see `gen_ai.prompt_caching` populated end-to-end; the collector does not map it yet (see the gap list above).
+Anthropic prompt caching (`cache_control` blocks) requires a system/context block long enough to clear a per-model minimum cacheable token count -- 4,096 tokens for `claude-haiku-4-5` on Bedrock (see [`anthropic/oneagent`'s `style_guide.py`](../oneagent/style_guide.py) and its [prompt-caching notes](../oneagent/README.md#prompt-caching)). This example's one-line system prompt does not reach it. Extending `app.py` with a cacheable `system` block allows the native cache-token attributes to populate.
 
 ---
 
@@ -254,8 +240,8 @@ Anthropic prompt caching (`cache_control` blocks) requires a system/context bloc
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
 
 **Spans visible in Distributed Tracing but not in AI Observability:**
-- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) to be set on the span -- `genainormalizer` sets `gen_ai.provider.name` from `llm.provider`.
-- Confirm the `genainormalizer` processor ran -- the raw `llm.*` attributes should be gone and `gen_ai.*` attributes present in the collector debug output (`make logs`).
+- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) to be set on the span -- native emission sets `gen_ai.provider.name` from `llm.provider`.
+- Confirm native emission is enabled with `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` -- the raw `llm.*` attributes should be gone and `gen_ai.*` attributes present in the collector debug output (`make logs`).
 
 **Port conflict:**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.
