@@ -9,7 +9,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi==0.66b1",
     "opentelemetry-instrumentation-urllib3==0.66b1",
     "opentelemetry-exporter-otlp-proto-http==1.45.1",
-    "strands-agents==1.58.1",
+    "strands-agents==1.62.0",
     "strands-agents-tools==0.8.10",
     "uvicorn[standard]==0.54.0",
 ]
