@@ -578,6 +578,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "oneagent-sdk" },
+    { name = "openai" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -587,6 +588,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = "==1.7.3" },
     { name = "langgraph", specifier = "==1.2.18" },
     { name = "oneagent-sdk" },
+    { name = "openai", specifier = "==2.46.0" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.54.0" },
 ]
 

@@ -226,6 +226,12 @@
       "allowedVersions": "<=0.141.1"
     },
     {
+      "description": "OneAgent's OpenAI sensor patches openai's private _parse_chat_completion, removed in openai 3.38.0; without it no gen_ai span is emitted. Keep OneAgent demos below 3.38.0 until the sensor supports newer openai.",
+      "matchFileNames": ["*/oneagent/**"],
+      "matchPackageNames": ["openai"],
+      "allowedVersions": "<3.38.0"
+    },
+    {
       "description": "litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, removed in FastAPI 0.140.7. Keep renovate below it until litellm drops that import.",
       "matchManagers": ["pep621"],
       "matchFileNames": ["litellm/opentelemetry/**"],
