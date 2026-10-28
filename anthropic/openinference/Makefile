@@ -15,7 +15,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). Same pin as openai/openinference —
 # tracks OTel contrib v0.162.0 and bundles the signal_to_metrics
 # connector. Pinned so a version bump surfaces telemetry regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.2.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector-anthropic
 
 .PHONY: run build push request stop logs install help

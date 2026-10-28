@@ -15,7 +15,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). v1.1.2 tracks OTel
 # contrib v0.162.0 and bundles genainormalizerprocessor + signal_to_metrics
 # connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.2.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run build push request stop logs install help

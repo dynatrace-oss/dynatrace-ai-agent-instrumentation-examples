@@ -12,7 +12,7 @@ DT_OTEL_ENDPOINT ?= $(if $(DT_ENDPOINT),$(DT_ENDPOINT)/api/v2/otlp,)
 
 # Dynatrace Bindplane Distribution of OpenTelemetry Collector. Used only by `make run-collector`, for the
 # span_metrics connector that derives the GenAI agent/tool duration metrics.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.2.0
 override COLLECTOR_CONTAINER := antigravity-otel-collector
 
 .PHONY: install run run-collector stop logs build push request help

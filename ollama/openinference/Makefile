@@ -15,7 +15,7 @@ OLLAMA_HOST      ?= http://localhost:11434
 # openinference examples in this repo — tracks OTel contrib v0.162.0 and bundles
 # genainormalizerprocessor + signal_to_metrics connector. Pinned so a version
 # bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.2.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector-ollama
 
 .PHONY: install run build push request stop logs help
