@@ -212,6 +212,26 @@
       "separateMajorMinor": false
     },
     {
+      "description": "google-adk caps opentelemetry-sdk (<=1.42.1 in 2.11/2.12), so newer otel pins make the ADK demos unresolvable. Raise this together with a google-adk bump that lifts the cap.",
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["google-adk/**"],
+      "matchPackageNames": ["opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-http"],
+      "allowedVersions": "<=1.42.1"
+    },
+    {
+      "description": "fastapi after 0.141.1 requires opentelemetry-api>=1.44, which conflicts with the google-adk otel cap above. Lift together with it.",
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["google-adk/**"],
+      "matchDepNames": ["fastapi"],
+      "allowedVersions": "<=0.141.1"
+    },
+    {
+      "description": "OneAgent's OpenAI sensor patches openai's private _parse_chat_completion, removed in openai 3.38.0; without it no gen_ai span is emitted. Keep OneAgent demos below 3.38.0 until the sensor supports newer openai.",
+      "matchFileNames": ["*/oneagent/**"],
+      "matchPackageNames": ["openai"],
+      "allowedVersions": "<3.38.0"
+    },
+    {
       "description": "litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, removed in FastAPI 0.140.7. Keep renovate below it until litellm drops that import.",
       "matchManagers": ["pep621"],
       "matchFileNames": ["litellm/opentelemetry/**"],

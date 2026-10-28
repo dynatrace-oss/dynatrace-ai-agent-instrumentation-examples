@@ -1,11 +1,11 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.11.*' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
+    "(python_full_version >= '3.11' and python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
     "python_full_version < '3.11'",
 ]
 
@@ -367,7 +367,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -376,7 +376,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.156.4"
+version = "0.162.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -386,9 +386,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/c4/c18b69177ef53d62fd887dcb3e59d682ef383641b61c2d0a82630c340266/fastapi-0.156.4.tar.gz", hash = "sha256:e7dd3889a6d6f0c2976a89d6fb34be92fb3ee77bb5f9d1a40e68e9af09c96968", size = 500884, upload-time = "2026-10-20T23:00:25.703Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f", size = 527867, upload-time = "2026-10-23T18:47:33.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/58/eea5c844003eec82d2423c5393495808291e5c1ddfee266f169375c588a5/fastapi-0.156.4-py3-none-any.whl", hash = "sha256:a09d29fdd6635e94ae00199bae331a04350e0e46ba4334d50809007cd3119db5", size = 147143, upload-time = "2026-10-20T23:00:23.833Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c", size = 148912, upload-time = "2026-10-23T18:47:31.734Z" },
 ]
 
 [[package]]
@@ -615,8 +615,8 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "python_full_version < '3.11'" },
+    { name = "truststore", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/30/ff/b53af1b49bb2cb5fa97c92215614b173ca5c1a99ded80e2d52f15a94fa6d/httpcore2-2.14.0.tar.gz", hash = "sha256:4f57a1a8249fe6af589d935cfd456f1d13bbdcb0f0fc72af9142368fc94811d7", size = 69096, upload-time = "2026-10-18T16:29:21.898Z" }
 wheels = [
@@ -630,11 +630,11 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
-    "python_full_version == '3.11.*' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
+    "(python_full_version >= '3.11' and python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
 ]
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "(python_full_version >= '3.11' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten') or (python_full_version >= '3.13' and sys_platform == 'emscripten')" },
+    { name = "truststore", marker = "(python_full_version >= '3.11' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten') or (python_full_version >= '3.13' and sys_platform == 'emscripten')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c2/a9/11bc39967bb9dfaab0981ab4d49f519818acbee662a7e76d06813319c838/httpcore2-2.15.1.tar.gz", hash = "sha256:a94b6b3e6260e1a3f035915408d3dcd7dc8e844c2b544b642e227cf98a747af0", size = 69859, upload-time = "2026-10-19T20:14:23.824Z" }
 wheels = [
@@ -664,11 +664,11 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "anyio", marker = "sys_platform != 'emscripten'" },
-    { name = "httpcore2", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'emscripten'" },
-    { name = "idna" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
-    { name = "typing-extensions" },
+    { name = "anyio", marker = "python_full_version < '3.11' and sys_platform != 'emscripten'" },
+    { name = "httpcore2", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and sys_platform != 'emscripten'" },
+    { name = "idna", marker = "python_full_version < '3.11'" },
+    { name = "truststore", marker = "python_full_version < '3.11' and sys_platform != 'emscripten'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e8/67/58353f1848b4ba568e1ec22ea1e0d8e039f0bca5fde7e2d1f07739fd83e7/httpx2-2.14.0.tar.gz", hash = "sha256:47ad61a3c40282cd8d0dc96311531f00f5bfc71a066c6fe3b36d8f63fb9e4f6e", size = 102036, upload-time = "2026-10-18T16:29:22.627Z" }
 wheels = [
@@ -683,15 +683,15 @@ resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.11.*' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
+    "(python_full_version >= '3.11' and python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
 ]
 dependencies = [
-    { name = "anyio", marker = "sys_platform != 'emscripten'" },
-    { name = "httpcore2", version = "2.15.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'emscripten'" },
+    { name = "anyio", marker = "python_full_version >= '3.11' and sys_platform != 'emscripten'" },
+    { name = "httpcore2", version = "2.15.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform != 'emscripten'" },
     { name = "httpx2-jsfetch", marker = "python_full_version >= '3.12' and sys_platform == 'emscripten'" },
-    { name = "idna" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "idna", marker = "python_full_version >= '3.11'" },
+    { name = "truststore", marker = "python_full_version >= '3.11' and sys_platform != 'emscripten'" },
+    { name = "typing-extensions", marker = "python_full_version >= '3.11' and python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7f/85/07978f4afd168d6b408fa75c1dc13e3010653a81e182aa1b6d89ab94d9c6/httpx2-2.15.1.tar.gz", hash = "sha256:ff75485308fbe441e75b1218546e4e78d884df41e1a9741c1f79335ed8fcfef7", size = 101673, upload-time = "2026-10-19T20:14:24.587Z" }
 wheels = [
@@ -859,7 +859,7 @@ wheels = [
 
 [[package]]
 name = "langchain-core"
-version = "1.6.12"
+version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -873,14 +873,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "uuid-utils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/c2/9779d64322d4e270f6d5392bc86b30f735581a87b5eefd6ad15a0828a169/langchain_core-1.6.12.tar.gz", hash = "sha256:dc6b2a965c351b4cc94df1c80220bcf3c5472e14437d2186c8290ea22f4d0219", size = 1015639, upload-time = "2026-10-16T19:28:31.055Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/cb/77d1dabe57d0dc0f96f65cba321366c341627295d1c09eefa58549e34391/langchain_core-1.7.0.tar.gz", hash = "sha256:c34e53358b103cd73f43c63f5f46f9b5c6c3467efdffcdf134892b89020494e4", size = 1020046, upload-time = "2026-10-22T17:47:21.554Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/7b/49de1d4d6b9ff62e7c40a6fceb6aeecd8c190ac5f49dd7a99948c6650c16/langchain_core-1.6.12-py3-none-any.whl", hash = "sha256:39b07aed976baac14c47b7a21e3c7d4073362bccf06cf8799c585dcc9548547d", size = 573838, upload-time = "2026-10-16T19:28:29.466Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/d8/ed130e91cee0525cb47d185b98a5a6ffd6a8b660a100fbee43d887e745d6/langchain_core-1.7.0-py3-none-any.whl", hash = "sha256:e82b24d7ac51fc74874baa29d6b3c0b8234880d4f3d897f8ff57fb80dfd9b07d", size = 574676, upload-time = "2026-10-22T17:47:19.749Z" },
 ]
 
 [[package]]
 name = "langchain-openai"
-version = "1.7.2"
+version = "1.7.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -888,21 +888,21 @@ dependencies = [
     { name = "openai" },
     { name = "tiktoken" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/ca/b64799a9f2ee688aa6c238f5230b20d150b19cc5892bdcb6faf2b59866f1/langchain_openai-1.7.2.tar.gz", hash = "sha256:e1fcbc7a96f7c8c94679d61639a979bba88f27889c0a68dfa225b8057345328d", size = 3405949, upload-time = "2026-10-14T13:50:59.956Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/f5/a430230cb50b4b4ade021a5fe5df5a8c5adefa468435d460d2f77f2506ea/langchain_openai-1.7.3.tar.gz", hash = "sha256:c1d2d0fbd4f542ddcdf176c07abcf4d86c3b716513929250bbef04e3efc5e0b5", size = 3407726, upload-time = "2026-10-26T23:08:33.98Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/5d/8c4888a21087e4cd1c32965613a1a17cfc8e90e41ba5205c3dad302f3410/langchain_openai-1.7.2-py3-none-any.whl", hash = "sha256:9be7980edf355ca2dd595b795a5125836ccf04515ef9377228913246156e59f5", size = 146367, upload-time = "2026-10-14T13:50:58.697Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/52/5bcba40b1d7e46f352a727c57c231b820069bc83310f97933e10eccbd935/langchain_openai-1.7.3-py3-none-any.whl", hash = "sha256:0ab77cc4579b87c50823b7ccb5d8af48d6c6ae2084f156dcdc37151fcc0717e6", size = 146342, upload-time = "2026-10-26T23:08:32.577Z" },
 ]
 
 [[package]]
 name = "langchain-protocol"
-version = "0.0.18"
+version = "0.0.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/59/b5959aea96faa9146e2e49a7a22882b3528c62efafe9a6a95beab30c2305/langchain_protocol-0.0.18.tar.gz", hash = "sha256:ec3e11782f1ed0c9db38e5a9ed01b0e7a0d3fba406faa8aef6594b73c56a63e6", size = 6150, upload-time = "2026-06-18T17:08:26.959Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/8b/d908d082c3cf5368ddd1816ed114de79c873f979ba7f98b95fab0e841643/langchain_protocol-0.0.20.tar.gz", hash = "sha256:0f5bd002474265648e91161771a9e0438fe9480bd55a416e51af0f60070637ec", size = 6280, upload-time = "2026-10-20T11:13:50.84Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/2e/d82db9eec13ad0f72e7aaad5c4bc730ab111934fdc83c85523206eb9b0a0/langchain_protocol-0.0.18-py3-none-any.whl", hash = "sha256:70b53a86fbf9cedc863555effe44da192ab02d556ddbf2cf95b8873adcf41b5a", size = 7221, upload-time = "2026-06-18T17:08:25.996Z" },
+    { url = "https://files.pythonhosted.org/packages/02/4b/f1c99a0b27c5ff8b4b131c0d6e62012c17cc424089efe213767db927afd2/langchain_protocol-0.0.20-py3-none-any.whl", hash = "sha256:3c935e5e46b0f6f9cb52f45ba7cfa53d1b9fa80c82c4a277d47f03e07f7385b1", size = 7347, upload-time = "2026-10-20T11:13:49.566Z" },
 ]
 
 [[package]]
@@ -949,8 +949,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = "==0.156.4" },
-    { name = "langchain-openai", specifier = "==1.7.2" },
+    { name = "fastapi", specifier = "==0.162.0" },
+    { name = "langchain-openai", specifier = "==1.7.3" },
     { name = "langgraph", specifier = "==1.2.18" },
     { name = "traceloop-sdk", specifier = "==0.62.4" },
     { name = "uvicorn", specifier = "==0.54.0" },

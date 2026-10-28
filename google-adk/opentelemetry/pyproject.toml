@@ -6,7 +6,7 @@ dependencies = [
     "google-adk==2.11.0",
     "opentelemetry-sdk==1.42.1",
     "opentelemetry-exporter-otlp-proto-http==1.42.1",
-    "fastapi==0.138.2",
+    "fastapi==0.141.1",
     "uvicorn==0.54.0",
     "python-dotenv==1.2.4",
     "pydantic==2.14.1",

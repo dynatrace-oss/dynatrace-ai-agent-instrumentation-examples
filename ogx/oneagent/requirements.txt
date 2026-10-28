@@ -1,12 +1,13 @@
 ogx[client]==1.5.0
 ollama==0.6.3
+openai==3.37.0
 sqlite-vec
 aiosqlite
 pillow==12.3.0
 fonttools==4.67.0
 matplotlib
 pandas
-pypdf==6.21.1
+pypdf==6.21.2
 chardet
-fastapi==0.156.4
+fastapi==0.162.0
 uvicorn==0.54.0

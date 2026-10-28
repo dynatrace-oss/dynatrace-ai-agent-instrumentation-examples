@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10, <3.15"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -688,7 +688,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -1584,7 +1584,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = "==0.140.6" },
     { name = "litellm", extras = ["proxy"], specifier = "==1.104.1" },
-    { name = "openinference-instrumentation-litellm", specifier = "==0.1.50" },
+    { name = "openinference-instrumentation-litellm", specifier = "==0.1.51" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.1" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.66b1" },
     { name = "opentelemetry-instrumentation-httpx", specifier = "==0.66b1" },
@@ -2182,7 +2182,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-litellm"
-version = "0.1.50"
+version = "0.1.51"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -2193,9 +2193,9 @@ dependencies = [
     { name = "setuptools" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/06/8c3b91c2399726c9286e1b1894b48898a19f7a49c1435adf232054766522/openinference_instrumentation_litellm-0.1.50.tar.gz", hash = "sha256:ab483a9455313cae3d572ff21b65e665ad9f2964f7d8ccaaecee06605851f174", size = 115691, upload-time = "2026-10-09T18:29:10.739Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/6b/de2d595180af3a3201587cd60883a75b0db311c0d6332ca6b5c04aff2680/openinference_instrumentation_litellm-0.1.51.tar.gz", hash = "sha256:fe05b97aede7658a8c9ef88842770fbae66590a27826bc20c12fa15f0a4a868d", size = 119625, upload-time = "2026-10-23T20:49:50.204Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/a9/8c39b26a1431a1d92c91a1d6bfb1526e0b1a999737b2abc5dbdd150d34a2/openinference_instrumentation_litellm-0.1.50-py3-none-any.whl", hash = "sha256:27f7e48ab06f91df988ece48bac608b4518eb3f271e08ffb8969d18d2db520bb", size = 26196, upload-time = "2026-10-09T18:29:09.419Z" },
+    { url = "https://files.pythonhosted.org/packages/67/5b/894cd83e903ec44244ed7184198a161824678d074e2510cedf0cd2818d40/openinference_instrumentation_litellm-0.1.51-py3-none-any.whl", hash = "sha256:2d4d90cbbf059c57fd7ff7d636c61b88ed8729b3a61ef70198027690a5a5d45b", size = 26284, upload-time = "2026-10-23T20:49:48.983Z" },
 ]
 
 [[package]]
@@ -2861,7 +2861,7 @@ name = "pyroscope-io"
 version = "0.8.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi", marker = "sys_platform != 'win32'" },
+    { name = "cffi" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/50/607b38b120ba8adad954119ba512c53590c793f0cf7f009ba6549e4e1d77/pyroscope_io-0.8.16-py2.py3-none-macosx_11_0_arm64.whl", hash = "sha256:e07edcfd59f5bdce42948b92c9b118c824edbd551730305f095a6b9af401a9e8", size = 3138869, upload-time = "2026-01-22T06:23:24.664Z" },

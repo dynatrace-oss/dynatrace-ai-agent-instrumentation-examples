@@ -8,7 +8,7 @@ dependencies = [
     # FastAPI removed in 0.140.7 — cap below it until litellm drops that import.
     "fastapi==0.140.6",
     "uvicorn==0.54.0",
-    "openinference-instrumentation-litellm==0.1.50",
+    "openinference-instrumentation-litellm==0.1.51",
     "opentelemetry-sdk==1.45.1",
     "opentelemetry-exporter-otlp-proto-grpc==1.45.1",
     "opentelemetry-instrumentation-fastapi==0.66b1",

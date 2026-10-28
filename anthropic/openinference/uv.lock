@@ -1,11 +1,11 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')",
+    "python_full_version < '3.12' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
 ]
 
 [[package]]
@@ -55,7 +55,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", extras = ["bedrock"], specifier = "==1.12.1" },
-    { name = "openinference-instrumentation-anthropic", specifier = "==3.0.3" },
+    { name = "openinference-instrumentation-anthropic", specifier = "==3.1.0" },
     { name = "opentelemetry-exporter-otlp", specifier = "==1.45.1" },
     { name = "opentelemetry-sdk", specifier = "==1.45.1" },
 ]
@@ -288,7 +288,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -392,8 +392,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -587,7 +587,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-anthropic"
-version = "3.0.3"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -598,9 +598,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/f4/b25dd37b61cd9942d1f738d79e1661526c81b0a0ded3e3af0fc5b81fab66/openinference_instrumentation_anthropic-3.0.3.tar.gz", hash = "sha256:f0c866eac8b900451a806bfb2c8d2ebb248e15557ee4357d75a36c7bdce287c8", size = 18056, upload-time = "2026-10-10T06:23:47.348Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/d2/52fb3fe4eb1ae11f03ee5228d3ce05c713ecd3d8cf0e15e3c2b8046b7817/openinference_instrumentation_anthropic-3.1.0.tar.gz", hash = "sha256:8c40c9dfd1d965e9ca0c2b8c021c86da21491f26ac8ab002764fa5948426bfe8", size = 26769, upload-time = "2026-10-23T20:49:51.47Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/d8/b4b76f630767bdb44a379c5df114fd5ecb5f9e815a68a7866af5b848eac4/openinference_instrumentation_anthropic-3.0.3-py3-none-any.whl", hash = "sha256:15b79dd35c5b84479c9e968f6557181ddb71f5261feb630555889c04a72323d9", size = 21625, upload-time = "2026-10-10T06:23:46.16Z" },
+    { url = "https://files.pythonhosted.org/packages/82/e5/aff049d02cee0a0e999ab069274407d3264d52c3f73fc24e41300447c222/openinference_instrumentation_anthropic-3.1.0-py3-none-any.whl", hash = "sha256:be6cb36f30b38a8e3588c927ce609e98272746496352ae8f8c9c664b2f6dc37d", size = 31500, upload-time = "2026-10-23T20:49:49.86Z" },
 ]
 
 [[package]]

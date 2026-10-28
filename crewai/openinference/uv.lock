@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.10, <3.14"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -602,7 +602,7 @@ name = "coloredlogs"
 version = "15.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "humanfriendly" },
+    { name = "humanfriendly", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cc/c7/eed8f27100517e8c0e6b923d5f0845d0cb99763da6fdee00478f91db7325/coloredlogs-15.0.1.tar.gz", hash = "sha256:7c991aa71a4577af2f82600d8f8f3a89f936baeaf9b50a9c197da014e5bf16b0", size = 278520, upload-time = "2021-06-11T10:22:45.202Z" }
 wheels = [
@@ -730,9 +730,9 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "crewai", extras = ["litellm", "azure-ai-inference"], specifier = "==1.15.32" },
-    { name = "fastapi", specifier = "==0.156.4" },
+    { name = "fastapi", specifier = "==0.162.0" },
     { name = "openinference-instrumentation-crewai", specifier = "==1.1.21" },
-    { name = "openinference-instrumentation-litellm", specifier = "==0.1.50" },
+    { name = "openinference-instrumentation-litellm", specifier = "==0.1.51" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.1" },
     { name = "opentelemetry-sdk", specifier = "==1.45.1" },
     { name = "uvicorn", specifier = "==0.54.0" },
@@ -848,7 +848,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -857,7 +857,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.156.4"
+version = "0.162.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -868,9 +868,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/c4/c18b69177ef53d62fd887dcb3e59d682ef383641b61c2d0a82630c340266/fastapi-0.156.4.tar.gz", hash = "sha256:e7dd3889a6d6f0c2976a89d6fb34be92fb3ee77bb5f9d1a40e68e9af09c96968", size = 500884, upload-time = "2026-10-20T23:00:25.703Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f", size = 527867, upload-time = "2026-10-23T18:47:33.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/58/eea5c844003eec82d2423c5393495808291e5c1ddfee266f169375c588a5/fastapi-0.156.4-py3-none-any.whl", hash = "sha256:a09d29fdd6635e94ae00199bae331a04350e0e46ba4334d50809007cd3119db5", size = 147143, upload-time = "2026-10-20T23:00:23.833Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c", size = 148912, upload-time = "2026-10-23T18:47:31.734Z" },
 ]
 
 [[package]]
@@ -1302,7 +1302,7 @@ name = "humanfriendly"
 version = "10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyreadline3", marker = "sys_platform == 'win32'" },
+    { name = "pyreadline3", marker = "python_full_version < '3.11' and sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cc/3f/2c29224acb2e2df4d2046e4c73ee2662023c58ff5b113c4c1adac0886c43/humanfriendly-10.0.tar.gz", hash = "sha256:6b0b831ce8f15f7300721aa49829fc4e83921a9a301cc7f606be6686a2288ddc", size = 360702, upload-time = "2021-09-17T21:40:43.31Z" }
 wheels = [
@@ -2174,12 +2174,12 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "coloredlogs" },
-    { name = "flatbuffers" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" } },
-    { name = "packaging" },
-    { name = "protobuf" },
-    { name = "sympy" },
+    { name = "coloredlogs", marker = "python_full_version < '3.11'" },
+    { name = "flatbuffers", marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "packaging", marker = "python_full_version < '3.11'" },
+    { name = "protobuf", marker = "python_full_version < '3.11'" },
+    { name = "sympy", marker = "python_full_version < '3.11'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/35/d6/311b1afea060015b56c742f3531168c1644650767f27ef40062569960587/onnxruntime-1.23.2-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:a7730122afe186a784660f6ec5807138bf9d792fa1df76556b27307ea9ebcbe3", size = 17195934, upload-time = "2025-10-27T23:06:14.143Z" },
@@ -2216,11 +2216,11 @@ resolution-markers = [
     "python_full_version == '3.11.*'",
 ]
 dependencies = [
-    { name = "flatbuffers" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "flatbuffers", marker = "python_full_version >= '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "packaging" },
-    { name = "protobuf" },
+    { name = "packaging", marker = "python_full_version >= '3.11'" },
+    { name = "protobuf", marker = "python_full_version >= '3.11'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/e7/61b2768393646bd12e31eeb71958193f4e02c98c4980cf9289d19bbb4a8f/onnxruntime-1.31.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:cbf1a7f6470ddfe9dbc781966af8ce4a10e1858d75a93f93cc6b9367c9587870", size = 20871717, upload-time = "2026-10-09T04:18:03.504Z" },
@@ -2296,7 +2296,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-litellm"
-version = "0.1.50"
+version = "0.1.51"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -2307,9 +2307,9 @@ dependencies = [
     { name = "setuptools" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/06/8c3b91c2399726c9286e1b1894b48898a19f7a49c1435adf232054766522/openinference_instrumentation_litellm-0.1.50.tar.gz", hash = "sha256:ab483a9455313cae3d572ff21b65e665ad9f2964f7d8ccaaecee06605851f174", size = 115691, upload-time = "2026-10-09T18:29:10.739Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/6b/de2d595180af3a3201587cd60883a75b0db311c0d6332ca6b5c04aff2680/openinference_instrumentation_litellm-0.1.51.tar.gz", hash = "sha256:fe05b97aede7658a8c9ef88842770fbae66590a27826bc20c12fa15f0a4a868d", size = 119625, upload-time = "2026-10-23T20:49:50.204Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/a9/8c39b26a1431a1d92c91a1d6bfb1526e0b1a999737b2abc5dbdd150d34a2/openinference_instrumentation_litellm-0.1.50-py3-none-any.whl", hash = "sha256:27f7e48ab06f91df988ece48bac608b4518eb3f271e08ffb8969d18d2db520bb", size = 26196, upload-time = "2026-10-09T18:29:09.419Z" },
+    { url = "https://files.pythonhosted.org/packages/67/5b/894cd83e903ec44244ed7184198a161824678d074e2510cedf0cd2818d40/openinference_instrumentation_litellm-0.1.51-py3-none-any.whl", hash = "sha256:2d4d90cbbf059c57fd7ff7d636c61b88ed8729b3a61ef70198027690a5a5d45b", size = 26284, upload-time = "2026-10-23T20:49:48.983Z" },
 ]
 
 [[package]]
@@ -3113,9 +3113,9 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "typing-inspection" },
+    { name = "pydantic", marker = "python_full_version < '3.11'" },
+    { name = "python-dotenv", marker = "python_full_version < '3.11'" },
+    { name = "typing-inspection", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/68/ca/31c57507b13119d7d3cfa1576dad2911a4861e3be07b579395f4e9d393f9/pydantic_settings-2.15.0.tar.gz", hash = "sha256:694b793e84f766ba76a90ebdefc01d0a9a045dab0382bee70393da93712ad117", size = 261253, upload-time = "2026-08-07T09:24:57.419Z" }
 wheels = [
@@ -3132,10 +3132,10 @@ resolution-markers = [
     "python_full_version == '3.11.*'",
 ]
 dependencies = [
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "typing-extensions" },
-    { name = "typing-inspection" },
+    { name = "pydantic", marker = "python_full_version >= '3.11'" },
+    { name = "python-dotenv", marker = "python_full_version >= '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version >= '3.11'" },
+    { name = "typing-inspection", marker = "python_full_version >= '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2e/3b/a5d2294799b53b448319978cfb5bd139d5a9d45e862af91661614f14c922/pydantic_settings-2.16.0.tar.gz", hash = "sha256:5b6c578049ede4db0e2ef3b4eaa4ad4069cfa9211f83fb38df899dfade50a614", size = 301031, upload-time = "2026-10-14T12:44:09.998Z" }
 wheels = [
@@ -3716,8 +3716,8 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "anyio" },
-    { name = "typing-extensions" },
+    { name = "anyio", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7b/2b/3850dc6bf7ef71b088962eba31dafc6cffd2f96e577ebb0bb316df96da3e/starlette-1.7.0.tar.gz", hash = "sha256:c79f74ea63cff761804fbbfb182f1e0b440c2d07b164d24700c5a1bab5d6ff5d", size = 2736246, upload-time = "2026-09-23T07:30:26.35Z" }
 wheels = [
@@ -3734,8 +3734,8 @@ resolution-markers = [
     "python_full_version == '3.11.*'",
 ]
 dependencies = [
-    { name = "anyio" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "anyio", marker = "python_full_version >= '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version >= '3.11' and python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e9/0c/6efb252d091ecccd7d62048ae11f0ea35cd75a4fbaeea5e30f9c3bf91d10/starlette-1.8.0.tar.gz", hash = "sha256:1565dc0b35d5737a271ed1e0e04e949f4e81198799f216d2667b0a0fb9cf9522", size = 2730457, upload-time = "2026-10-13T07:54:39.53Z" }
 wheels = [
@@ -3747,7 +3747,7 @@ name = "sympy"
 version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "mpmath" },
+    { name = "mpmath", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
 wheels = [

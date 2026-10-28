@@ -1,11 +1,11 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "(python_full_version >= '3.11' and python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
+    "python_full_version == '3.11.*' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten')",
     "python_full_version < '3.11'",
 ]
 
@@ -416,7 +416,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -425,7 +425,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.156.4"
+version = "0.162.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -436,9 +436,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/c4/c18b69177ef53d62fd887dcb3e59d682ef383641b61c2d0a82630c340266/fastapi-0.156.4.tar.gz", hash = "sha256:e7dd3889a6d6f0c2976a89d6fb34be92fb3ee77bb5f9d1a40e68e9af09c96968", size = 500884, upload-time = "2026-10-20T23:00:25.703Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f", size = 527867, upload-time = "2026-10-23T18:47:33.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/58/eea5c844003eec82d2423c5393495808291e5c1ddfee266f169375c588a5/fastapi-0.156.4-py3-none-any.whl", hash = "sha256:a09d29fdd6635e94ae00199bae331a04350e0e46ba4334d50809007cd3119db5", size = 147143, upload-time = "2026-10-20T23:00:23.833Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c", size = 148912, upload-time = "2026-10-23T18:47:31.734Z" },
 ]
 
 [[package]]
@@ -473,7 +473,7 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "(python_full_version >= '3.11' and python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
+    "python_full_version == '3.11.*' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2b/27/b55f1a5278918be765fb2fd8b20966bc72bbdd3f789f031937cceea7834a/griffelib-2.3.2.tar.gz", hash = "sha256:df00c7a0dee3d86268d76788997a1859272cb1fb7b865658e043d2c0c3d52e60", size = 234729, upload-time = "2026-10-06T09:54:37.222Z" }
 wheels = [
@@ -494,8 +494,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -788,10 +788,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = "==0.156.4" },
+    { name = "fastapi", specifier = "==0.162.0" },
     { name = "openai-agents", specifier = "==0.24.0" },
-    { name = "openinference-instrumentation", specifier = "==0.1.71" },
-    { name = "openinference-instrumentation-openai-agents", specifier = "==2.5.3" },
+    { name = "openinference-instrumentation", specifier = "==0.1.72" },
+    { name = "openinference-instrumentation-openai-agents", specifier = "==2.6.0" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.1" },
     { name = "opentelemetry-sdk", specifier = "==1.45.1" },
     { name = "uvicorn", specifier = "==0.54.0" },
@@ -799,7 +799,7 @@ requires-dist = [
 
 [[package]]
 name = "openinference-instrumentation"
-version = "0.1.71"
+version = "0.1.72"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-semantic-conventions" },
@@ -807,14 +807,14 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/ec/ef1ca7e409ee6bddb7278b9760e0941f65911748f5dc84d17c115f6648f1/openinference_instrumentation-0.1.71.tar.gz", hash = "sha256:4d267b6ce8e067572a740d6a0dbf6b4d4c6e386c5a52a7e7f61e3a714a49849d", size = 46600, upload-time = "2026-10-07T20:26:41.084Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/5d/281d31ef653257875209cdaef355157bf4ca5e99599df88c3e02ccdbd4a7/openinference_instrumentation-0.1.72.tar.gz", hash = "sha256:4470a316dcb279aff45c2368e16d76ec43b2f46985ee2a4dab183b448c1bc18b", size = 46527, upload-time = "2026-10-23T20:49:53.504Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/8c/330101bedf614dc937d8690462ed0ad4efd7f6c3248a76a5484ba6f885e3/openinference_instrumentation-0.1.71-py3-none-any.whl", hash = "sha256:07833fcf5d493a2ed15da16a0af70d6127d39f18ffa68f4d6827107e49fc6753", size = 54511, upload-time = "2026-10-07T20:26:39.634Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/be/d63a820efd759f04d6463380807e1dd04ce898d54cddec23e39ef5abd216/openinference_instrumentation-0.1.72-py3-none-any.whl", hash = "sha256:1eaba9604e6a0de4829094f2b5f6796a3962c36c72752b1ac7c01fca27540a0f", size = 54454, upload-time = "2026-10-23T20:49:51.429Z" },
 ]
 
 [[package]]
 name = "openinference-instrumentation-openai-agents"
-version = "2.5.3"
+version = "2.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -825,9 +825,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/1c/1884bf7eb84988599318f572d3713396ae86f02dbf1c44229ea03c939ffa/openinference_instrumentation_openai_agents-2.5.3.tar.gz", hash = "sha256:1d9df4aa3cc9ea27c3582cd89317a43fe9b189d8af7c96a80d575c41c9a8aac5", size = 35752, upload-time = "2026-10-09T18:29:13.643Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/68/fb4e061ab555650530e3f85d7c0cab1745f8bf132042ffa1e7031d8d5154/openinference_instrumentation_openai_agents-2.6.0.tar.gz", hash = "sha256:10b7ddd33022957abb5fcea12e5980e08d08434b74c81b8ad473206aef747d31", size = 39213, upload-time = "2026-10-23T20:49:49.955Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/6a/1134bcf67fa2ef89ca2d5b9dacaea80811ae1b88a90ad9e4383716e52854/openinference_instrumentation_openai_agents-2.5.3-py3-none-any.whl", hash = "sha256:5516dfb1bd21d28c48954173480f8efa848943bb6a3376bcf71569c6de425d11", size = 39181, upload-time = "2026-10-09T18:29:12.512Z" },
+    { url = "https://files.pythonhosted.org/packages/17/77/3eb678fd5673bc966df5d431bcb02cc8c2d6075f205e078bf434da6eec5e/openinference_instrumentation_openai_agents-2.6.0-py3-none-any.whl", hash = "sha256:ef52c537fd9eacbdd2d2f46fd82c1c19880d28acb6b443fc3007f8b9b664a63f", size = 42610, upload-time = "2026-10-23T20:49:48.412Z" },
 ]
 
 [[package]]
@@ -1375,7 +1375,7 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "(python_full_version >= '3.11' and python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
+    "python_full_version == '3.11.*' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/68/3bd46b8a5e01d3c2ebdf9c5e9497912e3fe0cde02bac21a7130ca866e403/rpds_py-2026.9.1.tar.gz", hash = "sha256:4793ef7f78268b124b73fa933440f01d258bbae01de9fa53e9080c9ab0425a12", size = 63948, upload-time = "2026-10-04T16:32:36.469Z" }
 wheels = [
@@ -1539,8 +1539,8 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "anyio", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "anyio" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7b/2b/3850dc6bf7ef71b088962eba31dafc6cffd2f96e577ebb0bb316df96da3e/starlette-1.7.0.tar.gz", hash = "sha256:c79f74ea63cff761804fbbfb182f1e0b440c2d07b164d24700c5a1bab5d6ff5d", size = 2736246, upload-time = "2026-09-23T07:30:26.35Z" }
 wheels = [
@@ -1555,11 +1555,11 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "(python_full_version >= '3.11' and python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version == '3.11.*' and sys_platform == 'emscripten')",
+    "python_full_version == '3.11.*' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten')",
 ]
 dependencies = [
-    { name = "anyio", marker = "python_full_version >= '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version >= '3.11' and python_full_version < '3.13'" },
+    { name = "anyio" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e9/0c/6efb252d091ecccd7d62048ae11f0ea35cd75a4fbaeea5e30f9c3bf91d10/starlette-1.8.0.tar.gz", hash = "sha256:1565dc0b35d5737a271ed1e0e04e949f4e81198799f216d2667b0a0fb9cf9522", size = 2730457, upload-time = "2026-10-13T07:54:39.53Z" }
 wheels = [

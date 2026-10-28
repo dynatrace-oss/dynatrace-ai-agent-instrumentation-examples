@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
@@ -7,7 +7,7 @@ resolution-markers = [
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')",
+    "python_full_version < '3.12' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
 ]
 
 [[package]]
@@ -208,7 +208,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.143.1"
+version = "0.162.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -218,9 +218,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/16/52ca959230f9820660fd822f488f883d7dc42310716b4cc6d2a944835dcd/fastapi-0.143.1.tar.gz", hash = "sha256:4cafaab64df8534758bf0fce61947f5e27e6cd512798ccbbaad5425086c3b664", size = 469025, upload-time = "2026-10-14T12:53:09.448Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f", size = 527867, upload-time = "2026-10-23T18:47:33.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ca/73/30ee3dd8f26fd385e451bbded9e1b54766a277db588e70154dd894f4b698/fastapi-0.143.1-py3-none-any.whl", hash = "sha256:687beb445804e4c4dbe2a76fd83c25e9b973ac48c267defb86f791e099baecc4", size = 144682, upload-time = "2026-10-14T12:53:07.69Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c", size = 148912, upload-time = "2026-10-23T18:47:31.734Z" },
 ]
 
 [[package]]
@@ -262,8 +262,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -467,7 +467,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-openai"
-version = "0.1.65"
+version = "0.1.66"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -479,9 +479,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bc/83/cb4fa924d602ddf47e495cfb776cb3c697955ca5d0363ed3dce565701bab/openinference_instrumentation_openai-0.1.65.tar.gz", hash = "sha256:86a83a656277165cc012c42e7bbc0569b7cf97b50081e11bd50cbd41f5c632de", size = 29859, upload-time = "2026-10-09T18:29:06.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/22/17/5563b169a73730c5a0261bee39146b8f871e4719eb9a2b963162252bf79c/openinference_instrumentation_openai-0.1.66.tar.gz", hash = "sha256:2c39ffd053c4105fe9b96ad0f8a3884cbd949ee5b1a3ad9b20798fb9733f3bb2", size = 30525, upload-time = "2026-10-23T20:49:47.936Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/ce/003b9366e7f01eb0b8373156a31c92c71ef44289d27e963e09ca7c581686/openinference_instrumentation_openai-0.1.65-py3-none-any.whl", hash = "sha256:aa29ae89aecfed1a705b3b91c8d631fc7cd2f136b31eafb3229d9cf464bf83f0", size = 37952, upload-time = "2026-10-09T18:29:05.017Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/71/54de247e467f1ead9d2647e707c28db8cb485a87c14067b50dcc5a76c487/openinference_instrumentation_openai-0.1.66-py3-none-any.whl", hash = "sha256:cef7ea684f23eb3501f850fc8baebd84c034e17737d6e50172f1e87e2e4a1843", size = 38416, upload-time = "2026-10-23T20:49:46.549Z" },
 ]
 
 [[package]]
@@ -898,10 +898,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = "==0.143.1" },
+    { name = "fastapi", specifier = "==0.162.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "openai", specifier = "==3.26.0" },
-    { name = "openinference-instrumentation-openai", specifier = "==0.1.65" },
+    { name = "openinference-instrumentation-openai", specifier = "==0.1.66" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.1" },
     { name = "opentelemetry-proto", specifier = "==1.45.1" },
     { name = "opentelemetry-sdk", specifier = "==1.45.1" },

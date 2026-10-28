@@ -3,8 +3,8 @@ name = "gemini-openinference-demo"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "google-genai==2.32.0",
-    "openinference-instrumentation-google-genai==1.4.13",
+    "google-genai==2.33.0",
+    "openinference-instrumentation-google-genai==1.4.14",
     "opentelemetry-sdk==1.45.1",
     "opentelemetry-exporter-otlp==1.45.1",
 ]
