@@ -39,7 +39,7 @@ processors:
           - set(attributes["gen_ai.usage.input_tokens"], Int(attributes["input_tokens"])) where attributes["input_tokens"] != nil
           - set(attributes["gen_ai.response.id"], attributes["request_id"]) where attributes["request_id"] != nil
           - set(attributes["gen_ai.usage.output_tokens"], Int(attributes["output_tokens"])) where attributes["output_tokens"] != nil
-          # Written only when both token counts are present.
+          # A missing side counts as zero; nothing is written when both are missing.
           - set(attributes["gen_ai.usage.total_tokens"], Int(attributes["input_tokens"]) + Int(attributes["output_tokens"])) where attributes["input_tokens"] != nil and attributes["output_tokens"] != nil
           - set(attributes["gen_ai.usage.total_tokens"], Int(attributes["input_tokens"])) where attributes["input_tokens"] != nil and attributes["output_tokens"] == nil
           - set(attributes["gen_ai.usage.total_tokens"], Int(attributes["output_tokens"])) where attributes["output_tokens"] != nil and attributes["input_tokens"] == nil
