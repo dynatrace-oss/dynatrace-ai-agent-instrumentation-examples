@@ -37,7 +37,7 @@ The collector is pinned to the Bindplane Distro for OpenTelemetry image in the M
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DT_ENDPOINT` | Yes | — | Dynatrace tenant URL (e.g. `https://abc12345.live.dynatrace.com`) |
-| `DT_API_TOKEN` | Yes | — | Dynatrace API token with `openTelemetryTrace.ingest` scope |
+| `DT_API_TOKEN` | Yes | — | Required scopes for OpenTelemetrcs ingest. See [Dynatrace documentation](https://docs.dynatrace.com/docs/shortlink/api-otlp-traces). |
 | `AWS_ACCESS_KEY_ID` | Yes | — | AWS access key ID |
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
