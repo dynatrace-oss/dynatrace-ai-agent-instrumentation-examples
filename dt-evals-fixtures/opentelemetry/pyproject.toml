@@ -3,7 +3,7 @@ name = "dt-evals-fixtures-opentelemetry-demo"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "langchain-core==1.7.0",
+    "langchain-core==1.7.1",
     "traceloop-sdk==0.62.4",
     "fastapi==0.162.0",
     "uvicorn==0.54.0",
@@ -11,7 +11,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     # build_fixtures.py only — sources real dataset rows. Not needed at runtime
     # (fixtures.json is committed), so kept out of the app's dependencies.
     "datasets==5.1.0",

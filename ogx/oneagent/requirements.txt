@@ -4,10 +4,10 @@ openai==3.37.0
 sqlite-vec
 aiosqlite
 pillow==12.3.0
-fonttools==4.67.0
+fonttools==4.68.0
 matplotlib
 pandas
-pypdf==6.21.2
+pypdf==6.21.4
 chardet
 fastapi==0.162.0
 uvicorn==0.54.0
