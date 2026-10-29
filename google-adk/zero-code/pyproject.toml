@@ -3,7 +3,7 @@ name = "google-adk-zero-code-demo"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "google-adk==2.11.0",
+    "google-adk==2.13.0",
     "opentelemetry-distro==0.63b1",
     "opentelemetry-exporter-otlp-proto-http==1.42.1",
     # Emits the SERVER span at the HTTP entry point. ADK's own spans are all
