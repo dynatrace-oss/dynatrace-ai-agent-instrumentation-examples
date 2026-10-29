@@ -15,7 +15,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). Bundles the
 # span_metrics/signal_to_metrics connectors used to derive gen_ai.* metrics.
 # Pinned so a version bump surfaces regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.2.0
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run build push request stop logs install help

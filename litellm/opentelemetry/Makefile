@@ -8,7 +8,7 @@ COLLECTOR_BASE_URL   ?= localhost:4317
 DT_ENDPOINT          ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN         ?= dt0c01.*****
 
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.57.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.59.0
 override COLLECTOR_CONTAINER := otel-collector
 
 SUBDIRS := fastapi-instrumentation litellm-gateway-with-instrumentation

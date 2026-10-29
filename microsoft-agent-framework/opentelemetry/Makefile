@@ -10,7 +10,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 # Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). Used only by
 # `make run-collector` to derive the GenAI agent/tool/workflow duration metrics
 # from spans via the spanmetrics connector.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.2.0
 override COLLECTOR_CONTAINER := otel-collector
 
 .PHONY: install run run-collector stop logs help

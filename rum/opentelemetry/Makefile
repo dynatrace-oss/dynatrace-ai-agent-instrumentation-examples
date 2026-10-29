@@ -9,7 +9,7 @@ DT_API_TOKEN     ?= dt0c01.*****
 
 # Dynatrace Distro for OpenTelemetry Collector. Derives gen_ai.client.operation.duration
 # and gen_ai.invoke_agent.duration from spans via the span_metrics connector. Pinned so a version bump is a visible diff.
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.57.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.59.0
 override COLLECTOR_CONTAINER := rum-otel-collector
 
 # Service name the backend reports under (the e2e test filters on it).
