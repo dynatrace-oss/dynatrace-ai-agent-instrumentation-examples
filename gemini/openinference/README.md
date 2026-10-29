@@ -37,7 +37,7 @@ This is a minimal provider example (one model call, no agent framework). For an 
 
 - A Dynatrace tenant (start a free trial at https://dt-url.net/trial)
 - Docker installed and running
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - A [Gemini API key](https://aistudio.google.com/apikey)
 
