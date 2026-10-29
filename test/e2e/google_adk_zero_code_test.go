@@ -74,7 +74,8 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	// input and no output, so on a direct export call_llm passes the first gate
 	// and fails the second while generate_content does the reverse: spans reach
 	// Distributed Tracing but no prompt is ever displayed. The collector sets
-	// gen_ai.provider.name = "vertexai" on the content-bearing span, strips ADK's
+	// gen_ai.provider.name = "vertexai" on the content-bearing span when ADK
+	// leaves it unset (ADK 2.13+ sets "gcp.gemini" itself), strips ADK's
 	// scope name off call_llm (both gen_ai.system and gen_ai.provider.name carry
 	// it, and the app resolves the provider as coalesce of the two, so leaving
 	// either one in place keeps call_llm's duplicate token counts inside every
@@ -100,7 +101,7 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	auditSpanWithMetrics(t, "google-adk", "zero-code", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "`+adkZeroCodeService+`"
-| filter gen_ai.provider.name == "vertexai"
+| filter in(gen_ai.provider.name, {"vertexai", "gcp.gemini"})
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
