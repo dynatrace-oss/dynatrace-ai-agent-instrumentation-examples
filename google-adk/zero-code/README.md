@@ -76,7 +76,7 @@ Notes on individual settings:
 - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` is required; the Python default is gRPC, which the Dynatrace `/api/v2/otlp` endpoint does not serve.
 - `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` is required; Dynatrace rejects cumulative OTLP metrics with HTTP 400.
 - `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` must keep content on spans (`SPAN_ONLY` or `SPAN_AND_EVENT`). Dynatrace reads `gen_ai.input.messages` and `gen_ai.output.messages` as span attributes; `EVENT_ONLY` puts them in log events, where the AI Observability app cannot see them.
-- `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` opts ADK and the Google GenAI SDK into current `gen_ai.*` semantics.
+- `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` opts ADK and the Google GenAI SDK into current `gen_ai.*` semantics. With it, ADK counts Gemini's thinking tokens (`thoughts_token_count`) as part of `gen_ai.usage.output_tokens` and also reports them separately as `gen_ai.usage.reasoning.output_tokens`, so token usage in Dynatrace matches Gemini's `total_token_count`.
 
 ### Instrumentation packages are pinned explicitly
 
