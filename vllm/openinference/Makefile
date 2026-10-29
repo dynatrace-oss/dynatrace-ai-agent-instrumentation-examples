@@ -5,7 +5,7 @@ export
 PORT             ?= 8000
 SINK_PORT        ?= 14318
 MODEL            ?= Qwen/Qwen2.5-0.5B-Instruct
-VLLM_IMAGE       ?= vllm/vllm-openai-cpu:v0.31.0
+VLLM_IMAGE       ?= vllm/vllm-openai-cpu:v0.32.0
 VLLM_CONTAINER   ?= vllm-otel
 # off | traced | detailed | dt (export vLLM spans to Dynatrace)
 MODE             ?= traced
