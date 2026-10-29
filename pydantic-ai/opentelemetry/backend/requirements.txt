@@ -1,4 +1,4 @@
-pydantic-ai==2.54.0
+pydantic-ai==2.63.0
 fastapi
 uvicorn[standard]
 python-dotenv
