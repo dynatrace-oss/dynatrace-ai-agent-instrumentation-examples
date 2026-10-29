@@ -1,4 +1,4 @@
-litellm[proxy]==1.106.5
+litellm[proxy]==1.106.6
 # litellm.proxy imports get_flat_dependant, removed in FastAPI 0.140.7.
 fastapi==0.162.0
 openinference-instrumentation-litellm==0.1.51
