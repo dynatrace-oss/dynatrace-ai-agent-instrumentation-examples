@@ -154,7 +154,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.66b2" },
     { name = "opentelemetry-instrumentation-urllib3", specifier = "==0.66b2" },
     { name = "strands-agents", specifier = "==1.62.0" },
-    { name = "strands-agents-tools", specifier = "==0.8.10" },
+    { name = "strands-agents-tools", specifier = "==0.8.11" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.54.0" },
 ]
 
@@ -1386,7 +1386,7 @@ wheels = [
 
 [[package]]
 name = "strands-agents-tools"
-version = "0.8.10"
+version = "0.8.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1407,9 +1407,9 @@ dependencies = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/0f/442ece9d7203b6e92da7911129c4e5a1a56c26aaae913ebde869d515001b/strands_agents_tools-0.8.10.tar.gz", hash = "sha256:a5146d71f882e8ed0a127b68244e2ea604b99d86289346c83dd98fd1c891d566", size = 547417, upload-time = "2026-10-21T21:14:07.633Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/89/478075a2cdce15a537982ce6954c88d2cc24185ce761f310816366d4a277/strands_agents_tools-0.8.11.tar.gz", hash = "sha256:50aa261ac7909ad8445305824907b2d56a483a0810f13b0ea797454bd1443e2d", size = 557478, upload-time = "2026-10-30T17:30:10.997Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/4a/4bc6b6c10ba2d45ffc4bc2f06f95dd1812ab9e08415229761f5c62ea0db5/strands_agents_tools-0.8.10-py3-none-any.whl", hash = "sha256:175bf7f751b778df7f4a2135458511bd9cb2ea29c2370d7476617792c010bf98", size = 345989, upload-time = "2026-10-21T21:14:05.548Z" },
+    { url = "https://files.pythonhosted.org/packages/33/bc/948607e7a7d963b36e248a7b4948fcf820a06463fb713bc0daa4e8f07005/strands_agents_tools-0.8.11-py3-none-any.whl", hash = "sha256:ca425b9882dc13602d7cf3c9a390f63457f14ef6199b36e0d118d30a90d9989b", size = 355290, upload-time = "2026-10-30T17:30:09.015Z" },
 ]
 
 [[package]]
