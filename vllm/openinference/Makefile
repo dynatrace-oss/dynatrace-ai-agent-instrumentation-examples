@@ -41,7 +41,7 @@ run: stop ## Start vLLM (CPU image) on port $(PORT); MODE=off|traced|detailed|dt
 	  $(if $(filter dt,$(MODE)),-e OTEL_EXPORTER_OTLP_TRACES_HEADERS) \
 	  $(if $(VLLM_SAMPLE_RATIO),-e OTEL_TRACES_SAMPLER=traceidratio -e OTEL_TRACES_SAMPLER_ARG=$(VLLM_SAMPLE_RATIO)) \
 	  -v vllm-hf-cache:/root/.cache/huggingface \
-	  $(VLLM_IMAGE) --model $(MODEL) --max-model-len 2048 $(TRACE_ARGS_$(MODE))
+	  $(VLLM_IMAGE) --model $(MODEL) --max-model-len 2048 --enforce-eager $(TRACE_ARGS_$(MODE))
 	@until curl -sf http://localhost:$(PORT)/health >/dev/null; do \
 	  [ "$$(docker inspect -f {{.State.Running}} $(VLLM_CONTAINER))" = true ] || { docker logs $(VLLM_CONTAINER); exit 1; }; \
 	  sleep 3; done; echo "vLLM ready (MODE=$(MODE))"
