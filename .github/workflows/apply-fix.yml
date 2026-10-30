@@ -1,7 +1,7 @@
 name: Apply fix
 
-# A maintainer comments `/apply` on a Renovate PR to commit the fix diff that
-# the Bluebox triage routine posted. The diff is applied with `git apply` only;
+# A maintainer comments `/apply <comment-id>` on a Renovate PR to commit the
+# fix diff in that Bluebox triage comment. The diff is applied with `git apply` only;
 # nothing from the PR branch is executed here. Renovate stops managing a branch
 # once it has a non-Renovate commit, so the PR is merged by hand afterwards.
 on:
@@ -19,11 +19,12 @@ jobs:
     if: >
       github.event.issue.pull_request &&
       github.event.issue.user.login == 'renovate[bot]' &&
-      startsWith(github.event.comment.body, '/apply')
+      startsWith(github.event.comment.body, '/apply ')
     runs-on: ubuntu-latest
     env:
       PR: ${{ github.event.issue.number }}
       COMMENTER: ${{ github.event.comment.user.login }}
+      APPLY_BODY: ${{ github.event.comment.body }}
       APPLY_COMMENT_AT: ${{ github.event.comment.created_at }}
       BLUEBOX_BOT_LOGIN: ${{ vars.BLUEBOX_BOT_LOGIN }}
     steps:
@@ -33,8 +34,12 @@ jobs:
         with:
           app-id: ${{ vars.FIXER_APP_ID }}
           private-key: ${{ secrets.FIXER_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: read
 
       - name: Check commenter has write access
+        id: perm
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
@@ -57,20 +62,21 @@ jobs:
           echo "ref=$head_ref" >> "$GITHUB_OUTPUT"
           echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Fetch latest Bluebox fix comment
+      - name: Fetch the approved Bluebox fix comment
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           [ -n "$BLUEBOX_BOT_LOGIN" ] || { echo "::error::vars.BLUEBOX_BOT_LOGIN is not set."; exit 1; }
-          # Only a comment that existed, unedited, when /apply was posted: the
-          # maintainer approved that exact text.
-          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            | jq -s --arg bot "$BLUEBOX_BOT_LOGIN" --arg at "$APPLY_COMMENT_AT" '
-                add
-                | map(select(.user.login == $bot and (.body | test("```diff"))))
-                | last // error("no Bluebox fix comment")
-                | if .updated_at > $at then error("fix comment was edited after /apply") else . end
-                | .body' -r > "$RUNNER_TEMP/comment.md"
+          id=$(printf '%s\n' "$APPLY_BODY" | head -1 | sed -nE 's#^/apply ([0-9]+)[[:space:]]*$#\1#p')
+          [ -n "$id" ] || { echo "::error::Usage: /apply <comment-id>"; exit 1; }
+          # The comment must be Bluebox's, on this PR, and unchanged since
+          # before /apply: the maintainer approved that exact text.
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$id" \
+            | jq -r --arg bot "$BLUEBOX_BOT_LOGIN" --arg at "$APPLY_COMMENT_AT" --arg pr "$PR" '
+                if .user.login != $bot then error("comment is not from Bluebox")
+                elif (.issue_url | endswith("/issues/" + $pr)) | not then error("comment is on another PR")
+                elif .updated_at >= $at then error("comment was edited at or after /apply")
+                else .body end' > "$RUNNER_TEMP/comment.md"
 
       - name: Checkout trusted scripts
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -83,7 +89,7 @@ jobs:
         with:
           path: pr
           ref: ${{ steps.pr.outputs.sha }}
-          token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
 
       - name: Apply diff
         working-directory: pr
@@ -97,16 +103,17 @@ jobs:
         env:
           HEAD_REF: ${{ steps.pr.outputs.ref }}
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          TOKEN: ${{ steps.app.outputs.token }}
         run: |
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
           git add -A
           git commit -m "apply triage fix approved by ${COMMENTER}"
           # Plain push: fails if the branch moved since /apply was resolved.
-          git push origin "HEAD:refs/heads/${HEAD_REF}"
+          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
 
       - name: Report result
-        if: always() && steps.app.outputs.token != ''
+        if: always() && steps.perm.outcome == 'success'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
