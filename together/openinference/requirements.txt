@@ -1,4 +1,4 @@
 together==2.41.0
-openinference-instrumentation-together==0.1.13
-opentelemetry-sdk ==1.45.1
-opentelemetry-exporter-otlp ==1.45.1
+openinference-instrumentation-together==0.1.15
+opentelemetry-sdk ==1.45.2
+opentelemetry-exporter-otlp ==1.45.2

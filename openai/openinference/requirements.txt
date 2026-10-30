@@ -1,4 +1,4 @@
 openai==3.26.0
-openinference-instrumentation-openai ==0.1.66
-opentelemetry-sdk ==1.45.1
-opentelemetry-exporter-otlp ==1.45.1
+openinference-instrumentation-openai ==0.1.68
+opentelemetry-sdk ==1.45.2
+opentelemetry-exporter-otlp ==1.45.2
