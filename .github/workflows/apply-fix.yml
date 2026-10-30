@@ -1,0 +1,120 @@
+name: Apply fix
+
+# A maintainer comments `/apply` on a Renovate PR to commit the fix diff that
+# the Bluebox triage routine posted. The diff is applied with `git apply` only;
+# nothing from the PR branch is executed here. Renovate stops managing a branch
+# once it has a non-Renovate commit, so the PR is merged by hand afterwards.
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: apply-fix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >
+      github.event.issue.pull_request &&
+      github.event.issue.user.login == 'renovate[bot]' &&
+      startsWith(github.event.comment.body, '/apply')
+    runs-on: ubuntu-latest
+    env:
+      PR: ${{ github.event.issue.number }}
+      COMMENTER: ${{ github.event.comment.user.login }}
+      APPLY_COMMENT_AT: ${{ github.event.comment.created_at }}
+      BLUEBOX_BOT_LOGIN: ${{ vars.BLUEBOX_BOT_LOGIN }}
+    steps:
+      - name: Create app token
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.FIXER_APP_ID }}
+          private-key: ${{ secrets.FIXER_APP_PRIVATE_KEY }}
+
+      - name: Check commenter has write access
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          perm=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENTER/permission" --jq .permission)
+          case "$perm" in
+            admin|maintain|write) ;;
+            *) echo "::error::$COMMENTER has '$perm' access; /apply needs write."; exit 1 ;;
+          esac
+
+      - name: Resolve PR head
+        id: pr
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          read -r head_repo head_ref head_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
+            --jq '"\(.head.repo.full_name) \(.head.ref) \(.head.sha)"')
+          if [ "$head_repo" != "$GITHUB_REPOSITORY" ] || [[ "$head_ref" != renovate/* ]]; then
+            echo "::error::Not a Renovate branch in this repository: $head_repo:$head_ref"; exit 1
+          fi
+          echo "ref=$head_ref" >> "$GITHUB_OUTPUT"
+          echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch latest Bluebox fix comment
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          [ -n "$BLUEBOX_BOT_LOGIN" ] || { echo "::error::vars.BLUEBOX_BOT_LOGIN is not set."; exit 1; }
+          # Only a comment that existed, unedited, when /apply was posted: the
+          # maintainer approved that exact text.
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            | jq -s --arg bot "$BLUEBOX_BOT_LOGIN" --arg at "$APPLY_COMMENT_AT" '
+                add
+                | map(select(.user.login == $bot and (.body | test("```diff"))))
+                | last // error("no Bluebox fix comment")
+                | if .updated_at > $at then error("fix comment was edited after /apply") else . end
+                | .body' -r > "$RUNNER_TEMP/comment.md"
+
+      - name: Checkout trusted scripts
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: trusted
+          persist-credentials: false
+
+      - name: Checkout PR branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: pr
+          ref: ${{ steps.pr.outputs.sha }}
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Apply diff
+        working-directory: pr
+        env:
+          COMMENT_FILE: ${{ runner.temp }}/comment.md
+          DIFF_FILE: ${{ runner.temp }}/fix.diff
+        run: bash ../trusted/.github/scripts/apply-bluebox-fix.sh
+
+      - name: Commit and push
+        working-directory: pr
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.ref }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "apply triage fix approved by ${COMMENTER}"
+          # Plain push: fails if the branch moved since /apply was resolved.
+          git push origin "HEAD:refs/heads/${HEAD_REF}"
+
+      - name: Report result
+        if: always() && steps.app.outputs.token != ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            msg="Applied the fix. E2E runs on the new commit; merge by hand once it is green (Renovate no longer manages this branch)."
+          else
+            msg="Could not apply the fix: see [the run]($RUN_URL)."
+          fi
+          gh pr comment "$PR" --body "$msg"
