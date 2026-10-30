@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 dependencies = [
     "langgraph==1.2.18",
     "langchain-openai==1.7.3",
-    "openai==2.46.0",
+    "openai==3.37.0",
     "oneagent-sdk",
     "fastapi==0.162.0",
     "uvicorn[standard]==0.54.0",
