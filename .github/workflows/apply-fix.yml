@@ -1,0 +1,125 @@
+name: Apply fix
+
+# A maintainer comments `/apply` on a Renovate PR to commit the fix diff in
+# the Bluebox triage comment (one per PR, marked `<!-- renovate-triage -->`). The diff is applied with `git apply` only;
+# nothing from the PR branch is executed here. Renovate stops managing a branch
+# once it has a non-Renovate commit, so the PR is merged by hand afterwards.
+# The push uses a write deploy key: unlike GITHUB_TOKEN pushes, it starts the
+# pull_request E2E run on the new commit.
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: apply-fix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >
+      github.event.issue.pull_request &&
+      github.event.issue.user.login == 'renovate[bot]' &&
+      startsWith(github.event.comment.body, '/apply')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.issue.number }}
+      COMMENTER: ${{ github.event.comment.user.login }}
+      APPLY_BODY: ${{ github.event.comment.body }}
+      APPLY_COMMENT_AT: ${{ github.event.comment.created_at }}
+      BLUEBOX_BOT_LOGIN: bluebox-ai-first-dev[bot]
+    steps:
+      - name: Check commenter has write access
+        id: perm
+        run: |
+          perm=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENTER/permission" --jq .permission)
+          case "$perm" in
+            admin|maintain|write) ;;
+            *) echo "::error::$COMMENTER has '$perm' access; /apply needs write."; exit 1 ;;
+          esac
+
+      - name: Resolve PR head
+        id: pr
+        run: |
+          read -r head_repo head_ref head_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
+            --jq '"\(.head.repo.full_name) \(.head.ref) \(.head.sha)"')
+          if [ "$head_repo" != "$GITHUB_REPOSITORY" ] || [[ "$head_ref" != renovate/* ]]; then
+            echo "::error::Not a Renovate branch in this repository: $head_repo:$head_ref"; exit 1
+          fi
+          echo "ref=$head_ref" >> "$GITHUB_OUTPUT"
+          echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch the approved Bluebox fix comment
+        run: |
+          printf '%s\n' "$APPLY_BODY" | head -1 | grep -qE '^/apply[[:space:]]*$' \
+            || { echo "::error::Usage: /apply"; exit 1; }
+          # Exactly one Bluebox triage comment, unchanged since before /apply:
+          # the maintainer approved that exact text.
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            | jq -s -r --arg bot "$BLUEBOX_BOT_LOGIN" --arg at "$APPLY_COMMENT_AT" '
+                add // []
+                | map(select(.user.login == $bot and (.body | startswith("<!-- renovate-triage -->"))))
+                | if length == 0 then error("no Bluebox triage comment on this PR")
+                  elif length > 1 then error("more than one Bluebox triage comment; delete the stale ones")
+                  elif .[0].updated_at >= $at then error("triage comment was edited at or after /apply")
+                  else .[0].body end' > "$RUNNER_TEMP/comment.md"
+
+      - name: Checkout trusted scripts
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: trusted
+          persist-credentials: false
+
+      - name: Checkout PR branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: pr
+          ref: ${{ steps.pr.outputs.sha }}
+          persist-credentials: false
+
+      - name: Apply diff
+        working-directory: pr
+        env:
+          COMMENT_FILE: ${{ runner.temp }}/comment.md
+          DIFF_FILE: ${{ runner.temp }}/fix.diff
+        run: bash ../trusted/.github/scripts/apply-bluebox-fix.sh
+
+      - name: Commit and push
+        working-directory: pr
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.ref }}
+          DEPLOY_KEY: ${{ secrets.APPLY_FIX_DEPLOY_KEY }}
+          # GitHub's published ed25519 host key (api.github.com/meta), pinned
+          # so the push can't be redirected to another host.
+          GITHUB_HOST_KEY: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "apply triage fix approved by ${COMMENTER}"
+          install -m 600 /dev/null "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$GITHUB_HOST_KEY" > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts -o StrictHostKeyChecking=yes"
+          # Plain push: fails if the branch moved since /apply was resolved.
+          git push "git@github.com:${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+          rm -f "$RUNNER_TEMP/deploy_key"
+
+      - name: Report result
+        if: always() && steps.perm.outcome == 'success'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          if [ "$OUTCOME" = "success" ]; then
+            msg="Applied the fix. E2E runs on the new commit; merge by hand once it is green (Renovate no longer manages this branch)."
+          else
+            msg="Could not apply the fix: see [the run]($RUN_URL)."
+          fi
+          gh pr comment "$PR" --body "$msg"
