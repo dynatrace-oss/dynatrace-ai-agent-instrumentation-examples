@@ -661,8 +661,11 @@ jobs:
             echo "regressed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Posting is best effort; a failure to build the audit fails the job,
+      # and so `result`, so a broken audit can't hide a regression.
       - name: Post or update PR comment
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        continue-on-error: true
         with:
           header: e2e-span-audit
           path: comment.md
@@ -694,11 +697,9 @@ jobs:
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      # pr-audit-comment is skipped on fork PRs; skipped counts as success here.
       - name: Fail if any e2e job failed or was cancelled
-        if: >
-          contains(fromJSON('["failure","cancelled"]'), needs.filter.result) ||
-          contains(fromJSON('["failure","cancelled"]'), needs.oneagent.result) ||
-          contains(fromJSON('["failure","cancelled"]'), needs.otelcol.result)
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
 
       # A gen_ai.* attribute present in the last nightly is missing on this PR.
