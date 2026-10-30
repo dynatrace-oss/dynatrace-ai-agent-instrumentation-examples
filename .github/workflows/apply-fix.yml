@@ -1,7 +1,7 @@
 name: Apply fix
 
-# A maintainer comments `/apply <comment-id>` on a Renovate PR to commit the
-# fix diff in that Bluebox triage comment. The diff is applied with `git apply` only;
+# A maintainer comments `/apply` on a Renovate PR to commit the fix diff in
+# the Bluebox triage comment (one per PR, marked `<!-- renovate-triage -->`). The diff is applied with `git apply` only;
 # nothing from the PR branch is executed here. Renovate stops managing a branch
 # once it has a non-Renovate commit, so the PR is merged by hand afterwards.
 # The push uses a write deploy key: unlike GITHUB_TOKEN pushes, it starts the
@@ -21,7 +21,7 @@ jobs:
     if: >
       github.event.issue.pull_request &&
       github.event.issue.user.login == 'renovate[bot]' &&
-      startsWith(github.event.comment.body, '/apply ')
+      startsWith(github.event.comment.body, '/apply')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -57,16 +57,18 @@ jobs:
 
       - name: Fetch the approved Bluebox fix comment
         run: |
-          id=$(printf '%s\n' "$APPLY_BODY" | head -1 | sed -nE 's#^/apply ([0-9]+)[[:space:]]*$#\1#p')
-          [ -n "$id" ] || { echo "::error::Usage: /apply <comment-id>"; exit 1; }
-          # The comment must be Bluebox's, on this PR, and unchanged since
-          # before /apply: the maintainer approved that exact text.
-          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$id" \
-            | jq -r --arg bot "$BLUEBOX_BOT_LOGIN" --arg at "$APPLY_COMMENT_AT" --arg pr "$PR" '
-                if .user.login != $bot then error("comment is not from Bluebox")
-                elif (.issue_url | endswith("/issues/" + $pr)) | not then error("comment is on another PR")
-                elif .updated_at >= $at then error("comment was edited at or after /apply")
-                else .body end' > "$RUNNER_TEMP/comment.md"
+          printf '%s\n' "$APPLY_BODY" | head -1 | grep -qE '^/apply[[:space:]]*$' \
+            || { echo "::error::Usage: /apply"; exit 1; }
+          # Exactly one Bluebox triage comment, unchanged since before /apply:
+          # the maintainer approved that exact text.
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            | jq -s -r --arg bot "$BLUEBOX_BOT_LOGIN" --arg at "$APPLY_COMMENT_AT" '
+                add // []
+                | map(select(.user.login == $bot and (.body | startswith("<!-- renovate-triage -->"))))
+                | if length == 0 then error("no Bluebox triage comment on this PR")
+                  elif length > 1 then error("more than one Bluebox triage comment; delete the stale ones")
+                  elif .[0].updated_at >= $at then error("triage comment was edited at or after /apply")
+                  else .[0].body end' > "$RUNNER_TEMP/comment.md"
 
       - name: Checkout trusted scripts
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
