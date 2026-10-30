@@ -10,10 +10,6 @@ load_dotenv()
 # OpenInference instrumentors.
 os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
 
-# ADK >= 2.13 defaults to telemetry schema v2, which drops the call_llm span
-# that the OpenInference ADK instrumentor hooks. Keep the legacy schema.
-os.environ.setdefault("ADK_TELEMETRY_SCHEMA_VERSION_OPT_IN", "1")
-
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (make run points it at the
 # local collector, which derives gen_ai.* metrics from the spans).
 from openinference.instrumentation.google_adk import GoogleADKInstrumentor
