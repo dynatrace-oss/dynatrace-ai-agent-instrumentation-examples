@@ -4,6 +4,8 @@ name: Apply fix
 # fix diff in that Bluebox triage comment. The diff is applied with `git apply` only;
 # nothing from the PR branch is executed here. Renovate stops managing a branch
 # once it has a non-Renovate commit, so the PR is merged by hand afterwards.
+# The push uses a write deploy key: unlike GITHUB_TOKEN pushes, it starts the
+# pull_request E2E run on the new commit.
 on:
   issue_comment:
     types: [created]
@@ -21,27 +23,20 @@ jobs:
       github.event.issue.user.login == 'renovate[bot]' &&
       startsWith(github.event.comment.body, '/apply ')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
     env:
+      GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.issue.number }}
       COMMENTER: ${{ github.event.comment.user.login }}
       APPLY_BODY: ${{ github.event.comment.body }}
       APPLY_COMMENT_AT: ${{ github.event.comment.created_at }}
       BLUEBOX_BOT_LOGIN: bluebox-ai-first-dev[bot]
     steps:
-      - name: Create app token
-        id: app
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          app-id: ${{ vars.FIXER_APP_ID }}
-          private-key: ${{ secrets.FIXER_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-          permission-issues: read
-
       - name: Check commenter has write access
         id: perm
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           perm=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$COMMENTER/permission" --jq .permission)
           case "$perm" in
@@ -51,8 +46,6 @@ jobs:
 
       - name: Resolve PR head
         id: pr
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           read -r head_repo head_ref head_sha < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" \
             --jq '"\(.head.repo.full_name) \(.head.ref) \(.head.sha)"')
@@ -63,8 +56,6 @@ jobs:
           echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
 
       - name: Fetch the approved Bluebox fix comment
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           id=$(printf '%s\n' "$APPLY_BODY" | head -1 | sed -nE 's#^/apply ([0-9]+)[[:space:]]*$#\1#p')
           [ -n "$id" ] || { echo "::error::Usage: /apply <comment-id>"; exit 1; }
@@ -101,20 +92,26 @@ jobs:
         working-directory: pr
         env:
           HEAD_REF: ${{ steps.pr.outputs.ref }}
-          APP_SLUG: ${{ steps.app.outputs.app-slug }}
-          TOKEN: ${{ steps.app.outputs.token }}
+          DEPLOY_KEY: ${{ secrets.APPLY_FIX_DEPLOY_KEY }}
+          # GitHub's published ed25519 host key (api.github.com/meta), pinned
+          # so the push can't be redirected to another host.
+          GITHUB_HOST_KEY: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
         run: |
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "apply triage fix approved by ${COMMENTER}"
+          install -m 600 /dev/null "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$GITHUB_HOST_KEY" > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/deploy_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts -o StrictHostKeyChecking=yes"
           # Plain push: fails if the branch moved since /apply was resolved.
-          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+          git push "git@github.com:${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+          rm -f "$RUNNER_TEMP/deploy_key"
 
       - name: Report result
         if: always() && steps.perm.outcome == 'success'
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           OUTCOME: ${{ job.status }}
         run: |
