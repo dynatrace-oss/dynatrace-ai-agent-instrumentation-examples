@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "google-genai==2.34.0",
-    "openinference-instrumentation-google-genai==1.4.14",
-    "opentelemetry-sdk==1.45.1",
-    "opentelemetry-exporter-otlp==1.45.1",
+    "openinference-instrumentation-google-genai==1.5.0",
+    "opentelemetry-sdk==1.45.2",
+    "opentelemetry-exporter-otlp==1.45.2",
 ]

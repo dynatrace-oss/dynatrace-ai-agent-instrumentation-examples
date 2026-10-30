@@ -1,4 +1,4 @@
 anthropic[bedrock]==1.12.1
-openinference-instrumentation-anthropic==3.1.0
-opentelemetry-sdk ==1.45.1
-opentelemetry-exporter-otlp ==1.45.1
+openinference-instrumentation-anthropic==3.2.0
+opentelemetry-sdk ==1.45.2
+opentelemetry-exporter-otlp ==1.45.2

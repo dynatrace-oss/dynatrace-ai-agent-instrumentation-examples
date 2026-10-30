@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "cohere==7.3.0",
-    "openinference-instrumentation-cohere==0.1.15",
+    "openinference-instrumentation-cohere==0.1.17",
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
     "fastapi",
