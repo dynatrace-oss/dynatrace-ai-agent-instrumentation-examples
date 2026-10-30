@@ -14,6 +14,8 @@
 # Inputs (environment variables):
 #   CURR_DIR     - directory with this run's *.json span-audit reports
 #   BASELINE_DIR - directory with the baseline nightly run's *.json reports
+#   REGRESSION_FILE - optional; created when any attribute was removed, so the
+#                     caller can fail the PR check on a regression
 set -euo pipefail
 
 CURR_DIR="${CURR_DIR:-all-reports}"
@@ -68,5 +70,10 @@ print_table() {
   echo
 }
 
+REMOVED_ROWS="$(echo "$ALL_ROWS" | awk -F'\t' '$1=="REMOVED"')"
+if [ -n "$REMOVED_ROWS" ] && [ -n "${REGRESSION_FILE:-}" ]; then
+  : > "$REGRESSION_FILE"
+fi
+
 print_table "➕ Added" "$(echo "$ALL_ROWS" | awk -F'\t' '$1=="ADDED"')"
-print_table "➖ Removed" "$(echo "$ALL_ROWS" | awk -F'\t' '$1=="REMOVED"')"
+print_table "➖ Removed" "$REMOVED_ROWS"

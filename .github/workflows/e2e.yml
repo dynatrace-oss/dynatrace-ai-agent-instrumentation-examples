@@ -618,6 +618,8 @@ jobs:
     permissions:
       pull-requests: write
       actions: read
+    outputs:
+      regressed: ${{ steps.regression.outputs.regressed }}
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -647,10 +649,23 @@ jobs:
           BASELINE_DIR: baseline-reports
           BASELINE_RUN_URL: ${{ steps.baseline.outputs.run_url }}
           OUTPUT_FILE: comment.md
+          REGRESSION_FILE: regression.flag
         run: bash .github/scripts/pr-audit-comment.sh
 
+      - name: Record attribute regression
+        id: regression
+        run: |
+          if [ -f regression.flag ]; then
+            echo "regressed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "regressed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Posting is best effort; a failure to build the audit fails the job,
+      # and so `result`, so a broken audit can't hide a regression.
       - name: Post or update PR comment
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        continue-on-error: true
         with:
           header: e2e-span-audit
           path: comment.md
@@ -678,10 +693,18 @@ jobs:
   # Stable check name for branch protection: the per-suite job names change with each PR's matrix.
   result:
     name: E2E / result
-    needs: [filter, oneagent, otelcol]
+    needs: [filter, oneagent, otelcol, pr-audit-comment]
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      # pr-audit-comment is skipped on fork PRs; skipped counts as success here.
       - name: Fail if any e2e job failed or was cancelled
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
+
+      # A gen_ai.* attribute present in the last nightly is missing on this PR.
+      - name: Fail on attribute regression vs. nightly
+        if: needs.pr-audit-comment.outputs.regressed == 'true'
+        run: |
+          echo "::error::Attribute regression vs. nightly; see the span audit comment on this PR."
+          exit 1
