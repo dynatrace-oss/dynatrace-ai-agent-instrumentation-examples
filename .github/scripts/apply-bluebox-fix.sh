@@ -25,6 +25,13 @@ if grep -qE '^(GIT binary patch|Binary files |(new |deleted )?file mode 120000|o
   exit 1
 fi
 
+# git C-quotes paths with spaces or non-ASCII bytes ("b/.github/\303\251.yml"),
+# which would slip past the prefix checks below. No fix needs such a path.
+if grep -qE '^(diff --git |--- |\+\+\+ |(rename|copy) (from|to) ).*"' "$DIFF_FILE"; then
+  echo "::error::Diff contains quoted paths."
+  exit 1
+fi
+
 # Every path the diff names, including both sides of renames and copies.
 paths=$(
   {
@@ -33,6 +40,12 @@ paths=$(
     grep -E '^(\+\+\+|---) [ab]/' "$DIFF_FILE" | cut -c7-
   } | sort -u
 )
+
+if unsafe=$(printf '%s\n' "$paths" | grep -vE '^[A-Za-z0-9._/@+-]+$'); then
+  echo "::error::Diff names paths with unexpected characters:"
+  printf '%s\n' "$unsafe"
+  exit 1
+fi
 
 forbidden='^(\.github/|test/|\.git/)|(^|/)(package-lock\.json|uv\.lock|poetry\.lock|Pipfile\.lock|yarn\.lock|pnpm-lock\.yaml|go\.sum)$|(^|/)\.\.(/|$)'
 if bad=$(printf '%s\n' "$paths" | grep -E "$forbidden"); then
