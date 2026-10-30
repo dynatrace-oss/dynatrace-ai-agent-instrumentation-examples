@@ -10,6 +10,6 @@ dependencies = [
     "opentelemetry-instrumentation-urllib3==0.66b2",
     "opentelemetry-exporter-otlp-proto-http==1.45.2",
     "strands-agents==1.62.0",
-    "strands-agents-tools==0.8.10",
+    "strands-agents-tools==0.8.11",
     "uvicorn[standard]==0.54.0",
 ]
