@@ -467,7 +467,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-openai"
-version = "0.1.68"
+version = "0.1.69"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -479,9 +479,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/b5/6c8182c8a09d94e34d6ecbf1c117d8fd221657892f09ba03203c7724fd42/openinference_instrumentation_openai-0.1.68.tar.gz", hash = "sha256:9307f9e146ede7a6b26ead8ae14bc74f8eb9946a944942b3d9d6a35837eef02a", size = 30795, upload-time = "2026-10-29T22:13:21.292Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/fe/208b6a11cd868c39e79b0973e9bcb596f87525c388be6b0e50ed079ca93c/openinference_instrumentation_openai-0.1.69.tar.gz", hash = "sha256:6020a7617ce5efa5c43ff59a11322570cf3d6906fc0d9dd3913e533179af0575", size = 30944, upload-time = "2026-10-31T04:07:25.806Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/3a/86bd858dbbe9cfec6b9e3676ce91cefdfe91e7d47f759ea79d0333ef83cc/openinference_instrumentation_openai-0.1.68-py3-none-any.whl", hash = "sha256:eb53b2d439e07e4c83d21762926bd6b56b687fc8a293f52d338cef21cf60be8c", size = 38421, upload-time = "2026-10-29T22:13:20.037Z" },
+    { url = "https://files.pythonhosted.org/packages/39/25/d6de19f9375f9f15723fde2eef19c54ef5a103f94c4afcf44c1a95d5374d/openinference_instrumentation_openai-0.1.69-py3-none-any.whl", hash = "sha256:c11f823ea99320732bc578d50c697c7d6b36cddfa14927e69b601a2eb3e8485b", size = 38614, upload-time = "2026-10-31T04:07:24.503Z" },
 ]
 
 [[package]]
@@ -901,7 +901,7 @@ requires-dist = [
     { name = "fastapi", specifier = "==0.162.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "openai", specifier = "==3.26.0" },
-    { name = "openinference-instrumentation-openai", specifier = "==0.1.68" },
+    { name = "openinference-instrumentation-openai", specifier = "==0.1.69" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.2" },
     { name = "opentelemetry-proto", specifier = "==1.45.2" },
     { name = "opentelemetry-sdk", specifier = "==1.45.2" },
