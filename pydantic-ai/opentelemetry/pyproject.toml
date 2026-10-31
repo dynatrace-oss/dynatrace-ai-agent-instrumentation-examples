@@ -7,7 +7,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "python-dotenv",
-    "boto3==1.43.122",
+    "boto3==1.43.123",
     "openai==3.41.0",
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
