@@ -8,7 +8,7 @@ dependencies = [
     "httpx==0.28.1",
     "openai==3.26.0",
     "opentelemetry-proto==1.45.2",
-    "openinference-instrumentation-openai==0.1.68",
+    "openinference-instrumentation-openai==0.1.69",
     "opentelemetry-exporter-otlp-proto-http==1.45.2",
     "opentelemetry-sdk==1.45.2",
     "uvicorn==0.54.0",

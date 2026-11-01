@@ -259,7 +259,7 @@ dependencies = [
 requires-dist = [
     { name = "boto3", specifier = "==1.43.123" },
     { name = "fastapi" },
-    { name = "openinference-instrumentation", specifier = "==0.1.74" },
+    { name = "openinference-instrumentation", specifier = "==0.1.75" },
     { name = "openinference-instrumentation-bedrock", specifier = "==0.1.62" },
     { name = "openinference-semantic-conventions", specifier = "==0.1.43" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -269,7 +269,7 @@ requires-dist = [
 
 [[package]]
 name = "openinference-instrumentation"
-version = "0.1.74"
+version = "0.1.75"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-semantic-conventions" },
@@ -277,9 +277,9 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/9f/c693890c3fbe9414445d5f4cba4d36f138506c49955925a570afd2a48266/openinference_instrumentation-0.1.74.tar.gz", hash = "sha256:7c7d37b27d862d275f7d607c66e73d2b38d16618e98192c709926804920743f7", size = 47278, upload-time = "2026-10-29T22:13:20.405Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/e0/6e3b7158b37772957b2eee4ba6814bb731e85b1b0422b48029378912641b/openinference_instrumentation-0.1.75.tar.gz", hash = "sha256:a857e46ee739936529ce2ef3be0dd12417eb174825877f00cf4415c54bfbe92a", size = 47484, upload-time = "2026-10-31T04:07:23.687Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/0e/7cffbdd5258b9ff204dc1c3137bc54510420349abd71695afcc22aa5058c/openinference_instrumentation-0.1.74-py3-none-any.whl", hash = "sha256:5d14a91c9bde3acc77188d1a5c0578cd31b7ac72eb1166ab1dca7aae19996416", size = 54868, upload-time = "2026-10-29T22:13:19.033Z" },
+    { url = "https://files.pythonhosted.org/packages/16/b4/fec2f589101696a4bef7014c95dc1dc23818b82135410d4959ebeea0afb1/openinference_instrumentation-0.1.75-py3-none-any.whl", hash = "sha256:1c0e32802772d9137b35a80101769b066b8f5f620487c5f3c589470a463cfe5e", size = 55003, upload-time = "2026-10-31T04:07:22.412Z" },
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 dependencies = [
     "openai-agents==0.24.0",
     "openinference-instrumentation-openai-agents==2.7.0",
-    "openinference-instrumentation==0.1.74",
+    "openinference-instrumentation==0.1.75",
     "opentelemetry-sdk==1.45.2",
     "opentelemetry-exporter-otlp-proto-http==1.45.2",
     "fastapi==0.162.0",

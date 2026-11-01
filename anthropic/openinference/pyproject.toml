@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "anthropic[bedrock]==1.12.1",
-    "openinference-instrumentation-anthropic==3.2.0",
+    "openinference-instrumentation-anthropic==3.3.0",
     "opentelemetry-sdk==1.45.2",
     "opentelemetry-exporter-otlp==1.45.2",
 ]
