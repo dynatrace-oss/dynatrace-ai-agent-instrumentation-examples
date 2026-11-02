@@ -155,8 +155,12 @@ from agents import (
     Handoff,
 )
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging. The OTel LoggingHandler is already on the root logger, which
+# makes basicConfig a no-op, so attach the console handler explicitly.
+_console_handler = logging.StreamHandler()
+_console_handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
+logging.getLogger().addHandler(_console_handler)
+logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
@@ -393,6 +397,15 @@ async def chat_endpoint(req: ChatRequest):
                 agents=_build_agents_list(),
                 guardrails=guardrail_checks,
             )
+        except Exception:
+            logger.exception(
+                "Agent run failed: conversation_id=%s agent=%s",
+                conversation_id,
+                current_agent.name,
+            )
+            # Drop the unanswered user turn so a retry doesn't send it twice.
+            state["input_items"].pop()
+            raise
         finally:
             _conversation_id_var.reset(_conv_token)
 
