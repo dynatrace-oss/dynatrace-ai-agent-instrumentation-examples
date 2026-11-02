@@ -1,8 +1,5 @@
 import os
 
-os.environ['TRACELOOP_TELEMETRY'] = "false"
-os.environ['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] = "delta"
-
 def read_secret(secret: str):
     try:
         with open(f"/etc/secrets/{secret}", "r") as f:
@@ -17,7 +14,7 @@ headers = {"Authorization": f"Api-Token {token}"}
 _dt_base = os.environ.get("DT_ENDPOINT", "https://wkf10640.live.dynatrace.com").rstrip("/")
 DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
 
-# Export target. `make run-collector` sets OTEL_ENDPOINT so all three signals go
+# Export target. `make run-collector` sets OTEL_ENDPOINT so traces and logs go
 # to a local OTel Collector, which derives the GenAI agent, tool and workflow
 # duration metrics from the spans. `make run` leaves it unset and the app exports
 # straight to Dynatrace.
@@ -30,13 +27,27 @@ DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
 _collector = os.environ.get("OTEL_ENDPOINT", "").rstrip("/")
 OTLP_ENDPOINT = _collector or DT_OTLP_ENDPOINT
 
-from traceloop.sdk import Traceloop
-Traceloop.init(
-    app_name="openai-cs-agents",
-    api_endpoint=OTLP_ENDPOINT,
-    disable_batch=True,
-    headers=headers,
-    should_enrich_metrics=True,
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+
+_resource = Resource.create({"service.name": "openai-cs-agents"})
+
+_tracer_provider = TracerProvider(resource=_resource)
+_tracer_provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{OTLP_ENDPOINT}/v1/traces", headers=headers))
+)
+trace.set_tracer_provider(_tracer_provider)
+
+# The demo calls Azure OpenAI, so report that provider instead of the "openai"
+# default. Message content goes on span attributes, where Dynatrace reads it.
+OpenAIAgentsInstrumentor().instrument(
+    tracer_provider=_tracer_provider,
+    system="azure.ai.openai",
+    capture_message_content="span_only",
 )
 
 # =========================
@@ -47,12 +58,9 @@ import logging as _logging
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
-_logger_provider = LoggerProvider(
-    resource=Resource.create({"service.name": "openai-cs-agents"})
-)
+_logger_provider = LoggerProvider(resource=_resource)
 set_logger_provider(_logger_provider)
 
 _log_exporter = OTLPLogExporter(
@@ -65,7 +73,6 @@ _otel_log_handler = LoggingHandler(level=_logging.INFO, logger_provider=_logger_
 _logging.getLogger().addHandler(_otel_log_handler)
 
 
-from opentelemetry import trace
 tracer = trace.get_tracer("openai-agents")
 
 # =========================
@@ -74,7 +81,7 @@ tracer = trace.get_tracer("openai-agents")
 # Each chat turn arrives as its own request and therefore its own trace. To stitch
 # a whole conversation back together we (1) set a stable gen_ai.conversation.id on
 # the turn's root span, (2) stamp that same id onto the agent/model/tool child spans
-# created by the Agents SDK + Traceloop, and (3) link each turn's trace to the
+# created by the Agents SDK instrumentation, and (3) link each turn's trace to the
 # previous turn's.
 #
 # The whole turn runs in one process, so (2) only needs *in-process* propagation:
@@ -113,7 +120,7 @@ class _ConversationIdSpanProcessor(_SpanProcessor):
         return True
 
 
-trace.get_tracer_provider().add_span_processor(_ConversationIdSpanProcessor())
+_tracer_provider.add_span_processor(_ConversationIdSpanProcessor())
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

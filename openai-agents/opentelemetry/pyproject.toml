@@ -7,7 +7,7 @@ dependencies = [
     "pydantic",
     "fastapi==0.162.0",
     "uvicorn==0.54.0",
-    "traceloop-sdk==0.62.4",
+    "opentelemetry-instrumentation-openai-agents-v2==0.1.0",
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
 ]

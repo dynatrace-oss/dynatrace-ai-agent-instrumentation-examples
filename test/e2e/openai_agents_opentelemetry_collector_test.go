@@ -7,8 +7,8 @@ import (
 func TestOpenAIAgentsOpenTelemetryCollector(t *testing.T) {
 	// make run-collector routes the app through a local OTel Collector, which
 	// derives the three GenAI agent duration metrics from the spans via
-	// span_metrics connectors. Traceloop.init pins service.name on the Resource,
-	// so the collector renames it to "openai-cs-agents-collector" with a resource
+	// span_metrics connectors. The app pins service.name on the Resource, so the
+	// collector renames it to "openai-cs-agents-collector" with a resource
 	// processor; that keeps this data set distinct from the direct-export test
 	// (service.name == "openai-cs-agents"), so a derived metric can never be
 	// satisfied by the other run.
@@ -17,8 +17,8 @@ func TestOpenAIAgentsOpenTelemetryCollector(t *testing.T) {
 
 	// All three durations are asserted. The instrumentation sets the spec enum
 	// itself on the agent and function-tool spans; only the per-trace root span
-	// ("Agent Workflow", traceloop.span.kind = workflow, no enum) needs the
-	// collector's transform to become invoke_workflow.
+	// ("Agent workflow", kind SERVER, tagged invoke_agent) needs the collector's
+	// transform to become invoke_workflow.
 	//
 	// execute_tool depends on the model actually calling a tool. triggerCSAgent
 	// asks about baggage allowance and then a seat change, both of which route to

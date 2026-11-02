@@ -9,12 +9,9 @@ processors:
     send_batch_size: 512
     timeout: 5s
 
-  # Traceloop.init(app_name="openai-cs-agents") pins service.name on the
-  # Resource, so the app cannot be told from the outside to report under a
-  # different name. The e2e metric assertion isolates by service.name + time
-  # window, so without this rename a `make run` and a `make run-collector` pass
-  # would share "openai-cs-agents" and a derived metric could be satisfied by the
-  # wrong run.
+  # The app pins service.name = "openai-cs-agents" on its Resource. Renaming it
+  # here keeps a `make run-collector` pass distinct from a `make run` pass, since
+  # the e2e metric assertion isolates runs by service.name + time window.
   #
   # Applied on every pipeline below, including the metric branches: span_metrics
   # carries the span's Resource onto the metric.
@@ -38,23 +35,21 @@ processors:
           - set(attributes["gen_ai.input.messages"], attributes["temp.input_messages"]) where attributes["temp.input_messages"] != nil
           - delete_key(attributes, "temp.input_messages") where attributes["temp.input_messages"] != nil
 
-  # opentelemetry-instrumentation-openai-agents sets the spec enum correctly on
-  # the agent span (_hooks.py, _start_agent_span -> "invoke_agent",
-  # gen_ai.agent.name) and on the function-tool span (_start_function_span ->
-  # "execute_tool", gen_ai.tool.name / .tool_type). The one gap is the root span
-  # it opens per trace in on_trace_start: "Agent Workflow" carries
-  # traceloop.span.kind = "workflow" and no gen_ai.operation.name at all.
+  # opentelemetry-instrumentation-openai-agents-v2 tags the per-trace root span
+  # ("Agent workflow", kind SERVER) as invoke_agent, the same as the real agent
+  # spans below it. Re-tag it as invoke_workflow so it gets its own duration
+  # metric and is not double-counted as an agent.
   #
-  # Map that kind onto the spec enum so the workflow duration has something to
-  # key on. Guarded with "== nil" so the enum the instrumentor already sets on
-  # agent, tool, handoff and chat spans is never overwritten — "handoff" in
-  # particular is a real, non-spec operation value worth keeping intact.
-  transform/traceloop_operation_name:
+  # The instrumentation also emits operation "unknown" for the SDK's task and
+  # turn spans, which have no GenAI semconv equivalent. Drop the value rather
+  # than the spans so the trace tree stays intact.
+  transform/operation_name:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          - set(span.attributes["gen_ai.operation.name"], "invoke_workflow") where span.attributes["traceloop.span.kind"] == "workflow" and span.attributes["gen_ai.operation.name"] == nil
+          - set(span.attributes["gen_ai.operation.name"], "invoke_workflow") where span.kind == SPAN_KIND_SERVER and span.attributes["gen_ai.operation.name"] == "invoke_agent"
+          - delete_key(span.attributes, "gen_ai.operation.name") where span.attributes["gen_ai.operation.name"] == "unknown"
 
   # One filter per metric branch, each dropping every span that is not the one
   # its metric is defined over. The export pipeline is untouched, so all spans
@@ -154,14 +149,14 @@ service:
     traces:
       receivers: [otlp]
       processors:
-        [resource/service_name, transform/system_instructions, transform/traceloop_operation_name, batch]
+        [resource/service_name, transform/system_instructions, transform/operation_name, batch]
       exporters: [otlphttp/dynatrace]
 
     # One metrics branch per span type. Kept separate from the export pipeline
     # above so a filter here can never drop a span from Distributed Tracing.
     traces/invoke_agent_metrics:
       receivers: [otlp]
-      processors: [resource/service_name, filter/invoke_agent, batch]
+      processors: [resource/service_name, transform/operation_name, filter/invoke_agent, batch]
       exporters: [span_metrics/invoke_agent]
 
     traces/execute_tool_metrics:
@@ -169,14 +164,12 @@ service:
       processors: [resource/service_name, filter/execute_tool, batch]
       exporters: [span_metrics/execute_tool]
 
-    # This branch needs the transform: the workflow span is the one span type
-    # whose enum the collector derives rather than the instrumentation setting it.
     traces/invoke_workflow_metrics:
       receivers: [otlp]
       processors:
         [
           resource/service_name,
-          transform/traceloop_operation_name,
+          transform/operation_name,
           filter/invoke_workflow,
           batch,
         ]
