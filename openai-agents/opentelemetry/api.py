@@ -1,5 +1,8 @@
 import os
 
+# Dynatrace accepts delta temporality only.
+os.environ['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] = "delta"
+
 def read_secret(secret: str):
     try:
         with open(f"/etc/secrets/{secret}", "r") as f:
@@ -14,7 +17,7 @@ headers = {"Authorization": f"Api-Token {token}"}
 _dt_base = os.environ.get("DT_ENDPOINT", "https://wkf10640.live.dynatrace.com").rstrip("/")
 DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
 
-# Export target. `make run-collector` sets OTEL_ENDPOINT so traces and logs go
+# Export target. `make run-collector` sets OTEL_ENDPOINT so all three signals go
 # to a local OTel Collector, which derives the GenAI agent, tool and workflow
 # duration metrics from the spans. `make run` leaves it unset and the app exports
 # straight to Dynatrace.
@@ -32,6 +35,10 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 
 _resource = Resource.create({"service.name": "openai-cs-agents"})
@@ -42,8 +49,24 @@ _tracer_provider.add_span_processor(
 )
 trace.set_tracer_provider(_tracer_provider)
 
+metrics.set_meter_provider(
+    MeterProvider(
+        resource=_resource,
+        metric_readers=[
+            PeriodicExportingMetricReader(
+                OTLPMetricExporter(
+                    endpoint=f"{OTLP_ENDPOINT}/v1/metrics",
+                    headers=headers,
+                )
+            )
+        ],
+    )
+)
+
 # The demo calls Azure OpenAI, so report that provider instead of the "openai"
 # default. Message content goes on span attributes, where Dynatrace reads it.
+# The instrumentor also records gen_ai.client.operation.duration and
+# gen_ai.client.token.usage through the meter provider above.
 OpenAIAgentsInstrumentor().instrument(
     tracer_provider=_tracer_provider,
     system="azure.ai.openai",
@@ -129,18 +152,6 @@ from typing import Optional, List, Dict, Any
 from uuid import uuid4
 import time
 import logging
-
-from openai import AsyncAzureOpenAI
-from agents import set_default_openai_client
-openai_client = AsyncAzureOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT")
-)
-
-# Set the default OpenAI client for the Agents SDK
-set_default_openai_client(openai_client)
 
 from main import (
     triage_agent,
