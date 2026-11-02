@@ -43,6 +43,10 @@ processors:
   # The instrumentation also emits operation "unknown" for the SDK's task and
   # turn spans, which have no GenAI semconv equivalent. Drop the value rather
   # than the spans so the trace tree stays intact.
+  #
+  # It also stamps a placeholder agent ("OpenAI Agent", id "agent") on every
+  # span that is not a real agent span. Remove it so chat, tool and guardrail
+  # spans are not mistaken for agents and agent breakdowns get no fake bucket.
   transform/operation_name:
     error_mode: ignore
     trace_statements:
@@ -50,6 +54,9 @@ processors:
         statements:
           - set(span.attributes["gen_ai.operation.name"], "invoke_workflow") where span.kind == SPAN_KIND_SERVER and span.attributes["gen_ai.operation.name"] == "invoke_agent"
           - delete_key(span.attributes, "gen_ai.operation.name") where span.attributes["gen_ai.operation.name"] == "unknown"
+          - delete_key(span.attributes, "gen_ai.agent.description") where span.attributes["gen_ai.agent.description"] == "OpenAI Agents instrumentation"
+          - delete_key(span.attributes, "gen_ai.agent.name") where span.attributes["gen_ai.agent.name"] == "OpenAI Agent" and span.attributes["gen_ai.agent.id"] == "agent"
+          - delete_key(span.attributes, "gen_ai.agent.id") where span.attributes["gen_ai.agent.id"] == "agent"
 
   # One filter per metric branch, each dropping every span that is not the one
   # its metric is defined over. The export pipeline is untouched, so all spans
