@@ -470,7 +470,23 @@ func triggerCSAgent(t *testing.T) string {
 }
 
 // postCSTurn POSTs a single chat turn for the given conversation to /chat.
+// A 5xx is retried once: the agent run depends on a live LLM and fails
+// transiently now and then, which would otherwise fail the whole test.
 func postCSTurn(t *testing.T, conversationID, message string) {
+	t.Helper()
+
+	status, body := doCSTurn(t, conversationID, message)
+	if status >= 500 {
+		t.Logf("POST /chat returned %d, retrying once: %s", status, body)
+		time.Sleep(5 * time.Second)
+		status, body = doCSTurn(t, conversationID, message)
+	}
+	if status >= 300 {
+		t.Fatalf("POST /chat returned %d: %s", status, body)
+	}
+}
+
+func doCSTurn(t *testing.T, conversationID, message string) (int, []byte) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/chat"
 
@@ -490,10 +506,8 @@ func postCSTurn(t *testing.T, conversationID, message string) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("POST /chat returned %d: %s", resp.StatusCode, b)
-	}
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, body
 }
 
 // triggerLiteLLMChat POSTs a chat completion request to /chat/completions on localhost:8000.
