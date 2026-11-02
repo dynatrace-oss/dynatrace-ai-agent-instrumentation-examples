@@ -722,9 +722,14 @@ func auditApplyGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, not
 
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
 // scoped to the same service.name. Polls until the span count stabilizes
-// (two consecutive equal non-zero counts) so spans that arrive in Dynatrace
-// at different times are not missed. Uses a fresh 2-minute budget independent
+// (traceStablePolls consecutive equal non-zero counts) so spans that arrive in
+// Dynatrace at different times are not missed. Uses a fresh 2-minute budget independent
 // of the anchor-poll context.
+// traceStablePolls is how many consecutive polls (15s apart) must return the
+// same span count before a trace counts as complete. Ingestion can pause for a
+// full poll interval while later spans are still in flight.
+const traceStablePolls = 3
+
 func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interface{}) []map[string]interface{} {
 	t.Helper()
 
@@ -742,12 +747,12 @@ func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interfac
 		svcName, traceIDStr,
 	)
 
-	// Poll until the span count stabilizes (two consecutive equal non-zero counts).
 	// Fresh 2-minute budget so anchor-poll time does not reduce this window.
 	stableCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	lastCount := -1
+	stablePolls := 0
 	var lastSpans []map[string]interface{}
 
 	for {
@@ -758,6 +763,11 @@ func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interfac
 		}
 
 		if len(spans) > 0 && len(spans) == lastCount {
+			stablePolls++
+		} else {
+			stablePolls = 1
+		}
+		if len(spans) > 0 && stablePolls >= traceStablePolls {
 			t.Logf("trace spans stabilized at %d", len(spans))
 			return spans
 		}
