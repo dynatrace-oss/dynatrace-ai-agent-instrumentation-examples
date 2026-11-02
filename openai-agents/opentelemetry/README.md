@@ -11,28 +11,30 @@ This example contains a demo of a Customer Service Agent interface built on top 
 > For detailed setup instructions, configuration options, and advanced use cases, please refer to the [Get Started Docs](https://docs.dynatrace.com/docs/shortlink/ai-ml-get-started).
 
 
-The Dynatrace full-stack observability platform combined with Traceloop's OpenLLMetry OpenTelemetry SDK can seamlessly provide comprehensive insights into Large Language Models (LLMs) in production environments. By observing AI models, businesses can make informed decisions, optimize performance, and ensure compliance with emerging AI regulations.
+This demo uses the OpenTelemetry project's own instrumentation for the Agents SDK, [`opentelemetry-instrumentation-openai-agents-v2`](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2), on top of the plain OpenTelemetry SDK. No vendor SDK is involved.
 
-Enabling and configuring OpenLLMetry requires a Traceloop init call in [`api.py`](./api.py):
+Setup lives in [`api.py`](./api.py):
 
 ```python
-os.environ['TRACELOOP_TELEMETRY'] = "false"
-os.environ['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] = "delta"
-
 token = os.environ.get("DT_API_TOKEN") or read_secret("dynatrace_otel")
 headers = {"Authorization": f"Api-Token {token}"}
 _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-DT_OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
+OTLP_ENDPOINT = f"{_dt_base}/api/v2/otlp"
 
-from traceloop.sdk import Traceloop
-Traceloop.init(
-    app_name="openai-cs-agents",
-    api_endpoint=DT_OTLP_ENDPOINT,
-    disable_batch=True,
-    headers=headers,
-    should_enrich_metrics=True,
+_tracer_provider = TracerProvider(resource=Resource.create({"service.name": "openai-cs-agents"}))
+_tracer_provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{OTLP_ENDPOINT}/v1/traces", headers=headers))
+)
+trace.set_tracer_provider(_tracer_provider)
+
+OpenAIAgentsInstrumentor().instrument(
+    tracer_provider=_tracer_provider,
+    system="azure.ai.openai",
+    capture_message_content="span_only",
 )
 ```
+
+`system` sets `gen_ai.provider.name` (the default is `openai`), and `capture_message_content="span_only"` puts prompts and completions on span attributes, where Dynatrace reads them.
 
 The token is read from the `DT_API_TOKEN` environment variable first, falling back to `/etc/secrets/dynatrace_otel` for Kubernetes deployments.
 
@@ -46,7 +48,9 @@ The token is read from the `DT_API_TOKEN` environment variable first, falling ba
 | `gen_ai.execute_tool.duration` | the function-tool span (`gen_ai.operation.name = execute_tool`) |
 | `gen_ai.invoke_workflow.duration` | the per-trace root span (`Agent Workflow`) |
 
-`opentelemetry-instrumentation-openai-agents` already sets the spec operation name on the agent and tool spans, so those two need no rewriting. The root workflow span is the gap: it carries `traceloop.span.kind = workflow` and no `gen_ai.operation.name`, so `transform/traceloop_operation_name` maps the kind onto the enum --- and only where the enum is absent, which leaves the instrumentation's own `chat` and `handoff` values intact.
+The instrumentation already sets the spec operation name on the agent and tool spans. The root workflow span is the gap: it is tagged `invoke_agent` like the agent spans below it, so `transform/operation_name` re-tags the `SERVER`-kind root as `invoke_workflow`. The same transform removes the `unknown` operation name the instrumentation puts on the SDK's task and turn spans, which have no GenAI semconv equivalent.
+
+The app itself exports traces and logs only. The `gen_ai.client.*` token and duration metrics are not emitted, because the instrumentation does not produce them for the Agents SDK.
 
 All three are Histograms in seconds, exported with delta temporality because Dynatrace OTLP metric ingest rejects cumulative metrics. The collector also renames `service.name` to `openai-cs-agents-collector`, so a collector run stays distinguishable from a direct-export run in Dynatrace.
 
