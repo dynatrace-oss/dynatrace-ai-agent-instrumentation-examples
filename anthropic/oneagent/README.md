@@ -42,7 +42,7 @@ OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE 
 
 ## Captured attributes
 
-The request sets `temperature` explicitly so `gen_ai.request.temperature` appears on the chat span.
+`gen_ai.request.temperature` is not expected: the pinned `anthropic` SDK no longer accepts a `temperature` argument on `messages.create()`.
 
 Message content (`gen_ai.input.messages`, `gen_ai.output.messages`, `gen_ai.system_instructions`) requires the optional OneAgent prompt capture feature. Enable it under Settings > OneAgent features and restart the Python process. Prompts may contain sensitive data, so review before enabling.
 
