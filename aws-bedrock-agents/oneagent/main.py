@@ -77,8 +77,15 @@ graph_builder.add_edge(START, "chatbot")
 graph = graph_builder.compile()
 
 
+SYSTEM_PROMPT = "You are a helpful travel assistant. Use the web_search tool when you need current information."
+
+
 def run_agent(task: str) -> str:
-    output = graph.invoke({"messages": [{"role": "user", "content": task}]})
+    # Sent as the Converse `system` param, which OneAgent records as gen_ai.system_instructions.
+    output = graph.invoke({"messages": [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": task},
+    ]})
     return output["messages"][-1].content
 
 
