@@ -5,6 +5,21 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Runs before gen_ai_normalizer drops the raw OpenInference attributes. The
+  # Haystack instrumentor records no llm.invocation_parameters, so request
+  # parameters are read from the generator's run arguments in input.value, and
+  # the leading system message becomes gen_ai.system_instructions.
+  transform/pre_normalize:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.input"], ParseJSON(attributes["input.value"])) where attributes["llm.model_name"] != nil and attributes["input.value"] != nil
+          - set(attributes["gen_ai.request.temperature"], attributes["temp.input"]["generation_kwargs"]["temperature"]) where attributes["temp.input"]["generation_kwargs"]["temperature"] != nil
+          - set(attributes["gen_ai.request.max_tokens"], attributes["temp.input"]["generation_kwargs"]["max_completion_tokens"]) where attributes["temp.input"]["generation_kwargs"]["max_completion_tokens"] != nil
+          - delete_key(attributes, "temp.input") where attributes["temp.input"] != nil
+          - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system"
+
   # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
   # The built-in "openinference" source maps model, provider, token usage, tool,
   # agent and session attributes, and reconstructs the flattened
@@ -110,14 +125,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, batch]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, batch]
       exporters: [otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
+      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]
