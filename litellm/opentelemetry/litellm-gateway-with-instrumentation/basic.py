@@ -1,6 +1,6 @@
 import os
 
-from openinference.instrumentation import TraceConfig
+from openinference.instrumentation import TraceConfig, using_session
 from openinference.instrumentation.litellm import LiteLLMInstrumentor
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -51,6 +51,23 @@ async def health():
 
 
 app.router.routes.insert(0, app.router.routes.pop())
+
+
+# Map LiteLLM's x-litellm-session-id request header to the OpenInference session
+# context, which LiteLLMInstrumentor emits as session.id (gen_ai.conversation.id).
+class SessionIdMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        session_id = dict(scope.get("headers") or []).get(b"x-litellm-session-id")
+        if scope["type"] == "http" and session_id:
+            with using_session(session_id.decode()):
+                return await self.app(scope, receive, send)
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(SessionIdMiddleware)
 
 FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider, exclude_spans=["receive", "send"])
 

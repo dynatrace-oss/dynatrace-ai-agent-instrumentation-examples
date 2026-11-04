@@ -537,6 +537,8 @@ func triggerLiteLLMChat(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	// Required by the LiteLLM proxy gateway; ignored by the FastAPI demo.
 	req.Header.Set("Authorization", "Bearer "+envOr("LITELLM_MASTER_KEY", "sk-admin-local"))
+	// LiteLLM session header; the gateway maps it to gen_ai.conversation.id.
+	req.Header.Set("x-litellm-session-id", fmt.Sprintf("e2e-litellm-%d", time.Now().UnixNano()))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

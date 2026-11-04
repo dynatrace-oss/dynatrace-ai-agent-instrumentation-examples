@@ -9,6 +9,7 @@ Accept: application/json
 ### Ollama completion
 POST {{baseUrl}}/chat/completions
 Authorization: Bearer {{masterKey}}
+x-litellm-session-id: {{$uuid}}
 Content-Type: application/json
 
 {
@@ -21,6 +22,7 @@ Content-Type: application/json
 ### Anthropic completion
 POST {{baseUrl}}/chat/completions
 Authorization: Bearer {{masterKey}}
+x-litellm-session-id: {{$uuid}}
 Content-Type: application/json
 
 {
