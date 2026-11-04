@@ -36,6 +36,18 @@ processors:
           - set(attributes["gen_ai.input.messages"], attributes["temp.msgs"]) where attributes["temp.msgs"] != nil
           - delete_key(attributes, "temp.msgs") where attributes["temp.msgs"] != nil
 
+  # pydantic-ai drops zero-valued usage (Usage.opentelemetry_attributes skips falsy
+  # counts). A Bedrock guardrail that blocks the input returns 0 input/output tokens,
+  # so a blocked chat span arrives with no usage at all. Restore the real 0 on those
+  # spans only, keyed on the content_filter finish reason.
+  transform/blocked-usage:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.usage.input_tokens"], 0) where attributes["gen_ai.operation.name"] == "chat" and attributes["gen_ai.usage.input_tokens"] == nil and attributes["gen_ai.response.finish_reasons"][0] == "content_filter"
+          - set(attributes["gen_ai.usage.output_tokens"], 0) where attributes["gen_ai.operation.name"] == "chat" and attributes["gen_ai.usage.output_tokens"] == nil and attributes["gen_ai.response.finish_reasons"][0] == "content_filter"
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -83,7 +95,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/bedrock-guardrail-attrs, transform/system-instructions, batch]
+      processors: [transform/bedrock-guardrail-attrs, transform/system-instructions, transform/blocked-usage, batch]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch: keep only LLM spans and feed the span_metrics connector.
     traces/genai_metrics:
