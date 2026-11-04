@@ -1,4 +1,5 @@
 import os
+import uuid
 
 # Emit gen_ai.* attributes directly on OpenInference spans (alongside llm.* /
 # openinference.*) so no downstream attribute-normalization step is needed.
@@ -56,15 +57,18 @@ def _get_client():
 
 
 def write_haiku(topic: str) -> str:
-    response = _get_client().chat(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": f"Topic: {topic}"},
-        ],
-        temperature=1.0,
-        max_tokens=2000,
-    )
+    from openinference.instrumentation import using_attributes
+
+    with using_attributes(session_id=str(uuid.uuid4())):
+        response = _get_client().chat(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": f"Topic: {topic}"},
+            ],
+            temperature=1.0,
+            max_tokens=2000,
+        )
     return response.message.content[0].text
 
 
