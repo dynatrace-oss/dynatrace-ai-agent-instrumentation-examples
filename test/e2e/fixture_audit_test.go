@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -45,6 +47,7 @@ type SpanReport struct {
 	Required        []AttributeResult `json:"required"`
 	Optional        []AttributeResult `json:"optional"`
 	Metrics         []MetricResult    `json:"metrics,omitempty"`
+	Untracked       []string          `json:"untracked,omitempty"` // gen_ai.* attributes seen on the trace but not in the baseline
 	GeneratedAt     string            `json:"generated_at"`
 }
 
@@ -351,8 +354,98 @@ func buildReport(sdk, instrumentation string, p Profile, span map[string]interfa
 		Verdict:         verdict,
 		Required:        required,
 		Optional:        optional,
+		Untracked:       untrackedAttributes(span, baselineNames()),
 		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
 	}
+}
+
+// indexedLegacyAttr matches legacy indexed message keys such as gen_ai.prompt.0.content.
+var indexedLegacyAttr = regexp.MustCompile(`^gen_ai\.(prompt|completion)\.\d+\.`)
+
+// untrackedAttributes returns the sorted gen_ai.* keys of span that are not in known.
+func untrackedAttributes(span map[string]interface{}, known map[string]bool) []string {
+	var out []string
+	for k, v := range span {
+		if !strings.HasPrefix(k, "gen_ai.") || known[k] || indexedLegacyAttr.MatchString(k) {
+			continue
+		}
+		if v == nil || fmt.Sprint(v) == "" {
+			continue
+		}
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+var (
+	baselineNamesOnce sync.Once
+	baselineNameSet   map[string]bool
+)
+
+// baselineNames returns every attribute and metric name listed in
+// sdk-comparison-baseline.json, including normalization fallbacks.
+func baselineNames() map[string]bool {
+	baselineNamesOnce.Do(func() {
+		baselineNameSet = map[string]bool{}
+		data, err := os.ReadFile(filepath.Join(repoRoot(), "test", "e2e", "sdk-comparison-baseline.json"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: read baseline: %v\n", err)
+			return
+		}
+		names, err := parseBaselineNames(data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: parse baseline: %v\n", err)
+			return
+		}
+		baselineNameSet = names
+	})
+	return baselineNameSet
+}
+
+// parseBaselineNames collects the names from the baseline's attributes,
+// non_sdk_fields, rule-ID map and normalization rules.
+func parseBaselineNames(data []byte) (map[string]bool, error) {
+	var b struct {
+		Attributes []struct {
+			Name string `json:"name"`
+		} `json:"attributes"`
+		NonSDKFields []struct {
+			Name string `json:"name"`
+		} `json:"non_sdk_fields"`
+		Contract struct {
+			RuleIDs       map[string]string `json:"attribute_rule_ids"`
+			Normalization struct {
+				Equivalents     [][]string          `json:"equivalents_any_of"`
+				LegacyFallbacks map[string][]string `json:"legacy_fallbacks"`
+			} `json:"normalization"`
+		} `json:"comparison_contract"`
+	}
+	if err := json.Unmarshal(data, &b); err != nil {
+		return nil, err
+	}
+	names := map[string]bool{}
+	for _, a := range b.Attributes {
+		names[a.Name] = true
+	}
+	for _, f := range b.NonSDKFields {
+		names[f.Name] = true
+	}
+	for n := range b.Contract.RuleIDs {
+		names[n] = true
+	}
+	for _, group := range b.Contract.Normalization.Equivalents {
+		for _, n := range group {
+			names[n] = true
+		}
+	}
+	for k, vs := range b.Contract.Normalization.LegacyFallbacks {
+		names[k] = true
+		for _, n := range vs {
+			names[n] = true
+		}
+	}
+	return names, nil
 }
 
 // writeReport writes both a JSON and a markdown report to test/e2e/reports/.
@@ -420,6 +513,14 @@ func buildMarkdown(r SpanReport) string {
 				icon = "✅"
 			}
 			fmt.Fprintf(&sb, "| `%s` | %s %s |\n", m.Metric, icon, m.Status)
+		}
+	}
+
+	if len(r.Untracked) > 0 {
+		sb.WriteString("\n## Untracked GenAI Attributes\n\n")
+		sb.WriteString("Seen on this trace but not in `sdk-comparison-baseline.json`. Informational only; consider adding them to the baseline.\n\n")
+		for _, a := range r.Untracked {
+			fmt.Fprintf(&sb, "- `%s`\n", a)
 		}
 	}
 
@@ -596,6 +697,9 @@ func logAuditResult(t *testing.T, report SpanReport, spanCount int) {
 			t.Logf("metric missing: %s", m.Metric)
 		}
 	}
+	if len(report.Untracked) > 0 {
+		t.Logf("untracked gen_ai attributes (not in baseline): %s", strings.Join(report.Untracked, ", "))
+	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
 		report.Verdict, spanCount, report.SDK, report.Instrumentation)
 }
@@ -627,6 +731,9 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 		if r.Status == "fail" {
 			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
 		}
+	}
+	if len(report.Untracked) > 0 {
+		t.Logf("untracked gen_ai attributes (not in baseline): %s", strings.Join(report.Untracked, ", "))
 	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
 		report.Verdict, len(spans), sdk, instrumentation)
@@ -715,6 +822,9 @@ func auditApplyGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, not
 		if r.Status == "fail" {
 			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
 		}
+	}
+	if len(report.Untracked) > 0 {
+		t.Logf("untracked gen_ai attributes (not in baseline): %s", strings.Join(report.Untracked, ", "))
 	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
 		report.Verdict, len(spans), sdk, instrumentation+"-apply-guardrail")
