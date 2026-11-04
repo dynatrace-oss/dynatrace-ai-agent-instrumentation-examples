@@ -61,6 +61,7 @@ def _build_graph():
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
+        temperature=0.7,
     )
 
     def write_haiku(state: HaikuState) -> HaikuState:

@@ -57,6 +57,16 @@ processors:
           - set(attributes["gen_ai.completion.content_filter_results"], String(attributes["temp.output_value"]["generations"][0][0]["generation_info"]["content_filter_results"])) where attributes["temp.output_value"]["generations"][0][0]["generation_info"]["content_filter_results"] != nil
           - delete_key(attributes, "temp.output_value")
 
+  # OpenInference sends the system prompt only as the first role=system entry of
+  # gen_ai.input.messages. Copy its parts to gen_ai.system_instructions.
+  transform/system_instructions:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(cache["messages"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil and attributes["gen_ai.system_instructions"] == nil
+          - set(attributes["gen_ai.system_instructions"], String(cache["messages"][0]["parts"])) where cache["messages"] != nil and cache["messages"][0]["role"] == "system"
+
   # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
   # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
   # cover LLM calls only, not chain/tool/agent spans. Used solely on the metrics
@@ -139,7 +149,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/output_prompt_results, gen_ai_normalizer, transform/response_model]
+      processors: [transform/output_prompt_results, gen_ai_normalizer, transform/response_model, transform/system_instructions]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: normalize, keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter

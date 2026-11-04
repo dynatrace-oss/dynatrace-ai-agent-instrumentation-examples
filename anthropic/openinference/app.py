@@ -42,5 +42,7 @@ if __name__ == "__main__":
             max_tokens=256,
             system="You are a haiku poet.",
             messages=[{"role": "user", "content": "Write a haiku."}],
+            # anthropic SDK 1.x dropped the temperature kwarg; Bedrock still accepts it in the body.
+            extra_body={"temperature": 0.7},
         )
         print(response.content[0].text)
