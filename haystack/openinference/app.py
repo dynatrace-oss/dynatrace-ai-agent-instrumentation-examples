@@ -1,10 +1,12 @@
 import os
+import uuid
 
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
+from openinference.instrumentation import using_attributes
 from openinference.instrumentation.haystack import HaystackInstrumentor
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -56,5 +58,11 @@ if __name__ == "__main__":
     pipeline.add_component("llm", generator)
     pipeline.connect("prompt.prompt", "llm.messages")
 
-    result = pipeline.run({"prompt": {"topic": "observability"}})
+    # Passed at run time so the LLM span's input.value carries them for the collector.
+    generation_kwargs = {"temperature": 0.7, "max_completion_tokens": 2000}
+    # session.id is emitted as gen_ai.conversation.id on every span of the run.
+    with using_attributes(session_id=str(uuid.uuid4())):
+        result = pipeline.run(
+            {"prompt": {"topic": "observability"}, "llm": {"generation_kwargs": generation_kwargs}}
+        )
     print(result["llm"]["replies"][0].text)
