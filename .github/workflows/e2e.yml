@@ -153,7 +153,7 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_API_KEY: ${{ matrix.needs_google && secrets.GOOGLE_API_KEY || '' }}
           # aws-bedrock-agentcore/oneagent-opentelemetry: no real harness exists
           # in this AWS account yet, hence MOCK_AGENTCORE. The span itself has
           # no OTel SDK exporter -- it relies entirely on OneAgent's
@@ -462,6 +462,16 @@ jobs:
         env:
           TEST_RUN: TestLangChainOneAgent
           OTEL_SERVICE_NAME: langchain/oneagent
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
+      - name: Run google-adk-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestGoogleADKOneAgent
+          OTEL_SERVICE_NAME: google-adk/oneagent
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          MODEL: gemini-3.1-flash-lite
         run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # aws-strands-oneagent runs last: it appears to need more OneAgent sensor warm-up time than
