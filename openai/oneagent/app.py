@@ -56,6 +56,7 @@ async def haiku() -> str:
             model=MODEL,
             messages=[{"role": "user", "content": "Write a haiku."}],
             max_completion_tokens=2000,
+            temperature=0.7,
         )
         return response.choices[0].message.content or ""
 
@@ -79,6 +80,7 @@ async def haiku_guardrail() -> str:
                 model=MODEL,
                 messages=[{"role": "user", "content": GUARDRAIL_PROMPT}],
                 max_completion_tokens=2000,
+                temperature=0.7,
             )
         except openai.BadRequestError as exc:
             return f"content filter blocked the prompt: {exc.message}"
