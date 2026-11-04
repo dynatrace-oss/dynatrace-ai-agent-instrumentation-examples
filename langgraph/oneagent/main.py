@@ -19,8 +19,12 @@ class HaikuState(TypedDict):
 def _build_graph():
     # Credentials come from the environment (see .env.sample):
     # AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, OPENAI_API_VERSION, MODEL.
+    model = os.environ.get("MODEL", "genai-demo")
+    # Explicit model and temperature are sent in the request so the sensor can record them.
     llm = AzureChatOpenAI(
-        azure_deployment=os.environ.get("MODEL", "genai-demo"),
+        azure_deployment=model,
+        model=model,
+        temperature=0.7,
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
