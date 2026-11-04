@@ -26,6 +26,7 @@ def write_haiku(topic: str) -> str:
     message = _get_client().messages.create(
         model=os.environ.get("ANTHROPIC_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         max_tokens=256,
+        temperature=0.7,
         # HAIKU_STYLE_GUIDE is a fixed reference block (style rules + kigo almanac) rather
         # than a one-line instruction: Bedrock only creates a cache checkpoint once the
         # cached prefix clears a per-model minimum token count (4,096 tokens for
