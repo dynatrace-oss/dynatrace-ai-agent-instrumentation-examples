@@ -212,6 +212,35 @@ Audit trail data arrives as **bizevents** (not spans). The gate is `event.type =
 |---|---|---|---|
 | `gen_ai.model` | AR-048 | optional | audit_trail — bigevent field; groups audit events by model. Distinct from span attributes AR-004/AR-005. |
 
+### Observed But Untracked (AR-067..AR-088)
+
+Attributes and metrics that demos emit but no view uses yet. All optional and outside every audit profile, so absence never fails an audit. The span audit also lists any other `gen_ai.*` span attribute it sees that is not in this baseline, under **Untracked GenAI Attributes** in each report.
+
+| Attribute | Rule ID | Required Level | Used By Visuals |
+|---|---|---|---|
+| `gen_ai.usage.cache_read.input_tokens` | AR-067 | optional | _(no view yet)_ |
+| `gen_ai.usage.cache_creation.input_tokens` | AR-068 | optional | _(no view yet)_ |
+| `gen_ai.usage.reasoning.output_tokens` | AR-069 | optional | _(no view yet)_ |
+| `gen_ai.tool.definitions` | AR-070 | optional | _(no view yet)_ |
+| `gen_ai.request.stop_sequences` | AR-071 | optional | _(no view yet)_ |
+| `gen_ai.agent.id` | AR-072 | optional | _(no view yet)_ |
+| `gen_ai.output.type` | AR-073 | optional | _(no view yet)_ |
+| `gen_ai.client.operation.calls` | AR-074 | optional | _(no view yet)_ |
+| `gen_ai.invoke_agent.calls` | AR-075 | optional | _(no view yet)_ |
+| `gen_ai.invoke_workflow.calls` | AR-076 | optional | _(no view yet)_ |
+| `gen_ai.invoke_agent.inference_calls` | AR-077 | optional | _(no view yet)_ |
+| `gen_ai.invoke_agent.tool_calls` | AR-078 | optional | _(no view yet)_ |
+| `gen_ai.client.generation.choices` | AR-079 | optional | _(no view yet)_ |
+| `gen_ai.server.time_to_first_token` | AR-080 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.duration` | AR-081 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.input_tokens` | AR-082 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.output_tokens` | AR-083 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.cache_read.input_tokens` | AR-084 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.cache_write.input_tokens` | AR-085 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.reasoning.output_tokens` | AR-086 | optional | _(no view yet)_ |
+| `gen_ai.bedrock.guardrail.coverage` | AR-087 | optional | _(no view yet)_ |
+| `gen_ai.bedrock.guardrail.latency` | AR-088 | optional | _(no view yet)_ |
+
 ### Non-SDK Fields (ignore for pass/fail)
 
 | Attribute | Rule ID | Source |
