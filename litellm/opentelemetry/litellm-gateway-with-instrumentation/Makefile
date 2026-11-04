@@ -27,6 +27,7 @@ request: ## POST /chat/completions to the gateway on localhost:$(PORT)
 	@curl -s -X POST http://localhost:$(PORT)/chat/completions \
 	  -H 'Content-Type: application/json' \
 	  -H "Authorization: Bearer $(LITELLM_MASTER_KEY)" \
+	  -H "x-litellm-session-id: $$(python3 -c 'import uuid; print(uuid.uuid4())')" \
 	  -d '{"model":"ollama-llama3.2","messages":[{"role":"user","content":"Write a haiku about observability"}],"max_tokens":50}' | python3 -m json.tool
 
 stop: ## Stop the gateway and the collector container
