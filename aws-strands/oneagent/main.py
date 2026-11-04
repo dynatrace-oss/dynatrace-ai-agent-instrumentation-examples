@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime, timezone
 from boto3 import Session
 from strands import Agent, tool
@@ -35,12 +36,15 @@ def create_appointment(date: str, location: str, title: str) -> str:
     return f"Appointment '{title}' at {location} on {date} created"
 
 
+TEMPERATURE = 0.7
+
+
 def create_agent() -> Agent:
     guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
     guardrail_version = os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
     model = BedrockModel(
         model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
-        temperature=0.7,
+        temperature=TEMPERATURE,
         boto_session=Session(
             region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
@@ -58,6 +62,11 @@ def create_agent() -> Agent:
             "to help organise schedules. Always provide the appointment id so that it can be updated if required."
         ),
         tools=[current_time, create_appointment],
+        # Strands does not emit these on its spans itself.
+        trace_attributes={
+            "gen_ai.conversation.id": str(uuid.uuid4()),
+            "gen_ai.request.temperature": TEMPERATURE,
+        },
     )
 
 

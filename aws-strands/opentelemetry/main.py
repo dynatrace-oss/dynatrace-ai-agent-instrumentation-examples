@@ -2,6 +2,7 @@ from dynatrace import init
 init()
 
 import os
+import uuid
 from opentelemetry import trace
 from strands_tools import calculator, current_time
 
@@ -46,8 +47,12 @@ def create_appointment(date: str, location: str, title: str) -> str:
 
 
 
+TEMPERATURE = 0.7
+
+
 def main():
     model = BedrockModel(
+        temperature=TEMPERATURE,
         model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         boto_session=Session(
             region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
@@ -66,6 +71,11 @@ Always provide the appointment id so that I can update it if required"""
             calculator,
             create_appointment,
         ],
+        # Strands does not emit these on its spans itself.
+        trace_attributes={
+            "gen_ai.conversation.id": str(uuid.uuid4()),
+            "gen_ai.request.temperature": TEMPERATURE,
+        },
     )
     results = agent("How much is 2+2?")
     print("=====")
