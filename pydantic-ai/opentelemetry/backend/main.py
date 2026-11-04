@@ -170,6 +170,7 @@ async def ask_guardrail():
         raise HTTPException(status_code=501, detail="BEDROCK_GUARDRAIL_ID not configured")
     model, provider, model_name = build_bedrock_haiku()
     model_settings = BedrockModelSettings(
+        temperature=1.0,
         bedrock_guardrail_config={
             "guardrailIdentifier": guardrail_id,
             "guardrailVersion": guardrail_version,

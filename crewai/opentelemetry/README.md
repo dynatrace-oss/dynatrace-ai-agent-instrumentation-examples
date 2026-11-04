@@ -24,6 +24,10 @@ Both are Histograms in seconds, exported with delta temporality because Dynatrac
 
 The collector also renames `service.name` to `crewai-collector`, so a collector run stays distinguishable from a direct-export run in Dynatrace.
 
+## Known telemetry gaps
+
+- The CrewAI `<model>.llm` chat span has no `gen_ai.usage.input_tokens` or `gen_ai.usage.output_tokens`. `opentelemetry-instrumentation-crewai` 0.62.4 reads usage from `LLM.last_token_usage`, which CrewAI 1.15.x no longer has (it keeps only a cumulative `_token_usage`). Token usage for each call is on the child `litellm.chat` span, which also carries `gen_ai.request.temperature` and `gen_ai.response.model`. The collector cannot copy values between spans, so this is not patched here.
+
 ## Prerequisites
 
 - Python 3.10+
