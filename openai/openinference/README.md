@@ -6,6 +6,15 @@ Generate a haiku with an LLM, send the OpenTelemetry trace to Dynatrace, and see
 
 This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits `gen_ai.*` attributes natively. That removes the need for downstream OpenInference→`gen_ai.*` normalization. A collector is still used to derive metrics, because OpenInference instrumentors are span-only.
 
+## Languages
+
+| Language | Location | How `gen_ai.*` attributes are produced |
+|---|---|---|
+| Python | this directory | Natively by OpenInference (`OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`) |
+| Node.js (TypeScript) | [`node/`](node/) | By the collector, which maps OpenInference `llm.*` attributes |
+
+The rest of this page covers the Python example. For Node.js, see [`node/README.md`](node/README.md).
+
 ---
 
 ## Table of contents

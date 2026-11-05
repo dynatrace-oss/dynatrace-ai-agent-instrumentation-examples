@@ -1,0 +1,140 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # OpenInference JS emits only llm.*/openinference.* attributes (there is no
+  # GenAI-semconv switch like the Python OPENINFERENCE_ENABLE_GENAI_SEMCONV).
+  # Map them to the gen_ai.* attributes AI Observability reads.
+  transform/genai:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.operation.name"], "chat") where attributes["openinference.span.kind"] == "LLM"
+          - set(attributes["gen_ai.operation.name"], "embeddings") where attributes["openinference.span.kind"] == "EMBEDDING"
+          - set(attributes["gen_ai.provider.name"], attributes["llm.provider"]) where attributes["llm.provider"] != nil
+          - set(attributes["gen_ai.provider.name"], attributes["llm.system"]) where attributes["gen_ai.provider.name"] == nil and attributes["llm.system"] != nil
+          - set(attributes["gen_ai.request.model"], attributes["llm.model_name"]) where attributes["llm.model_name"] != nil
+
+          # llm.model_name is the response model; the requested one is in input.value.
+          - set(cache["req"], ParseJSON(attributes["input.value"])) where attributes["openinference.span.kind"] == "LLM" and attributes["input.mime_type"] == "application/json"
+          - set(attributes["gen_ai.request.model"], cache["req"]["model"]) where cache["req"]["model"] != nil
+          - set(attributes["gen_ai.response.model"], attributes["llm.model_name"]) where attributes["llm.model_name"] != nil
+          - set(attributes["gen_ai.request.temperature"], cache["req"]["temperature"]) where cache["req"]["temperature"] != nil
+          - set(attributes["gen_ai.request.max_tokens"], cache["req"]["max_tokens"]) where cache["req"]["max_tokens"] != nil
+
+          - set(cache["resp"], ParseJSON(attributes["output.value"])) where attributes["openinference.span.kind"] == "LLM" and attributes["output.mime_type"] == "application/json"
+          - set(attributes["gen_ai.response.id"], cache["resp"]["id"]) where cache["resp"]["id"] != nil
+          - set(attributes["gen_ai.response.finish_reasons"], [cache["resp"]["choices"][0]["finish_reason"]]) where cache["resp"]["choices"][0]["finish_reason"] != nil
+
+          - set(attributes["gen_ai.usage.input_tokens"], attributes["llm.token_count.prompt"]) where attributes["llm.token_count.prompt"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], attributes["llm.token_count.completion"]) where attributes["llm.token_count.completion"] != nil
+
+  # Build gen_ai.system_instructions / gen_ai.input.messages / gen_ai.output.messages
+  # from the flattened llm.*_messages.<i>.message.* attributes. Covers the demo's
+  # shape: an optional leading system message, one user turn, one assistant reply.
+  transform/messages:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system"
+          - set(cache["i"], "1") where attributes["llm.input_messages.0.message.role"] == "system"
+          - set(cache["i"], "0") where cache["i"] == nil
+          - set(cache["in"], ParseJSON("[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"\"}]}]")) where attributes[Concat(["llm.input_messages.", cache["i"], ".message.content"], "")] != nil
+          - set(cache["in"][0]["role"], attributes[Concat(["llm.input_messages.", cache["i"], ".message.role"], "")]) where cache["in"] != nil
+          - set(cache["in"][0]["parts"][0]["content"], attributes[Concat(["llm.input_messages.", cache["i"], ".message.content"], "")]) where cache["in"] != nil
+          - set(attributes["gen_ai.input.messages"], String(cache["in"])) where cache["in"] != nil
+          - set(cache["out"], ParseJSON("[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"\"}]}]")) where attributes["llm.output_messages.0.message.content"] != nil
+          - set(cache["out"][0]["parts"][0]["content"], attributes["llm.output_messages.0.message.content"]) where cache["out"] != nil
+          - set(attributes["gen_ai.output.messages"], String(cache["out"])) where cache["out"] != nil
+
+  # Drop the OpenInference attributes once gen_ai.* is filled.
+  transform/remove_legacy:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - 'delete_matching_keys(attributes, "^(llm|openinference)\\.")'
+
+  # Metrics branch only: keep model-call spans so HTTP spans don't produce GenAI metrics.
+  filter/genai_only:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.request.model"] == nil
+
+connectors:
+  # OpenInference emits no metrics; derive gen_ai.client.operation.duration from span durations.
+  span_metrics:
+    namespace: gen_ai.client.operation
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.request.model
+      - name: gen_ai.response.model
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  # Derive gen_ai.client.token.usage from gen_ai.usage.input_tokens / output_tokens.
+  signal_to_metrics:
+    spans:
+      - name: gen_ai.client.token.usage
+        description: "Number of tokens used per model call, by direction"
+        unit: "{token}"
+        conditions:
+          - attributes["gen_ai.usage.input_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.input_tokens"])
+          monotonic: true
+        attributes:
+          - key: gen_ai.token.type
+            default_value: input
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+          - key: gen_ai.provider.name
+          - key: gen_ai.operation.name
+      - name: gen_ai.client.token.usage
+        description: "Number of tokens used per model call, by direction"
+        unit: "{token}"
+        conditions:
+          - attributes["gen_ai.usage.output_tokens"] != nil
+        sum:
+          value: Int(attributes["gen_ai.usage.output_tokens"])
+          monotonic: true
+        attributes:
+          - key: gen_ai.token.type
+            default_value: output
+          - key: gen_ai.request.model
+          - key: gen_ai.response.model
+          - key: gen_ai.provider.name
+          - key: gen_ai.operation.name
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp_http/dynatrace:
+    endpoint: ${env:DT_ENDPOINT}/api/v2/otlp
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/genai, transform/messages, transform/remove_legacy]
+      exporters: [debug, otlp_http/dynatrace]
+    traces/genai_metrics:
+      receivers: [otlp]
+      processors: [transform/genai, filter/genai_only]
+      exporters: [span_metrics, signal_to_metrics]
+    metrics:
+      receivers: [span_metrics, signal_to_metrics]
+      exporters: [otlp_http/dynatrace]
