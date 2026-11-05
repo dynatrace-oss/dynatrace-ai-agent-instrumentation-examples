@@ -8,7 +8,7 @@ dependencies = [
     "bedrock-agentcore",
     "boto3==1.43.124",
     "langchain-aws",
-    "langgraph==1.2.19",
+    "langgraph==1.2.20",
     "ddgs",
     "oneagent-sdk",
     "fastapi",
