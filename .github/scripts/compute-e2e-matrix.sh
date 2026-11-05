@@ -41,6 +41,7 @@ OC_ALL='[
   {"name":"llamaindex-openinference","app_dir":"llamaindex/openinference","test_file":"test/e2e/llamaindex_openinference_test.go","test_run":"TestLlamaIndexOpenInference","otel_service_name":"llamaindex/openinference"},
   {"name":"ollama-openinference","app_dir":"ollama/openinference","test_file":"test/e2e/ollama_openinference_test.go","test_run":"TestOllamaOpenInference","otel_service_name":"ollama/openinference","ollama_model":"tinyllama"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
+  {"name":"openai-openinference-node","app_dir":"openai/openinference/node","test_file":"test/e2e/openai_openinference_node_test.go","test_run":"TestOpenAIOpenInferenceNode","otel_service_name":"openai/openinference/node","needs_node":true},
   {"name":"anthropic-openinference","app_dir":"anthropic/openinference","test_file":"test/e2e/anthropic_openinference_test.go","test_run":"TestAnthropicOpenInference","otel_service_name":"anthropic/openinference"},
   {"name":"mistral-openinference","app_dir":"mistral/openinference","test_file":"test/e2e/mistral_openinference_test.go","test_run":"TestMistralOpenInference","otel_service_name":"mistral/openinference","model":"mistral-small-latest"},
   {"name":"groq-openinference","app_dir":"groq/openinference","test_file":"test/e2e/groq_openinference_test.go","test_run":"TestGroqOpenInference","otel_service_name":"groq/openinference","model":"llama-3.1-8b-instant"},
