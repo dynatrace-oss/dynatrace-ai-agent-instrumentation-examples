@@ -73,4 +73,5 @@ E2E_SAMPLE_RATIO ?= 0.25
 
 e2e: ## Run vLLM sampled at E2E_SAMPLE_RATIO exporting to Dynatrace, then E2E_RUNS client calls (needs DT_ENDPOINT, DT_API_TOKEN)
 	@$(MAKE) -s run MODE=dt VLLM_SAMPLE_RATIO=$(E2E_SAMPLE_RATIO)
-	MAX_RUNS=$(E2E_RUNS) uv run python client.py
+	@MAX_RUNS=$(E2E_RUNS) uv run python client.py || { \
+	  docker ps -a --filter name=$(VLLM_CONTAINER); docker logs --tail 200 $(VLLM_CONTAINER); exit 1; }
