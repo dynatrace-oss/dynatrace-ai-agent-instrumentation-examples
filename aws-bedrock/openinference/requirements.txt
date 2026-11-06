@@ -1,4 +1,4 @@
-boto3==1.43.124
+boto3==1.43.125
 
 # openinference
 openinference-instrumentation==0.1.75
