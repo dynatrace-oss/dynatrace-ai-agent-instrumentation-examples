@@ -74,4 +74,7 @@ E2E_SAMPLE_RATIO ?= 0.25
 e2e: ## Run vLLM sampled at E2E_SAMPLE_RATIO exporting to Dynatrace, then E2E_RUNS client calls (needs DT_ENDPOINT, DT_API_TOKEN)
 	@$(MAKE) -s run MODE=dt VLLM_SAMPLE_RATIO=$(E2E_SAMPLE_RATIO)
 	@MAX_RUNS=$(E2E_RUNS) uv run python client.py || { \
-	  docker ps -a --filter name=$(VLLM_CONTAINER); docker logs --tail 200 $(VLLM_CONTAINER); exit 1; }
+	  docker ps -a --filter name=$(VLLM_CONTAINER); \
+	  sudo -n dmesg 2>/dev/null | grep -iE 'oom|killed process|segfault|traps:' | tail -5; \
+	  lscpu | grep -E 'Model name|^Flags' | grep -oE 'Model name.*|avx512[a-z_]*|amx[a-z_]*|avx2' | sort -u | tr '\n' ' '; echo; \
+	  docker logs --tail 200 $(VLLM_CONTAINER); exit 1; }
