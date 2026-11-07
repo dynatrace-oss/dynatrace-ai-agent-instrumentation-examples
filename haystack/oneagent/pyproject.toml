@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "haystack-ai==3.4.1",
     # OneAgent's OpenAI sensor fails to patch openai 3.39.0 (missing _parse_chat_completion); unpin once fixed.
-    "openai==3.26.0",
+    "openai==3.37.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
 ]
