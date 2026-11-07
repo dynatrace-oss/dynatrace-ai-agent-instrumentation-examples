@@ -1,4 +1,4 @@
-boto3==1.43.125
+boto3==1.43.126
 fastapi
 uvicorn[standard]
 opentelemetry-api
