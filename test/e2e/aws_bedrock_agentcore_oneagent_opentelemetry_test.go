@@ -88,10 +88,10 @@ func TestAWSBedrockAgentCoreOneAgentOpenTelemetry(t *testing.T) {
 	// exporter, which produced a *second*, disconnected copy of the same
 	// invoke_harness span (same name, different trace, non-oneagent source).
 	// Confirm that duplicate is really gone, not just currently absent.
-	assertNoMatchingSpan(t, fmt.Sprintf(`fetch spans, from: now()-10m
+	assertNoMatchingSpan(t, scopedDQL(fmt.Sprintf(`fetch spans, from: now()-10m
 | filter service.name == %q
 | filter span.name == "invoke_harness"
-| filter dt.openpipeline.source != "oneagent"`, service))
+| filter dt.openpipeline.source != "oneagent"`, service)))
 
 	// The metric the AI Observability app's cost/latency charts read. Unlike
 	// the span, this app exports it via a real OTel SDK MeterProvider/OTLP
