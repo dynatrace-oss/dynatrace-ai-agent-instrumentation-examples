@@ -3,6 +3,6 @@ fastapi
 uvicorn[standard]
 python-dotenv
 boto3==1.43.126
-openai==3.41.0
+openai==3.46.0
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http
