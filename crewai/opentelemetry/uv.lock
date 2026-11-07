@@ -590,7 +590,7 @@ wheels = [
 
 [[package]]
 name = "crewai"
-version = "1.15.36"
+version = "1.15.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -626,9 +626,9 @@ dependencies = [
     { name = "tomli" },
     { name = "tomli-w" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/90/14/85cb155231ccc9fd10367481ece253d148d8ecc4cb37d6371cf21a11154a/crewai-1.15.36.tar.gz", hash = "sha256:05b3fe08eec7e9d6ec2452f3c4cab8ead7ddc64dc2efc85bcea15b73d9ed168e", size = 8431440, upload-time = "2026-11-06T04:40:43.853Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/86/ac07c0e32b6abc67e9a04324bf2ad282b6f1a698bf29c2685b09ac0c18fc/crewai-1.15.37.tar.gz", hash = "sha256:6f747cee87b86bbb6ee1b512f83d063be68f38e5f98c255ad499b92a41f89a49", size = 8437978, upload-time = "2026-11-07T02:18:45.528Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/a2/6f3b50042718922f382fe3c3e4f065405e92002102cfba7f2bdd6b0a77a8/crewai-1.15.36-py3-none-any.whl", hash = "sha256:1a9b62c90dba4e2bad8dbc7b6301e4c449b73d54654f74e09dd4ecc3a57112c0", size = 1439343, upload-time = "2026-11-06T04:40:41.682Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/6f/517695d14b52967abb1625f54326f58267afbbfae90e9a3eccc783381ef1/crewai-1.15.37-py3-none-any.whl", hash = "sha256:be41f44f63865d815e6c9fc24750b955a6d17c08cac8dfd9c323f37574444bc4", size = 1442994, upload-time = "2026-11-07T02:18:43.372Z" },
 ]
 
 [package.optional-dependencies]
@@ -642,7 +642,7 @@ litellm = [
 
 [[package]]
 name = "crewai-cli"
-version = "1.15.36"
+version = "1.15.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -662,14 +662,14 @@ dependencies = [
     { name = "tomli-w" },
     { name = "uv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/d7/eadb2cdcf8c0affd5814892eb85ed60e586d074beb1152e84b5ae8df22c1/crewai_cli-1.15.36.tar.gz", hash = "sha256:c92f9ae2044fa3a2e4524871a1f94db957a5efb26bbb10234650507fc6bf584c", size = 439320, upload-time = "2026-11-06T04:40:47.685Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/74/ee20cdb291409973f2d83f817317ef820de6e9e8195daf9f7230c68bae01/crewai_cli-1.15.37.tar.gz", hash = "sha256:4947c3ee1ea1b0da04061394926c42d1ef99a8677b8034d47eedf6b83eee50d9", size = 454259, upload-time = "2026-11-07T02:18:49.294Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/19/e4/6e10ba87ca672f29064063c5ed256036f17ce7944b40fe1c5e8719b9e93c/crewai_cli-1.15.36-py3-none-any.whl", hash = "sha256:b9e2eec2e26f2ff8cfc216314cdb2bf51f514f705c123b1f3e9a160a93e54fbc", size = 275746, upload-time = "2026-11-06T04:40:46.015Z" },
+    { url = "https://files.pythonhosted.org/packages/82/0f/1b9917f1bc461adca1abf005642a6a399577e0c4556a000bf58512bbff0c/crewai_cli-1.15.37-py3-none-any.whl", hash = "sha256:69783830e8f606e807e2d319f8132ea174511bceb12beac74aa6733d558c7725", size = 290847, upload-time = "2026-11-07T02:18:47.845Z" },
 ]
 
 [[package]]
 name = "crewai-core"
-version = "1.15.36"
+version = "1.15.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -685,9 +685,9 @@ dependencies = [
     { name = "rich" },
     { name = "tomli" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/58/06/82ecd0da1769cf66b93d7430875efbcdd2a44473e25de5c39d92efea53b8/crewai_core-1.15.36.tar.gz", hash = "sha256:bce4d9ce9d58cf79f67da13ed9dd353041ff9167bf256a2d3142f4b2ac0d0454", size = 1305661, upload-time = "2026-11-06T04:40:50.868Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/c7/c9658d6ce1a8265694e04f5bbaf11dc2f5a1f78792aa965ab2fce17a0fab/crewai_core-1.15.37.tar.gz", hash = "sha256:14200cb577318a4b3daf1c72788efd675caddc2547429e73fcb8e88fb9931c3f", size = 1307222, upload-time = "2026-11-07T02:18:52.474Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/d8/482270a2fa8f4ebe01c702e5b8cfe7e5c69e5bcb045caf8c9e609b8fdc12/crewai_core-1.15.36-py3-none-any.whl", hash = "sha256:0493bbd2f4fd4e0815ca0fbb1d40a1a97982582820f0ae9ac2dbd4e7cdaa6b21", size = 1312265, upload-time = "2026-11-06T04:40:48.72Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/5f/dc59e250ea1b72b8fa61f60dc2a16405a535b29f2fa4404c5f7ea9553707/crewai_core-1.15.37-py3-none-any.whl", hash = "sha256:ae55f98911ad22385ad28bea676eeb2d72317bc643e713031fbf66ef963622fc", size = 1313010, upload-time = "2026-11-07T02:18:50.703Z" },
 ]
 
 [[package]]
@@ -703,7 +703,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "crewai", extras = ["litellm", "azure-ai-inference"], specifier = "==1.15.36" },
+    { name = "crewai", extras = ["litellm", "azure-ai-inference"], specifier = "==1.15.37" },
     { name = "fastapi", specifier = "==0.162.0" },
     { name = "traceloop-sdk", specifier = "==0.62.4" },
     { name = "uvicorn", specifier = "==0.54.0" },
