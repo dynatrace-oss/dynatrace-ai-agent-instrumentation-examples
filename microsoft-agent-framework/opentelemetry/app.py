@@ -139,7 +139,7 @@ async def main() -> None:
     # Direct client.get_response() only hits ChatTelemetryLayer and never emits gen_ai.agent.name.
     #
     # Two agents chained in a workflow, so the trace carries the full span set the
-    # GenAI agent metrics are defined over: workflow.run > invoke_agent > chat /
+    # GenAI agent metrics are defined over: invoke_workflow > invoke_agent > chat /
     # execute_tool. A single agent would only ever produce invoke_agent + chat.
     analyst = Agent(
         client=client,

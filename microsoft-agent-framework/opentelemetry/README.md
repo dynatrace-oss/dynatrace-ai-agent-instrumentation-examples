@@ -13,7 +13,7 @@ This sample instruments a [Microsoft Agent Framework](https://github.com/microso
 
 The framework self-instruments via OTel natively. Running the workflow produces a nested span tree:
 
-- **`workflow.run`** span — from the framework's workflow tracer; note it carries no `gen_ai.operation.name`
+- **`invoke_workflow`** span — from the framework's workflow tracer; named `invoke_workflow {workflow_name}` and tagged `gen_ai.operation.name=invoke_workflow` plus `gen_ai.workflow.name`
 - **`invoke_agent`** span per agent — from `AgentTelemetryLayer`, carries `gen_ai.agent.name`, `gen_ai.conversation.id`
 - **`execute_tool`** span — from the function-invocation layer, carries `gen_ai.tool.name`
 - **`chat`** span — from `ChatTelemetryLayer`, carries token counts, model, prompt/completion content
@@ -32,7 +32,7 @@ The framework emits the two `gen_ai.client.*` metrics natively but none of the G
 |--------|--------------|------|
 | `gen_ai.invoke_agent.duration` | spans with `gen_ai.operation.name == "invoke_agent"` | `s` |
 | `gen_ai.execute_tool.duration` | spans with `gen_ai.operation.name == "execute_tool"` | `s` |
-| `gen_ai.invoke_workflow.duration` | spans named `workflow.run` | `s` |
+| `gen_ai.invoke_workflow.duration` | spans with `gen_ai.operation.name == "invoke_workflow"` | `s` |
 
 All three are Histogram instruments at Development stability in the [GenAI metrics semconv](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
 
@@ -47,7 +47,7 @@ The collector needs the Bindplane distro image (see `COLLECTOR_IMAGE` in the Mak
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - A Dynatrace API token with:
   - `openTelemetryTrace.ingest` — for traces and prompts
