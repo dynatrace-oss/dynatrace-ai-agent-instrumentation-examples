@@ -61,6 +61,16 @@ The sensor wraps `litellm.completion` / `acompletion` (plus embeddings, response
 
 The provider name is always `litellm`, not the upstream provider (Groq here).
 
+## Screenshots
+
+The service in the AI Observability Explorer:
+
+![Explorer view for litellm/oneagent](assets/explorer.png)
+
+A captured prompt with input and output (needs LiteLLM prompt capture):
+
+![Prompt details for litellm/oneagent](assets/prompts.png)
+
 ## Smartscape service entity
 
 OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.
