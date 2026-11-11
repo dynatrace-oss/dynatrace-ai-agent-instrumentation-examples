@@ -20,6 +20,7 @@ set -euo pipefail
 OA_ALL='[
   {"name":"aws-bedrock-oneagent","app_dir":"aws-bedrock/oneagent","test_file":"test/e2e/aws_bedrock_oneagent_test.go","test_run":"TestAWSBedrockOneAgent","otel_service_name":"aws-bedrock/oneagent"},
   {"name":"anthropic-oneagent","app_dir":"anthropic/oneagent","test_file":"test/e2e/anthropic_oneagent_test.go","test_run":"TestAnthropicOneAgent","otel_service_name":"anthropic/oneagent"},
+  {"name":"claude-agent-sdk-oneagent","app_dir":"claude-agent-sdk/oneagent","test_file":"test/e2e/claude_agent_sdk_oneagent_test.go","test_run":"TestClaudeAgentSDKOneAgent","otel_service_name":"claude-agent-sdk/oneagent"},
   {"name":"openai-oneagent","app_dir":"openai/oneagent","test_file":"test/e2e/openai_oneagent_test.go","test_run":"TestOpenAIOneAgent","otel_service_name":"openai/oneagent"},
   {"name":"ollama-oneagent","app_dir":"ollama/oneagent","test_file":"test/e2e/ollama_test.go","test_run":"TestOllamaOneAgent","otel_service_name":"ollama/oneagent","ollama_model":"tinyllama"},
   {"name":"ogx-oneagent","app_dir":"ogx/oneagent","test_file":"test/e2e/ogx_oneagent_test.go","test_run":"TestOGXOneAgent","otel_service_name":"ogx/oneagent","ollama_model":"tinyllama"},
