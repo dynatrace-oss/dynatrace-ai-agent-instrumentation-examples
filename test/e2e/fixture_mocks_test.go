@@ -29,6 +29,7 @@ func startOpenAICompatibleMock(t *testing.T, apiKeyEnvVar, baseURLEnvVar string)
 			"object":  "chat.completion",
 			"created": 1700000000,
 			"model":   os.Getenv("MODEL"),
+			"service_tier": "on_demand",
 			"choices": []map[string]interface{}{
 				{
 					"index": 0,
