@@ -43,6 +43,7 @@ Set the credentials for the provider under test. Leave others blank.
 | Mistral | `MISTRAL_API_KEY` |
 | Cohere | `COHERE_API_KEY` |
 | Groq | `GROQ_API_KEY` |
+| Microsoft Foundry | `AZURE_AI_PROJECT_ENDPOINT`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` (mocked when the endpoint is unset) |
 | Gemini | `GOOGLE_API_KEY` |
 
 ## Running a single test

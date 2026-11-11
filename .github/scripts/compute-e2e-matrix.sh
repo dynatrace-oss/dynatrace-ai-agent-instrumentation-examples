@@ -25,6 +25,7 @@ OA_ALL='[
   {"name":"ogx-oneagent","app_dir":"ogx/oneagent","test_file":"test/e2e/ogx_oneagent_test.go","test_run":"TestOGXOneAgent","otel_service_name":"ogx/oneagent","ollama_model":"tinyllama"},
   {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
   {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
+  {"name":"microsoft-foundry-oneagent","app_dir":"microsoft-foundry/oneagent","test_file":"test/e2e/microsoft_foundry_oneagent_test.go","test_run":"TestMicrosoftFoundryOneAgent","otel_service_name":"microsoft-foundry/oneagent"},
   {"name":"aws-strands-oneagent","app_dir":"aws-strands/oneagent","test_file":"test/e2e/aws_strands_oneagent_test.go","test_run":"TestAWSStrandsOneAgent","otel_service_name":"aws-strands/oneagent","oneagent_warmup_seconds":"60"},
   {"name":"haystack-oneagent","app_dir":"haystack/oneagent","test_file":"test/e2e/haystack_test.go","test_run":"TestHaystackOneAgent","otel_service_name":"haystack/oneagent"},
   {"name":"aws-bedrock-agents-oneagent","app_dir":"aws-bedrock-agents/oneagent","test_file":"test/e2e/aws_bedrock_agents_oneagent_test.go","test_run":"TestAWSBedrockAgentsOneAgent","otel_service_name":"aws-bedrock-agents/oneagent", "oneagent_warmup_seconds":"60"},
