@@ -2,7 +2,7 @@
 
 Demonstrates tracing Microsoft Foundry Agent Service calls made with the `azure-ai-projects` Python SDK, using Dynatrace OneAgent auto-instrumentation.
 
-> **Experimental sensor**: the OneAgent Foundry sensor instruments the Foundry agent management API (creating agent versions, sessions, memory search, routine dispatch). It does not capture prompts or responses of model calls; model calls made through `project_client.get_openai_client()` are covered by the OneAgent OpenAI sensor instead.
+> **Experimental sensor**: the OneAgent Foundry sensor instruments the Foundry agent management API (creating agent versions, sessions, memory search, routine dispatch). With prompt capture on, it records the agent definition's instructions, but not prompts or responses of model calls; model calls made through `project_client.get_openai_client()` are covered by the OneAgent OpenAI sensor instead.
 
 ## What the sensor captures
 
@@ -30,7 +30,7 @@ The demo calls `client.agents.create_version(...)` on every `POST /haiku`. OneAg
 
 ## Enable the OneAgent feature
 
-The sensor is off by default. In Dynatrace, go to **Settings** > **Preferences** > **OneAgent features**, search for `Microsoft Foundry`, and turn on **Experimental Python GenAI Microsoft Foundry [Opt-In]**. Restart the app afterwards. There is no prompt capture variant of this feature.
+The sensor is off by default. In Dynatrace, go to **Settings** > **Preferences** > **OneAgent features**, search for `Microsoft Foundry`, and turn on **Experimental Python GenAI Microsoft Foundry [Opt-In]**. To also capture the agent's instructions as `gen_ai.system_instructions`, turn on **Python GenAI Microsoft Foundry prompt capture [Opt-In]**. Instructions may contain sensitive data, so review before enabling. Restart the app afterwards.
 
 ## Quick Start
 
