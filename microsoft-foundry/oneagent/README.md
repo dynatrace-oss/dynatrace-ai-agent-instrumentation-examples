@@ -61,7 +61,9 @@ The sensor is off by default. In Dynatrace, go to **Settings** > **Preferences**
 
 ## Screenshots
 
-See [`assets/`](./assets/). Screenshots are not captured yet.
+The service in the AI Observability Explorer. The Prompts list stays empty, because the sensor records no prompt or response messages:
+
+![Explorer view for microsoft-foundry/oneagent](assets/explorer.png)
 
 ## Smartscape service entity
 
