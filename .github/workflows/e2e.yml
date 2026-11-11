@@ -336,6 +336,14 @@ jobs:
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
+      - name: Run claude-agent-sdk-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestClaudeAgentSDKOneAgent
+          OTEL_SERVICE_NAME: claude-agent-sdk/oneagent
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
       - name: Run openai-oneagent
         if: always()
         working-directory: test/e2e
