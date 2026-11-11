@@ -77,4 +77,10 @@ OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE 
 
 ## Screenshots
 
-See [`assets/`](./assets/). Screenshots are not added yet.
+The agent and its `count_syllables` tool in Agents topology:
+
+![Agents topology with the claude-agent-sdk service](assets/agents-topology.png)
+
+The captured prompt in the Prompts view:
+
+![Prompts view for claude-agent-sdk/oneagent](assets/prompts.png)
