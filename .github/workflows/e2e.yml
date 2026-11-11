@@ -378,6 +378,18 @@ jobs:
           MODEL: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
+      # MOCKED: no Foundry project yet; an in-process HTTPS stub serves the Foundry
+      # agents API. Needs the "Microsoft Foundry" OneAgent feature (OneAgent 1.345+).
+      # Set AZURE_AI_PROJECT_ENDPOINT plus Entra ID credentials for live runs.
+      - name: Run microsoft-foundry-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestMicrosoftFoundryOneAgent
+          OTEL_SERVICE_NAME: microsoft-foundry/oneagent
+          MODEL: gpt-4o-mini
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
       # Uses real Azure OpenAI credentials via AzureOpenAIGenerator in Haystack.
       # Haystack disables its own tracing; OneAgent instruments the underlying openai SDK.
       # gen_ai.system value (expected: az.ai.openai) to be confirmed via ICP-6026.
