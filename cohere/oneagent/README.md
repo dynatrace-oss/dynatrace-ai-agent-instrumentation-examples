@@ -2,7 +2,7 @@
 
 Demonstrates tracing Cohere SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
-> **Experimental sensor** — Enables monitoring of Cohere SDK calls in Python applications. Prompt input and output capture is not supported yet.
+> **Experimental sensor** — Enables monitoring of Cohere SDK calls in Python applications. Message content (`gen_ai.input.messages`, `gen_ai.output.messages`) requires the optional **Experimental Python GenAI Cohere prompt capture [Opt-In]** feature (OneAgent 1.347+). Enable it under Settings > OneAgent features and restart the Python process. Prompts may contain sensitive data, so review before enabling.
 
 ## Prerequisites
 

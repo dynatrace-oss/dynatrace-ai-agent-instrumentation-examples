@@ -1,10 +1,11 @@
 {
-  "version": "1.8.2",
+  "version": "1.8.3",
   "scope": "current-state",
   "date": "2026-11-11",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.8.3 (2026-11-11): Note on gen_ai.input.messages (AR-011) and gen_ai.output.messages (AR-012) that the OneAgent Cohere, Groq, MistralAI and Ollama sensors emit them with the opt-in prompt capture feature; the matching oneagent e2e tests now assert both.",
     "1.8.2 (2026-11-11): Add the litellm/oneagent demo. The OneAgent LiteLLM sensor (OneAgent 1.351, opt-in) always reports gen_ai.provider.name \"litellm\" rather than the upstream provider. No new attributes.",
     "1.8.1 (2026-11-11): gen_ai.operation.kind (AR-066) is now emitted by the OneAgent Python LangGraph sensor (value \"workflow\" on the Pregel graph span, alongside gen_ai.agent.name from the graph name). The langgraph/oneagent e2e test asserts it.",
     "1.8.0 (2026-11-04): Add optional attributes and metrics observed in demo telemetry but previously untracked (AR-067..AR-088), and record gen_ai.client.inference.duration as equivalent to gen_ai.client.operation.duration. The span audit now lists gen_ai.* attributes that are not in this baseline.",
@@ -696,7 +697,8 @@
       "group": "content",
       "providers": ["azure", "bedrock", "openai", "generic"],
       "owned_by": "framework_or_provider_sdk",
-      "used_by": ["prompts_table"]
+      "used_by": ["prompts_table"],
+      "note": "OneAgent emits this on Cohere, Groq, MistralAI and Ollama sensor spans once the opt-in Experimental Python GenAI <X> prompt capture feature is enabled (OneAgent 1.347+ for Cohere and Groq, 1.349+ for MistralAI and Ollama). The corresponding oneagent e2e tests assert it."
     },
     {
       "name": "gen_ai.output.messages",
@@ -705,7 +707,8 @@
       "group": "content",
       "providers": ["azure", "bedrock", "openai", "generic"],
       "owned_by": "framework_or_provider_sdk",
-      "used_by": ["prompts_table"]
+      "used_by": ["prompts_table"],
+      "note": "OneAgent emits this on Cohere, Groq, MistralAI and Ollama sensor spans once the opt-in Experimental Python GenAI <X> prompt capture feature is enabled (OneAgent 1.347+ for Cohere and Groq, 1.349+ for MistralAI and Ollama). The corresponding oneagent e2e tests assert it."
     },
     {
       "name": "gen_ai.prompt.0.content",

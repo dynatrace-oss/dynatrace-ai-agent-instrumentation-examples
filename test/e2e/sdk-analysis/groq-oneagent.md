@@ -24,7 +24,7 @@
 | View | Status | Root cause |
 |------|--------|------------|
 | All GenAI views gate | ✅ | Provider identity captured by experimental Groq sensor |
-| Prompts — content | ❌ | Prompt capture (`gen_ai.input.messages` / `gen_ai.output.messages`) is only available for OpenAI and AWS Bedrock; experimental sensors do not support it |
+| Prompts — content | ✅ | `gen_ai.input.messages` / `gen_ai.output.messages` captured when the opt-in **Experimental Python GenAI Groq prompt capture [Opt-In]** feature is enabled (OneAgent 1.347+) |
 | Prompts — model column | ✅ | `gen_ai.request.model` expected via experimental sensor |
 | Latency charts | ❌ | OneAgent does not emit OTel `gen_ai.client.operation.duration` metrics; separate OTel SDK pipeline required |
 | Cost dashboard (span tokens) | ✅ | Token count attributes expected on spans via experimental sensor |
@@ -41,7 +41,7 @@
 | Dashboard View | Populated? | Missing attributes |
 |----------------|------------|--------------------|
 | All GenAI spans | ✅ Expected | Provider identity captured by experimental Groq sensor |
-| Prompts list / detail | ⚠️ Partial | Model column populated; prompt/response content absent — experimental sensor limitation |
+| Prompts list / detail | ✅ Expected | Model column and prompt/response content populated (prompt capture feature enabled) |
 | Latency charts (p99/mean) | ❌ Empty | `gen_ai.client.operation.duration` (AR-025) not emitted by OneAgent |
 | Cost dashboard tiles (span) | ✅ Expected | Token span attributes captured by experimental sensor |
 | Cost dashboard tiles (metric) | ❌ Empty | `gen_ai.client.token.usage` metric (AR-044) not emitted by OneAgent |
@@ -56,7 +56,6 @@ Attributes absent that cause empty charts with no visible error:
 
 | Attribute | Rule ID | Missing feature |
 |-----------|---------|----------------|
-| `gen_ai.input.messages` / `gen_ai.output.messages` | — | Prompt content not captured; experimental Groq sensor does not support prompt capture |
 | `gen_ai.client.operation.duration` | AR-025 | All latency charts empty; OneAgent uses internal metrics pipeline, not OTel gen_ai metrics |
 | `gen_ai.client.token.usage` (metric) | AR-044 | Cost dashboard metric tiles empty; OTel metrics pipeline not present |
 
@@ -70,21 +69,9 @@ Go to Settings → OneAgent features → search "Groq" → enable the experiment
 
 Go to Settings → OneAgent features → enable **Python FastAPI** to capture HTTP entry-point spans.
 
-**3. Prompt content — manual OTel span required**
+**3. Enable prompt capture**
 
-Prompt capture is not available via the experimental Groq sensor. To capture message content, wrap `client.chat.completions.create()` in a manual OTel span:
-
-```python
-span.set_attribute("gen_ai.input.messages", ...)   # prompt messages as JSON
-span.set_attribute("gen_ai.output.messages", ...)  # response messages as JSON
-```
-
-For token extraction, map from the Groq response:
-
-```python
-span.set_attribute("gen_ai.usage.input_tokens", response.usage.prompt_tokens)
-span.set_attribute("gen_ai.usage.output_tokens", response.usage.completion_tokens)
-```
+Enable the opt-in **Experimental Python GenAI Groq prompt capture [Opt-In]** feature in Settings > OneAgent features (OneAgent 1.347+) and restart the Python process. Prompts may contain sensitive data, so review before enabling.
 
 **4. OTel metrics pipeline (optional — for latency and cost metric charts)**
 
