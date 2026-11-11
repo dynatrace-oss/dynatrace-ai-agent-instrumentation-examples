@@ -2,4 +2,4 @@ module github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/test
 
 go 1.26.10
 
-toolchain go1.27.3
+toolchain go1.27.4
