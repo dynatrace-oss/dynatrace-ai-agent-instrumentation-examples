@@ -73,8 +73,9 @@ func TestMicrosoftFoundryOneAgent(t *testing.T) {
 | filter dt.openpipeline.source == "oneagent"
 | filter isNotNull(gen_ai.agent.name)
 | filter isNotNull(gen_ai.request.model)
+| filter isNotNull(gen_ai.system_instructions)
 | filter isNull(span.status_code) or span.status_code != "error"
 | sort timestamp desc
 | limit 1`,
-		"Backend mocked: in-process HTTPS stub serves the Foundry agents API via AZURE_AI_PROJECT_ENDPOINT. The OneAgent Foundry sensor instruments agent management calls only, so no token usage or message attributes are expected. Set AZURE_AI_PROJECT_ENDPOINT plus Entra ID credentials for live validation.")
+		"Backend mocked: in-process HTTPS stub serves the Foundry agents API via AZURE_AI_PROJECT_ENDPOINT. The OneAgent Foundry sensor instruments agent management calls only, so no token usage or message attributes are expected; gen_ai.system_instructions requires the Foundry prompt capture feature. Set AZURE_AI_PROJECT_ENDPOINT plus Entra ID credentials for live validation.")
 }
