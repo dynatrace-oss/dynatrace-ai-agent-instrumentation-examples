@@ -376,6 +376,17 @@ jobs:
           MODEL: tinyllama
         run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
+      # MOCKED unless GROQ_API_KEY is set: an in-process OpenAI-compatible stub
+      # serves LiteLLM's Groq calls via GROQ_API_BASE.
+      - name: Run litellm-oneagent
+        if: always()
+        working-directory: test/e2e
+        env:
+          TEST_RUN: TestLiteLLMOneAgent
+          OTEL_SERVICE_NAME: litellm/oneagent
+          MODEL: llama-3.1-8b-instant
+        run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
+
       # MOCKED: no real COHERE_API_KEY yet — an in-process httptest stub intercepts
       # Cohere SDK calls via CO_API_URL. OneAgent instruments at the SDK level so spans
       # carry real Cohere attributes. Replace with COHERE_API_KEY when available.

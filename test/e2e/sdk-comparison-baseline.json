@@ -1,10 +1,11 @@
 {
-  "version": "1.8.1",
+  "version": "1.8.2",
   "scope": "current-state",
   "date": "2026-11-11",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.8.2 (2026-11-11): Add the litellm/oneagent demo. The OneAgent LiteLLM sensor (OneAgent 1.351, opt-in) always reports gen_ai.provider.name \"litellm\" rather than the upstream provider. No new attributes.",
     "1.8.1 (2026-11-11): gen_ai.operation.kind (AR-066) is now emitted by the OneAgent Python LangGraph sensor (value \"workflow\" on the Pregel graph span, alongside gen_ai.agent.name from the graph name). The langgraph/oneagent e2e test asserts it.",
     "1.8.0 (2026-11-04): Add optional attributes and metrics observed in demo telemetry but previously untracked (AR-067..AR-088), and record gen_ai.client.inference.duration as equivalent to gen_ai.client.operation.duration. The span audit now lists gen_ai.* attributes that are not in this baseline.",
     "1.7.1 (2026-10-23): Drop the OpenPipeline derivation path from the AR-054 note; demos derive agent duration metrics on the collector path only.",

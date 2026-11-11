@@ -25,6 +25,7 @@ OA_ALL='[
   {"name":"ollama-oneagent","app_dir":"ollama/oneagent","test_file":"test/e2e/ollama_test.go","test_run":"TestOllamaOneAgent","otel_service_name":"ollama/oneagent","ollama_model":"tinyllama"},
   {"name":"ogx-oneagent","app_dir":"ogx/oneagent","test_file":"test/e2e/ogx_oneagent_test.go","test_run":"TestOGXOneAgent","otel_service_name":"ogx/oneagent","ollama_model":"tinyllama"},
   {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
+  {"name":"litellm-oneagent","app_dir":"litellm/oneagent","test_file":"test/e2e/litellm_oneagent_test.go","test_run":"TestLiteLLMOneAgent","otel_service_name":"litellm/oneagent","model":"llama-3.1-8b-instant"},
   {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
   {"name":"microsoft-foundry-oneagent","app_dir":"microsoft-foundry/oneagent","test_file":"test/e2e/microsoft_foundry_oneagent_test.go","test_run":"TestMicrosoftFoundryOneAgent","otel_service_name":"microsoft-foundry/oneagent"},
   {"name":"aws-strands-oneagent","app_dir":"aws-strands/oneagent","test_file":"test/e2e/aws_strands_oneagent_test.go","test_run":"TestAWSStrandsOneAgent","otel_service_name":"aws-strands/oneagent","oneagent_warmup_seconds":"60"},
