@@ -5,40 +5,10 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool,
-  # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
-  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
-  # so the exported spans carry only gen_ai.* fields.
-  # The normalizer maps OpenInference CHAIN spans (the graph and its nodes) to
-  # invoke_agent, so they would count as agents with no name. Remember the
-  # original kind before normalizing and drop the operation name on CHAIN spans
-  # afterwards.
-  transform/keep_span_kind:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - set(attributes["temp.openinference_span_kind"], attributes["openinference.span.kind"]) where attributes["openinference.span.kind"] != nil
-
-  transform/chain_not_agent:
-    error_mode: ignore
-    trace_statements:
-      - context: span
-        statements:
-          - delete_key(attributes, "gen_ai.operation.name") where attributes["temp.openinference_span_kind"] == "CHAIN"
-          - delete_key(attributes, "temp.openinference_span_kind")
-
-  gen_ai_normalizer:
-    sources:
-      - name: openinference
-        remove_originals: true
-
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
+  # The app emits gen_ai.* natively (TraceConfig(enable_genai_semconv=True)).
+  # The conversion sets gen_ai.response.model only when the output payload has a
+  # "model" key. The AI Observability app requires it, so mirror the request
+  # model when unset.
   transform/response_model:
     error_mode: ignore
     trace_statements:
@@ -64,8 +34,6 @@ processors:
   # OUTPUT:
   #   gen_ai.prompt.prompt_filter_results      — serialised prompt-filter array
   #   gen_ai.completion.content_filter_results — serialised completion-filter object
-  #
-  # NOTE: This processor must appear before gen_ai_normalizer in the pipeline.
   transform/output_prompt_results:
     error_mode: ignore
     trace_statements:
@@ -86,8 +54,8 @@ processors:
           - set(cache["messages"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil and attributes["gen_ai.system_instructions"] == nil
           - set(attributes["gen_ai.system_instructions"], String(cache["messages"][0]["parts"])) where cache["messages"] != nil and cache["messages"][0]["role"] == "system"
 
-  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
-  # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
+  # Keep only spans that represent an LLM call (the conversion sets
+  # gen_ai.request.model on LLM spans only). Feeds the metrics connectors so the derived metrics
   # cover LLM calls only, not chain/tool/agent spans. Used solely on the metrics
   # branch; the export pipeline is left untouched so all spans still reach
   # Distributed Tracing.
@@ -168,14 +136,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/output_prompt_results, transform/keep_span_kind, gen_ai_normalizer, transform/chain_not_agent, transform/response_model, transform/system_instructions]
+      processors: [transform/output_prompt_results, transform/response_model, transform/system_instructions]
       exporters: [debug, otlp_http/dynatrace]
-    # Second branch of the same spans: normalize, keep only LLM spans, and feed
+    # Second branch of the same spans: keep only LLM spans, and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
     # here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [transform/keep_span_kind, gen_ai_normalizer, transform/chain_not_agent, transform/response_model, filter/genai_only]
+      processors: [transform/response_model, filter/genai_only]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [span_metrics, signal_to_metrics]
