@@ -3,6 +3,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from ogx.core.library_client import AsyncOGXAsLibraryClient
 
 MODEL: str = os.environ.get("MODEL", "llama3.2")
@@ -15,7 +16,9 @@ client = AsyncOGXAsLibraryClient(str(Path(__file__).parent / "config.yaml"))
 
 @app.on_event("startup")
 async def startup() -> None:
-    await client.initialize()
+    # Keep startup DB work (hundreds of sqlite3 spans) out of traces.
+    with suppress_instrumentation():
+        await client.initialize()
 
 
 @app.get("/health")
