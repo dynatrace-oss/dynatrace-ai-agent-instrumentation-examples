@@ -6,7 +6,7 @@ dependencies = [
     "azure-ai-projects==2.2.0",
     "azure-identity>=1.25.0",
     # azure-ai-projects 2.2.0 imports httpx and openai 2.x without declaring them
-    "openai==2.54.0",
+    "openai==3.37.0",
     "httpx>=0.28.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
