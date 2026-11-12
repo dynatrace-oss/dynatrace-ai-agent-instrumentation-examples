@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 )
@@ -32,6 +33,9 @@ import (
 func TestAWSBedrockAgentCoreOneAgentOpenTelemetry(t *testing.T) {
 	const service = "aws-bedrock-agentcore/oneagent-opentelemetry"
 
+	if os.Getenv("MOCK_AGENTCORE") == "true" {
+		tagMockTraffic(t)
+	}
 	startApp(t, "aws-bedrock-agentcore/oneagent-opentelemetry")
 	triggerAgentCoreHarness(t)
 
