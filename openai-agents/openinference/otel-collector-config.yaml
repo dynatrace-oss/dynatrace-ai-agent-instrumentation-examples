@@ -28,6 +28,17 @@ processors:
           - set(cache["input_messages"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil and attributes["gen_ai.system_instructions"] == nil
           - set(attributes["gen_ai.system_instructions"], String(cache["input_messages"][0]["parts"])) where cache["input_messages"] != nil and cache["input_messages"][0]["role"] == "system"
 
+  # The SDK's outer "Agent workflow" trace span is tagged AGENT, so it becomes
+  # invoke_agent with no agent name; it is the run, not an agent. Handoff tool
+  # spans carry no tool name, so use the span name ("handoff to <agent>").
+  transform/agent_identity:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - delete_key(attributes, "gen_ai.operation.name") where attributes["gen_ai.operation.name"] == "invoke_agent" and attributes["gen_ai.agent.name"] == nil
+          - set(attributes["gen_ai.tool.name"], name) where attributes["gen_ai.operation.name"] == "execute_tool" and attributes["gen_ai.tool.name"] == nil
+
   # Keep only spans that represent an LLM call. With
   # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference sets
   # gen_ai.request.model natively on LLM spans. Feeds the metrics connectors so the derived metrics
@@ -119,7 +130,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/response_model, transform/system_instructions]
+      processors: [transform/agent_identity, transform/response_model, transform/system_instructions]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: keep only LLM spans and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
