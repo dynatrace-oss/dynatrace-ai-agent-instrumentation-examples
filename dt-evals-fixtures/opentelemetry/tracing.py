@@ -93,7 +93,7 @@ def init_tracing(service_name: str, *, exporter=None, api_endpoint=None, headers
     if _initialized:
         return
 
-    # Mirror the other Traceloop examples (e.g. crewai/opentelemetry), which set
+    # Mirror the other Traceloop examples, which set
     # OTEL_SERVICE_NAME explicitly. Traceloop's app_name already drives
     # service.name; this just keeps the resource consistent for any tooling that
     # reads the env var directly.

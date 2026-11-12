@@ -7,8 +7,6 @@ Uses [`openinference-instrumentation-crewai`](https://github.com/Arize-ai/openin
 
 This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` (set in `app.py`), so OpenInference emits `gen_ai.*` attributes natively. No downstream OpenInference to `gen_ai.*` normalization is needed. The collector is still used to derive metrics, because OpenInference instrumentors are span-only.
 
-This is the OpenInference counterpart of [`crewai/opentelemetry`](../opentelemetry), which uses OpenLLMetry (Traceloop) instead.
-
 ---
 
 ## Table of contents
