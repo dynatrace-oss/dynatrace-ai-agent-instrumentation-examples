@@ -44,7 +44,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 | filter service.name == "rum/opentelemetry-collector"
 | filter gen_ai.provider.name == "bedrock"
 | filter isNotNull(gen_ai.conversation.id)
-| filter isNotNull(gen_ai.request.model)
+| filter isNotNull(gen_ai.response.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 	})
@@ -54,7 +54,7 @@ func TestRUMOpenTelemetry(t *testing.T) {
 | filter service.name == "rum/opentelemetry-collector"
 | filter gen_ai.provider.name == "azure"
 | filter isNotNull(gen_ai.conversation.id)
-| filter isNotNull(gen_ai.request.model)
+| filter isNotNull(gen_ai.response.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`)
 	})
