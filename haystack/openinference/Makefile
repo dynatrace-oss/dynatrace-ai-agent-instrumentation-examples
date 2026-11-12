@@ -12,9 +12,11 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). v1.1.2 tracks OTel
-# contrib v0.162.0 and bundles genainormalizerprocessor + signal_to_metrics
-# connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT).
+# Pinned so a version bump surfaces metric-derivation regressions in the e2e test.
+# span_metrics derives gen_ai.client.operation.duration; signal_to_metrics derives
+# gen_ai.client.token.usage. The app emits gen_ai.* natively; the collector only
+# fills the Haystack gaps (request params, system instructions, provider, response model).
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
@@ -27,9 +29,9 @@ install: ## Install Python dependencies
 	uv sync
 
 # ---------------------------------------------------------------------------
-# run: Bindplane collector normalizes OpenInference -> gen_ai.* locally
+# run: Bindplane collector derives gen_ai.client.* metrics from native gen_ai.* spans
 # ---------------------------------------------------------------------------
-run: ## Start Bindplane collector (genainormalizer) + app
+run: ## Start Bindplane collector + app
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@echo "Waiting for collector port to be ready..."
 	@sleep 3
