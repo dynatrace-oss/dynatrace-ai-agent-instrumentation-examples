@@ -5,6 +5,24 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Normalize pydantic-ai's provider ids ("bedrock", "azure") to OTel GenAI semconv
+  # values so spans and metrics share one provider node with the app's own spans.
+  transform/provider-semconv:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.provider.name"], "aws.bedrock") where attributes["gen_ai.provider.name"] == "bedrock"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - set(attributes["gen_ai.system"], "aws.bedrock") where attributes["gen_ai.system"] == "bedrock"
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.system"] == "azure"
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["gen_ai.provider.name"], "aws.bedrock") where attributes["gen_ai.provider.name"] == "bedrock"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - set(attributes["gen_ai.system"], "aws.bedrock") where attributes["gen_ai.system"] == "bedrock"
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.system"] == "azure"
   # pydantic-ai carries the raw Bedrock trace response verbatim in provider_details.
   # The app extracts the inputAssessment object (a Bedrock API response field) and
   # sets it as gen_ai.bedrock.guardrail.input_assessment for the collector to parse
@@ -95,15 +113,16 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/bedrock-guardrail-attrs, transform/system-instructions, transform/blocked-usage, batch]
+      processors: [transform/provider-semconv, transform/bedrock-guardrail-attrs, transform/system-instructions, transform/blocked-usage, batch]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch: keep only LLM spans and feed the span_metrics connector.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only, batch]
+      processors: [transform/provider-semconv, filter/genai_only, batch]
       exporters: [span_metrics]
     # pydantic-ai's native gen_ai.client.token.usage arrives on [otlp]; the derived
     # gen_ai.client.operation.duration arrives on [span_metrics]. Both forwarded.
     metrics:
       receivers: [otlp, span_metrics]
+      processors: [transform/provider-semconv]
       exporters: [otlp_http/dynatrace]
