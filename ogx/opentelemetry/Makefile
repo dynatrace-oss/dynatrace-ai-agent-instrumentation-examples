@@ -17,6 +17,7 @@ install: ## Install Python dependencies and the OTel instrumentations for them
 	uv run opentelemetry-bootstrap -a requirements | uv pip install --requirement -
 
 run: ## Run app on port $(PORT), exporting traces and metrics directly to Dynatrace
+	@# click instrumentation would wrap the whole uvicorn process in one never-ending span
 	@OTEL_TRACES_EXPORTER=otlp \
 	  OTEL_METRICS_EXPORTER=otlp \
 	  OTEL_LOGS_EXPORTER=none \
@@ -24,6 +25,7 @@ run: ## Run app on port $(PORT), exporting traces and metrics directly to Dynatr
 	  OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
 	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
 	  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta \
+	  OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=click \
 	  OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental \
 	  OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=span_only \
 	  uv run opentelemetry-instrument python3 -m uvicorn app:app --host 0.0.0.0 --port $(PORT)
