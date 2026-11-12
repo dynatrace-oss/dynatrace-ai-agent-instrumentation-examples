@@ -5,6 +5,24 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Normalize pydantic-ai's provider ids ("bedrock", "azure") to OTel GenAI semconv
+  # values so spans and metrics share one provider node with the app's own spans.
+  transform/provider-semconv:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.provider.name"], "aws.bedrock") where attributes["gen_ai.provider.name"] == "bedrock"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - set(attributes["gen_ai.system"], "aws.bedrock") where attributes["gen_ai.system"] == "bedrock"
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.system"] == "azure"
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["gen_ai.provider.name"], "aws.bedrock") where attributes["gen_ai.provider.name"] == "bedrock"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - set(attributes["gen_ai.system"], "aws.bedrock") where attributes["gen_ai.system"] == "bedrock"
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.system"] == "azure"
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -116,14 +134,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/provider-semconv, batch]
       exporters: [otlphttp/dynatrace]
     # One branch per derived metric: a filter narrows the trace stream to the span
     # type the metric is defined over, then span_metrics turns that span's duration
     # into the histogram.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only, batch]
+      processors: [transform/provider-semconv, filter/genai_only, batch]
       exporters: [span_metrics/client_operation]
     traces/invoke_agent_metrics:
       receivers: [otlp]
@@ -134,5 +152,5 @@ service:
     # undisableable .calls counters the span_metrics instances tack on.
     metrics:
       receivers: [otlp, span_metrics/client_operation, span_metrics/invoke_agent]
-      processors: [filter/drop_derived_calls, batch]
+      processors: [transform/provider-semconv, filter/drop_derived_calls, batch]
       exporters: [otlphttp/dynatrace]
