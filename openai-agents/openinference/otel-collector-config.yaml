@@ -29,15 +29,20 @@ processors:
           - set(attributes["gen_ai.system_instructions"], String(cache["input_messages"][0]["parts"])) where cache["input_messages"] != nil and cache["input_messages"][0]["role"] == "system"
 
   # The SDK's outer "Agent workflow" trace span is tagged AGENT, so it becomes
-  # invoke_agent with no agent name; it is the run, not an agent. Handoff tool
-  # spans carry no tool name, so use the span name ("handoff to <agent>").
+  # invoke_agent with no agent name; it is the run, not an agent.
+  # Handoff spans ("handoff to <agent>") carry no tool name. The SDK's handoff
+  # tool is transfer_to_<agent> in lower snake case, and the target agent is in
+  # gen_ai.tool.call.result. Set that name and the semconv span name
+  # "execute_tool <tool name>".
   transform/agent_identity:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
           - delete_key(attributes, "gen_ai.operation.name") where attributes["gen_ai.operation.name"] == "invoke_agent" and attributes["gen_ai.agent.name"] == nil
-          - set(attributes["gen_ai.tool.name"], name) where attributes["gen_ai.operation.name"] == "execute_tool" and attributes["gen_ai.tool.name"] == nil
+          - set(attributes["gen_ai.tool.name"], Concat(["transfer_to_", ConvertCase(attributes["gen_ai.tool.call.result"], "lower")], "")) where attributes["gen_ai.operation.name"] == "execute_tool" and attributes["gen_ai.tool.name"] == nil and IsMatch(name, "^handoff to ") and attributes["gen_ai.tool.call.result"] != nil
+          - replace_pattern(attributes["gen_ai.tool.name"], "[^a-z0-9_]", "_") where IsMatch(name, "^handoff to ") and attributes["gen_ai.tool.name"] != nil
+          - set(name, Concat(["execute_tool", attributes["gen_ai.tool.name"]], " ")) where IsMatch(name, "^handoff to ") and attributes["gen_ai.tool.name"] != nil
 
   # Keep only spans that represent an LLM call. With
   # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference sets
