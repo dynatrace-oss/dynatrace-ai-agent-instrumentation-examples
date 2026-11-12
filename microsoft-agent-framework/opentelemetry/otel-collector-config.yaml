@@ -47,15 +47,16 @@ processors:
         - name == "gen_ai.execute_tool.calls"
         - name == "gen_ai.invoke_workflow.calls"
 
-  # The framework does NOT tag workflow spans with a gen_ai.operation.name — its
-  # workflow tracer emits a span literally named "workflow.run"
-  # (OtelAttr.WORKFLOW_RUN_SPAN). So this branch keys on the span name instead, and
-  # the connector below is what gives the result its spec-conformant metric name.
+  # The workflow run span is tagged gen_ai.operation.name == "invoke_workflow"
+  # (OtelAttr.OPERATION / OtelAttr.WORKFLOW_RUN_SPAN). Named workflows export it as
+  # "invoke_workflow {workflow_name}", so this branch keys on the attribute rather
+  # than the span name. A span missing the attribute compares unequal and is dropped.
+  # The connector below is what gives the result its spec-conformant metric name.
   filter/invoke_workflow:
     error_mode: ignore
     traces:
       span:
-        - name != "workflow.run"
+        - attributes["gen_ai.operation.name"] != "invoke_workflow"
 
   # Dynatrace does not synthesize log.source for OTLP log ingest — OneAgent derives
   # it from the log file path, but an OTLP sender has to supply it, and without it
@@ -68,16 +69,16 @@ processors:
   # value later can change which bucket/permissions the records fall under.
   
   # MAF does not set OTel span status on success, leaving it UNSET.
-  # Set OK for gen_ai operation spans and workflow spans so the service health
-  # tile in Dynatrace reflects success. ERROR is set automatically by the SDK
-  # when an exception propagates through a span.
+  # Set OK for spans that carry gen_ai.operation.name — invoke_agent,
+  # execute_tool, chat, and invoke_workflow — so the service health tile in
+  # Dynatrace reflects success. ERROR is set automatically by the SDK when an
+  # exception propagates through a span.
   transform/span_status:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
           - set(status.code, STATUS_CODE_OK) where attributes["gen_ai.operation.name"] != nil and status.code == STATUS_CODE_UNSET
-          - set(status.code, STATUS_CODE_OK) where name == "workflow.run" and status.code == STATUS_CODE_UNSET
 
   transform/log_source:
     error_mode: ignore
