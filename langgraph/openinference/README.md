@@ -1,7 +1,7 @@
 # LangGraph + OpenInference + Dynatrace AI Observability
 
 Instrument a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with OpenInference and send traces to Dynatrace AI Observability.
-Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-langchain) to auto-instrument LangGraph, and a [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) with the `genainormalizer` processor to translate OpenInference attributes to Dynatrace `gen_ai.*` format.
+Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-langchain) to auto-instrument LangGraph, with native OTel GenAI (`gen_ai.*`) output, and a [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) that fills a few remaining gaps and derives the GenAI client metrics.
 
 ---
 
@@ -22,7 +22,7 @@ Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/ope
 - Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body).
 - Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI, executes an inspiration tool, and calls the model again to write the haiku.
 - Produces OpenTelemetry traces with both OpenInference and opt-in OTel GenAI semantic conventions.
-- Routes traces through a local Bindplane collector that normalizes `llm.*` attributes to `gen_ai.*` before forwarding to Dynatrace.
+- Routes traces through a local Bindplane collector that fills the `gen_ai.*` gaps and derives metrics before forwarding to Dynatrace.
 - Shows the trace in the Dynatrace AI Observability app with model name, token usage, and message content.
 
 ---
@@ -84,7 +84,7 @@ In a second terminal, send a haiku request:
 make request
 ```
 
-The server runs on port 8000. `make run` starts a Bindplane collector on port 4318 first, then starts the FastAPI app pointing to it. Traces flow: app → collector (normalizes OpenInference → `gen_ai.*`) → Dynatrace.
+The server runs on port 8000. `make run` starts a Bindplane collector on port 4318 first, then starts the FastAPI app pointing to it. Traces flow: app → collector (fills `gen_ai.*` gaps, derives metrics) → Dynatrace.
 
 ---
 
@@ -104,24 +104,17 @@ The first model call is forced to use `get_haiku_inspiration`, ensuring a tool e
 
 Requests may include a `conversation_id` (for example, `{"topic": "nature", "conversation_id": "haiku-session-1"}`) to correlate multiple requests. If omitted, a UUID is generated per request. `using_attributes(session_id=...)` propagates it as `session.id` and `gen_ai.conversation.id` across the graph, model, and tool spans.
 
-The Bindplane collector's `genainormalizer` processor translates them:
+The OpenInference conversion maps model, token usage, messages, tool and session attributes to `gen_ai.*`. It sets `gen_ai.operation.name` on LLM (`chat`) and tool (`execute_tool`) spans only, so the LangGraph graph and node spans (OpenInference kind `CHAIN`) are not reported as agents. For `AzureChatOpenAI` it sets `gen_ai.provider.name` to `azure.ai.openai`.
 
-| OpenInference attribute | `gen_ai.*` equivalent |
-|---|---|
-| `llm.model_name` | `gen_ai.request.model` |
-| `llm.token_count.prompt` | `gen_ai.usage.input_tokens` |
-| `llm.token_count.completion` | `gen_ai.usage.output_tokens` |
-| `llm.input_messages.N.*` | `gen_ai.input.messages` (JSON array) |
-| `llm.output_messages.N.*` | `gen_ai.output.messages` (JSON array) |
+The collector fills the gaps the conversion leaves:
 
-Two additional processors run after normalization:
-
-- **`transform/response_model`** — mirrors `gen_ai.request.model` → `gen_ai.response.model` when absent (OpenInference has no separate response-model field).
-- **`transform/output_prompt_results`** — extracts Azure OpenAI content-filter verdicts from the `output.value` JSON blob emitted by LangChain's Azure OpenAI integration and sets them as `gen_ai.prompt.prompt_filter_results`. This makes per-prompt filter results (hate, self-harm, sexual, violence, jailbreak) visible in Dynatrace AI Observability's content-filter view.
+- **`transform/response_model`**: mirrors `gen_ai.request.model` → `gen_ai.response.model` when absent (the conversion sets it only when the output payload carries a model).
+- **`transform/system_instructions`**: copies the leading system message in `gen_ai.input.messages` to `gen_ai.system_instructions`.
+- **`transform/output_prompt_results`**: extracts Azure OpenAI content-filter verdicts from the `output.value` JSON blob emitted by LangChain's Azure OpenAI integration and sets them as `gen_ai.prompt.prompt_filter_results`. This makes per-prompt filter results (hate, self-harm, sexual, violence, jailbreak) visible in Dynatrace AI Observability's content-filter view.
 
 ### Derived metrics
 
-OpenInference is span-only: it emits no metric instruments, so the two GenAI client metrics the AI Observability app charts are derived from the normalized spans by collector connectors.
+OpenInference is span-only: it emits no metric instruments, so the two GenAI client metrics the AI Observability app charts are derived from the spans by collector connectors.
 
 | Metric | Derived by |
 |---|---|
