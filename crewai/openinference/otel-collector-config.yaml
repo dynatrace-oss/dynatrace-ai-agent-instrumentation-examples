@@ -15,6 +15,15 @@ processors:
         statements:
           - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
 
+  # CrewAI AGENT spans carry the agent role only as graph.node.id. Copy it to
+  # gen_ai.agent.name so invoke_agent spans are attributed to an agent.
+  transform/agent_identity:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.agent.name"], attributes["graph.node.id"]) where attributes["gen_ai.operation.name"] == "invoke_agent" and attributes["gen_ai.agent.name"] == nil and attributes["graph.node.id"] != nil
+
   # Keep only spans that represent model calls for the metrics branch. With
   # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true, OpenInference emits gen_ai.*
   # attributes natively, so no llm.* -> gen_ai.* normalization is required.
@@ -95,7 +104,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/response_model]
+      processors: [transform/response_model, transform/agent_identity]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch of the same spans: keep only LLM spans and feed
     # the metric connectors. Kept separate from the export pipeline so the filter
