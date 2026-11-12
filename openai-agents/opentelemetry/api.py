@@ -67,9 +67,13 @@ metrics.set_meter_provider(
 # default. Message content goes on span attributes, where Dynatrace reads it.
 # The instrumentor also records gen_ai.client.operation.duration and
 # gen_ai.client.token.usage through the meter provider above.
+# server.address defaults to api.openai.com, so set it to the Azure endpoint host.
+from urllib.parse import urlparse as _urlparse
+
 OpenAIAgentsInstrumentor().instrument(
     tracer_provider=_tracer_provider,
     system="azure.ai.openai",
+    server_address=_urlparse(os.getenv("AZURE_OPENAI_ENDPOINT", "")).hostname,
     capture_message_content="span_only",
 )
 
