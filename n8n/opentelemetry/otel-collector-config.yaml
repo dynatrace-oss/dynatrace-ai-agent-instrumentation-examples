@@ -35,6 +35,10 @@ processors:
         value: ${env:DT_SERVICE_NAME}
   transform/n8n:
     trace_statements:
+      # --- e2e only: tag spans with the run id so tests can isolate their run ---
+      - context: resource
+        statements:
+          - set(attributes["test.run.id"], "${env:TEST_RUN_ID}") where "${env:TEST_RUN_ID}" != ""
       - context: span
         statements:
           # --- set workflow.execute parent span as root and type server to make the n8n service discoverable in dynatrace ---
