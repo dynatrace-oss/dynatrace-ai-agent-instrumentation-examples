@@ -1,5 +1,5 @@
 # docker/Dockerfile.cursor-real
-FROM node:24.22.2-bookworm-slim
+FROM node:24.22.3-bookworm-slim
 
 WORKDIR /workspace
 
