@@ -60,6 +60,10 @@ def _bedrock_provider() -> BedrockProvider:
     )
 
 
+# OTel GenAI semconv provider names; the display names stay in the API response.
+PROVIDER_SEMCONV = {"Azure OpenAI": "azure.ai.openai", "AWS Bedrock": "aws.bedrock"}
+
+
 def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     # Azure endpoint is only reachable from the corporate network;
     # falls back to a Bedrock model when unavailable.
@@ -133,7 +137,7 @@ async def ask_question(request: QuestionRequest):
                 "music_agent.ask",
                 kind=trace.SpanKind.SERVER,
             ) as span:
-                span.set_attribute("gen_ai.provider.name", provider)
+                span.set_attribute("gen_ai.provider.name", PROVIDER_SEMCONV[provider])
                 span.set_attribute("gen_ai.request.model", model_name)
                 span.set_attribute("music_agent.question", request.question)
 
@@ -143,12 +147,6 @@ async def ask_question(request: QuestionRequest):
                 )
                 result = await agent.run(request.question, model_settings=ModelSettings(temperature=1.0))
                 answer = result.output if hasattr(result, "output") else result.data
-
-                # Record token usage on the outer span
-                usage = result.usage
-                if usage:
-                    span.set_attribute("gen_ai.usage.input_tokens", usage.input_tokens or 0)
-                    span.set_attribute("gen_ai.usage.output_tokens", usage.output_tokens or 0)
 
             return AnswerResponse(answer=str(answer), provider=provider, model=model_name)
 
@@ -179,7 +177,7 @@ async def ask_guardrail():
     )
 
     with tracer.start_as_current_span("music_agent.ask_guardrail", kind=trace.SpanKind.SERVER) as span:
-        span.set_attribute("gen_ai.provider.name", provider)
+        span.set_attribute("gen_ai.provider.name", PROVIDER_SEMCONV[provider])
         span.set_attribute("gen_ai.request.model", model_name)
         span.set_attribute("gen_ai.guardrail.id", guardrail_id)
         span.set_attribute("gen_ai.guardrail.version", guardrail_version)
