@@ -82,6 +82,10 @@ jobs:
           ollama serve &
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull ${{ matrix.ollama_model }}
+          # Serve the small model under the app's default model name.
+          if [ -n "${{ matrix.ollama_alias }}" ]; then
+            ollama cp ${{ matrix.ollama_model }} ${{ matrix.ollama_alias }}
+          fi
 
       - name: Resolve OneAgent installer version
         id: oneagent-version
@@ -148,7 +152,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.ollama_alias != '' && matrix.ollama_alias || matrix.ollama_model != '' && matrix.ollama_model || matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
@@ -373,7 +377,7 @@ jobs:
         env:
           TEST_RUN: TestGroqOneAgent
           OTEL_SERVICE_NAME: groq/oneagent
-          MODEL: tinyllama
+          MODEL: llama-3.1-8b-instant
         run: go test ./... -run "^${TEST_RUN}$" -v -timeout 20m
 
       # MOCKED unless GROQ_API_KEY is set: an in-process OpenAI-compatible stub
@@ -591,6 +595,10 @@ jobs:
           ollama serve &
           timeout 30 bash -c 'until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done'
           ollama pull ${{ matrix.ollama_model }}
+          # Serve the small model under the app's default model name.
+          if [ -n "${{ matrix.ollama_alias }}" ]; then
+            ollama cp ${{ matrix.ollama_model }} ${{ matrix.ollama_alias }}
+          fi
 
       - name: Set up Node.js
         if: ${{ matrix.needs_node || matrix.node_version != '' }}
@@ -625,7 +633,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           OPENAI_API_BASE: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-          MODEL: ${{ matrix.ollama_model != '' && matrix.ollama_model || matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL: ${{ matrix.ollama_alias != '' && matrix.ollama_alias || matrix.ollama_model != '' && matrix.ollama_model || matrix.model != '' && matrix.model || secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}

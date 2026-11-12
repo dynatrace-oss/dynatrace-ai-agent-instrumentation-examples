@@ -28,5 +28,5 @@ func TestGroqOneAgent(t *testing.T) {
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
-		"Backend mocked: ollama running tinyllama locally serves Groq-compatible requests via GROQ_BASE_URL. Replace with a real GROQ_API_KEY secret for live validation.")
+		"Backend mocked: a local HTTP stub serves Groq-compatible chat completions via GROQ_BASE_URL. Replace with a real GROQ_API_KEY secret for live validation.")
 }
