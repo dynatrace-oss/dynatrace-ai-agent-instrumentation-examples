@@ -67,7 +67,7 @@ Monitor specific AI provider SDKs with Dynatrace.
 
 | Provider | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |----------|-------------|----------|---------------|---------------|
-| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.44.0 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
+| [AWS Bedrock](./aws-bedrock/) | `boto3` 1.44.1 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock/oneagent/) | [✓](./aws-bedrock/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./aws-bedrock/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Anthropic](./anthropic/oneagent/) | `anthropic` 1.12.1 <!-- renovate: datasource=pypi depName=anthropic --> | [✓](./anthropic/oneagent/) | [✓](./anthropic/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | — |
 | [Cohere](./cohere/oneagent/) | `cohere` 7.3.1 <!-- renovate: datasource=pypi depName=cohere --> | [✓\*](./cohere/oneagent/) | [✓](./cohere/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | — |
 | [Gemini](./gemini/openinference/) | `google-genai` 2.34.0 <!-- renovate: datasource=pypi depName=google-genai --> | — | [✓](./gemini/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | — |
@@ -88,8 +88,8 @@ Monitor AI agent frameworks with Dynatrace.
 
 | Framework | SDK version | OneAgent | OpenInference | OpenTelemetry |
 |-----------|-------------|----------|---------------|---------------|
-| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.44.0 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
-| [AWS Bedrock AgentCore](./aws-bedrock-agentcore/oneagent-opentelemetry/) | `boto3` 1.44.0 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agentcore/oneagent-opentelemetry/) | — | [✓](./aws-bedrock-agentcore/oneagent-opentelemetry/) |
+| [AWS Bedrock Agents](./aws-bedrock-agents/) | `boto3` 1.44.1 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agents/oneagent/) | — | — |
+| [AWS Bedrock AgentCore](./aws-bedrock-agentcore/oneagent-opentelemetry/) | `boto3` 1.44.1 <!-- renovate: datasource=pypi depName=boto3 --> | [✓](./aws-bedrock-agentcore/oneagent-opentelemetry/) | — | [✓](./aws-bedrock-agentcore/oneagent-opentelemetry/) |
 | [AWS Strands Agents](./aws-strands/) | `strands-agents` 1.64.0 <!-- renovate: datasource=pypi depName=strands-agents --> | [✓](./aws-strands/oneagent/) | — | [✓](./aws-strands/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Claude Agent SDK](./claude-agent-sdk/oneagent/) | `claude-agent-sdk` 0.2.180 <!-- renovate: datasource=pypi depName=claude-agent-sdk --> | [✓](./claude-agent-sdk/oneagent/) | — | — |
 | [CrewAI](./crewai/) | `crewai` 1.15.39 <!-- renovate: datasource=pypi depName=crewai --> | — | [✓](./crewai/openinference/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> | [✓](./crewai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
