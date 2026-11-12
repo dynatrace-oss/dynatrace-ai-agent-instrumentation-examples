@@ -35,6 +35,7 @@ func TestCrewAIOpenTelemetryCollector(t *testing.T) {
 		`fetch spans, from: now()-10m
 | filter service.name == "crewai-collector"
 | filter isNotNull(gen_ai.request.model)
+| filter isNotNull(gen_ai.usage.input_tokens)
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,

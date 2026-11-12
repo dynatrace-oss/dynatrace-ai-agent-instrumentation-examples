@@ -37,6 +37,17 @@ processors:
           - set(attributes["gen_ai.input.messages"], attributes["temp.input_messages"]) where attributes["temp.input_messages"] != nil
           - delete_key(attributes, "temp.input_messages") where attributes["temp.input_messages"] != nil
 
+  # The crewai instrumentation wraps every LiteLLM call in its own chat span
+  # without token usage, so each model call shows up twice. Drop the operation
+  # name on the wrapper (the span stays in the trace) so only the litellm.chat
+  # span with token counts is treated as the chat call.
+  transform/wrapper_llm_span:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - delete_key(attributes, "gen_ai.operation.name") where instrumentation_scope.name == "opentelemetry.instrumentation.crewai.instrumentation" and attributes["gen_ai.operation.name"] == "chat" and attributes["gen_ai.usage.input_tokens"] == nil
+
   # The metric branches key on traceloop.span.kind and span name, NOT on
   # gen_ai.operation.name — because opentelemetry-instrumentation-crewai 0.62.1
   # sets gen_ai.operation.name = "invoke_agent" on three nested span types at
@@ -129,7 +140,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resource/service_name, transform/system_instructions, batch]
+      processors: [resource/service_name, transform/system_instructions, transform/wrapper_llm_span, batch]
       exporters: [otlphttp/dynatrace]
 
     # One metrics branch per span type. Kept separate from the export pipeline
