@@ -1,4 +1,4 @@
-boto3==1.44.1
+boto3==1.44.2
 
 # dynatrace oneagent
 oneagent-sdk
