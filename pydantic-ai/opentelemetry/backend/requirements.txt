@@ -2,7 +2,7 @@ pydantic-ai==2.68.0
 fastapi
 uvicorn[standard]
 python-dotenv
-boto3==1.44.2
+boto3==1.44.3
 openai==3.49.0
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http
