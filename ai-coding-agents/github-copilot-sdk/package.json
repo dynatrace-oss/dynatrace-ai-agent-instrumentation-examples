@@ -8,7 +8,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@github/copilot-sdk": "1.0.31"
+    "@github/copilot-sdk": "1.0.32"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
