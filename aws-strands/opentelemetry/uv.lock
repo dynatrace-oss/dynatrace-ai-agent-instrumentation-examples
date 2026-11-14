@@ -149,12 +149,12 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = "==0.162.0" },
+    { name = "fastapi", specifier = "==0.162.7" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.2" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.66b2" },
     { name = "opentelemetry-instrumentation-urllib3", specifier = "==0.66b2" },
     { name = "strands-agents", specifier = "==1.64.0" },
-    { name = "strands-agents-tools", specifier = "==0.8.12" },
+    { name = "strands-agents-tools", specifier = "==0.9.0" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.54.0" },
 ]
 
@@ -370,19 +370,20 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.162.0"
+version = "0.162.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
+    { name = "anyio" },
     { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f", size = 527867, upload-time = "2026-10-23T18:47:33.264Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/82/6b9764e52f89a8aaf68a5005093bcb8fdcadcb6ba30571def786c0d3bfc0/fastapi-0.162.7.tar.gz", hash = "sha256:b7503029c8ef2d2d5fea9049294cf8d0f2805c6621f4677ede269fce19f01efb", size = 535511, upload-time = "2026-11-13T17:47:18.517Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c", size = 148912, upload-time = "2026-10-23T18:47:31.734Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/49/2d76050f652082f1435f34a8ac9af6207b9aed8b81cde42e0bb121fa7c5a/fastapi-0.162.7-py3-none-any.whl", hash = "sha256:fa3be857122ec8d91d4d234e86ac19acf4ef23f5c6c3dfcce78ec0c27c0c5ab4", size = 152411, upload-time = "2026-11-13T17:47:16.598Z" },
 ]
 
 [[package]]
@@ -1386,7 +1387,7 @@ wheels = [
 
 [[package]]
 name = "strands-agents-tools"
-version = "0.8.12"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1407,9 +1408,9 @@ dependencies = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/30/a8a484a98db19b0d6f660691603cb051f5f4bec6855b0651a66c7221db90/strands_agents_tools-0.8.12.tar.gz", hash = "sha256:66487efeec56af89452b4478c6cb49aed6aba5a213252b141b970df0690a38c2", size = 561151, upload-time = "2026-11-02T15:33:42.993Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4d/6b/7c0307394a08be237905b3c12d4a781830f85d40cf655c22a360c1f77de2/strands_agents_tools-0.9.0.tar.gz", hash = "sha256:101e7144eedead1e5b649aa291d6b55c4d7d761e42cda304e765cfcd9fee00bd", size = 556606, upload-time = "2026-11-04T17:33:51.981Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/43/456bbc22ac6f25fd4fbd59d69d66e327579974a211db83e44367e1237c0c/strands_agents_tools-0.8.12-py3-none-any.whl", hash = "sha256:948421512ab58a620ee5769ba4dcdd21e024a421e9731b747dbd1cb860e65016", size = 359954, upload-time = "2026-11-02T15:33:41.354Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/5d/55a91b021c4f89534a54948b568cb45ac89b243064e346cc7a2076600773/strands_agents_tools-0.9.0-py3-none-any.whl", hash = "sha256:c704cb066c756bb0273dbf7fce36be79b21e85c31355a89e3d26fbc3f1092c5e", size = 355942, upload-time = "2026-11-04T17:33:50.09Z" },
 ]
 
 [[package]]

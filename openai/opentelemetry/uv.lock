@@ -998,7 +998,7 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = "==0.28.1" },
     { name = "openai", specifier = "==3.49.0" },
-    { name = "traceloop-sdk", specifier = "==0.62.4" },
+    { name = "traceloop-sdk", specifier = "==0.63.0" },
 ]
 
 [[package]]
@@ -2026,13 +2026,14 @@ wheels = [
 
 [[package]]
 name = "traceloop-sdk"
-version = "0.62.4"
+version = "0.63.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "colorama" },
     { name = "cuid" },
     { name = "deprecated" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
@@ -2078,11 +2079,12 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions-ai" },
     { name = "pydantic" },
+    { name = "requests" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/1a/05bc7d08252ec9ce1cb7d8abd2d4e592b004032b0353fb6841fbfc9849df/traceloop_sdk-0.62.4.tar.gz", hash = "sha256:033dbeb200021c4381a3e2aaf8678747b61d85c758ef9e36648e29b16d0d8deb", size = 350681, upload-time = "2026-09-29T10:45:29.079Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/d7/38dd4791453ee55f2aed2afd22191b59cd8f7cb852de60889979815fe995/traceloop_sdk-0.63.0.tar.gz", hash = "sha256:3b25c62f130543a3a8c1535a85bd423b9bdd98a87028b71eef05c8cb4fc66889", size = 352429, upload-time = "2026-11-05T10:12:04.681Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a1/3d/ec8b3ed013ecc6d5f984a27634dca0aacd8a787314c08024a2123ce5241e/traceloop_sdk-0.62.4-py3-none-any.whl", hash = "sha256:0f7bb433ca1324ab55d099c6aa583c9e7ed1f4d6ad8942ead964965c54b94295", size = 92273, upload-time = "2026-09-29T10:45:27.147Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/b6/7ed1015b59e186c2ef94cd9d4dcd9f62f594a657188f8841ad0b8462c6f2/traceloop_sdk-0.63.0-py3-none-any.whl", hash = "sha256:c4351fb54f175d00a1e8476145e11f27adfb6590ae3dbed02e8003c6dc3d73da", size = 92727, upload-time = "2026-11-05T10:12:03.165Z" },
 ]
 
 [[package]]

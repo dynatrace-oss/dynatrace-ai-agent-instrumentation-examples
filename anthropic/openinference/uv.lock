@@ -55,7 +55,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", extras = ["bedrock"], specifier = "==1.12.1" },
-    { name = "openinference-instrumentation-anthropic", specifier = "==3.3.0" },
+    { name = "openinference-instrumentation-anthropic", specifier = "==3.3.5" },
     { name = "opentelemetry-exporter-otlp", specifier = "==1.45.2" },
     { name = "opentelemetry-sdk", specifier = "==1.45.2" },
 ]
@@ -572,7 +572,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation"
-version = "0.1.71"
+version = "0.1.77"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-semantic-conventions" },
@@ -580,14 +580,14 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/ec/ef1ca7e409ee6bddb7278b9760e0941f65911748f5dc84d17c115f6648f1/openinference_instrumentation-0.1.71.tar.gz", hash = "sha256:4d267b6ce8e067572a740d6a0dbf6b4d4c6e386c5a52a7e7f61e3a714a49849d", size = 46600, upload-time = "2026-10-07T20:26:41.084Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/ed/ef266725f961098440ecaa91ad753320b9c808381d4eea068edfdb17fcbe/openinference_instrumentation-0.1.77.tar.gz", hash = "sha256:d2cef8d4d1d2c82be6cd0068a8f286b1d31cdf37381b8052e68494224338e93b", size = 47527, upload-time = "2026-11-12T06:06:54.645Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/8c/330101bedf614dc937d8690462ed0ad4efd7f6c3248a76a5484ba6f885e3/openinference_instrumentation-0.1.71-py3-none-any.whl", hash = "sha256:07833fcf5d493a2ed15da16a0af70d6127d39f18ffa68f4d6827107e49fc6753", size = 54511, upload-time = "2026-10-07T20:26:39.634Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/4e/938db3f6e7b5b6db8be3ca8ebef95c292ace3be53c1a8b312e97d4403038/openinference_instrumentation-0.1.77-py3-none-any.whl", hash = "sha256:08b8f5e3dee767079538cd3e7c44f70b8f14f8e953e9031b273376da8bde2763", size = 55053, upload-time = "2026-11-12T06:06:53.304Z" },
 ]
 
 [[package]]
 name = "openinference-instrumentation-anthropic"
-version = "3.3.0"
+version = "3.3.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -598,18 +598,18 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/78/4154149960378f4dcda4f7bd3873b397757539ff83452f24b412408e1e1e/openinference_instrumentation_anthropic-3.3.0.tar.gz", hash = "sha256:d8a10c64f621e020ec976a310cba6ce8e73e6c06397210b8aa83552a8dfddfa9", size = 29583, upload-time = "2026-10-31T04:07:27.544Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/b6/9035d61099697ec0d624bc2689c93fc015a6e72a9cafbebbd44411ea9a15/openinference_instrumentation_anthropic-3.3.5.tar.gz", hash = "sha256:4bddf55d838b2360fe7a9e1785cc43dbb09bbf27b5debb2e74ca89783ade4614", size = 29717, upload-time = "2026-11-12T08:19:34.063Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/3c/75f244f86acdeb9cd9ecd053f722152ede8f1980292622cf98bb3ac3c458/openinference_instrumentation_anthropic-3.3.0-py3-none-any.whl", hash = "sha256:09f8dc7c64d07a7685802272642e13e20da37867380086ebbdc579748d4885f7", size = 34591, upload-time = "2026-10-31T04:07:26.288Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/f4/804f93d0090c31583d9860fb49db9838dbbec2304dc8399c4da5b5bc70e6/openinference_instrumentation_anthropic-3.3.5-py3-none-any.whl", hash = "sha256:8fee758dfb0519b22ac661bfdda6e9f4075d3cc8cbb13a64ff6e6f7c7b2ff96f", size = 34723, upload-time = "2026-11-12T08:19:31.953Z" },
 ]
 
 [[package]]
 name = "openinference-semantic-conventions"
-version = "0.1.43"
+version = "0.1.44"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7e/dc/b3def81b3e243571ac4a96d41f44945f3c2c999c2a9c822b272ed4667e47/openinference_semantic_conventions-0.1.43.tar.gz", hash = "sha256:c12b213e8cbaa74c8fbf021d2959e244aceb39b5cefeb2c2cd8316235f2a905b", size = 16212, upload-time = "2026-10-29T22:13:22.01Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/e3/e411e3b9f3540a03b87aa48dccabc7b3fd5326590cd23c22769eda1545a2/openinference_semantic_conventions-0.1.44.tar.gz", hash = "sha256:a1f08fa6aef021f67910eef017b43118199dd7e33fff10978f803a42d5fe1fde", size = 16225, upload-time = "2026-11-11T07:33:19.16Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/11/02848572db2e9986f271853175cba2026d8ae46359d69d90deb19027f49f/openinference_semantic_conventions-0.1.43-py3-none-any.whl", hash = "sha256:058cf01935df390775605a87df07840dbd80ac1a92800a329c169b0d633f64ce", size = 12974, upload-time = "2026-10-29T22:13:20.246Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/f0/f151f0f52ea599d45ad0ca7f8c9a317a2ea6f7f52c17acee7014f2debead/openinference_semantic_conventions-0.1.44-py3-none-any.whl", hash = "sha256:58c931fb0223c6103eb38dfd6f3c709a27483f5e9e74aea2df607402156e7600", size = 12980, upload-time = "2026-11-11T07:33:17.933Z" },
 ]
 
 [[package]]
