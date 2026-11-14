@@ -1,15 +1,15 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -810,8 +810,8 @@ name = "httpcore2"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz", hash = "sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643", size = 69886, upload-time = "2026-10-21T07:09:45.31Z" }
 wheels = [
@@ -1538,21 +1538,21 @@ dependencies = [
 requires-dist = [
     { name = "aiosqlite" },
     { name = "chardet" },
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "fonttools", specifier = ">=4.60.2" },
+    { name = "fastapi", specifier = "==0.162.5" },
+    { name = "fonttools", specifier = "==4.68.0" },
     { name = "matplotlib" },
     { name = "ogx", extras = ["client"], specifier = "==1.5.0" },
     { name = "ollama", specifier = "==0.6.3" },
-    { name = "opentelemetry-distro", specifier = ">=0.60b1" },
-    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.39.0" },
-    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.60b1" },
+    { name = "opentelemetry-distro", specifier = "==0.66b2" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.2" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.66b2" },
     { name = "opentelemetry-instrumentation-openai-v2", specifier = "==2.4b0" },
     { name = "opentelemetry-util-genai", specifier = "==1.1b0" },
     { name = "pandas" },
-    { name = "pillow", specifier = ">=12.2.0" },
-    { name = "pypdf", specifier = ">=6.13.0" },
+    { name = "pillow", specifier = "==13.0.0" },
+    { name = "pypdf", specifier = "==7.0.1" },
     { name = "sqlite-vec" },
-    { name = "uvicorn", specifier = ">=0.30.0" },
+    { name = "uvicorn", specifier = "==0.54.0" },
 ]
 
 [[package]]
