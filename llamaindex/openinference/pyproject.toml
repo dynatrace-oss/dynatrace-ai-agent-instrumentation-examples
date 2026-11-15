@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "llama-index-core==0.14.25",
-    "llama-index-llms-azure-openai==0.6.1",
+    "llama-index-llms-azure-openai==0.7.0",
     "openinference-instrumentation-llama-index==4.7.6",
     "opentelemetry-sdk>=1.42.0",
     "opentelemetry-exporter-otlp>=1.42.0",
