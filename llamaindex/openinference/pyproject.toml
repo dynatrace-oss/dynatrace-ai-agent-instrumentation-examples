@@ -6,6 +6,6 @@ dependencies = [
     "llama-index-core==0.14.26",
     "llama-index-llms-azure-openai==0.7.0",
     "openinference-instrumentation-llama-index==4.7.6",
-    "opentelemetry-sdk>=1.42.0",
-    "opentelemetry-exporter-otlp>=1.42.0",
+    "opentelemetry-sdk==1.45.2",
+    "opentelemetry-exporter-otlp==1.45.2",
 ]
