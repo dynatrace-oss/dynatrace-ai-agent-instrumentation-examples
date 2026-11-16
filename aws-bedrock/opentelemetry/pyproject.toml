@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "boto3==1.44.3",
-    "traceloop-sdk==0.62.4",
-    "opentelemetry-instrumentation-bedrock==0.62.4",
+    "traceloop-sdk==0.63.0",
+    "opentelemetry-instrumentation-bedrock==0.63.0",
     "opentelemetry-instrumentation-botocore==0.65b0",
     "opentelemetry-instrumentation-requests==0.65b0",
     "opentelemetry-instrumentation-asyncio==0.65b0",

@@ -228,12 +228,12 @@ requires-dist = [
     { name = "boto3", specifier = "==1.44.3" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "opentelemetry-instrumentation-asyncio", specifier = "==0.65b0" },
-    { name = "opentelemetry-instrumentation-bedrock", specifier = "==0.62.4" },
+    { name = "opentelemetry-instrumentation-bedrock", specifier = "==0.63.0" },
     { name = "opentelemetry-instrumentation-botocore", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-requests", specifier = "==0.65b0" },
     { name = "requests", specifier = "==2.34.2" },
     { name = "tenacity", specifier = "==9.2.1" },
-    { name = "traceloop-sdk", specifier = "==0.62.4" },
+    { name = "traceloop-sdk", specifier = "==0.63.0" },
 ]
 
 [[package]]
@@ -1029,7 +1029,7 @@ wheels = [
 
 [[package]]
 name = "opentelemetry-instrumentation-bedrock"
-version = "0.62.4"
+version = "0.63.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1037,9 +1037,9 @@ dependencies = [
     { name = "opentelemetry-semantic-conventions" },
     { name = "opentelemetry-semantic-conventions-ai" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/f3/739897a699d05f84ce6611798bf5d601c7d934bfd9884ef4a0ef26686a13/opentelemetry_instrumentation_bedrock-0.62.4.tar.gz", hash = "sha256:3a43e79814a71e5ce9502dbb83bb9e1ae749e9ad71dc483a38c9ee996105213f", size = 244073, upload-time = "2026-09-29T10:43:58.4Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/f8/0470c837482845f8bbc105b5287e37bf0ca8e04386cdb16e89320cfe8084/opentelemetry_instrumentation_bedrock-0.63.0.tar.gz", hash = "sha256:d7209ee3ff63f710a0c914467bc63c35dae68ecee938b0fe16f979d70205e570", size = 253339, upload-time = "2026-11-05T10:10:49.25Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/72/e13ddfddfca24c0e32aacfe9b7eb22c1e7da87ee02293c82dfd57c57a049/opentelemetry_instrumentation_bedrock-0.62.4-py3-none-any.whl", hash = "sha256:28ee474b78f1d9a078a811d4ff46d21d912b89ad79e35ebc06d134e5aee6091c", size = 27309, upload-time = "2026-09-29T10:43:17.961Z" },
+    { url = "https://files.pythonhosted.org/packages/31/d8/7ee2bdc93ab32a9b0d0dda42a132c9d69335cdb4840cd239c0903b8fccfa/opentelemetry_instrumentation_bedrock-0.63.0-py3-none-any.whl", hash = "sha256:8d4f643024bc7e26a4a693dacff08768a6a968a2c5145222aa2215a8813b38d9", size = 27604, upload-time = "2026-11-05T10:10:09.971Z" },
 ]
 
 [[package]]
@@ -1984,13 +1984,14 @@ wheels = [
 
 [[package]]
 name = "traceloop-sdk"
-version = "0.62.4"
+version = "0.63.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "colorama" },
     { name = "cuid" },
     { name = "deprecated" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
@@ -2036,11 +2037,12 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions-ai" },
     { name = "pydantic" },
+    { name = "requests" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/1a/05bc7d08252ec9ce1cb7d8abd2d4e592b004032b0353fb6841fbfc9849df/traceloop_sdk-0.62.4.tar.gz", hash = "sha256:033dbeb200021c4381a3e2aaf8678747b61d85c758ef9e36648e29b16d0d8deb", size = 350681, upload-time = "2026-09-29T10:45:29.079Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/d7/38dd4791453ee55f2aed2afd22191b59cd8f7cb852de60889979815fe995/traceloop_sdk-0.63.0.tar.gz", hash = "sha256:3b25c62f130543a3a8c1535a85bd423b9bdd98a87028b71eef05c8cb4fc66889", size = 352429, upload-time = "2026-11-05T10:12:04.681Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a1/3d/ec8b3ed013ecc6d5f984a27634dca0aacd8a787314c08024a2123ce5241e/traceloop_sdk-0.62.4-py3-none-any.whl", hash = "sha256:0f7bb433ca1324ab55d099c6aa583c9e7ed1f4d6ad8942ead964965c54b94295", size = 92273, upload-time = "2026-09-29T10:45:27.147Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/b6/7ed1015b59e186c2ef94cd9d4dcd9f62f594a657188f8841ad0b8462c6f2/traceloop_sdk-0.63.0-py3-none-any.whl", hash = "sha256:c4351fb54f175d00a1e8476145e11f27adfb6590ae3dbed02e8003c6dc3d73da", size = 92727, upload-time = "2026-11-05T10:12:03.165Z" },
 ]
 
 [[package]]

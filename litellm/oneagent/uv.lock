@@ -1304,9 +1304,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "fastapi", specifier = "==0.162.4" },
     { name = "litellm", specifier = "==1.109.1" },
-    { name = "uvicorn", specifier = ">=0.30.0" },
+    { name = "uvicorn", specifier = "==0.54.0" },
 ]
 
 [[package]]
