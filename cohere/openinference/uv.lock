@@ -258,7 +258,7 @@ dependencies = [
 requires-dist = [
     { name = "cohere", specifier = "==7.3.1" },
     { name = "fastapi" },
-    { name = "openinference-instrumentation-cohere", specifier = "==0.1.17" },
+    { name = "openinference-instrumentation-cohere", specifier = "==0.1.22" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
     { name = "uvicorn", extras = ["standard"] },
@@ -783,7 +783,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-cohere"
-version = "0.1.17"
+version = "0.1.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -793,9 +793,9 @@ dependencies = [
     { name = "opentelemetry-semantic-conventions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/eb/a45f181d24101630eff6b72f81ce2ace1fc6d246a3271ed71b764fc86793/openinference_instrumentation_cohere-0.1.17.tar.gz", hash = "sha256:b61b99503104b05ec30193277b519a3f7ef680ad8b50b9b4c397069a5487f708", size = 16302, upload-time = "2026-10-29T22:13:23.33Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/c0/0e810f39a279f7ccf0edaa63c516983349c75f2b25a40d5bb52079093025/openinference_instrumentation_cohere-0.1.22.tar.gz", hash = "sha256:938f428dd3f3df112aa37e4981c5505ea1ab8e8a9df3320a5bb675b06f095ebd", size = 16296, upload-time = "2026-11-12T08:19:32.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/58/9fdf9425f8676bd057f2aacb32ee896779e7ac62f91dcf7ebc8e43a8dce8/openinference_instrumentation_cohere-0.1.17-py3-none-any.whl", hash = "sha256:d015df08b30a4cdc7ad3384430eed6e1387f2bfa4bac7109db8399b7f40cd50c", size = 20816, upload-time = "2026-10-29T22:13:21.846Z" },
+    { url = "https://files.pythonhosted.org/packages/76/de/aa921f01ee712bd4ba804ce121a3a09aa7c890cbb3310653d080319cc088/openinference_instrumentation_cohere-0.1.22-py3-none-any.whl", hash = "sha256:05e757bdedddf1f770cc0a97e4666c02106ae49310daed79d885491ecc1b5555", size = 20818, upload-time = "2026-11-12T08:19:30.908Z" },
 ]
 
 [[package]]

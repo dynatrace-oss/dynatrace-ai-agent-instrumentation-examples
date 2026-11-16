@@ -1881,7 +1881,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = "==0.140.6" },
     { name = "litellm", extras = ["proxy"], specifier = "==1.109.1" },
-    { name = "openinference-instrumentation-litellm", specifier = "==0.1.52" },
+    { name = "openinference-instrumentation-litellm", specifier = "==0.1.58" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.2" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.66b2" },
     { name = "opentelemetry-instrumentation-httpx", specifier = "==0.66b2" },
@@ -2608,7 +2608,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-litellm"
-version = "0.1.52"
+version = "0.1.58"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -2619,9 +2619,9 @@ dependencies = [
     { name = "setuptools" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/e9/7c7502c2abd6217f2625367e683be4c439a891cbf5a09d9c4bf51e4f0178/openinference_instrumentation_litellm-0.1.52.tar.gz", hash = "sha256:28220e5c068a202d20ded340abca7b5b4d6aca4ad80fbedcc4e74fea3dd8b1e0", size = 122270, upload-time = "2026-10-29T22:03:30.322Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/7d/7861287a6e165be28ac77549e8436fc5a7b419e232d2734ebcd428c47e06/openinference_instrumentation_litellm-0.1.58.tar.gz", hash = "sha256:9311e7933610a8cb9763871ea9f763b92ad19df4f4a0777d38872d8ad1dc4257", size = 124044, upload-time = "2026-11-12T08:19:38.055Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/3a/7d1a071cc1edf34b8b534300848d5d8c6b4aa476e9e57254a0be5d7b1117/openinference_instrumentation_litellm-0.1.52-py3-none-any.whl", hash = "sha256:86daaacb3b950a44ee0e4b4d32fd8d11ffa681b5b222fe70681ddee71b79b8ee", size = 26285, upload-time = "2026-10-29T22:03:29.058Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/4b/1b44175c534b733498673158b22c4ab15386b5b6b0ff2b193ccb2bd97e45/openinference_instrumentation_litellm-0.1.58-py3-none-any.whl", hash = "sha256:2c0cf6d9e881d7e31f33cc45f3cfa86c6f83b14830f5ed2b1da6b4f7a2c9acc4", size = 26832, upload-time = "2026-11-12T08:19:36.182Z" },
 ]
 
 [[package]]

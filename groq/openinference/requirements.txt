@@ -1,4 +1,4 @@
 groq==1.7.0
-openinference-instrumentation-groq==0.1.35
+openinference-instrumentation-groq==0.1.40
 opentelemetry-sdk ==1.45.2
 opentelemetry-exporter-otlp ==1.45.2

@@ -1,13 +1,13 @@
 [project]
 name = "openai-agents-openinference-demo"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "openai-agents==0.24.0",
-    "openinference-instrumentation-openai-agents==2.7.0",
-    "openinference-instrumentation==0.1.75",
+    "openinference-instrumentation-openai-agents==2.8.3",
+    "openinference-instrumentation==0.1.77",
     "opentelemetry-sdk==1.45.2",
     "opentelemetry-exporter-otlp-proto-http==1.45.2",
-    "fastapi==0.162.0",
+    "fastapi==0.163.1",
     "uvicorn==0.54.0",
 ]

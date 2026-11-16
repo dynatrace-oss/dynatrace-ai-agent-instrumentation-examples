@@ -34,7 +34,7 @@ This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` (set in `app.py`)
 ## Prerequisites
 
 - A Dynatrace tenant (start a free trial at https://dt-url.net/trial)
-- Python 3.10 to 3.13
+- Python 3.11 to 3.13
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Docker (to run the Bindplane collector)
 - An Azure OpenAI endpoint and key

@@ -18,7 +18,7 @@ A [Bindplane OTel collector](https://github.com/Dynatrace/dynatrace-bindplane-ot
 
 - A Dynatrace tenant (start a free trial at https://dt-url.net/trial)
 - A Dynatrace access token with `openTelemetryTrace.ingest` and `metrics.ingest`
-- Python 3.10+ and [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- Python 3.11+ and [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Docker (to run the Bindplane collector)
 - An Azure OpenAI endpoint, key, and deployment
 

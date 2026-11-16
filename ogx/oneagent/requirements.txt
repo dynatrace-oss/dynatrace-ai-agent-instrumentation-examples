@@ -9,5 +9,5 @@ matplotlib
 pandas
 pypdf==6.21.4
 chardet
-fastapi==0.162.0
+fastapi==0.163.1
 uvicorn==0.54.0

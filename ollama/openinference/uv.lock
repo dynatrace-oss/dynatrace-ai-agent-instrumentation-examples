@@ -474,7 +474,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi" },
     { name = "ollama", specifier = "==0.6.3" },
-    { name = "openinference-instrumentation-ollama", specifier = "==0.1.15" },
+    { name = "openinference-instrumentation-ollama", specifier = "==0.1.20" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
     { name = "uvicorn", extras = ["standard"] },
@@ -497,7 +497,7 @@ wheels = [
 
 [[package]]
 name = "openinference-instrumentation-ollama"
-version = "0.1.15"
+version = "0.1.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -508,9 +508,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/c3/1ad4f1abd4709eb93be5f9c5a3493fb93607f76def00332ef42fe80e7ce0/openinference_instrumentation_ollama-0.1.15.tar.gz", hash = "sha256:9771843c2ef6658d31712c04d48738c565f724abb1b915aa53a155c5860de5c4", size = 14906, upload-time = "2026-10-29T22:13:23.677Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/05/ae79c64005a1ec531022c4d06b9eb5ca6b1f3ecd957dc87e339c0abeb8be/openinference_instrumentation_ollama-0.1.20.tar.gz", hash = "sha256:d43e2255f2192473c25b09524eaa5d0d6f8b77e0ab1c5d02d7f9dc541dfaece4", size = 14906, upload-time = "2026-11-12T08:19:36.558Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/65/5eed23426e05d9013029fab99a15a2400e74a2ed306ae2fe9968c76f2eb3/openinference_instrumentation_ollama-0.1.15-py3-none-any.whl", hash = "sha256:5f1a4bf2ca43eb6c3263abe51d24e3631d6e3b56ea3975c2d564cade01f19c63", size = 19670, upload-time = "2026-10-29T22:13:21.355Z" },
+    { url = "https://files.pythonhosted.org/packages/89/bf/17fd9f7757281e8d450101e47420ae8a5fb8196668e3a51e2172c5216875/openinference_instrumentation_ollama-0.1.20-py3-none-any.whl", hash = "sha256:b6aa8d047b76da2122beb3619dc5c6b8c9edc08b3e968547554d6f28a1b298d1", size = 19671, upload-time = "2026-11-12T08:19:34.942Z" },
 ]
 
 [[package]]

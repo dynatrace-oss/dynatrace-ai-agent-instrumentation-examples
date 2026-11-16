@@ -20,7 +20,7 @@ The same sensors cover the Vertex AI variants (`ChatGoogleGenerativeAI` with `ve
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Dynatrace OneAgent installed on the host, with the Google GenAI and Anthropic sensors enabled
 - A Gemini API key; optionally an Anthropic API key
