@@ -24,7 +24,7 @@
 | View | Status | Root cause |
 |------|--------|------------|
 | All GenAI views gate | ✅ | Provider identity expected from experimental Cohere sensor |
-| Prompts — content | ❌ | Prompt capture (`gen_ai.input.messages` / `gen_ai.output.messages`) not available for experimental sensors; supported only for OpenAI and Bedrock |
+| Prompts — content | ✅ | `gen_ai.input.messages` / `gen_ai.output.messages` captured when the opt-in **Experimental Python GenAI Cohere prompt capture [Opt-In]** feature is enabled (OneAgent 1.347+) |
 | Prompts — model column | ✅ | `gen_ai.request.model` expected from experimental Cohere sensor |
 | Latency charts | ❌ | OneAgent does not emit `gen_ai.client.operation.duration` OTel metric |
 | Cost dashboard (span tokens) | ✅ expected | Token counts on spans expected from experimental Cohere sensor |
@@ -40,7 +40,6 @@ Attributes absent that cause empty charts with no visible error:
 
 | Attribute | Missing feature |
 |-----------|----------------|
-| `gen_ai.input.messages` / `gen_ai.output.messages` | Prompt capture not available (experimental sensor limitation) |
 | `gen_ai.client.operation.duration` | OneAgent does not emit this OTel metric; all latency charts empty |
 | `gen_ai.client.token.usage` (metric) | OneAgent does not emit this OTel metric; cost dashboard metric tiles empty |
 
@@ -54,9 +53,9 @@ Enable the experimental **Cohere** sensor in Settings → OneAgent features (sea
 
 Enable the **Python FastAPI** sensor so HTTP entry-point spans nest the AI provider call correctly.
 
-**3. Add prompt content via manual OTel instrumentation**
+**3. Enable prompt capture**
 
-Prompt content is not available via the experimental sensor. To populate the prompts view with input/output messages, add manual OTel instrumentation — wrap `client.chat()` with a custom span and set `gen_ai.input.messages` / `gen_ai.output.messages` attributes — or wait for a supported sensor. Token counts can be extracted from `response.meta.billed_units.input_tokens` / `response.meta.billed_units.output_tokens`.
+Enable the opt-in **Experimental Python GenAI Cohere prompt capture [Opt-In]** feature in Settings > OneAgent features (OneAgent 1.347+) and restart the Python process. Prompts may contain sensitive data, so review before enabling.
 
 **4. Add an OTel metrics pipeline for latency and cost charts**
 

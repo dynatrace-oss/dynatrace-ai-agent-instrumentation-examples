@@ -66,6 +66,19 @@ processors:
   #
   # Note log.source is a permission-relevant field in Dynatrace, so changing this
   # value later can change which bucket/permissions the records fall under.
+  
+  # MAF does not set OTel span status on success, leaving it UNSET.
+  # Set OK for gen_ai operation spans and workflow spans so the service health
+  # tile in Dynatrace reflects success. ERROR is set automatically by the SDK
+  # when an exception propagates through a span.
+  transform/span_status:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(status.code, STATUS_CODE_OK) where attributes["gen_ai.operation.name"] != nil and status.code == STATUS_CODE_UNSET
+          - set(status.code, STATUS_CODE_OK) where name == "workflow.run" and status.code == STATUS_CODE_UNSET
+
   transform/log_source:
     error_mode: ignore
     log_statements:
@@ -132,7 +145,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/span_status, batch]
       exporters: [otlphttp/dynatrace]
 
     # One metrics branch per span type. Kept separate from the export pipeline

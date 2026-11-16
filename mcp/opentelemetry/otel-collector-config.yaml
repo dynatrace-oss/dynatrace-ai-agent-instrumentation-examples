@@ -1,0 +1,183 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # Rename only the agent's service, not the MCP server's.
+  #
+  # Both processes export to this collector — the Python agent as
+  # "mcp-agent-demo" (dynatrace.py pins it in resource_attributes) and the
+  # TypeScript MCP server as "weather-mcp-server" — and the cross-service trace
+  # between them is the point of the demo. A blanket `resource` processor would
+  # collapse both onto one name, so this is a conditional OTTL set instead.
+  #
+  # The rename exists because the e2e metric assertion isolates by service.name +
+  # time window: without it a `make run` and a `make run-collector` pass would
+  # share "mcp-agent-demo" and a derived metric could be satisfied by the wrong
+  # run.
+  transform/service_name:
+    error_mode: ignore
+    trace_statements:
+      - context: resource
+        statements:
+          - set(attributes["service.name"], "mcp-agent-demo-collector") where attributes["service.name"] == "mcp-agent-demo"
+    metric_statements:
+      - context: resource
+        statements:
+          - set(attributes["service.name"], "mcp-agent-demo-collector") where attributes["service.name"] == "mcp-agent-demo"
+
+  # This block was written when the demo pinned traceloop-sdk 0.47.3, where
+  # opentelemetry-instrumentation-langchain set **no** gen_ai.* attributes on
+  # chain or tool spans at all: _create_task_span wrote only traceloop.span.kind
+  # and traceloop.entity.name. The demo now pins 0.62.3, which sets the spec enum,
+  # gen_ai.tool.name and gen_ai.tool.type itself — so every statement below is a
+  # no-op today and the filters match values the library assigns.
+  #
+  # It is kept rather than deleted because it costs nothing when guarded and it is
+  # the only thing standing between a future downgrade, or a demo copied from this
+  # one at an older pin, and a config that silently derives zero metrics. Every
+  # statement is guarded on == nil for exactly that reason: never overwrite an enum
+  # the instrumentation set, or a tool name leaks into a low-cardinality dimension.
+  #
+  # The mapping, for the versions where it does fire:
+  #
+  # - "workflow" is the outermost chain, which the instrumentation picks by
+  #   nesting depth (parent_run_id is None), not by semantics. Here that root is
+  #   a LangGraph create_react_agent run, so invoke_agent is the honest label —
+  #   and it matches what 0.62.x assigns to the same span.
+  # - "tool" covers both the locally defined @tool("get_city") and the tools
+  #   reached over MCP through MultiServerMCPClient: both are LangChain tools by
+  #   the time the agent calls them.
+  # - "task" is left unmapped — a nested runnable is not a spec operation.
+  #
+  # gen_ai.tool.name is mirrored from traceloop.entity.name because the metric
+  # dimension needs it and pre-0.62 never set it; without this the tool histogram
+  # would carry an empty name and the local lookup could not be told from the MCP
+  # round trip.
+  transform/traceloop_operation_name:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(span.attributes["gen_ai.operation.name"], "invoke_agent") where span.attributes["traceloop.span.kind"] == "workflow" and span.attributes["gen_ai.operation.name"] == nil
+          - set(span.attributes["gen_ai.operation.name"], "execute_tool") where span.attributes["traceloop.span.kind"] == "tool" and span.attributes["gen_ai.operation.name"] == nil
+          - set(span.attributes["gen_ai.tool.name"], span.attributes["traceloop.entity.name"]) where span.attributes["traceloop.span.kind"] == "tool" and span.attributes["gen_ai.tool.name"] == nil
+          - set(span.attributes["gen_ai.tool.type"], "function") where span.attributes["traceloop.span.kind"] == "tool" and span.attributes["gen_ai.tool.type"] == nil
+          - set(span.attributes["gen_ai.agent.name"], span.attributes["traceloop.entity.name"]) where span.attributes["traceloop.span.kind"] == "workflow" and span.attributes["gen_ai.agent.name"] == nil
+
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  filter/execute_tool:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "execute_tool"
+
+  # Each span_metrics instance emits a "<namespace>.calls" counter alongside its
+  # histogram and offers no config key to disable it. Neither is a GenAI spec
+  # metric and nothing queries them. Matched by exact name so this cannot swallow
+  # the spec's gen_ai.invoke_agent.inference_calls / .tool_calls.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+        - name == "gen_ai.execute_tool.calls"
+
+connectors:
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: "gen_ai.invoke_agent" -> gen_ai.invoke_agent.duration.
+  # Both are Histogram/seconds at Development stability per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # A ReAct loop: at least two model calls plus the tool round trips.
+      explicit:
+        buckets: [500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+  span_metrics/execute_tool:
+    namespace: gen_ai.execute_tool
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # Two very different tools share this metric: get_city is a local list
+      # lookup (microseconds), while the weather tool is an HTTP round trip to
+      # the MCP server. gen_ai.tool.name separates them; the bucket range has to
+      # cover both.
+      explicit:
+        buckets: [1ms, 5ms, 10ms, 50ms, 100ms, 500ms, 1s, 5s]
+    dimensions:
+      - name: gen_ai.tool.name
+      - name: gen_ai.tool.type
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_ENDPOINT}/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors:
+        [transform/service_name, transform/traceloop_operation_name, batch]
+      exporters: [otlphttp/dynatrace]
+
+    # One metrics branch per span type. Kept separate from the export pipeline
+    # above so a filter here can never drop a span from Distributed Tracing.
+    #
+    # transform/traceloop_operation_name must precede the filters: on any library
+    # version that does not set gen_ai.operation.name itself, it is what puts the
+    # attribute on the span, and without it the filters match nothing and no metric
+    # is produced at all. At the current 0.62.3 pin it is a no-op — ordering still
+    # matters the moment that stops being true.
+    traces/invoke_agent_metrics:
+      receivers: [otlp]
+      processors:
+        [
+          transform/service_name,
+          transform/traceloop_operation_name,
+          filter/invoke_agent,
+          batch,
+        ]
+      exporters: [span_metrics/invoke_agent]
+
+    traces/execute_tool_metrics:
+      receivers: [otlp]
+      processors:
+        [
+          transform/service_name,
+          transform/traceloop_operation_name,
+          filter/execute_tool,
+          batch,
+        ]
+      exporters: [span_metrics/execute_tool]
+
+    metrics:
+      receivers: [otlp, span_metrics/invoke_agent, span_metrics/execute_tool]
+      processors: [transform/service_name, filter/drop_derived_calls, batch]
+      exporters: [otlphttp/dynatrace]

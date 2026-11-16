@@ -42,6 +42,7 @@ def write_haiku(topic: str) -> str:
         "modelId": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         "system": [{"text": _SYSTEM_PROMPT}],
         "messages": [{"role": "user", "content": [{"text": f"Topic: {topic}"}]}],
+        "inferenceConfig": {"temperature": 0.7, "maxTokens": 256},
     }
     gc = _guardrail_config()
     if gc:

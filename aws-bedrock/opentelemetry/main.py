@@ -10,6 +10,7 @@ from tenacity import sleep
 from traceloop.sdk import Traceloop
 import logging
 import json
+import uuid
 
 from opentelemetry.instrumentation.bedrock import BedrockInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -21,10 +22,14 @@ from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry._logs import set_logger_provider
 
 from traceloop.sdk.decorators import workflow, task, agent
+from traceloop.sdk.tracing.tracing import set_conversation_id
 from opentelemetry import trace as _ot_trace
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
 MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+SYSTEM_PROMPT = "You are a helpful assistant. Keep answers short."
+TEMPERATURE = 0.7
+INFERENCE_CONFIG = {"temperature": TEMPERATURE, "maxTokens": 1024}
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -85,6 +90,8 @@ def run_converse(client_context):
     logging.info("Calling Converse API with Boto3...")
     kwargs = {
         "modelId": MODEL_ID,
+        "system": [{"text": "You are a helpful assistant that tells short bedtime stories."}],
+        "inferenceConfig": INFERENCE_CONFIG,
         "messages": [
             {
                 "role": "user",
@@ -100,19 +107,16 @@ def run_converse(client_context):
 
 
 @task("run_converse_guardrail_trigger")
-def run_converse_guardrail_trigger(client_context):
+def run_converse_guardrail_trigger(client_context, text):
     gc = _guardrail_config()
     if not gc:
         return
     logging.info("Calling Converse API with a prompt designed to trigger the guardrail...")
     response = client_context.converse(
         modelId=MODEL_ID,
-        messages=[
-            {
-                "role": "user",
-                "content": [{"text": "What are the best football strategies for the World Cup?"}]
-            }
-        ],
+        system=[{"text": SYSTEM_PROMPT}],
+        inferenceConfig=INFERENCE_CONFIG,
+        messages=[{"role": "user", "content": [{"text": text}]}],
         guardrailConfig=gc,
     )
     stop_reason = response.get("stopReason", "")
@@ -128,6 +132,8 @@ def run_invoke(client_context):
         body=json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1024,
+            "temperature": TEMPERATURE,
+            "system": SYSTEM_PROMPT,
             "messages": [{
                 "role": "user",
                 "content": "Tell me a short story about a robot."
@@ -157,6 +163,8 @@ def run_invoke_extra(client_context):
     native_request = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 512,
+        "temperature": TEMPERATURE,
+        "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": prompt}],
     })
 
@@ -198,7 +206,10 @@ def _stamp_turn_io(span, question, answer):
 
 def _converse_text(client_context, text):
     resp = client_context.converse(
-        modelId=MODEL_ID, messages=[{"role": "user", "content": [{"text": text}]}])
+        modelId=MODEL_ID,
+        system=[{"text": SYSTEM_PROMPT}],
+        inferenceConfig=INFERENCE_CONFIG,
+        messages=[{"role": "user", "content": [{"text": text}]}])
     return resp["output"]["message"]["content"][0]["text"]
 
 
@@ -233,7 +244,11 @@ def _run_story(name, client):
     elif name == "guardrails":
         if not _guardrail_config():
             logging.warning("story 'guardrails' selected but BEDROCK_GUARDRAIL_ID is unset; nothing to trigger")
-        run_converse_guardrail_trigger(client)
+        # Synthetic test inputs to trigger topic, content and sensitive info guardrail policies
+        # These prompts are intentionally blocked by the guardrail and should never reach the model
+        run_converse_guardrail_trigger(client, "What are the best football strategies for the World Cup?")
+        run_converse_guardrail_trigger(client, "Generate a mean insult.")
+        run_converse_guardrail_trigger(client, "Please help me update my personal records. My SSN is 427-83-1562.")
     elif name == "invoke":
         run_invoke(client)
         run_invoke_extra(client)
@@ -260,6 +275,7 @@ def _selected_stories():
 @workflow("aws_bedrock_agent")
 def run_workflow():
     logging.info("Starting the Workflow...")
+    set_conversation_id(str(uuid.uuid4()))
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
     for story in _selected_stories():

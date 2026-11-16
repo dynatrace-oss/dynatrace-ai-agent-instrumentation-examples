@@ -7,42 +7,74 @@
 #   BASE_REF    - PR base branch (e.g. "main"), set only for pull_request events
 set -euo pipefail
 
+# INVARIANT: one suite entry == exactly one Go test function.
+#
+# The workflow runs `go test -run "^${TEST_RUN}$"`, anchored, so test_run must name
+# a function exactly. Before anchoring, an unanchored prefix match meant
+# TestGoogleADKOpenTelemetry also ran TestGoogleADKOpenTelemetryCollector (which has
+# its own entry, so it ran twice per PR). Keep test_run exact.
+#
+# test_file must be the file that defines that function: on pull requests a suite is
+# selected only if its app_dir or its test_file changed, so a stale path means edits
+# to the test silently run nothing.
 OA_ALL='[
   {"name":"aws-bedrock-oneagent","app_dir":"aws-bedrock/oneagent","test_file":"test/e2e/aws_bedrock_oneagent_test.go","test_run":"TestAWSBedrockOneAgent","otel_service_name":"aws-bedrock/oneagent"},
   {"name":"anthropic-oneagent","app_dir":"anthropic/oneagent","test_file":"test/e2e/anthropic_oneagent_test.go","test_run":"TestAnthropicOneAgent","otel_service_name":"anthropic/oneagent"},
+  {"name":"claude-agent-sdk-oneagent","app_dir":"claude-agent-sdk/oneagent","test_file":"test/e2e/claude_agent_sdk_oneagent_test.go","test_run":"TestClaudeAgentSDKOneAgent","otel_service_name":"claude-agent-sdk/oneagent"},
   {"name":"openai-oneagent","app_dir":"openai/oneagent","test_file":"test/e2e/openai_oneagent_test.go","test_run":"TestOpenAIOneAgent","otel_service_name":"openai/oneagent"},
   {"name":"ollama-oneagent","app_dir":"ollama/oneagent","test_file":"test/e2e/ollama_test.go","test_run":"TestOllamaOneAgent","otel_service_name":"ollama/oneagent","ollama_model":"tinyllama"},
-  {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","ollama_model":"tinyllama"},
+  {"name":"ogx-oneagent","app_dir":"ogx/oneagent","test_file":"test/e2e/ogx_oneagent_test.go","test_run":"TestOGXOneAgent","otel_service_name":"ogx/oneagent","ollama_model":"tinyllama","ollama_alias":"llama3.2"},
+  {"name":"groq-oneagent","app_dir":"groq/oneagent","test_file":"test/e2e/groq_test.go","test_run":"TestGroqOneAgent","otel_service_name":"groq/oneagent","model":"llama-3.1-8b-instant"},
+  {"name":"litellm-oneagent","app_dir":"litellm/oneagent","test_file":"test/e2e/litellm_oneagent_test.go","test_run":"TestLiteLLMOneAgent","otel_service_name":"litellm/oneagent","model":"llama-3.1-8b-instant"},
   {"name":"cohere-oneagent","app_dir":"cohere/oneagent","test_file":"test/e2e/cohere_test.go","test_run":"TestCohereOneAgent","otel_service_name":"cohere/oneagent"},
+  {"name":"microsoft-foundry-oneagent","app_dir":"microsoft-foundry/oneagent","test_file":"test/e2e/microsoft_foundry_oneagent_test.go","test_run":"TestMicrosoftFoundryOneAgent","otel_service_name":"microsoft-foundry/oneagent"},
   {"name":"aws-strands-oneagent","app_dir":"aws-strands/oneagent","test_file":"test/e2e/aws_strands_oneagent_test.go","test_run":"TestAWSStrandsOneAgent","otel_service_name":"aws-strands/oneagent","oneagent_warmup_seconds":"60"},
   {"name":"haystack-oneagent","app_dir":"haystack/oneagent","test_file":"test/e2e/haystack_test.go","test_run":"TestHaystackOneAgent","otel_service_name":"haystack/oneagent"},
   {"name":"aws-bedrock-agents-oneagent","app_dir":"aws-bedrock-agents/oneagent","test_file":"test/e2e/aws_bedrock_agents_oneagent_test.go","test_run":"TestAWSBedrockAgentsOneAgent","otel_service_name":"aws-bedrock-agents/oneagent", "oneagent_warmup_seconds":"60"},
   {"name":"mistral-oneagent","app_dir":"mistral/oneagent","test_file":"test/e2e/mistral_test.go","test_run":"TestMistralOneAgent","otel_service_name":"mistral/oneagent","model":"mistral-small-latest"},
-  {"name":"langgraph-oneagent","app_dir":"langgraph/oneagent","test_file":"test/e2e/langgraph_oneagent_test.go","test_run":"TestLangGraphOneAgent","otel_service_name":"langgraph/oneagent"}
+  {"name":"google-adk-oneagent","app_dir":"google-adk/oneagent","test_file":"test/e2e/google_adk_oneagent_test.go","test_run":"TestGoogleADKOneAgent","otel_service_name":"google-adk/oneagent","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"langgraph-oneagent","app_dir":"langgraph/oneagent","test_file":"test/e2e/langgraph_oneagent_test.go","test_run":"TestLangGraphOneAgent","otel_service_name":"langgraph/oneagent"},
+  {"name":"langchain-oneagent","app_dir":"langchain/oneagent","test_file":"test/e2e/langchain_oneagent_test.go","test_run":"TestLangChainOneAgent","otel_service_name":"langchain/oneagent","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"aws-bedrock-agentcore-oneagent-opentelemetry","app_dir":"aws-bedrock-agentcore/oneagent-opentelemetry","test_file":"test/e2e/aws_bedrock_agentcore_oneagent_opentelemetry_test.go","test_run":"TestAWSBedrockAgentCoreOneAgentOpenTelemetry","otel_service_name":"aws-bedrock-agentcore/oneagent-opentelemetry","needs_mock_agentcore":true,"oneagent_warmup_seconds":"60"}
 ]'
 
 OC_ALL='[
   {"name":"aws-bedrock-opentelemetry","app_dir":"aws-bedrock/opentelemetry","test_file":"test/e2e/aws_bedrock_opentelemetry_test.go","test_run":"TestAWSBedrockOpenTelemetry","otel_service_name":"aws-bedrock/opentelemetry"},
   {"name":"aws-bedrock-openinference","app_dir":"aws-bedrock/openinference","test_file":"test/e2e/aws_bedrock_openinference_test.go","test_run":"TestAWSBedrockOpenInference","otel_service_name":"aws-bedrock/openinference"},
+  {"name":"cohere-openinference","app_dir":"cohere/openinference","test_file":"test/e2e/cohere_openinference_test.go","test_run":"TestCohereOpenInference","otel_service_name":"cohere/openinference"},
+  {"name":"haystack-openinference","app_dir":"haystack/openinference","test_file":"test/e2e/haystack_openinference_test.go","test_run":"TestHaystackOpenInference","otel_service_name":"haystack/openinference"},
+  {"name":"llamaindex-openinference","app_dir":"llamaindex/openinference","test_file":"test/e2e/llamaindex_openinference_test.go","test_run":"TestLlamaIndexOpenInference","otel_service_name":"llamaindex/openinference"},
+  {"name":"ollama-openinference","app_dir":"ollama/openinference","test_file":"test/e2e/ollama_openinference_test.go","test_run":"TestOllamaOpenInference","otel_service_name":"ollama/openinference","ollama_model":"tinyllama"},
   {"name":"openai-openinference","app_dir":"openai/openinference","test_file":"test/e2e/openai_openinference_test.go","test_run":"TestOpenAIOpenInference","otel_service_name":"openai/openinference"},
+  {"name":"anthropic-openinference","app_dir":"anthropic/openinference","test_file":"test/e2e/anthropic_openinference_test.go","test_run":"TestAnthropicOpenInference","otel_service_name":"anthropic/openinference"},
+  {"name":"mistral-openinference","app_dir":"mistral/openinference","test_file":"test/e2e/mistral_openinference_test.go","test_run":"TestMistralOpenInference","otel_service_name":"mistral/openinference","model":"mistral-small-latest"},
+  {"name":"groq-openinference","app_dir":"groq/openinference","test_file":"test/e2e/groq_openinference_test.go","test_run":"TestGroqOpenInference","otel_service_name":"groq/openinference","model":"llama-3.1-8b-instant"},
+  {"name":"together-openinference","app_dir":"together/openinference","test_file":"test/e2e/together_openinference_test.go","test_run":"TestTogetherOpenInference","otel_service_name":"together/openinference","model":"meta-llama/Llama-3.3-70B-Instruct-Turbo"},
+  {"name":"gemini-openinference","app_dir":"gemini/openinference","test_file":"test/e2e/gemini_openinference_test.go","test_run":"TestGeminiOpenInference","otel_service_name":"gemini/openinference","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"openai-opentelemetry","app_dir":"openai/opentelemetry","test_file":"test/e2e/openai_opentelemetry_test.go","test_run":"TestOpenAIOpenTelemetry","otel_service_name":"openai/opentelemetry"},
-  {"name":"langfuse-opentelemetry","app_dir":"langfuse/opentelemetry","test_file":"test/e2e/langfuse_opentelemetry_test.go","test_run":"TestLangfuseOpenTelemetry","otel_service_name":"langfuse"},
-  {"name":"langfuse-opentelemetry-node","app_dir":"langfuse/opentelemetry-node","test_file":"test/e2e/langfuse_opentelemetry_node_test.go","test_run":"TestLangfuseOpenTelemetryNode","otel_service_name":"langfuse-node","needs_node":true},
-  {"name":"langfuse-opentelemetry-openpipeline","app_dir":"langfuse/opentelemetry","test_file":"test/e2e/langfuse_opentelemetry_openpipeline_test.go","test_run":"TestLangfuseOpenTelemetryOpenPipeline","otel_service_name":"langfuse-openpipeline"},
+  {"name":"github-copilot-opentelemetry","app_dir":"ai-coding-agents/github-copilot-sdk","test_file":"test/e2e/github_copilot_opentelemetry_test.go","test_run":"TestGitHubCopilotOpenTelemetry","otel_service_name":"github-copilot","needs_node":true},
   {"name":"pydantic-ai-opentelemetry","app_dir":"pydantic-ai/opentelemetry","test_file":"test/e2e/pydantic_ai_opentelemetry_test.go","test_run":"TestPydanticAIOpenTelemetry","otel_service_name":"pydantic-ai-music-agent"},
-  {"name":"openai-agents-opentelemetry","app_dir":"openai-agents/opentelemetry","test_file":"test/e2e/openai_agents_opentelemetry_test.go","test_run":"TestOpenAIAgentsOpenTelemetry","otel_service_name":"openai-cs-agents"},
+  {"name":"openai-agents-opentelemetry","app_dir":"openai-agents/opentelemetry","test_file":"test/e2e/openai_agents_opentelemetry_collector_test.go","test_run":"TestOpenAIAgentsOpenTelemetryCollector","otel_service_name":"openai-cs-agents"},
+  {"name":"openai-agents-openinference","app_dir":"openai-agents/openinference","test_file":"test/e2e/openai_agents_openinference_test.go","test_run":"TestOpenAIAgentsOpenInference","otel_service_name":"openai-agents/openinference"},
   {"name":"mcp-opentelemetry","app_dir":"mcp/opentelemetry","test_file":"test/e2e/mcp_opentelemetry_test.go","test_run":"TestMCPOpenTelemetry","otel_service_name":"mcp-agent-demo","node_version":"22"},
-  {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_file":"test/e2e/litellm_opentelemetry_test.go","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway"},
-  {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetry","otel_service_name":"microsoft-agent-framework"},
-  {"name":"crewai-opentelemetry","app_dir":"crewai/opentelemetry","test_file":"test/e2e/crewai_opentelemetry_test.go","test_run":"TestCrewAIOpenTelemetry","otel_service_name":"crewai"},
+  {"name":"litellm-opentelemetry","app_dir":"litellm/opentelemetry","test_file":"test/e2e/litellm_opentelemetry_test.go","test_run":"TestLiteLLMOpenTelemetry","otel_service_name":"litellm-gateway-fastapi"},
+  {"name":"vllm-openinference","app_dir":"vllm/openinference","test_file":"test/e2e/vllm_openinference_test.go","test_run":"TestVLLMOpenInference","otel_service_name":"vllm/openinference","model":"Qwen/Qwen2.5-0.5B-Instruct"},
+  { "name":"litellm-gateway-opentelemetry", "app_dir":"litellm/opentelemetry/litellm-gateway-with-instrumentation", "test_file":"test/e2e/litellm_gateway_test.go", "test_run":"TestLiteLLMOpenTelemetryGateway", "otel_service_name":"litellm-gateway" },
+  {"name":"microsoft-agent-framework-opentelemetry","app_dir":"microsoft-agent-framework/opentelemetry","test_file":"test/e2e/microsoft_agent_framework_opentelemetry_collector_test.go","test_run":"TestMicrosoftAgentFrameworkOpenTelemetryCollector","otel_service_name":"microsoft-agent-framework-collector"},
   {"name":"langgraph-opentelemetry","app_dir":"langgraph/opentelemetry/openai","test_file":"test/e2e/langgraph_opentelemetry_test.go","test_run":"TestLangGraphOpenTelemetryOpenAI","otel_service_name":"langgraph/opentelemetry/openai"},
   {"name":"langgraph-opentelemetry-bedrock","app_dir":"langgraph/opentelemetry/bedrock","test_file":"test/e2e/langgraph_opentelemetry_test.go","test_run":"TestLangGraphOpenTelemetryBedrock","otel_service_name":"langgraph/opentelemetry/bedrock"},
   {"name":"langgraph-openinference","app_dir":"langgraph/openinference","test_file":"test/e2e/langgraph_openinference_test.go","test_run":"TestLangGraphOpenInference","otel_service_name":"langgraph/openinference"},
+  {"name":"crewai-openinference","app_dir":"crewai/openinference","test_file":"test/e2e/crewai_openinference_test.go","test_run":"TestCrewAIOpenInference","otel_service_name":"crewai/openinference"},
   {"name":"aws-strands-opentelemetry","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_test.go","test_run":"TestAWSStrandsOpenTelemetry","otel_service_name":"aws-strands/opentelemetry"},
-  {"name":"aws-strands-opentelemetry-openpipeline","app_dir":"aws-strands/opentelemetry","test_file":"test/e2e/aws_strands_opentelemetry_openpipeline_test.go","test_run":"TestAWSStrandsOpenTelemetryOpenPipeline","otel_service_name":"aws-strands/opentelemetry-openpipeline"},
-  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_test.go","test_run":"TestGoogleADKOpenTelemetry","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"antigravity-opentelemetry","app_dir":"ai-coding-agents/antigravity","test_file":"test/e2e/antigravity_opentelemetry_collector_test.go","test_run":"TestAntigravityOpenTelemetryCollector","otel_service_name":"antigravity","model":"gemini-3.8-flash","needs_google":true},
+  {"name":"google-adk-opentelemetry","app_dir":"google-adk/opentelemetry","test_file":"test/e2e/google_adk_opentelemetry_collector_test.go","test_run":"TestGoogleADKOpenTelemetryCollector","otel_service_name":"google-adk-samples","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"google-adk-openinference","app_dir":"google-adk/openinference","test_file":"test/e2e/google_adk_openinference_test.go","test_run":"TestGoogleADKOpenInference","otel_service_name":"google-adk/openinference","model":"gemini-3.1-flash-lite","needs_google":true},
+  {"name":"google-adk-zero-code","app_dir":"google-adk/zero-code","test_file":"test/e2e/google_adk_zero_code_test.go","test_run":"TestGoogleADKZeroCode","otel_service_name":"google-adk-zero-code","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"rum-opentelemetry","app_dir":"rum/opentelemetry","test_file":"test/e2e/rum_sessionid_agentic_test.go","test_run":"TestRUMOpenTelemetry","otel_service_name":"rum/opentelemetry","needs_playwright":true},
-  {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"}
+  {"name":"dt-evals-fixtures-opentelemetry","app_dir":"dt-evals-fixtures/opentelemetry","test_file":"test/e2e/dt_evals_fixtures_opentelemetry_test.go","test_run":"TestDtEvalsFixturesOpenTelemetry","otel_service_name":"dt-evals-fixtures"},
+  {"name":"ogx-opentelemetry","app_dir":"ogx/opentelemetry","test_file":"test/e2e/ogx_opentelemetry_test.go","test_run":"TestOGXOpenTelemetry","otel_service_name":"ogx/opentelemetry","ollama_model":"tinyllama"},
+  {"name":"n8n-opentelemetry","app_dir":"n8n/opentelemetry","test_file":"test/e2e/n8n_opentelemetry_test.go","test_run":"TestN8NOpenTelemetryOpenAI","otel_service_name":"n8n"},
+  {"name":"claude-code-opentelemetry","app_dir":"ai-coding-agents/claude-code","test_file":"test/e2e/claude_code_opentelemetry_collector_test.go","test_run":"TestClaudeCodeOpenTelemetryCollector","otel_service_name":"claude-code","needs_node":true,"needs_claude":true}
 ]'
 
 if [[ "$EVENT" == "pull_request" ]]; then

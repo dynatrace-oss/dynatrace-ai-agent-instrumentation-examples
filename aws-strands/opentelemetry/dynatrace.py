@@ -21,8 +21,7 @@ def init():
     # StrandsTelemetry builds the OTel resource from OTEL_SERVICE_NAME; ensure it is set.
     os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
 
-    # Default to the local OTel Collector; run-openpipeline overrides this to
-    # send directly to Dynatrace and let OpenPipeline do the attribute remapping.
+    # Default to the local OTel Collector, which does the attribute remapping.
     if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
         os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4318"
         os.environ.pop("OTEL_EXPORTER_OTLP_HEADERS", None)
@@ -33,8 +32,8 @@ def init():
     # get_tracer(service_name=...) singleton call, which was removed in the 1.x API.
     #
     # Note: Strands emits its own strands.* metrics (e.g. strands.event_loop.input.tokens),
-    # not the OTel semconv gen_ai.client.* metrics the AI Observability app charts — the
-    # app's metric tiles still rely on OpenPipeline span-to-metric extraction for Strands.
+    # not the OTel semconv gen_ai.client.* metrics the AI Observability app charts. The
+    # collector derives those from the spans (see otel-collector-config.yaml).
     from strands.telemetry import StrandsTelemetry
 
     StrandsTelemetry().setup_otlp_exporter().setup_meter(enable_otlp_exporter=True)

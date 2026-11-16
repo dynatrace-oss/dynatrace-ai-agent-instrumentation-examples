@@ -21,21 +21,71 @@
         "/(^|/)Makefile$/"
       ],
       "matchStrings": [
-        "ghcr\\.io/observiq/bindplane-agent:(?<currentValue>[^\\s]+)"
+        "ghcr\\.io/dynatrace/dynatrace-bindplane-otel-collector:(?<currentValue>[^\\s]+)"
       ],
-      "depNameTemplate": "ghcr.io/observiq/bindplane-agent",
+      "depNameTemplate": "ghcr.io/dynatrace/dynatrace-bindplane-otel-collector",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/"
+      ],
+      "matchStrings": [
+        "vllm/vllm-openai-cpu:(?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "vllm/vllm-openai-cpu",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "SDK versions shown in the README demo tables. Grouped with the demos' own pins below so both move in one PR.",
+      "managerFilePatterns": ["/^README\\.md$/"],
+      "matchStrings": [
+        "(?<currentValue>\\d[^\\s|]*) <!-- renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+) -->"
+      ]
     }
   ],
   "prHourlyLimit": 20,
   "lockFileMaintenance": {
-    "enabled": false
+    "description": "Refresh committed lockfiles on a schedule. Without this, a transitive dependency is frozen at whatever resolved when the lock was written, because renovate only ever updates *declared* constraints. That is how mcp/opentelemetry stayed on traceloop-sdk 0.47.3 while every sibling demo ran 0.62.x. It also matters after a bump lands: traceloop-sdk requires its opentelemetry-instrumentation-* packages unversioned, so moving the sdk pin alone leaves the old instrumentation resolutions in place.",
+    "enabled": true,
+    "schedule": ["before 6am on monday"],
+    "commitMessageAction": "refresh",
+    "groupName": "lockfile refresh"
   },
   "packageRules": [
+    {
+      "description": "Automerge minor, patch, digest and pin updates once all PR checks (including e2e) pass; majors still need review. A grouped PR only automerges if every update in it qualifies, so a demo pin and its README table row always merge together.",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false
+    },
     {
       "matchUpdateTypes": ["major"],
       "prConcurrentLimit": 2,
       "prPriority": -1
+    },
+    {
+      "description": "Pin Python ranges to exact versions. A '>=' floor is satisfied by every later release, so renovate sees nothing to update and the demo silently freezes at whatever its lockfile resolved. Pinning converts any such constraint to '==' in a PR, after which every subsequent release raises one.",
+      "matchManagers": ["pep621", "pip_requirements"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Leave requires-python alone. The pin strategy above would turn it into '==<newest CPython>', which forces uv onto a Python that native-extension deps and OneAgent don't support yet. The runtime version is managed by the 'python runtime' rule instead.",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["requires-python"],
+      "enabled": false
+    },
+    {
+      "description": "Keep the openllmetry family moving together. traceloop-sdk and its opentelemetry-instrumentation-* packages share one version line, and demo collector configs depend on their attribute behaviour, so they should be reviewed as a single change rather than drifting apart.",
+      "matchManagers": ["pep621", "pip_requirements"],
+      "matchPackageNames": [
+        "traceloop-sdk",
+        "opentelemetry-instrumentation-**"
+      ],
+      "groupName": "traceloop (openllmetry)"
     },
     {
       "matchManagers": ["pip_requirements", "pep621"],
@@ -63,14 +113,14 @@
       "matchManagers": ["custom.regex"],
       "matchDepNames": [
         "ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector",
-        "ghcr.io/observiq/bindplane-agent"
+        "ghcr.io/dynatrace/dynatrace-bindplane-otel-collector"
       ],
       "groupName": "collector image"
     },
     {
-      "matchManagers": ["npm"],
-      "matchFileNames": ["langfuse/opentelemetry-node/**"],
-      "groupName": "npm dependencies (langfuse)"
+      "description": "Keep the vLLM image tag and the README's vllm version in one PR.",
+      "matchPackageNames": ["vllm/vllm-openai-cpu", "vllm"],
+      "groupName": "vllm"
     },
     {
       "matchManagers": ["npm"],
@@ -96,6 +146,97 @@
       "matchManagers": ["npm"],
       "matchFileNames": ["openai-agents/opentelemetry/ui/**"],
       "groupName": "npm dependencies (openai-agents)"
+    },
+    {
+      "description": "One PR per main demo SDK covering every demo and the README table, so all examples stay on the same version. Must come after the generic python group to override its groupName; separateMajorMinor off so demos on an older major still land in the same PR.",
+      "matchDatasources": ["pypi"],
+      "matchPackageNames": [
+        "openai",
+        "anthropic",
+        "boto3",
+        "cohere",
+        "groq",
+        "together",
+        "mistralai",
+        "ollama",
+        "ogx",
+        "strands-agents",
+        "crewai",
+        "google-adk",
+        "haystack-ai",
+        "langgraph",
+        "litellm",
+        "agent-framework",
+        "openai-agents",
+        "pydantic-ai"
+      ],
+      "groupName": "{{depName}} sdk",
+      "separateMajorMinor": false
+    },
+    {
+      "description": "Converting '>=' floors to exact pins is a one-time step per dependency. Pin updates don't expand the templated groupName above, so give them their own group.",
+      "matchDatasources": ["pypi"],
+      "matchUpdateTypes": ["pin"],
+      "groupName": "pin sdk versions",
+      "matchPackageNames": [
+        "openai",
+        "anthropic",
+        "boto3",
+        "cohere",
+        "groq",
+        "together",
+        "mistralai",
+        "ollama",
+        "ogx",
+        "strands-agents",
+        "crewai",
+        "google-adk",
+        "haystack-ai",
+        "langgraph",
+        "litellm",
+        "agent-framework",
+        "openai-agents",
+        "pydantic-ai"
+      ]
+    },
+    {
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@github/copilot-sdk"],
+      "groupName": "@github/copilot-sdk",
+      "separateMajorMinor": false
+    },
+    {
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@modelcontextprotocol/sdk"],
+      "groupName": "@modelcontextprotocol/sdk",
+      "separateMajorMinor": false
+    },
+    {
+      "description": "google-adk caps opentelemetry-sdk (<=1.42.1 in 2.11/2.12), so newer otel pins make the ADK demos unresolvable. Raise this together with a google-adk bump that lifts the cap.",
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["google-adk/**"],
+      "matchPackageNames": ["opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-http"],
+      "allowedVersions": "<=1.42.1"
+    },
+    {
+      "description": "fastapi after 0.141.1 requires opentelemetry-api>=1.44, which conflicts with the google-adk otel cap above. Lift together with it.",
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["google-adk/**"],
+      "matchDepNames": ["fastapi"],
+      "allowedVersions": "<=0.141.1"
+    },
+    {
+      "description": "OneAgent's OpenAI sensor patches openai's private _parse_chat_completion, removed in openai 3.38.0; without it no gen_ai span is emitted. Keep OneAgent demos below 3.38.0 until the sensor supports newer openai.",
+      "matchFileNames": ["*/oneagent/**"],
+      "matchPackageNames": ["openai"],
+      "allowedVersions": "<3.38.0"
+    },
+    {
+      "description": "litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, removed in FastAPI 0.140.7. Keep renovate below it until litellm drops that import.",
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["litellm/opentelemetry/**"],
+      "matchDepNames": ["fastapi"],
+      "allowedVersions": "<0.140.7"
     }
   ]
 }

@@ -42,7 +42,8 @@ jobs:
             --cache --max-cache-age 1d
             --timeout 20
             --max-concurrency 2
-            --max-retries 2 --retry-wait-time 10
+            --max-retries 5 --retry-wait-time 30
+            --accept 100..=103,200..=299,429,503
             --exclude-path .venv
             --exclude-path node_modules
             .

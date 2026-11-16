@@ -17,6 +17,7 @@ import (
 // Note: the effective service.name comes from fixtures.json (Traceloop app_name),
 // not the matrix OTEL_SERVICE_NAME — the DQL filter and metric lookup must match it.
 func TestDtEvalsFixturesOpenTelemetry(t *testing.T) {
+	tagMockTraffic(t) // canned fixture content, not real LLM traffic
 	startApp(t, "dt-evals-fixtures/opentelemetry")
 	triggerIngest(t)
 

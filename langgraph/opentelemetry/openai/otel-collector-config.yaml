@@ -20,6 +20,62 @@ processors:
           - set(attributes["gen_ai.output.messages"], "***REDACTED***") where attributes["gen_ai.output.messages"] != nil and IsMatch(attributes["gen_ai.output.messages"], "(?i)secret")
           - set(attributes["gen_ai.system_instructions"], "***REDACTED***") where attributes["gen_ai.system_instructions"] != nil and IsMatch(attributes["gen_ai.system_instructions"], "(?i)secret")
 
+  # opentelemetry-instrumentation-langchain (callback_handler.py,
+  # _create_task_span) already sets gen_ai.operation.name on every chain span, so
+  # nothing has to be rewritten here — the metric branch keys on the enum the
+  # instrumentation itself emits.
+  #
+  # What it emits is worth knowing, because the naming is not what the span kind
+  # suggests: the outermost chain — the compiled graph's invoke, tagged
+  # traceloop.span.kind = "workflow" — is labelled gen_ai.operation.name =
+  # "invoke_agent", not "invoke_workflow". Anything nested under it is
+  # "execute_task", a non-spec value, and LangChain tools are "execute_tool".
+  #
+  # So the root graph run is the agent invocation as far as this instrumentation
+  # is concerned, and gen_ai.invoke_agent.duration is derived from it. There is
+  # deliberately no gen_ai.invoke_workflow.duration: no span claims to be one,
+  # and rewriting the enum to invent one would overwrite a value the library
+  # sets on purpose.
+  #
+  # Only the root chain span carries "invoke_agent" (nested chains get
+  # "execute_task"), so this filter yields exactly one data point per graph run.
+  filter/invoke_agent:
+    error_mode: ignore
+    traces:
+      span:
+        - attributes["gen_ai.operation.name"] != "invoke_agent"
+
+  # span_metrics also emits a "<namespace>.calls" counter it offers no way to
+  # disable. It is not a GenAI spec metric and nothing queries it. Matched by
+  # exact name so this cannot swallow the spec's inference_calls / tool_calls.
+  filter/drop_derived_calls:
+    error_mode: ignore
+    metrics:
+      metric:
+        - name == "gen_ai.invoke_agent.calls"
+
+connectors:
+  # The connector always names its histogram "duration", so the spec metric name
+  # comes from the namespace: gen_ai.invoke_agent.duration (Histogram, seconds)
+  # per the GenAI semconv
+  # (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md).
+  #
+  # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
+  span_metrics/invoke_agent:
+    namespace: gen_ai.invoke_agent
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    histogram:
+      unit: s
+      # The graph is a single LLM node, so the root span is essentially one model
+      # call plus graph overhead.
+      explicit:
+        buckets: [100ms, 250ms, 500ms, 1s, 2s, 5s, 10s, 30s, 60s]
+    dimensions:
+      - name: gen_ai.agent.name
+      - name: gen_ai.provider.name
+      - name: gen_ai.operation.name
+    metrics_flush_interval: 15s
+
 exporters:
   debug:
     verbosity: detailed
@@ -34,7 +90,17 @@ service:
       receivers: [otlp]
       processors: [transform/redact_secrets]
       exporters: [debug, otlp_http/dynatrace]
-    metrics:
+
+    # Second branch over the same spans, kept separate from the export pipeline
+    # so filter/invoke_agent can never drop a span from Distributed Tracing.
+    # redact_secrets is not needed here: the connector reads only the span
+    # duration and the dimensions listed on it, never message content.
+    traces/invoke_agent_metrics:
       receivers: [otlp]
-      processors: []
+      processors: [filter/invoke_agent]
+      exporters: [span_metrics/invoke_agent]
+
+    metrics:
+      receivers: [otlp, span_metrics/invoke_agent]
+      processors: [filter/drop_derived_calls]
       exporters: [debug, otlp_http/dynatrace]

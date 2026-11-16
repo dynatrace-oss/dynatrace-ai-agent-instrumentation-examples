@@ -1,7 +1,7 @@
-openai-agents
+openai-agents==0.24.0
 pydantic
 fastapi
 uvicorn
-traceloop-sdk
+opentelemetry-instrumentation-openai-agents-v2==0.1.0
 opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http

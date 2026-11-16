@@ -1,0 +1,73 @@
+import os
+import uuid
+
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from openinference.instrumentation import using_attributes
+from openinference.instrumentation.haystack import HaystackInstrumentor
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk import trace as trace_sdk
+from opentelemetry.sdk.resources import (
+    OsResourceDetector,
+    OTELResourceDetector,
+    ProcessResourceDetector,
+    Resource,
+    get_aggregated_resources,
+)
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.semconv.attributes import service_attributes
+
+# Emit OTel GenAI semantic-convention attributes (gen_ai.*) natively.
+# HaystackInstrumentor builds a TraceConfig inside instrument(), and that config
+# reads this variable, so it has to be set first.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
+# OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
+detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
+resource = get_aggregated_resources(
+    detectors=detectors,
+    initial_resource=Resource.create({service_attributes.SERVICE_NAME: "haystack-openinference-demo"}),
+)
+
+tracer_provider = trace_sdk.TracerProvider(resource=resource)
+tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
+trace.set_tracer_provider(tracer_provider)
+
+# HaystackInstrumentor wraps Pipeline.run and every component's run method directly
+# (via wrapt), independent of Haystack's own haystack.tracing abstraction — unlike
+# the haystack/oneagent demo, there is no tracer to disable here.
+HaystackInstrumentor().instrument(tracer_provider=tracer_provider)
+
+if __name__ == "__main__":
+    generator = AzureOpenAIChatGenerator(
+        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+        azure_deployment=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "genai-demo"),
+        api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
+        api_version=os.environ.get("OPENAI_API_VERSION", "2024-07-01-preview"),
+    )
+
+    pipeline = Pipeline()
+    pipeline.add_component(
+        "prompt",
+        ChatPromptBuilder(
+            template=[
+                ChatMessage.from_system("You are a haiku poet."),
+                ChatMessage.from_user("Write a haiku about {{ topic }}."),
+            ]
+        ),
+    )
+    pipeline.add_component("llm", generator)
+    pipeline.connect("prompt.prompt", "llm.messages")
+
+    # Passed at run time so the LLM span's input.value carries them for the collector.
+    generation_kwargs = {"temperature": 0.7, "max_completion_tokens": 2000}
+    # session.id is emitted as gen_ai.conversation.id on every span of the run.
+    with using_attributes(session_id=str(uuid.uuid4())):
+        result = pipeline.run(
+            {"prompt": {"topic": "observability"}, "llm": {"generation_kwargs": generation_kwargs}}
+        )
+    print(result["llm"]["replies"][0].text)

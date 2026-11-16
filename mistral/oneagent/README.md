@@ -2,7 +2,7 @@
 
 Demonstrates tracing Mistral AI SDK API calls with Dynatrace via OneAgent auto-instrumentation.
 
-> **Experimental sensor** — Enables monitoring of MistralAI SDK calls in Python applications. Prompt input and output capture is not supported yet; the Prompts tab in AI Observability shows no data for this service.
+> **Experimental sensor** — Enables monitoring of MistralAI SDK calls in Python applications. Message content (`gen_ai.input.messages`, `gen_ai.output.messages`) requires the optional **Experimental Python GenAI MistralAI prompt capture [Opt-In]** feature (OneAgent 1.349+). Enable it under Settings > OneAgent features and restart the Python process. Prompts may contain sensitive data, so review before enabling.
 
 ## Prerequisites
 

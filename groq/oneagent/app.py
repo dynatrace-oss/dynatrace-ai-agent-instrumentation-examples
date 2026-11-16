@@ -21,7 +21,12 @@ async def haiku() -> str:
     def _call() -> str:
         response = client.chat.completions.create(
             model=MODEL,
-            messages=[{"role": "user", "content": "Write a haiku."}],
+            messages=[
+                {"role": "system", "content": "You are a haiku poet."},
+                {"role": "user", "content": "Write a haiku."},
+            ],
+            max_tokens=2000,
+            temperature=1.0,
         )
         return response.choices[0].message.content
 

@@ -12,13 +12,12 @@ def setup_otel(service_name: str = "pydantic-ai-music-agent"):
     pydantic-ai's InstrumentationSettings.
     """
     # Two export paths:
-    #  - Direct (default): spans + metrics go straight to Dynatrace OTLP. pydantic-ai
-    #    emits gen_ai.client.token.usage natively, but NOT operation.duration, so the
-    #    duration metric must be backfilled server-side (openpipeline-pydantic-ai.yaml).
-    #  - Collector: set OTEL_COLLECTOR_ENDPOINT (e.g. http://localhost:4318) to route
-    #    through the local OTel Collector, which derives gen_ai.client.operation.duration
-    #    from the LLM spans (span_metrics) and forwards everything to Dynatrace. The
-    #    collector holds the DT token, so no Authorization header is sent from the app.
+    #  - Collector (`make run`): OTEL_COLLECTOR_ENDPOINT (e.g. http://localhost:4318)
+    #    routes through the local OTel Collector, which derives
+    #    gen_ai.client.operation.duration from the LLM spans and forwards everything
+    #    to Dynatrace. The collector holds the DT token, so no auth header is sent.
+    #  - Direct (fallback): spans + metrics go straight to Dynatrace OTLP. Only the
+    #    native gen_ai.client.token.usage metric is sent; no duration metric.
     collector_endpoint = os.environ.get("OTEL_COLLECTOR_ENDPOINT", "").rstrip("/")
 
     if collector_endpoint:

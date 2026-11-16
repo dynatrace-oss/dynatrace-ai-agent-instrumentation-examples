@@ -1,5 +1,6 @@
 import asyncio
 import os
+import uuid
 from typing import TypedDict
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
@@ -64,6 +65,7 @@ def _build_graph():
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
+        temperature=0.7,
     )
 
     def write_haiku(state: HaikuState) -> HaikuState:
@@ -96,7 +98,11 @@ async def haiku(req: HaikuRequest | None = None) -> str:
 
     def _call() -> str:
         graph = _build_graph()
-        result = graph.invoke({"topic": topic, "haiku": ""})
+        # LangGraph thread_id is exported as gen_ai.conversation.id.
+        result = graph.invoke(
+            {"topic": topic, "haiku": ""},
+            config={"configurable": {"thread_id": str(uuid.uuid4())}},
+        )
         return str(result["haiku"])
 
     return await asyncio.to_thread(_call)

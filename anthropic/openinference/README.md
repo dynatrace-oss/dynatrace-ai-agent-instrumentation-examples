@@ -1,0 +1,247 @@
+# OpenInference (Anthropic) + Dynatrace AI Observability
+
+![AI Observability -- anthropic/openinference service explorer](assets/explorer.png)
+
+Generate a haiku with Claude via the Anthropic Python SDK's `AnthropicBedrock` client, send the OpenTelemetry trace to Dynatrace, and see it in the **AI Observability** app.
+This example enables `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` in `app.py`, so OpenInference emits `gen_ai.*` attributes natively alongside its `llm.*` attributes. No downstream normalization is needed. The Bindplane collector derives metrics from the spans.
+
+This mirrors [`openai/openinference`](../../openai/openinference/), swapping the OpenAI SDK + `openinference-instrumentation-openai` for the Anthropic SDK + [`openinference-instrumentation-anthropic`](https://github.com/Arize-ai/openinference/tree/main/python/instrumentation/openinference-instrumentation-anthropic). It calls Claude through AWS Bedrock -- same as [`anthropic/oneagent`](../oneagent/) -- so it reuses the AWS credentials already configured for e2e CI instead of requiring a separate Anthropic API key.
+
+**How this differs from `aws-bedrock/openinference`:** that example instruments at the `boto3`/`botocore` `invoke_model` level with `openinference-instrumentation-bedrock`, which is generic across every Bedrock-hosted model family. This example instruments at the Anthropic SDK level with `openinference-instrumentation-anthropic`, which understands the Messages API's request/response shape natively (message roles, content blocks, cache token breakdown) and produces richer, more precise `llm.*` attributes for Claude specifically -- at the cost of only working for Claude.
+
+---
+
+## Table of contents
+
+- [What you'll build](#what-youll-build)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Run with the Bindplane collector](#run-with-the-bindplane-collector)
+- [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
+- [Attribute mapping reference](#attribute-mapping-reference)
+- [Metrics](#metrics)
+- [Known gaps & limitations](#known-gaps--limitations)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## What you'll build
+
+- Calls Claude (via AWS Bedrock) to generate a haiku using the `anthropic` Python SDK's `AnthropicBedrock` client, instrumented with `openinference-instrumentation-anthropic`.
+- Produces OpenTelemetry traces with native `gen_ai.*` semantic conventions, including the actual response model.
+- Derives GenAI metrics from spans via the Bindplane collector.
+- Shows the trace in the Dynatrace AI Observability app with model, token usage, and message content.
+
+---
+
+## Prerequisites
+
+- A Dynatrace tenant -- start a free trial at https://dt-url.net/trial
+- Docker installed and running
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) with Anthropic model access enabled in Bedrock -- same requirement as [`anthropic/oneagent`](../oneagent/#prerequisites)
+
+---
+
+## Setup
+
+### 1. Create a Dynatrace access token
+
+1. In Dynatrace press `Ctrl+K` and search for **Access tokens**.
+2. Create a token with these permissions:
+   - `openTelemetryTrace.ingest`
+3. Copy the token value.
+
+### 2. Set environment variables
+
+The app and scripts read credentials from environment variables. The easiest way is to create a `.env` file in this directory (the Makefile sources it automatically):
+
+```bash
+# .env
+DT_ENDPOINT=https://abc12345.live.dynatrace.com
+DT_API_TOKEN=dt0c01.****.*****
+
+AWS_ACCESS_KEY_ID=****************
+AWS_SECRET_ACCESS_KEY=****************
+AWS_DEFAULT_REGION=us-east-1                                 # optional, defaults to us-east-1
+ANTHROPIC_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0   # optional, same default
+```
+
+> **Note:** `DT_ENDPOINT` is your base tenant URL -- not the `/api/v2/otlp` path. Example: `https://abc12345.live.dynatrace.com`.
+
+If you are not using the Makefile, source the file directly in your shell:
+
+```bash
+source .env
+```
+
+### 3. Install dependencies
+
+```bash
+make install
+```
+
+---
+
+## Run with the Bindplane collector
+
+The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) forwards spans with their native `gen_ai.*` attributes and derives duration and token-usage metrics. No Dynatrace pipeline configuration is needed.
+
+```
+App  ->  Bindplane collector (metrics extraction)  ->  Dynatrace Grail
+```
+
+This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`, which bundles the `span_metrics` and `signal_to_metrics` connectors.
+
+The collector needs your Dynatrace credentials because **it is the component that forwards spans to Dynatrace**. The app itself only knows about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
+
+The pipeline removes duplicate raw `llm.*` attributes with `transform/cleanup_raw_attrs` and keeps only model-call spans on the metrics branch. It does not normalize or rebuild the native model/message attributes (see [`otel-collector-config.yaml`](otel-collector-config.yaml)).
+
+The collector preserves the native `gen_ai.input.messages` / `gen_ai.output.messages` JSON, including multi-block responses, and surfaces the request in the AI Observability app.
+
+### Step 1 -- Start the collector and run the app
+
+```bash
+# with make (reads .env automatically, starts the collector then runs app.py once)
+make run
+```
+
+Or manually with Docker:
+
+**Linux/macOS:**
+```bash
+source .env
+docker run -d \
+  --name bindplane-otel-collector-anthropic \
+  -p 4318:4318 \
+  -v $(pwd)/otel-collector-config.yaml:/etc/otel/config.yaml:ro \
+  -e DT_ENDPOINT=$DT_ENDPOINT \
+  -e DT_API_TOKEN=$DT_API_TOKEN \
+  ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+```
+
+**Windows CMD:**
+```cmd
+set DT_ENDPOINT=https://abc12345.live.dynatrace.com
+set DT_API_TOKEN=dt0c01.*****
+docker run -d ^
+  --name bindplane-otel-collector-anthropic ^
+  -p 4318:4318 ^
+  -v %cd%/otel-collector-config.yaml:/etc/otel/config.yaml:ro ^
+  -e DT_ENDPOINT=%DT_ENDPOINT% ^
+  -e DT_API_TOKEN=%DT_API_TOKEN% ^
+  ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2
+```
+
+The DBDOT image reads its config from `/etc/otel/config.yaml` by default in standalone mode, so no `--config` argument is needed.
+
+What happens:
+- The collector listens on port `4318` for incoming OTLP/HTTP spans from the app.
+- Native `gen_ai.*` attributes are preserved, and metrics are derived from model-call spans.
+- The processed spans are forwarded to `$DT_ENDPOINT/api/v2/otlp` authenticated with the API token.
+
+If you started the collector manually, run the app once against it:
+
+```bash
+source .env && OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_EXPORTER_OTLP_HEADERS="" python3 app.py
+```
+
+**Useful commands:**
+
+```bash
+make logs   # tail collector.log in real time
+make stop   # stop and remove the collector container
+
+# or manually
+docker logs -f bindplane-otel-collector-anthropic
+docker stop bindplane-otel-collector-anthropic && docker rm bindplane-otel-collector-anthropic
+```
+
+---
+
+## Visualize in Dynatrace AI Observability
+
+1. In Dynatrace press `Ctrl+K` and search for **AI Observability**.
+2. Your haiku request appears in the Explorer as the `anthropic/openinference` service, with model, token usage, and prompt trace populated -- no problems, no guardrail activations.
+   ![AI Observability -- anthropic/openinference service explorer](assets/explorer.png)
+3. Open the prompt trace to inspect the reconstructed conversation (`System prompt` / `Input`), trace metadata (model version, conversation ID), and the Agents Topology graph connecting the model, provider, and service.
+   ![AI Observability -- anthropic/openinference prompt trace detail](assets/haiku-prompt-detail.png)
+
+---
+
+## Attribute mapping reference
+
+With `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, the pinned instrumentation emits these attributes before the collector receives the span:
+
+| Source | Native GenAI attribute |
+|---|---|
+| `llm.token_count.prompt` | `gen_ai.usage.input_tokens` |
+| `llm.token_count.completion` | `gen_ai.usage.output_tokens` |
+| `llm.token_count.prompt_details.cache_read` / `.cache_write` | `gen_ai.usage.cache_read.input_tokens` / `gen_ai.usage.cache_creation.input_tokens` |
+| `llm.model_name` | `gen_ai.request.model` |
+| `llm.provider` / `llm.system` (both always `"anthropic"`, set by the instrumentor) | `gen_ai.provider.name` |
+| `session.id` | `gen_ai.conversation.id` |
+| `openinference.span.kind` | `gen_ai.operation.name` (`LLM`→`chat`) |
+| `llm.input_messages.N.*` / `llm.output_messages.N.*` | `gen_ai.input.messages` / `gen_ai.output.messages` (JSON with roles and content parts) |
+| Response payload `model` (also emitted as `llm.response.model_name`) | `gen_ai.response.model` |
+| Response payload `id` / `llm.finish_reason` | `gen_ai.response.id` / `gen_ai.response.finish_reasons` |
+| `llm.invocation_parameters` | `gen_ai.request.*` parameters such as `max_tokens` |
+
+The response model comes from the actual response, not a copy of the request model. The collector preserves it.
+
+---
+
+## Metrics
+
+OpenInference is span-only by design (its instrumentors emit no metric instruments), so the two metrics the AI Observability app charts must be derived from the spans. The collector does this, so the cost and latency tiles populate:
+
+| Metric | Collector |
+|---|---|
+| `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on LLM spans |
+| `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signaltometrics` connector, two sum defs |
+
+They read the native `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` (mapped from OpenInference's `llm.token_count.*`, which for Anthropic already folds in cache-write and cache-read tokens -- see [`_get_token_counts`](https://github.com/Arize-ai/openinference/blob/main/python/instrumentation/openinference-instrumentation-anthropic/src/openinference/instrumentation/anthropic/_utils.py)). The Bindplane collector derives both metrics. This requires the token's `metrics.ingest` scope, and both metrics use delta temporality (Dynatrace rejects cumulative).
+
+---
+
+## Known gaps & limitations
+
+### Request-model attribution in the pinned instrumentation
+
+The native converter in `openinference-instrumentation==0.1.71` derives `gen_ai.request.model` from `llm.model_name`, which the Anthropic instrumentor updates from the response. It may therefore reflect the returned model rather than the requested Bedrock model ID. The requested model ID is retained in `llm.request.model_name` on the raw span and in `input.value`; `gen_ai.response.model` correctly reflects the response.
+
+### Optional attributes
+
+Native emission uses `gen_ai.usage.cache_read.input_tokens` and `gen_ai.usage.cache_creation.input_tokens` rather than the custom `gen_ai.prompt_caching` flag. The synthesized system message is included in `gen_ai.input.messages`; the pinned converter does not emit a separate `gen_ai.system_instructions` for this request.
+
+### System prompt is synthesized as `llm.input_messages.0`
+
+The Anthropic Messages API takes `system` as a separate top-level request parameter rather than a `{"role": "system", ...}` entry in `messages`. `openinference-instrumentation-anthropic` synthesizes a `role: "system"` message at index 0 so it still shows up in the reconstructed conversation -- this app.py's `system="You are a haiku poet."` string ends up as `llm.input_messages.0.message.content` exactly like an OpenAI system message would.
+
+### No prompt-caching demo in this example
+
+Anthropic prompt caching (`cache_control` blocks) requires a system/context block long enough to clear a per-model minimum cacheable token count -- 4,096 tokens for `claude-haiku-4-5` on Bedrock (see [`anthropic/oneagent`'s `style_guide.py`](../oneagent/style_guide.py) and its [prompt-caching notes](../oneagent/README.md#prompt-caching)). This example's one-line system prompt does not reach it. Extending `app.py` with a cacheable `system` block allows the native cache-token attributes to populate.
+
+---
+
+## Troubleshooting
+
+**No spans in Dynatrace:**
+- Confirm `DT_ENDPOINT` and `DT_API_TOKEN` are correctly set.
+- Confirm the token has `openTelemetryTrace.ingest` permission.
+- Check collector logs with `make logs` or `docker logs bindplane-otel-collector-anthropic`.
+
+**AWS auth or `AccessDeniedException` on startup:**
+- Confirm `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set and valid, and that the account has Anthropic model access enabled in Bedrock for the target region -- see [`anthropic/oneagent`'s prerequisites](../oneagent/README.md#prerequisites).
+
+**Collector crashes on startup:**
+- Run `docker ps -a` and `docker logs bindplane-otel-collector-anthropic` to see the error.
+- Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
+
+**Spans visible in Distributed Tracing but not in AI Observability:**
+- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) to be set on the span -- native emission sets `gen_ai.provider.name` from `llm.provider`.
+- Confirm native emission is enabled with `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` -- the raw `llm.*` attributes should be gone and `gen_ai.*` attributes present in the collector debug output (`make logs`).
+
+**Port conflict:**
+- Ensure nothing else is listening on `4318`: `lsof -i :4318`.

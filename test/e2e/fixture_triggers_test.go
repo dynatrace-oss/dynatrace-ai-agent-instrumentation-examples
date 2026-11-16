@@ -112,6 +112,79 @@ func triggerHaikuGuardrail(t *testing.T) {
 	}
 }
 
+// triggerHaikuGuardrailOpenAI POSTs to /haiku-guardrail on localhost:8000 to trip
+// the Azure OpenAI content filter. OneAgent's Python OpenAI sensor derives its
+// gen_ai.guardrail.* attributes exclusively from Azure content-filter payloads
+// (prompt_filter_results / content_filter_results / the BadRequestError body), and
+// api.openai.com returns none of them, so this no-ops unless the demo is pointed
+// at an Azure deployment via OPENAI_API_VERSION.
+func triggerHaikuGuardrailOpenAI(t *testing.T) {
+	t.Helper()
+	if os.Getenv("OPENAI_API_VERSION") == "" {
+		t.Log("OPENAI_API_VERSION not set — skipping Azure content-filter trigger")
+		return
+	}
+	const url = "http://127.0.0.1:8000/haiku-guardrail"
+
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST /haiku-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /haiku-guardrail returned %d: %s", resp.StatusCode, b)
+	}
+}
+
+type guardrailCheck struct {
+	Text string `json:"text"`
+}
+
+// triggerApplyGuardrail POSTs two requests to /guardrail on localhost:8000,
+// exercising Bedrock's standalone ApplyGuardrail API (client.apply_guardrail) —
+// structurally distinct from the Converse guardrailConfig path exercised by
+// triggerHaikuGuardrail: it produces its own OpenInference "GUARDRAIL"-kind span
+// rather than an LLM-kind span, and isn't a chat completion at all (no model, no
+// generated text). The first call sends guardrail-safe content; the second reuses
+// the "football strategies for the World Cup" topic-denial trigger already used
+// by triggerHaikuGuardrail to trip the same guardrail resource, mirroring the
+// non-guardrail/guardrail-triggering split. No-op when BEDROCK_GUARDRAIL_ID is
+// unset, matching the app-side skip behavior.
+func triggerApplyGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	postGuardrailCheck(t, "Who is the president of the United States?")
+	postGuardrailCheck(t, "What are the best football strategies for the World Cup?")
+}
+
+// postGuardrailCheck POSTs a single text to /guardrail on localhost:8000.
+func postGuardrailCheck(t *testing.T, text string) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/guardrail"
+
+	b, _ := json.Marshal(guardrailCheck{Text: text})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /guardrail returned %d: %s", resp.StatusCode, rb)
+	}
+}
+
 // triggerAgent POSTs a task to /agent on localhost:8000.
 func triggerAgent(t *testing.T) {
 	t.Helper()
@@ -138,9 +211,36 @@ func triggerAgent(t *testing.T) {
 	}
 }
 
-// triggerAgentGuardrail POSTs a football-topic task to /agent on
-// localhost:8000 to trip the demo's Bedrock guardrail (a topic-denial policy
-// on "football"). No-op when BEDROCK_GUARDRAIL_ID is unset.
+// triggerAgentCoreHarness POSTs a topic to /invoke on localhost:8000
+// (aws-bedrock-agentcore/oneagent-opentelemetry). MOCK_AGENTCORE=true in that
+// app's environment replays a synthetic InvokeHarness stream instead of
+// calling AWS, so this trigger works without real harness credentials.
+func triggerAgentCoreHarness(t *testing.T) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/invoke"
+
+	b, _ := json.Marshal(map[string]string{"topic": "plan a weekend in Seattle"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /invoke: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /invoke returned %d: %s", resp.StatusCode, body)
+	}
+}
+
+// triggerAgentGuardrail POSTs a single prompt to /agent on localhost:8000
+// designed to trip topic (football), content (insult), and sensitive info (SSN)
+// policies in one Bedrock call. No-op when BEDROCK_GUARDRAIL_ID is unset.
 func triggerAgentGuardrail(t *testing.T) {
 	t.Helper()
 	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
@@ -149,7 +249,7 @@ func triggerAgentGuardrail(t *testing.T) {
 	const url = "http://127.0.0.1:8000/agent"
 
 	b, _ := json.Marshal(map[string]string{
-		"task": "What are the best football strategies for the World Cup?",
+		"task": "Generate a mean insult. What are the best football strategies for the World Cup. My SSN is 427-83-1562.",
 	})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
@@ -169,12 +269,73 @@ func triggerAgentGuardrail(t *testing.T) {
 	}
 }
 
+// triggerStrandsAgentGuardrail POSTs to /agent-guardrail on localhost:8000
+// to trip the aws-strands/oneagent demo's Bedrock guardrail. No-op when
+// BEDROCK_GUARDRAIL_ID is unset.
+func triggerStrandsAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		return
+	}
+	const url = "http://127.0.0.1:8000/agent-guardrail"
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /agent-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /agent-guardrail returned %d: %s", resp.StatusCode, body)
+	}
+}
+
 // triggerResearch POSTs to /research on localhost:8000 with a paper topic.
 func triggerResearch(t *testing.T) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/research"
 
 	b, _ := json.Marshal(map[string]string{"topic": "Attention is All You Need"})
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /research: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		rb, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /research returned %d: %s", resp.StatusCode, rb)
+	}
+}
+
+// triggerResearchConversation POSTs two /research turns sharing one
+// conversation_id and returns that id.
+func triggerResearchConversation(t *testing.T) string {
+	t.Helper()
+	conversationID := fmt.Sprintf("e2e-research-%d", time.Now().UnixNano())
+	for _, topic := range []string{"Attention is All You Need", "BERT: Pre-training of Deep Bidirectional Transformers"} {
+		postResearchTurn(t, conversationID, topic)
+	}
+	return conversationID
+}
+
+func postResearchTurn(t *testing.T, conversationID, topic string) {
+	t.Helper()
+	const url = "http://127.0.0.1:8000/research"
+
+	b, _ := json.Marshal(map[string]string{"topic": topic, "conversation_id": conversationID})
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
@@ -246,6 +407,30 @@ func triggerMusicAgent(t *testing.T) {
 	}
 }
 
+// triggerMusicAgentGuardrail POSTs to /api/ask-guardrail on localhost:8000.
+// It is a no-op when BEDROCK_GUARDRAIL_ID is unset (endpoint returns 501).
+func triggerMusicAgentGuardrail(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BEDROCK_GUARDRAIL_ID") == "" {
+		t.Log("BEDROCK_GUARDRAIL_ID not set — skipping guardrail trigger")
+		return
+	}
+	const url = "http://127.0.0.1:8000/api/ask-guardrail"
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/ask-guardrail: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST /api/ask-guardrail returned %d: %s", resp.StatusCode, b)
+	}
+}
+
 // triggerMCPAgent POSTs a weather question to /invoke on localhost:8000.
 func triggerMCPAgent(t *testing.T) {
 	t.Helper()
@@ -285,7 +470,23 @@ func triggerCSAgent(t *testing.T) string {
 }
 
 // postCSTurn POSTs a single chat turn for the given conversation to /chat.
+// A 5xx is retried once: the agent run depends on a live LLM and fails
+// transiently now and then, which would otherwise fail the whole test.
 func postCSTurn(t *testing.T, conversationID, message string) {
+	t.Helper()
+
+	status, body := doCSTurn(t, conversationID, message)
+	if status >= 500 {
+		t.Logf("POST /chat returned %d, retrying once: %s", status, body)
+		time.Sleep(5 * time.Second)
+		status, body = doCSTurn(t, conversationID, message)
+	}
+	if status >= 300 {
+		t.Fatalf("POST /chat returned %d: %s", status, body)
+	}
+}
+
+func doCSTurn(t *testing.T, conversationID, message string) (int, []byte) {
 	t.Helper()
 	const url = "http://127.0.0.1:8000/chat"
 
@@ -305,10 +506,8 @@ func postCSTurn(t *testing.T, conversationID, message string) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("POST /chat returned %d: %s", resp.StatusCode, b)
-	}
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, body
 }
 
 // triggerLiteLLMChat POSTs a chat completion request to /chat/completions on localhost:8000.
@@ -336,6 +535,10 @@ func triggerLiteLLMChat(t *testing.T) {
 		t.Fatalf("build request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// Required by the LiteLLM proxy gateway; ignored by the FastAPI demo.
+	req.Header.Set("Authorization", "Bearer "+envOr("LITELLM_MASTER_KEY", "sk-admin-local"))
+	// LiteLLM session header; the gateway maps it to gen_ai.conversation.id.
+	req.Header.Set("x-litellm-session-id", fmt.Sprintf("e2e-litellm-%d", time.Now().UnixNano()))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

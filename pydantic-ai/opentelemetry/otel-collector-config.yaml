@@ -5,6 +5,67 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Normalize pydantic-ai's provider ids ("bedrock", "azure") to OTel GenAI semconv
+  # values so spans and metrics share one provider node with the app's own spans.
+  transform/provider-semconv:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.provider.name"], "aws.bedrock") where attributes["gen_ai.provider.name"] == "bedrock"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - set(attributes["gen_ai.system"], "aws.bedrock") where attributes["gen_ai.system"] == "bedrock"
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.system"] == "azure"
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["gen_ai.provider.name"], "aws.bedrock") where attributes["gen_ai.provider.name"] == "bedrock"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["gen_ai.provider.name"] == "azure"
+          - set(attributes["gen_ai.system"], "aws.bedrock") where attributes["gen_ai.system"] == "bedrock"
+          - set(attributes["gen_ai.system"], "azure.ai.openai") where attributes["gen_ai.system"] == "azure"
+  # pydantic-ai carries the raw Bedrock trace response verbatim in provider_details.
+  # The app extracts the inputAssessment object (a Bedrock API response field) and
+  # sets it as gen_ai.bedrock.guardrail.input_assessment for the collector to parse
+  # into the finalised gen_ai.bedrock.guardrail.* attributes.
+  transform/bedrock-guardrail-attrs:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.g"], ParseJSON(attributes["gen_ai.bedrock.guardrail.input_assessment"])) where attributes["gen_ai.bedrock.guardrail.input_assessment"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.content"], attributes["temp.g"]["contentPolicy"]["filters"]) where attributes["temp.g"]["contentPolicy"]["filters"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.sensitive_info"], attributes["temp.g"]["sensitiveInformationPolicy"]) where attributes["temp.g"]["sensitiveInformationPolicy"]["piiEntities"] != nil or attributes["temp.g"]["sensitiveInformationPolicy"]["regexes"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.topics"], attributes["temp.g"]["topicPolicy"]["topics"]) where attributes["temp.g"]["topicPolicy"]["topics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], true) where attributes["gen_ai.bedrock.guardrail.content"] != nil or attributes["gen_ai.bedrock.guardrail.sensitive_info"] != nil or attributes["gen_ai.bedrock.guardrail.topics"] != nil
+          - set(attributes["gen_ai.bedrock.guardrail.activation"], false) where attributes["gen_ai.bedrock.guardrail.activation"] == nil and attributes["temp.g"] != nil
+          - delete_key(attributes, "temp.g") where attributes["temp.g"] != nil
+
+  # Extracts the system-role entry from gen_ai.input.messages into the dedicated
+  # gen_ai.system_instructions attribute and removes it from the messages array to
+  # avoid duplication in the prompts view.
+  transform/system-instructions:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["temp.msgs"], ParseJSON(attributes["gen_ai.input.messages"])) where attributes["gen_ai.input.messages"] != nil
+          - set(attributes["gen_ai.system_instructions"], attributes["temp.msgs"][0]["parts"][0]["content"]) where attributes["temp.msgs"][0]["role"] == "system"
+          - delete_index(attributes["temp.msgs"], 0) where attributes["temp.msgs"][0]["role"] == "system"
+          - set(attributes["gen_ai.input.messages"], attributes["temp.msgs"]) where attributes["temp.msgs"] != nil
+          - delete_key(attributes, "temp.msgs") where attributes["temp.msgs"] != nil
+
+  # pydantic-ai drops zero-valued usage (Usage.opentelemetry_attributes skips falsy
+  # counts). A Bedrock guardrail that blocks the input returns 0 input/output tokens,
+  # so a blocked chat span arrives with no usage at all. Restore the real 0 on those
+  # spans only, keyed on the content_filter finish reason.
+  transform/blocked-usage:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.usage.input_tokens"], 0) where attributes["gen_ai.operation.name"] == "chat" and attributes["gen_ai.usage.input_tokens"] == nil and attributes["gen_ai.response.finish_reasons"][0] == "content_filter"
+          - set(attributes["gen_ai.usage.output_tokens"], 0) where attributes["gen_ai.operation.name"] == "chat" and attributes["gen_ai.usage.output_tokens"] == nil and attributes["gen_ai.response.finish_reasons"][0] == "content_filter"
+
   batch:
     send_batch_size: 512
     timeout: 5s
@@ -24,7 +85,7 @@ processors:
 connectors:
   # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
   # from the LLM span durations — pydantic-ai emits the token metric natively but
-  # NOT this one. Same connector the langfuse demo uses.
+  # NOT this one.
   span_metrics:
     namespace: gen_ai.client.operation
     # Dynatrace OTLP metric ingest accepts delta temporality only; cumulative is dropped.
@@ -52,15 +113,16 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [transform/provider-semconv, transform/bedrock-guardrail-attrs, transform/system-instructions, transform/blocked-usage, batch]
       exporters: [debug, otlp_http/dynatrace]
     # Second branch: keep only LLM spans and feed the span_metrics connector.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [filter/genai_only, batch]
+      processors: [transform/provider-semconv, filter/genai_only, batch]
       exporters: [span_metrics]
     # pydantic-ai's native gen_ai.client.token.usage arrives on [otlp]; the derived
     # gen_ai.client.operation.duration arrives on [span_metrics]. Both forwarded.
     metrics:
       receivers: [otlp, span_metrics]
+      processors: [transform/provider-semconv]
       exporters: [otlp_http/dynatrace]
