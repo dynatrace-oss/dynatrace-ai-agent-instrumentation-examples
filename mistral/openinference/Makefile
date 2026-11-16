@@ -12,13 +12,13 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. Bundles the
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). Bundles the
 # genainormalizer processor + signal_to_metrics connector used below. Pinned
 # so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
-.PHONY: run run-openpipeline build push request stop logs install help
+.PHONY: run build push request stop logs install help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -42,15 +42,6 @@ run: ## Start Bindplane collector (genainormalizer) + app
 	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------
-# run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
-# Deploy first with the steps in README.md, "Option B".
-# ---------------------------------------------------------------------------
-run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
-	@OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
-	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
-	  uv run python3 app.py
-
-# ---------------------------------------------------------------------------
 # Internal targets
 # ---------------------------------------------------------------------------
 _collector:
@@ -65,9 +56,10 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \

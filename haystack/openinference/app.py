@@ -1,10 +1,12 @@
 import os
+import uuid
 
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
+from openinference.instrumentation import using_attributes
 from openinference.instrumentation.haystack import HaystackInstrumentor
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -19,10 +21,12 @@ from opentelemetry.sdk.resources import (
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.semconv.attributes import service_attributes
 
+# Emit OTel GenAI semantic-convention attributes (gen_ai.*) natively.
+# HaystackInstrumentor builds a TraceConfig inside instrument(), and that config
+# reads this variable, so it has to be set first.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
-# For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
-#                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(
     detectors=detectors,
@@ -59,5 +63,11 @@ if __name__ == "__main__":
     pipeline.add_component("llm", generator)
     pipeline.connect("prompt.prompt", "llm.messages")
 
-    result = pipeline.run({"prompt": {"topic": "observability"}})
+    # Passed at run time so the LLM span's input.value carries them for the collector.
+    generation_kwargs = {"temperature": 0.7, "max_completion_tokens": 2000}
+    # session.id is emitted as gen_ai.conversation.id on every span of the run.
+    with using_attributes(session_id=str(uuid.uuid4())):
+        result = pipeline.run(
+            {"prompt": {"topic": "observability"}, "llm": {"generation_kwargs": generation_kwargs}}
+        )
     print(result["llm"]["replies"][0].text)

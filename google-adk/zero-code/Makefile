@@ -18,8 +18,8 @@ OTEL_EXPORTER_OTLP_HEADERS                         ?= Authorization=Api-Token $(
 # collector's own egress settings, not the app's.
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT).
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := otel-collector
 # Dynatrace OTLP metric ingest accepts delta temporality only (cumulative -> HTTP 400).
 OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE  ?= delta
@@ -66,9 +66,10 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) --config=/etc/otel/config.yaml && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) --config=/etc/otel/config.yaml || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \

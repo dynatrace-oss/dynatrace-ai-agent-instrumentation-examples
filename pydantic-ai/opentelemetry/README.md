@@ -72,7 +72,7 @@ Each `agent.run()` automatically produces nested GenAI spans with:
 | `gen_ai.usage.output_tokens` | Completion token count |
 | `gen_ai.prompt` / `gen_ai.completion` | Full prompt and response content |
 
-An outer `music_agent.ask` span (kind `SERVER`) adds API-level context including the selected provider and the user's question.
+An outer `music_agent.ask` span (kind `SERVER`) adds API-level context including the selected provider (`azure.ai.openai` or `aws.bedrock`) and the user's question. Token usage lives on the nested pydantic-ai chat spans only.
 
 ## How to use
 
@@ -118,6 +118,8 @@ make install
 make run
 ```
 
+`make run` starts a local OTel Collector ([`otel-collector-config.yaml`](./otel-collector-config.yaml)) in Docker on port 4318, then runs the backend exporting through it. The collector derives `gen_ai.client.operation.duration` (seconds, delta temporality) from the LLM spans and forwards everything to Dynatrace. Stop it with `make stop`.
+
 The app is available at [http://localhost:8000](http://localhost:8000).
 
 ### What you get in Dynatrace
@@ -137,7 +139,7 @@ BEDROCK_GUARDRAIL_ID=<YOUR_GUARDRAIL_ID>
 BEDROCK_GUARDRAIL_VERSION=DRAFT  # or a published version number
 ```
 
-With these set, the `/api/ask-guardrail` endpoint sends a prompt designed to trip topic, content, and sensitive-information policies. The app passes the guardrail config via `BedrockModelSettings`, extracts the per-policy assessment from `ModelResponse.provider_details`, and sets it as span attributes. The OTel Collector (via `make run-collector`) or the OpenPipeline config (`openpipeline-pydantic-ai.yaml`) then derives the final attributes:
+With these set, the `/api/ask-guardrail` endpoint sends a prompt designed to trip topic, content, and sensitive-information policies. The app passes the guardrail config via `BedrockModelSettings`, extracts the per-policy assessment from `ModelResponse.provider_details`, and sets it as span attributes. The local OTel Collector started by `make run` then derives the final attributes:
 
 | Attribute | Description |
 |---|---|

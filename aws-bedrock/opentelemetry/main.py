@@ -27,6 +27,9 @@ from opentelemetry import trace as _ot_trace
 
 COLLECTOR_BASE_URL = "http://localhost:4318"
 MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+SYSTEM_PROMPT = "You are a helpful assistant. Keep answers short."
+TEMPERATURE = 0.7
+INFERENCE_CONFIG = {"temperature": TEMPERATURE, "maxTokens": 1024}
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -88,7 +91,7 @@ def run_converse(client_context):
     kwargs = {
         "modelId": MODEL_ID,
         "system": [{"text": "You are a helpful assistant that tells short bedtime stories."}],
-        "inferenceConfig": {"temperature": 0.7},
+        "inferenceConfig": INFERENCE_CONFIG,
         "messages": [
             {
                 "role": "user",
@@ -111,6 +114,8 @@ def run_converse_guardrail_trigger(client_context, text):
     logging.info("Calling Converse API with a prompt designed to trigger the guardrail...")
     response = client_context.converse(
         modelId=MODEL_ID,
+        system=[{"text": SYSTEM_PROMPT}],
+        inferenceConfig=INFERENCE_CONFIG,
         messages=[{"role": "user", "content": [{"text": text}]}],
         guardrailConfig=gc,
     )
@@ -127,6 +132,8 @@ def run_invoke(client_context):
         body=json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1024,
+            "temperature": TEMPERATURE,
+            "system": SYSTEM_PROMPT,
             "messages": [{
                 "role": "user",
                 "content": "Tell me a short story about a robot."
@@ -156,6 +163,8 @@ def run_invoke_extra(client_context):
     native_request = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 512,
+        "temperature": TEMPERATURE,
+        "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": prompt}],
     })
 
@@ -197,7 +206,10 @@ def _stamp_turn_io(span, question, answer):
 
 def _converse_text(client_context, text):
     resp = client_context.converse(
-        modelId=MODEL_ID, messages=[{"role": "user", "content": [{"text": text}]}])
+        modelId=MODEL_ID,
+        system=[{"text": SYSTEM_PROMPT}],
+        inferenceConfig=INFERENCE_CONFIG,
+        messages=[{"role": "user", "content": [{"text": text}]}])
     return resp["output"]["message"]["content"][0]["text"]
 
 

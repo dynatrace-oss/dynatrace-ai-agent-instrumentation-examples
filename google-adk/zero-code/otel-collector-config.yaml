@@ -88,7 +88,7 @@ processors:
           # ADK sets gen_ai.response.model on call_llm but not on every inference
           # span. AR-005 requires the span attribute, which drives the model quick
           # filter and the overview charts, so it is mirrored from the request
-          # model as the aws-strands and langfuse configs already do. This is an
+          # model as the aws-strands config already does. This is an
           # approximation: the request model is what was asked for, not
           # necessarily what answered.
           - set(span.attributes["gen_ai.response.model"], span.attributes["gen_ai.request.model"]) where span.attributes["gen_ai.request.model"] != nil and span.attributes["gen_ai.response.model"] == nil

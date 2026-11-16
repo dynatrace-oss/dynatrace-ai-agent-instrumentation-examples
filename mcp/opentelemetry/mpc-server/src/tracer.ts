@@ -4,7 +4,7 @@ import {
 import {
   AlwaysOnSampler,
   SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+} from '@opentelemetry/sdk-trace';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
@@ -30,7 +30,7 @@ export const setupTracing = (serviceName: string) => {
     resource: resourceFromAttributes({
       [ATTR_SERVICE_NAME]: serviceName,
     }),
-    spanProcessors: [new SimpleSpanProcessor(exporter)],
+    spanProcessors: [new SimpleSpanProcessor({ exporter })],
     traceExporter: exporter,
     sampler: new AlwaysOnSampler(),
     instrumentations: [],

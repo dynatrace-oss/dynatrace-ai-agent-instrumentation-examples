@@ -1,0 +1,87 @@
+# OpenTelemetry Collector config: GitHub Copilot -> Dynatrace bridge
+#
+# The Collector authenticates to Dynatrace, maps the runtime's token metrics
+# to the name the Dynatrace app queries, and keeps the prompt on a single
+# span. The runtime has no per-signal endpoint setting, so traces and metrics
+# both route here.
+#
+# Required environment variables (set before starting the Collector):
+#   DT_OTEL_ENDPOINT: Dynatrace OTLP base URL, e.g.
+#                       https://<env-id>.live.dynatrace.com/api/v2/otlp
+#                       The Makefile derives this from DT_ENDPOINT, the bare
+#                       tenant URL the rest of the repo and the e2e suite set.
+#   DT_API_TOKEN: Dynatrace API token with the metrics.ingest and
+#                 openTelemetryTrace.ingest scopes
+#
+# Usage:
+#   DT_OTEL_ENDPOINT=https://<env-id>.live.dynatrace.com/api/v2/otlp \
+#   DT_API_TOKEN=dt0c01.<token> \
+#   otelcol --config collector.yaml
+#
+# Or with Docker:
+#   docker run --rm -p 4318:4318 \
+#     -e DT_OTEL_ENDPOINT="https://<env-id>.live.dynatrace.com/api/v2/otlp" \
+#     -e DT_API_TOKEN="dt0c01.<token>" \
+#     -v $(pwd)/collector.yaml:/etc/otelcol/config.yaml \
+#     otel/opentelemetry-collector-contrib
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318   # Copilot otlpProtocol: http/protobuf or http/json
+
+processors:
+  # The runtime puts the prompt and response on both the chat span and the
+  # invoke_agent span that parents it. The app lists one prompt per span, so
+  # the same exchange shows up twice. Keep the copy on the chat span, which is
+  # the one carrying the model name.
+  transform/agent_span_messages:
+    error_mode: ignore
+    trace_statements:
+      - delete_key(span.attributes, "gen_ai.input.messages") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
+      - delete_key(span.attributes, "gen_ai.output.messages") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
+      - delete_key(span.attributes, "gen_ai.system_instructions") where span.attributes["gen_ai.operation.name"] == "invoke_agent"
+
+  # The GenAI semantic conventions replaced gen_ai.client.token.usage with
+  # per-direction histograms, and the runtime follows the new shape as of
+  # 1.0.15. The Dynatrace app still queries the old name, so map back to it.
+  transform/token_usage_semconv:
+    error_mode: ignore
+    metric_statements:
+      - set(datapoint.attributes["gen_ai.token.type"], "input") where metric.name == "gen_ai.client.inference.operation.input_tokens"
+      - set(datapoint.attributes["gen_ai.token.type"], "output") where metric.name == "gen_ai.client.inference.operation.output_tokens"
+      - set(metric.name, "gen_ai.client.token.usage") where IsMatch(metric.name, "^gen_ai\\.client\\.inference\\.operation\\.(in|out)put_tokens$")
+
+  # 1.0.16 already exports delta. Kept as a guard: Dynatrace rejects cumulative
+  # OTLP metrics with HTTP 400.
+  cumulativetodelta:
+    include:
+      match_type: regexp
+      metrics:
+        - "gen_ai\\..*"
+        - "github\\.copilot\\..*"
+
+exporters:
+  otlphttp:
+    endpoint: ${env:DT_OTEL_ENDPOINT}
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}"
+    # otlphttp sends binary Protobuf by default, as Dynatrace requires
+    # Batching belongs to the exporter queue; the standalone batch processor is
+    # deprecated. A one-shot CLI run flushes on the timeout or on shutdown.
+    sending_queue:
+      enabled: true
+      batch:
+        flush_timeout: 5s
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/agent_span_messages]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [transform/token_usage_semconv, cumulativetodelta]
+      exporters: [otlphttp]

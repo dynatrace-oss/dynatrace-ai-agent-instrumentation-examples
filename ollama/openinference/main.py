@@ -1,4 +1,5 @@
 import os
+import uuid
 
 
 def _otlp_exporter():
@@ -53,14 +54,18 @@ def _get_client():
 
 
 def write_haiku(topic: str) -> str:
-    response = _get_client().chat(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": f"Topic: {topic}"},
-        ],
-        options={"temperature": 1.0, "num_predict": 2000},
-    )
+    from openinference.instrumentation import using_attributes
+
+    # session_id becomes gen_ai.conversation.id on the chat span.
+    with using_attributes(session_id=str(uuid.uuid4())):
+        response = _get_client().chat(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": f"Topic: {topic}"},
+            ],
+            options={"temperature": 1.0, "num_predict": 2000},
+        )
     return response.message.content
 
 

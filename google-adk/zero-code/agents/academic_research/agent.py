@@ -17,13 +17,38 @@
 import os
 
 from google.adk.agents import LlmAgent
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmRequest
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 from . import prompt
 from .sub_agents.academic_newresearch import academic_newresearch_agent
 from .sub_agents.academic_websearch import academic_websearch_agent
 
 MODEL = os.environ.get("MODEL", "gemini-3.1-flash-lite")
+
+
+def _require_tool_call_first(
+    callback_context: CallbackContext, llm_request: LlmRequest
+) -> None:
+    """Forces a tool call on the first model turn after each user message.
+
+    Without this, the coordinator often answers from the model's own knowledge
+    and never delegates to its sub-agents. Later turns stay on AUTO so the
+    model can still write its final answer.
+    """
+    for content in reversed(llm_request.contents):
+        parts = content.parts or []
+        if any(p.function_response for p in parts):
+            return None
+        if content.role == "user" and any(p.text for p in parts):
+            break
+    llm_request.config = llm_request.config or types.GenerateContentConfig()
+    llm_request.config.tool_config = types.ToolConfig(
+        function_calling_config=types.FunctionCallingConfig(mode="ANY")
+    )
+    return None
 
 
 academic_coordinator = LlmAgent(
@@ -38,6 +63,7 @@ academic_coordinator = LlmAgent(
     ),
     instruction=prompt.ACADEMIC_COORDINATOR_PROMPT,
     output_key="seminal_paper",
+    before_model_callback=_require_tool_call_first,
     tools=[
         AgentTool(agent=academic_websearch_agent),
         AgentTool(agent=academic_newresearch_agent),

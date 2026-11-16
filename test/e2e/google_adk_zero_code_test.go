@@ -74,7 +74,8 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	// input and no output, so on a direct export call_llm passes the first gate
 	// and fails the second while generate_content does the reverse: spans reach
 	// Distributed Tracing but no prompt is ever displayed. The collector sets
-	// gen_ai.provider.name = "vertexai" on the content-bearing span, strips ADK's
+	// gen_ai.provider.name = "vertexai" on the content-bearing span when ADK
+	// leaves it unset (ADK 2.13+ sets "gcp.gemini" itself), strips ADK's
 	// scope name off call_llm (both gen_ai.system and gen_ai.provider.name carry
 	// it, and the app resolves the provider as coalesce of the two, so leaving
 	// either one in place keeps call_llm's duplicate token counts inside every
@@ -100,7 +101,7 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	auditSpanWithMetrics(t, "google-adk", "zero-code", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "`+adkZeroCodeService+`"
-| filter gen_ai.provider.name == "vertexai"
+| filter in(gen_ai.provider.name, {"vertexai", "gcp.gemini"})
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
 | limit 1`,
@@ -110,28 +111,28 @@ func TestGoogleADKZeroCode(t *testing.T) {
 	// gate and carry message content at the same time, which is what makes the
 	// Prompts view populate. Asserting the two conditions on separate spans would
 	// pass on a raw ADK export and still show an empty view.
-	assertSpanExists(t, `fetch spans, from: now()-10m
+	assertSpanExists(t, scopedDQL(`fetch spans, from: now()-10m
 | filter service.name == "`+adkZeroCodeService+`"
 | filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
 | filter isNotNull(gen_ai.input.messages) and isNotNull(gen_ai.output.messages)
-| limit 1`)
+| limit 1`))
 
 	// call_llm must no longer pass the app's gate. It carries a duplicate copy of
 	// the token counts, so if it does, every token and LLM request is counted
 	// twice and the provider list gains an entity named "gcp.vertex.agent".
-	assertNoMatchingSpan(t, `fetch spans, from: now()-10m
+	assertNoMatchingSpan(t, scopedDQL(`fetch spans, from: now()-10m
 | filter service.name == "`+adkZeroCodeService+`"
 | filter span.name == "call_llm"
 | filter isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)
-| limit 1`)
+| limit 1`))
 
 	// Every span ADK emits is span.kind=internal, so nothing in ADK's own output
 	// lets SDv2 detect a service. `adk api_server` serves a FastAPI app, so the
 	// opentelemetry-instrumentation-fastapi package that opentelemetry-instrument
 	// loads produces a genuine SERVER span at the HTTP entry point without any
 	// span-kind rewriting.
-	assertSpanExists(t, `fetch spans, from: now()-10m
+	assertSpanExists(t, scopedDQL(`fetch spans, from: now()-10m
 | filter service.name == "`+adkZeroCodeService+`"
 | filter span.kind == "server"
-| limit 1`)
+| limit 1`))
 }

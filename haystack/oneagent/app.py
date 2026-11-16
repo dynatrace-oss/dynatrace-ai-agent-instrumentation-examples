@@ -28,11 +28,20 @@ async def haiku() -> str:
         azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT", "genai-demo"),
         api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("OPENAI_API_VERSION", "2024-07-01-preview"),
+        generation_kwargs={"temperature": 0.7, "max_completion_tokens": 2000},
     )
 
     def _call() -> str:
         pipeline = Pipeline()
-        pipeline.add_component("prompt", ChatPromptBuilder(template=[ChatMessage.from_user("Write a haiku about nature.")]))
+        pipeline.add_component(
+            "prompt",
+            ChatPromptBuilder(
+                template=[
+                    ChatMessage.from_system("You are a haiku poet."),
+                    ChatMessage.from_user("Write a haiku about nature."),
+                ]
+            ),
+        )
         pipeline.add_component("llm", generator)
         pipeline.connect("prompt.prompt", "llm.messages")
         result = pipeline.run({})

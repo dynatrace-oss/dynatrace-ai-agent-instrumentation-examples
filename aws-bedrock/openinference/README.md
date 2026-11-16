@@ -19,13 +19,13 @@ The app knows only about `http://localhost:4318`; the collector is the component
 5. **`signal_to_metrics` connector** derives `gen_ai.client.token.usage` metric points from `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Note this connector silently drops the whole datapoint if any of its non-optional `attributes` keys (including `gen_ai.response.model`) is missing from the span — which is why step 1 above matters even though `gen_ai.response.model` isn't otherwise required.
 6. **`filter/genai_only`** scopes metric derivation to LLM spans (`gen_ai.request.model` present).
 
-The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.108.0` (Bindplane Distro for OpenTelemetry). The pin means a future version bump surfaces behavior changes in the e2e test.
+The collector is pinned to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1` (Dynatrace Bindplane Distribution of OpenTelemetry). The pin means a future version bump surfaces behavior changes in the e2e test.
 
 ## Known gaps & limitations
 
 ### Converse's guardrail trace data needs app-side extraction
 
-`openinference-instrumentation-bedrock` never reads Bedrock's Converse response `trace.guardrail` block (topic/content/sensitive-info policy assessment data returned when `guardrailConfig.trace` is `"enabled"`) — it's not exposed as a span attribute in any form, so there's nothing for a collector transform to derive it from. `write_haiku` in [`main.py`](main.py) works around this the same way `pydantic-ai/opentelemetry`'s `ask-guardrail` endpoint does: it wraps the guardrail-triggering `converse()` call in its own span (since `openinference-instrumentation-bedrock`'s own Converse span has already ended by the time `.converse()` returns, so attributes can no longer be added to it) and sets the raw per-guardrail assessment as `gen_ai.bedrock.guardrail.input_assessment` JSON for `transform/bedrock-guardrail-attrs` to flatten.
+`openinference-instrumentation-bedrock` never reads Bedrock's Converse response `trace.guardrail` block (topic/content/sensitive-info policy assessment data returned when `guardrailConfig.trace` is `"enabled"`) — it's not exposed as a span attribute in any form, so there's nothing for a collector transform to derive it from. `write_haiku` in [`main.py`](main.py) works around this the same way `pydantic-ai/opentelemetry`'s `ask-guardrail` endpoint does: it wraps the guardrail-triggering `converse()` call in its own span (since `openinference-instrumentation-bedrock`'s own Converse span has already ended by the time `.converse()` returns, so attributes can no longer be added to it) and sets the raw per-guardrail assessment as `gen_ai.bedrock.guardrail.input_assessment` JSON for `transform/bedrock-guardrail-attrs` to flatten. Session id still comes from `using_attributes` on the same call.
 
 ## Prerequisites
 
@@ -37,6 +37,7 @@ The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.108.0` (Bindplane
 ## Quick Start
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
+   - To use a different model, select it with `BEDROCK_MODEL_ID`, for example `BEDROCK_MODEL_ID=us.deepseek.r1-v1:0` for DeepSeek-R1
 2. `make install` — install dependencies
 3. `make run` — start the app on port 8000
 4. `make request` — send a test haiku request (in a second terminal)

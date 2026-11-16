@@ -1,5 +1,6 @@
 import asyncio
 import os
+import uuid
 from typing import TypedDict
 
 os.environ["TRACELOOP_TELEMETRY"] = "false"
@@ -60,6 +61,7 @@ def _build_graph():
     llm = ChatBedrock(
         model_id=_model,
         region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+        temperature=0.7,
     )
 
     def write_haiku(state: HaikuState) -> HaikuState:
@@ -92,7 +94,11 @@ async def haiku(req: HaikuRequest | None = None) -> str:
 
     def _call() -> str:
         graph = _build_graph()
-        result = graph.invoke({"topic": topic, "haiku": ""})
+        # LangGraph thread_id is exported as gen_ai.conversation.id.
+        result = graph.invoke(
+            {"topic": topic, "haiku": ""},
+            config={"configurable": {"thread_id": str(uuid.uuid4())}},
+        )
         return str(result["haiku"])
 
     return await asyncio.to_thread(_call)

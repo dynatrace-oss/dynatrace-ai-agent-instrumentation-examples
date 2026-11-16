@@ -129,7 +129,7 @@ Profile precedence:
 | `gen_ai.token.type` | AR-024 | recommended | cost_dashboard — splits cost lanes; values: `input`, `output`, `cache_read`, `cache_creation` |
 | `gen_ai.client.operation.duration` | AR-025 | required | latency_charts — p99 and mean latency (OTel histogram metric) |
 | `gen_ai.client.token.usage` | AR-044 | recommended | cost_dashboard — OTel counter metric; used as `timeseries sum(gen_ai.client.token.usage)` filtered by `gen_ai.token.type` dimension. Distinct from the span attributes AR-006/AR-007. Missing → all cost tiles show $0 silently. |
-| `gen_ai.invoke_agent.duration` | AR-054 | optional | _(no view yet)_ — agent invocation duration; OTel histogram in seconds. Derived from the `invoke_agent` span by a collector `span_metrics` connector or an OpenPipeline extractor; no library emits it under this name. |
+| `gen_ai.invoke_agent.duration` | AR-054 | optional | _(no view yet)_ — agent invocation duration; OTel histogram in seconds. Derived from the `invoke_agent` span by a collector `span_metrics` connector; no library emits it under this name. |
 | `gen_ai.execute_tool.duration` | AR-055 | optional | _(no view yet)_ — tool execution duration; derived from the `execute_tool` span the same two ways as AR-054. |
 | `gen_ai.invoke_workflow.duration` | AR-056 | optional | _(no view yet)_ — workflow run duration; only derivable where the framework opens a workflow span (of the AI-352 demos, only microsoft-agent-framework does). |
 
@@ -211,6 +211,35 @@ Audit trail data arrives as **bizevents** (not spans). The gate is `event.type =
 | Attribute | Rule ID | Required Level | Used By Visuals |
 |---|---|---|---|
 | `gen_ai.model` | AR-048 | optional | audit_trail — bigevent field; groups audit events by model. Distinct from span attributes AR-004/AR-005. |
+
+### Observed But Untracked (AR-067..AR-088)
+
+Attributes and metrics that demos emit but no view uses yet. All optional and outside every audit profile, so absence never fails an audit. The span audit also lists any other `gen_ai.*` span attribute it sees that is not in this baseline, under **Untracked GenAI Attributes** in each report.
+
+| Attribute | Rule ID | Required Level | Used By Visuals |
+|---|---|---|---|
+| `gen_ai.usage.cache_read.input_tokens` | AR-067 | optional | _(no view yet)_ |
+| `gen_ai.usage.cache_creation.input_tokens` | AR-068 | optional | _(no view yet)_ |
+| `gen_ai.usage.reasoning.output_tokens` | AR-069 | optional | _(no view yet)_ |
+| `gen_ai.tool.definitions` | AR-070 | optional | _(no view yet)_ |
+| `gen_ai.request.stop_sequences` | AR-071 | optional | _(no view yet)_ |
+| `gen_ai.agent.id` | AR-072 | optional | _(no view yet)_ |
+| `gen_ai.output.type` | AR-073 | optional | _(no view yet)_ |
+| `gen_ai.client.operation.calls` | AR-074 | optional | _(no view yet)_ |
+| `gen_ai.invoke_agent.calls` | AR-075 | optional | _(no view yet)_ |
+| `gen_ai.invoke_workflow.calls` | AR-076 | optional | _(no view yet)_ |
+| `gen_ai.invoke_agent.inference_calls` | AR-077 | optional | _(no view yet)_ |
+| `gen_ai.invoke_agent.tool_calls` | AR-078 | optional | _(no view yet)_ |
+| `gen_ai.client.generation.choices` | AR-079 | optional | _(no view yet)_ |
+| `gen_ai.server.time_to_first_token` | AR-080 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.duration` | AR-081 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.input_tokens` | AR-082 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.output_tokens` | AR-083 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.cache_read.input_tokens` | AR-084 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.cache_write.input_tokens` | AR-085 | optional | _(no view yet)_ |
+| `gen_ai.client.inference.usage.reasoning.output_tokens` | AR-086 | optional | _(no view yet)_ |
+| `gen_ai.bedrock.guardrail.coverage` | AR-087 | optional | _(no view yet)_ |
+| `gen_ai.bedrock.guardrail.latency` | AR-088 | optional | _(no view yet)_ |
 
 ### Non-SDK Fields (ignore for pass/fail)
 

@@ -136,6 +136,18 @@ processors:
 docker compose up
 ```
 
+Or use the Makefile, which generates `.env` from `.env.sample` (picking up `DT_ENVIRONMENT_URL` and `DT_API_TOKEN` from your shell when they are set) and waits for n8n to report healthy:
+
+```bash
+make run
+```
+
+Other targets: `make install` (pull images), `make logs`, `make stop` (tear down and remove volumes), and `make request` (fire the webhook workflow described below).
+
+### Configure OpenTelemetry without the UI
+
+The `N8N_OTEL_*` variables in `.env.sample` configure exactly what the **Settings > OpenTelemetry** page configures, so a fresh instance exports traces on first boot with no manual step. See the [n8n OpenTelemetry environment variables](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/opentelemetry). This is the path the nightly e2e suite uses; to configure it interactively instead, comment out `N8N_OTEL_ENABLED` in `.env` and follow the UI steps below.
+
 ### n8n Configuration
 
 After the installation is complete:
@@ -169,6 +181,26 @@ After the installation is complete:
   - The updated Gemini model (successful executions)
 
 This ensures that Dynatrace receives a representative dataset containing successful and failed workflow executions, traces, metrics, logs, and LLM usage telemetry.
+
+### Headless webhook workflow
+
+`workflows/Webhook-AI-Workflow-OpenAI.json` is a headless variant with a **Webhook** trigger, so it can be driven from a script or from CI without opening the UI. It uses the native **Message an Agent** node with an inline Azure OpenAI agent. This matters for observability: only n8n's native agent runtime emits `gen_ai.*` spans (model, token usage, prompts) when `N8N_AGENTS_TRACING_ENABLED=true`. The LangChain **AI Agent** node used in the template above emits only `n8n.*` node spans.
+
+Create an `azureOpenAiApi` credential with ID `e2eOpenAICred01`, set `inlineAgent.config.model` to `azure-openai/<your-deployment>`, import the workflow through the n8n CLI, restart n8n so it registers the production webhook, then call it:
+
+```bash
+docker compose exec -T n8n n8n import:workflow --input=/tmp/workflow.json
+```
+
+```bash
+docker compose exec -T n8n n8n publish:workflow --id=e2eAIWorkflow02
+```
+
+```bash
+make request
+```
+
+The nightly e2e suite (`test/e2e/n8n_opentelemetry_test.go`) automates exactly this sequence and audits the resulting trace against the shared GenAI attribute baseline.
 
 ### Verify in Dynatrace
 
@@ -379,45 +411,25 @@ Below are some useful DQL examples enriches and structures n8n logs to enable ad
 
 ## AI Observability Smartscape (Optional / Experimental)
 
-This sample can be extended using **OpenPipeline** to enrich OpenTelemetry spans with GenAI semantic attributes, enabling the automatic creation of **AI Agents**, **LLM Services**, and their relationships within the **Dynatrace AI Observability topology**.
+You can extend the collector's `transform/n8n` processor to mark each workflow as a GenAI agent. The AI Observability topology then shows **AI Agents**, **LLM Services**, and their relationships.
 
-> **Note:** This configuration is experimental and intended for demonstration purposes. The actual LLM model information is currently available only in logs and not in traces, so the model names shown in the topology are generated dynamically based on the node type rather than the configured model.
+> **Note:** This configuration is experimental and intended for demonstration purposes. The LLM provider and model on `node.execute` spans are already derived by `transform/n8n`.
 
 <img src="assets/n8n-agent-topology.png" width="600"/>
 
-- Navigate to: **Process and contextualize → OpenPipeline → Spans**
-- Open the **Pipelines** tab. Create a new pipeline named **n8nPipeline**
-- Add the First **DQL** Processor named **Set workflow as GenAI agent**
-  - Matching Condition: ```service.name == "n8n" and matchesValue(span.name, "workflow.execute*")```
-  - DQL processor definition:
-    ```dql
-    fieldsAdd gen_ai.agent.name = n8n.workflow.name
-    | fieldsAdd gen_ai.agent.id = n8n.workflow.id
-    | fieldsAdd gen_ai.operation.name = "invoke_agent"
-    | fieldsAdd span.kind = "client"
-    ```
-    <img src="assets/n8nPipeline-Processor-2.png" width="600"/>
-    
-- Add Second **DQL** Processor named **Set LLM Model and Provider**
-  - Matching Condition: ```service.name == "n8n" and matchesValue(n8n.node.type, "*lmChat*")```
-  - DQL processor definition:
-    ```dql
-    fieldsAdd gen_ai.system = if(
-      contains(n8n.node.type, "lmChat"),
-      arrayLast(splitString(n8n.node.type, "lmChat")),
-      else: "unknown"
-    )
-    | fieldsAdd gen_ai.request.model = concat(gen_ai.system, "/model")
-    | fieldsAdd gen_ai.operation.name = "chat"
-    | fieldsAdd span.kind = "client"
-    ```
-    <img src="assets/n8nPipeline-Processor-2.png" width="600"/>
-    
-- Save and Close, Open the **Dynamic Routing** tab and create a new route named **n8nRoute**
-  - Matching Condition: ```service.name == "n8n"```
-  - Pipeline: **n8nPipeline**
+Add these statements to the end of `transform/n8n` in [`otel-collector-config.yaml`](otel-collector-config.yaml):
 
-    <img src="assets/n8nRoute.png" width="600"/>
-    
-- Apply New Traffic by executing the Workflows,
-- Open the **AI Observability** application., Navigate to **Agent Topology** to visualize the discovered agents and their AI interactions.
+```yaml
+          # Mark each workflow span as a GenAI agent invocation.
+          - set(attributes["gen_ai.agent.name"], attributes["n8n.workflow.name"])
+            where IsMatch(name, "^workflow\\.execute")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+          - set(attributes["gen_ai.agent.id"], attributes["n8n.workflow.id"])
+            where IsMatch(name, "^workflow\\.execute")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+          - set(attributes["gen_ai.operation.name"], "invoke_agent")
+            where IsMatch(name, "^workflow\\.execute")
+            and resource.attributes["service.name"] == "${env:DT_SERVICE_NAME}"
+```
+
+Then restart the collector, execute the workflows, open the **AI Observability** app, and go to **Agent Topology** to see the discovered agents and their AI interactions.

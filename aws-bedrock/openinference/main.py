@@ -1,7 +1,9 @@
 import json
 import os
+import uuid
 
 import boto3
+from openinference.instrumentation import using_attributes
 
 # Emit gen_ai.* attributes directly on spans (alongside llm.*/openinference.*)
 # so no downstream OpenInference-to-gen_ai normalization is needed.
@@ -91,25 +93,30 @@ def write_haiku(topic: str) -> str:
         "modelId": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         "system": [{"text": _SYSTEM_PROMPT}],
         "messages": [{"role": "user", "content": [{"text": f"Topic: {topic}"}]}],
+        "inferenceConfig": {"temperature": 1.0, "maxTokens": 2000},
     }
     gc = _guardrail_config()
     if gc:
         kwargs["guardrailConfig"] = gc
+
+    # openinference-instrumentation-bedrock ends its Converse span before
+    # .converse() returns, so guardrail assessment attributes cannot be added
+    # to that span afterwards. When a guardrail is configured, wrap the call
+    # in a span this demo owns and record the assessment there. The session
+    # attribute still comes from using_attributes, on both paths.
+    if gc:
         from opentelemetry import trace as trace_api
 
-        # openinference-instrumentation-bedrock's own Converse span has already
-        # ended by the time .converse() returns (its wrapper ends the span before
-        # returning control here), so attributes can't be added to it after the
-        # fact. Wrap the call in our own span instead — it shares the same trace
-        # as the (child) Converse span, and we control its lifecycle directly.
         tracer = trace_api.get_tracer(__name__)
         with tracer.start_as_current_span("bedrock.converse.guardrail_trace") as span:
             span.set_attribute("gen_ai.guardrail.id", gc["guardrailIdentifier"])
             span.set_attribute("gen_ai.guardrail.version", gc["guardrailVersion"])
-            response = _get_client().converse(**kwargs)
+            with using_attributes(session_id=str(uuid.uuid4())):
+                response = _get_client().converse(**kwargs)
             _record_guardrail_trace(span, response)
     else:
-        response = _get_client().converse(**kwargs)
+        with using_attributes(session_id=str(uuid.uuid4())):
+            response = _get_client().converse(**kwargs)
     content = response["output"]["message"]["content"]
     return content[0]["text"] if content else "(blocked by guardrail)"
 

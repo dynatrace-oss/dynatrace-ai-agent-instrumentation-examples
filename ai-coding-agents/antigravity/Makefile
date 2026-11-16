@@ -10,9 +10,9 @@ PY   := $(VENV)/bin/python
 DT_ENDPOINT      ?=
 DT_OTEL_ENDPOINT ?= $(if $(DT_ENDPOINT),$(DT_ENDPOINT)/api/v2/otlp,)
 
-# Bindplane Distro for OpenTelemetry. Used only by `make run-collector`, for the
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector. Used only by `make run-collector`, for the
 # span_metrics connector that derives the GenAI agent/tool duration metrics.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := antigravity-otel-collector
 
 .PHONY: install run run-collector stop logs build push request help
@@ -49,9 +49,10 @@ _collector:
 	  -v $$(pwd)/collector.yaml:/etc/otel/config.yaml:ro \
 	  -e DT_OTEL_ENDPOINT="$(DT_OTEL_ENDPOINT)" \
 	  -e DT_API_TOKEN="$(DT_API_TOKEN)" \
-	  $(COLLECTOR_IMAGE) && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \

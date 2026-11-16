@@ -7,15 +7,18 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # OpenInference's native gen_ai.* emission has no field for the response
-  # model (Bedrock's Converse response carries no model id), so mirror the
-  # request model the same way the removed normalizer chain used to.
+  # Converse does not include a response model in its output message, so fill
+  # the GenAI attribute from the request model when the instrumentor omits it.
   transform/response_model:
     error_mode: ignore
     trace_statements:
       - context: span
         statements:
-          - set(attributes["gen_ai.response.model"], attributes["gen_ai.request.model"]) where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.response.model"] == nil
+          - >-
+            set(attributes["gen_ai.response.model"],
+            attributes["gen_ai.request.model"]) where
+            attributes["gen_ai.request.model"] != nil and
+            attributes["gen_ai.response.model"] == nil
 
   # OpenInference's native gen_ai.* emission has no GUARDRAIL branch, so the
   # standalone ApplyGuardrail span never gets a gen_ai.operation.name. Derive
@@ -50,7 +53,10 @@ processors:
     send_batch_size: 512
     timeout: 5s
 
-  # Keep only LLM call spans for metric derivation.
+  # Keep only spans that represent an LLM call. Feeds the metrics connectors so
+  # the derived metrics cover LLM calls only. Used solely on the metrics branch
+  # — the export pipeline is left untouched so all spans still reach Distributed
+  # Tracing.
   filter/genai_only:
     error_mode: ignore
     traces:
@@ -58,7 +64,8 @@ processors:
         - attributes["gen_ai.request.model"] == nil
 
 connectors:
-  # Duration: derive gen_ai.client.operation.duration from LLM span durations.
+  # Duration: derive gen_ai.client.operation.duration (OTel GenAI semconv, seconds)
+  # from the LLM span durations.
   span_metrics:
     namespace: gen_ai.client.operation
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
@@ -73,8 +80,11 @@ connectors:
       - name: gen_ai.operation.name
     metrics_flush_interval: 15s
 
-  # Token usage: OpenInference is span-only, so derive metric points from
-  # gen_ai.usage.* span attributes.
+  # Token usage: OpenInference is span-only (no metric instruments). Re-create
+  # gen_ai.client.token.usage from the span token attributes with two sum defs
+  # sharing one metric name; the gen_ai.token.type dimension is synthesized per
+  # direction via default_value. signal_to_metrics emits delta per batch, which
+  # Dynatrace requires.
   signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage
@@ -120,6 +130,9 @@ service:
       receivers: [otlp]
       processors: [transform/response_model, transform/guardrail_operation_name, transform/bedrock-guardrail-attrs, batch]
       exporters: [otlp_http/dynatrace]
+    # Second branch of the same spans: keep only LLM spans and feed the metric
+    # connectors. Kept separate from the export pipeline so the filter here
+    # never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
       processors: [transform/response_model, transform/guardrail_operation_name, transform/bedrock-guardrail-attrs, filter/genai_only, batch]

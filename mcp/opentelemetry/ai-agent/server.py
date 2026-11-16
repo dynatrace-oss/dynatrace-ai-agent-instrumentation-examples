@@ -10,10 +10,13 @@ app = FastAPI(title="MCP Agent Demo")
 
 class InvokeRequest(BaseModel):
     message: str
+    # Omit to start a new conversation; pass a previous id to continue it.
+    conversation_id: str | None = None
 
 
 class InvokeResponse(BaseModel):
     response: str
+    conversation_id: str
 
 
 @app.get("/health")
@@ -23,5 +26,5 @@ def health():
 
 @app.post("/invoke", response_model=InvokeResponse)
 async def invoke(req: InvokeRequest):
-    result = await run_agent(req.message)
-    return InvokeResponse(response=result)
+    result, conversation_id = await run_agent(req.message, req.conversation_id)
+    return InvokeResponse(response=result, conversation_id=conversation_id)

@@ -39,3 +39,7 @@ Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with D
 ## Smartscape service entity
 
 OneAgent uses the `FastAPI(title=...)` parameter to assign a Smartscape SERVICE entity. Apps with the same title on the same host are merged into one entity, which pollutes the topology. Each oneagent demo sets a unique title matching its service name so that each service gets its own distinct SERVICE (and GENAI_SERVICE) entity in Smartscape.
+
+## Known limitations
+
+The OneAgent Bedrock sensor does not set `gen_ai.conversation.id` on chat spans, and the Bedrock `converse` API has no conversation id field to derive it from. Spans from this demo therefore carry `gen_ai.request.temperature` (from `inferenceConfig`) but no conversation id.

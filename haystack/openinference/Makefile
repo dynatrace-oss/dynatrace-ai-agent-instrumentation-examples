@@ -12,13 +12,15 @@ DT_API_TOKEN        ?= dt0c01.*****
 APP_IMAGE           ?=
 BUILD_PLATFORM      ?= linux/amd64
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.105.0 tracks OTel
-# contrib v0.157.0 and bundles genainormalizerprocessor + signal_to_metrics
-# connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT).
+# Pinned so a version bump surfaces metric-derivation regressions in the e2e test.
+# span_metrics derives gen_ai.client.operation.duration; signal_to_metrics derives
+# gen_ai.client.token.usage. The app emits gen_ai.* natively; the collector only
+# fills the Haystack gaps (request params, system instructions, provider, response model).
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
-.PHONY: run run-openpipeline build push request stop logs install help
+.PHONY: run build push request stop logs install help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -27,9 +29,9 @@ install: ## Install Python dependencies
 	uv sync
 
 # ---------------------------------------------------------------------------
-# run: Bindplane collector normalizes OpenInference -> gen_ai.* locally
+# run: Bindplane collector derives gen_ai.client.* metrics from native gen_ai.* spans
 # ---------------------------------------------------------------------------
-run: ## Start Bindplane collector (genainormalizer) + app  [no OpenPipeline needed]
+run: ## Start Bindplane collector + app
 	@$(MAKE) _collector CONFIG=otel-collector-config.yaml
 	@echo "Waiting for collector port to be ready..."
 	@sleep 3
@@ -39,15 +41,6 @@ run: ## Start Bindplane collector (genainormalizer) + app  [no OpenPipeline need
 	@echo "Collector port is responding"
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  OTEL_EXPORTER_OTLP_HEADERS="" \
-	  uv run python3 app.py
-
-# ---------------------------------------------------------------------------
-# run-openpipeline: app sends directly to Dynatrace — OpenPipeline transforms
-# Deploy first: see "Option B" in README.md.
-# ---------------------------------------------------------------------------
-run-openpipeline: ## Run app directly to Dynatrace  [requires OpenPipeline in Dynatrace]
-	@OTEL_EXPORTER_OTLP_ENDPOINT=$(DT_ENDPOINT)/api/v2/otlp \
-	  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)" \
 	  uv run python3 app.py
 
 # ---------------------------------------------------------------------------
@@ -65,9 +58,10 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \

@@ -5,6 +5,8 @@ Demonstrates tracing and metering a multi-agent Google ADK application with Dyna
 Optionally, `make run-collector` routes the app through a local OTel Collector that derives the GenAI **agent and tool duration metrics** from the spans.
 
 > ℹ️ **Message content requires two opt-in flags set before `google.adk` is imported.** Without them, ADK writes content only into GCP-internal blobs (`gcp.vertex.agent.llm_request/response`) rather than OTel semconv attributes. `app.py` sets both via `os.environ.setdefault`: `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` activates ADK's experimental semconv path, and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=SPAN_ONLY` routes content onto span attributes instead of log-based events.
+>
+> The semconv opt-in also changes token counts: ADK counts Gemini's thinking tokens (`thoughts_token_count`) as part of `gen_ai.usage.output_tokens` and reports them separately as `gen_ai.usage.reasoning.output_tokens`. Without it, token usage in Dynatrace can come out lower than Gemini's `total_token_count` for thinking models.
 
 ![Google ADK: Gen AI span attributes including input/output messages](./assets/google-adk-prompt-view.png)
 

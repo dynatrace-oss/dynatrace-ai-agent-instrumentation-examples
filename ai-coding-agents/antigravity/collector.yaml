@@ -40,7 +40,7 @@ processors:
   # The SDK reports no resolved model anywhere, so the request model is mirrored
   # to satisfy AR-005, which drives the model quick filter and the overview
   # charts. It is an approximation: an alias can resolve to a dated build.
-  # Same mirroring the google-adk, aws-strands and langfuse configs do.
+  # Same mirroring the google-adk and aws-strands configs do.
   transform/genai_span_attrs:
     error_mode: ignore
     trace_statements:

@@ -26,6 +26,7 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 | `MODEL` | No | `gpt-4o` | Model to use |
 | `OPENAI_API_BASE` | No | — | Custom API base URL (e.g. Azure OpenAI endpoint) |
 | `OPENAI_API_VERSION` | No | — | API version (required for Azure OpenAI) |
+| `GUARDRAIL_PROMPT` | No | prompt-injection attempt | Prompt `POST /haiku-guardrail` sends to trip the Azure content filter |
 
 ## Makefile Targets
 
@@ -36,7 +37,29 @@ Demonstrates tracing OpenAI SDK API calls with Dynatrace via OneAgent auto-instr
 | `make build` | Build container image (`APP_IMAGE`, `BUILD_PLATFORM`) |
 | `make push` | Build and push image to registry |
 | `make request` | POST /haiku to localhost:8000 |
+| `make request-guardrail` | POST /haiku-guardrail to localhost:8000 |
 | `make help` | Show all available targets |
+
+## Guardrails
+
+`POST /haiku-guardrail` sends `GUARDRAIL_PROMPT` so the provider's content filter intervenes, which is what makes the guardrail views in AI Observability populate. Three things must all hold, or the span carries no guardrail attribute at all:
+
+1. *The demo must target Azure OpenAI* (`OPENAI_API_BASE` + `OPENAI_API_VERSION`). OneAgent derives its guardrail attributes from Azure's `prompt_filter_results` / `content_filter_results` payloads and from the body of the `BadRequestError` Azure raises on a filtered prompt. `api.openai.com` returns none of those, so the endpoint still answers on plain OpenAI but produces no guardrail data.
+2. *Enable the experimental guardrail capture feature.* Settings → OneAgent features → the GenAI `captureGuardrails` setting. It is *off by default* — with it off the sensor parses nothing and the attributes are absent even on a genuinely blocked request. Restart the Python process after enabling.
+3. *The filter must actually fire.* OneAgent only writes guardrail attributes for a request the filter intervened on; a passing request carries nothing. Tune `GUARDRAIL_PROMPT` to the filter categories or custom blocklists configured on your deployment.
+
+What OneAgent writes when it does fire:
+
+| Attribute | Source |
+|-----------|--------|
+| `gen_ai.guardrail.input.content` | Prompt categories that tripped, e.g. `[{"type":"JAILBREAK"}]`, `[{"type":"HATE","confidence":"MEDIUM"}]` |
+| `gen_ai.guardrail.output.content` | Same, for the completion |
+| `gen_ai.guardrail.input.words.lists` / `.output.words.lists` | Names of matched custom blocklists |
+| `gen_ai.guardrail.output.sensitive_information.piis` | PII sub-categories detected in the completion (Azure offers no input-side PII filter) |
+
+These are *not* the `gen_ai.bedrock.guardrail.*` attributes, which only exist on the AWS Bedrock path, and *not* the raw `gen_ai.prompt.prompt_filter_results` / `gen_ai.completion.content_filter_results` blobs the OTel/OpenInference path emits — OneAgent-sourced spans never carry those.
+
+A filtered prompt makes the span an error span (`span.status_code = "error"`, `gen_ai.response.finish_reasons = "content_filter"`) and drops token usage; a filtered completion does not. The endpoint catches both so it still returns 200.
 
 ## Prompt capture and streaming
 

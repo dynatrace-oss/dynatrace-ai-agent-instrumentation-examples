@@ -14,10 +14,10 @@ from opentelemetry.semconv.attributes import service_attributes
 
 MODEL: str = os.environ.get("ANTHROPIC_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
+# Emit OTel GenAI semantic-convention attributes natively from OpenInference.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
-# For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
-#                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
     {service_attributes.SERVICE_NAME: "anthropic/openinference"}))
@@ -42,5 +42,7 @@ if __name__ == "__main__":
             max_tokens=256,
             system="You are a haiku poet.",
             messages=[{"role": "user", "content": "Write a haiku."}],
+            # anthropic SDK 1.x dropped the temperature kwarg; Bedrock still accepts it in the body.
+            extra_body={"temperature": 0.7},
         )
         print(response.content[0].text)

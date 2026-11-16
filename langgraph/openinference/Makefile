@@ -7,7 +7,7 @@ PORT                ?= 8000
 DT_ENDPOINT         ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN        ?= dt0c01.*****
 
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.108.0
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := langgraph-openinference-otel-collector
 
 .PHONY: run request stop logs install help
@@ -18,7 +18,7 @@ help: ## Show this help
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start Bindplane collector (genainormalizer) + app on port $(PORT)
+run: ## Start Bindplane collector + app on port $(PORT)
 	@$(MAKE) _collector
 	@echo "Waiting for collector port to be ready..."
 	@until curl -s -o /dev/null http://localhost:4318/v1/traces -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null; do \
@@ -51,9 +51,10 @@ _collector:
 	  -v $$(pwd)/otel-collector-config.yaml:/etc/otel/config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \
