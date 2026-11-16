@@ -11,7 +11,7 @@ This migrated example replaces Traceloop/OpenLLMetry with `openinference-instrum
 - **Content capture:** prompts and completions are intentionally captured. Review this before production because content can contain sensitive data.
 - **Metrics:** OpenInference emits no metrics; the Collector derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from LLM spans.
 
-References: [Dynatrace OpenInference guidance](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/openinference), [OpenInference LiteLLM instrumentation](https://arize-ai.github.io/openinference/python/instrumentation/openinference-instrumentation-litellm/), and the [source example](https://github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/tree/main/litellm/opentelemetry/litellm-gateway-with-instrumentation).
+References: [Dynatrace OpenInference guidance](https://docs.dynatrace.com/docs/observe/dynatrace-for-ai-observability/get-started/openinference), [OpenInference LiteLLM instrumentation](https://github.com/Arize-ai/openinference/blob/main/python/instrumentation/openinference-instrumentation-litellm/README.md), and the [source example](https://github.com/dynatrace-oss/dynatrace-ai-agent-instrumentation-examples/tree/main/litellm/opentelemetry/litellm-gateway-with-instrumentation).
 
 ## Prerequisites
 
