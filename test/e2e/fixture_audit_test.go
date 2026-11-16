@@ -48,6 +48,7 @@ type SpanReport struct {
 	Optional        []AttributeResult `json:"optional"`
 	Metrics         []MetricResult    `json:"metrics,omitempty"`
 	Untracked       []string          `json:"untracked,omitempty"` // gen_ai.* attributes seen on the trace but not in the baseline
+	TestRunID       string            `json:"test_run_id"`
 	GeneratedAt     string            `json:"generated_at"`
 }
 
@@ -457,6 +458,9 @@ func writeReport(t *testing.T, r SpanReport) {
 		return
 	}
 	base := filepath.Join(dir, r.SDK+"-"+r.Instrumentation)
+	if r.TestRunID == "" {
+		r.TestRunID = testRunID
+	}
 
 	jsonData, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
@@ -479,6 +483,10 @@ func buildMarkdown(r SpanReport) string {
 	fmt.Fprintf(&sb, "# %s / %s — Span Audit Report\n\n", r.SDK, r.Instrumentation)
 	fmt.Fprintf(&sb, "**Profile:** %s | **Verdict:** %s %s | **Generated:** %s\n\n",
 		r.Profile, icon, r.Verdict, r.GeneratedAt)
+	if r.TestRunID != "" {
+		fmt.Fprintf(&sb, "**Test run ID:** `%s` (span resource attribute `test.run.id`)\n\n",
+			r.TestRunID)
+	}
 	if r.Note != "" {
 		fmt.Fprintf(&sb, "> **Note:** %s\n\n", r.Note)
 	}
@@ -565,19 +573,11 @@ func assertNotErrorSpan(t *testing.T, span map[string]interface{}) {
 //     a resource attribute. DQL matches on the exact value → zero cross-run
 //     interference even when two pipelines run simultaneously.
 //
-//  2. OneAgent apps (anthropic/oneagent, openai/oneagent, aws-bedrock/oneagent)
-//     OneAgent replaces the OTel TracerProvider with its own passive runtime
-//     instrumentation. It does NOT read OTEL_RESOURCE_ATTRIBUTES, so test.run.id
-//     is absent from those spans. The fallback branch (isNull(test.run.id) AND
-//     timestamp >= suiteStartTime) provides time-based isolation instead.
-//
-//     Time-based isolation is sufficient here because the OneAgent DQL queries
-//     already carry two narrow filters — service.name (unique per app) and
-//     dt.openpipeline.source == "oneagent" — making it practically impossible
-//     for a span from a different concurrent run to satisfy all filters within
-//     the same time window. The CI matrix also only triggers OneAgent tests when
-//     the relevant app directory changes, further reducing the chance of two
-//     pipelines running the identical test at the same time.
+//  2. OneAgent apps
+//     OneAgent also propagates OTEL_RESOURCE_ATTRIBUTES onto its spans, so they
+//     carry test.run.id and match the first branch. The fallback branch
+//     (isNull(test.run.id) AND timestamp >= suiteStartTime) is kept as a safety
+//     net for any instrumentation that drops the attribute.
 //
 // The filter is inserted after the first line (the fetch statement) so it
 // evaluates before any sort or limit that the caller may have written.

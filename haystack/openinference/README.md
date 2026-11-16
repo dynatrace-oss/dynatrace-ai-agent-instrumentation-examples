@@ -1,7 +1,7 @@
 # Haystack + OpenInference Demo
 
 Demonstrates tracing a [Haystack](https://haystack.deepset.ai/) pipeline (Azure OpenAI backend) with Dynatrace via OpenInference instrumentation (`HaystackInstrumentor`).
-OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) This example normalizes them into the Dynatrace `gen_ai.*` format with the Bindplane collector's `gen_ai_normalizer` processor.
+The app sets `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, so OpenInference emits OTel GenAI `gen_ai.*` attributes natively. The AI Observability app queries those attributes. The collector fills a few Haystack gaps and derives the `gen_ai.client.*` metrics.
 
 ---
 
@@ -12,7 +12,7 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 - [Setup](#setup)
 - [Run with the Bindplane collector](#run-with-the-bindplane-collector)
 - [Visualize in Dynatrace AI Observability](#visualize-in-dynatrace-ai-observability)
-- [Attribute mapping reference](#attribute-mapping-reference)
+- [Native gen_ai attributes](#native-gen_ai-attributes)
 - [Metrics](#metrics)
 - [Known gaps & limitations](#known-gaps--limitations)
 - [Troubleshooting](#troubleshooting)
@@ -23,7 +23,8 @@ OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_co
 
 - A two-component Haystack `Pipeline` (`ChatPromptBuilder` -> `AzureOpenAIChatGenerator`) that writes a haiku.
 - `HaystackInstrumentor` wraps `Pipeline.run` and every component's `run` method directly, producing an OpenInference-shaped trace: one `CHAIN` span for the pipeline and one `LLM` span for the chat generator call.
-- Normalizes those OpenInference attributes to Dynatrace `gen_ai.*` format with the Bindplane collector's `gen_ai_normalizer` processor.
+- With `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` (set in [`app.py`](app.py)), the LLM span carries `gen_ai.*` attributes natively, alongside the OpenInference `llm.*` attributes.
+- Derives `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from the spans via the Bindplane collector.
 - Shows the trace in the Dynatrace AI Observability app with model, token usage, and message content.
 
 Haystack is also demoed via OneAgent auto-instrumentation in [`haystack/oneagent/`](../oneagent/) -- that example instruments the underlying `openai` SDK calls Haystack makes; this one instruments the Haystack pipeline/component layer itself.
@@ -76,20 +77,20 @@ make install
 
 ## Run with the Bindplane collector
 
-The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) intercepts spans and normalizes OpenInference attributes to `gen_ai.*` with its built-in `gen_ai_normalizer` processor before forwarding to Dynatrace. No Dynatrace configuration needed.
+The [Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT)](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector) forwards spans to Dynatrace and derives the `gen_ai.client.*` metrics from them. No Dynatrace configuration needed. OpenInference is span-only, so the metrics the AI Observability app charts must be derived from spans.
 
 ```
-App  ->  Bindplane collector (gen_ai_normalizer + transform)  ->  Dynatrace Grail
+App (native gen_ai.*)  ->  Bindplane collector (Haystack gaps + metrics)  ->  Dynatrace Grail
 ```
 
-This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.1.2`. The pin means a future version bump surfaces normalization changes in the e2e test.
+This example pins the collector to `ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1`. The pin means a future version bump surfaces regressions in the e2e test.
 
 The app knows only about `http://localhost:4318` -- it sends spans to the collector, and the collector authenticates with Dynatrace using `DT_ENDPOINT` and `DT_API_TOKEN`.
 
-The pipeline runs two processors (see [`otel-collector-config.yaml`](otel-collector-config.yaml)):
+See [`otel-collector-config.yaml`](otel-collector-config.yaml). The traces pipeline forwards the span attributes and applies two transforms that native emission does not cover:
 
-1. **`gen_ai_normalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*`. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
-2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+1. **`transform/haystack_gaps`** reads request parameters and the system message from the raw OpenInference attributes, and corrects the provider name and the prompt-builder operation name. See [Native gen_ai attributes](#native-gen_ai-attributes).
+2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model` when the response has not set one.
 
 ### Run it
 
@@ -118,27 +119,39 @@ make request  # re-run the pipeline once against a collector already running
 
 ---
 
-## Attribute mapping reference
+## Native gen_ai attributes
 
-The collector's `gen_ai_normalizer` (source `openinference`) applies these translations and reconstructs the full conversation from indexed per-message attributes.
+`OPENINFERENCE_ENABLE_GENAI_SEMCONV=true` makes the OpenInference tracer add OTel GenAI attributes when each span ends, alongside its own `llm.*` attributes. That replaces the collector `gen_ai_normalizer` mapping. The exact set depends on `openinference-instrumentation` 0.1.71+, which `openinference-instrumentation-haystack` 0.1.48 requires.
 
-| OpenInference source | Dynatrace target |
+Native emission covers the attributes the normalizer used to write:
+
+| OpenInference source | `gen_ai.*` attribute |
 |---|---|
 | `llm.token_count.prompt` | `gen_ai.usage.input_tokens` |
 | `llm.token_count.completion` | `gen_ai.usage.output_tokens` |
 | `llm.model_name` | `gen_ai.request.model` |
-| `llm.provider` (`AzureOpenAIChatGenerator` -> `azure`) | `gen_ai.provider.name` |
-| `llm.system` (inferred from the model name) | `gen_ai.provider.name` (fallback, if `llm.provider` is absent) |
+| `llm.provider` / `llm.system` | `gen_ai.provider.name` (value corrected in the table below) |
 | `session.id` | `gen_ai.conversation.id` |
-| `openinference.span.kind` | `gen_ai.operation.name` (`LLM` with `llm.model_name` set -> `chat`) / `gen_ai.operation.kind` (`CHAIN` -> `workflow`, else -> `task`) |
+| `openinference.span.kind` = `LLM` with a model | `gen_ai.operation.name` = `chat` |
 | `llm.input_messages.N.*` / `llm.output_messages.N.*` | `gen_ai.input.messages` / `gen_ai.output.messages` |
-| _(collector transform)_ | `gen_ai.response.model` (mirrored from `gen_ai.request.model`) |
 
-`session.id` and `user.id` already match the OTel standard and pass through unchanged.
+`llm.*` attributes stay on the span. `session.id` and `user.id` already match the OTel standard and pass through unchanged.
 
-> **Note on the `ChatPromptBuilder` span:** `HaystackInstrumentor` tags the `ChatPromptBuilder` component's span as `openinference.span.kind == "LLM"` too (it only sets `llm.prompt_template.*`, never `llm.model_name` / `llm.token_count.*`). The collector keys its LLM-call logic off `isNotNull(llm.token_count.total) OR isNotNull(llm.model_name)` rather than span kind, so the prompt-builder span is correctly excluded from the `chat` operation mapping.
+### Attributes the collector still sets
 
-> **Note on request parameters:** unlike the Cohere/Groq/Mistral OpenInference examples in this repo, `HaystackInstrumentor` never emits `llm.invocation_parameters` for a chat generator's span (only for its embedder spans, which this demo does not exercise) — there is no `gen_ai.request.temperature` / `top_p` / `max_tokens` source to map here at all.
+[`otel-collector-config.yaml`](otel-collector-config.yaml) still writes these. `HaystackInstrumentor` does not record them in a form the GenAI conversion reads:
+
+| Attribute | Why native emission does not set it | How the collector sets it |
+|---|---|---|
+| `gen_ai.request.temperature` | Chat generator spans have no `llm.invocation_parameters`. The conversion only reads that JSON for request parameters. | `transform/haystack_gaps` reads `generation_kwargs.temperature` from `input.value`. |
+| `gen_ai.request.max_tokens` | Same as temperature. | Reads `generation_kwargs.max_completion_tokens` from `input.value`. |
+| `gen_ai.system_instructions` | The conversion never emits this attribute. The system prompt stays inside `gen_ai.input.messages`. | Copies `llm.input_messages.0.message.content` when that message's role is `system`. |
+| `gen_ai.response.model` | The component response JSON has no top-level `model` key. The model lives on the reply meta and becomes `gen_ai.request.model` only. | `transform/response_model` copies `gen_ai.request.model` when unset. |
+| `gen_ai.provider.name` = `azure.ai.openai` | Native conversion emits `azure.ai.openai` only when the response model name looks like an OpenAI model (`gpt*`, `o1*`, `o3*`, `o4*`, ...). A deployment name such as `genai-demo` does not, so the value would be `azure.ai.inference`. | Sets `azure.ai.openai` when `llm.provider` is `azure`. This demo always uses `AzureOpenAIChatGenerator`. |
+
+> **Note on the `ChatPromptBuilder` span:** `HaystackInstrumentor` tags that component as `openinference.span.kind == "LLM"` too (it only sets `llm.prompt_template.*`, never `llm.model_name` / `llm.token_count.*`). Native conversion then sets `gen_ai.operation.name` to `chat` on any LLM-kind span, including the prompt builder. `transform/haystack_gaps` deletes that operation name when the span has a prompt template and no `gen_ai.request.model`. The metrics branch also drops it, because `filter/genai_only` keeps spans with `gen_ai.request.model` only.
+
+> **Note on request parameters:** unlike the Cohere/Groq/Mistral OpenInference examples, `HaystackInstrumentor` never emits `llm.invocation_parameters` for a chat generator span (only for embedder spans, which this demo does not exercise). Temperature and max tokens are taken from the run arguments in `input.value` instead. `top_p` is not passed.
 
 ---
 
@@ -151,19 +164,17 @@ OpenInference is span-only by design (its instrumentors emit no metric instrumen
 | `gen_ai.client.operation.duration` (s) | `span_metrics` connector, on LLM spans |
 | `gen_ai.client.token.usage` (`gen_ai.token.type` = `input`/`output`) | `signal_to_metrics` connector, two sum defs |
 
-It reads the normalized `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` (mapped from OpenInference's `llm.token_count.*`). Both metrics use delta temporality -- Dynatrace rejects cumulative.
+It reads the native `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`. Both metrics use delta temporality -- Dynatrace rejects cumulative.
 
 ---
 
 ## Known gaps & limitations
 
-### Attributes gen_ai_normalizer does not yet map
+### Finish reason and prompt caching
 
-The `gen_ai_normalizer` `openinference` source does not set the following attributes. They are optional for the AI Observability app, and are candidates for upstream contribution to the processor:
+`HaystackInstrumentor` does not record a finish-reason attribute. With `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, the conversion still sets `gen_ai.response.finish_reasons` to `stop` when the output message has no finish reason of its own. That value is inferred, not taken from the Azure response.
 
-- `gen_ai.response.finish_reasons` -- moot here anyway, since `HaystackInstrumentor` never captures a finish-reason span attribute in the first place (see [Attribute mapping reference](#attribute-mapping-reference)).
-
-Request parameters (`gen_ai.request.temperature` / `top_p` / `max_tokens`) and prompt caching (`gen_ai.prompt_caching` / `gen_ai.cache.type`) are not applicable here -- `HaystackInstrumentor` does not capture either for chat generator spans.
+Prompt caching (`gen_ai.prompt_caching` / `gen_ai.cache.type`) is not captured for chat generator spans. `gen_ai.request.top_p` is unset because this demo does not pass `top_p`. Temperature and max tokens are set by the collector; see [Native gen_ai attributes](#native-gen_ai-attributes).
 
 ---
 
@@ -179,8 +190,8 @@ Request parameters (`gen_ai.request.temperature` / `top_p` / `max_tokens`) and p
 - Confirm Docker is running and port `4318` is free: `lsof -i :4318`.
 
 **Spans visible in Distributed Tracing but not in AI Observability:**
-- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) to be set on the span.
-- Confirm the `gen_ai_normalizer` processor ran -- the raw `llm.*` attributes should be gone and `gen_ai.*` attributes present in the collector debug output (`make logs`).
+- AI Observability requires `gen_ai.provider.name` (or `gen_ai.system`) to be set on the span. With `OPENINFERENCE_ENABLE_GENAI_SEMCONV=true`, OpenInference sets `gen_ai.provider.name`, and `transform/haystack_gaps` forces `azure.ai.openai` for this Azure OpenAI generator.
+- Confirm the span carries `gen_ai.*` attributes. If only `llm.*` attributes are present, check that `OPENINFERENCE_ENABLE_GENAI_SEMCONV` is not overridden to `false` in your environment and that `openinference-instrumentation` is 0.1.71 or newer (`openinference-instrumentation-haystack` 0.1.48 or newer pulls that in).
 
 **Port conflict:**
 - Ensure nothing else is listening on `4318`: `lsof -i :4318`.

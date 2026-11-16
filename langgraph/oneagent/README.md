@@ -9,6 +9,7 @@ For a collector-based variant (which exports via OTLP and can redact secrets bef
 - Runs a FastAPI server exposing `POST /haiku` (accepts a `{"topic": "..."}` body)
 - Builds a minimal LangGraph state graph with a single `write_haiku` node that calls Azure OpenAI
 - Relies on OneAgent to capture the agent's LLM calls as `gen_ai.*` spans
+- Relies on the OneAgent LangGraph sensor to add a workflow span for each graph run
 
 ## Prerequisites
 
@@ -16,6 +17,24 @@ For a collector-based variant (which exports via OTLP and can redact secrets bef
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (`pip install uv`)
 - Dynatrace OneAgent installed on the host
 - An Azure OpenAI endpoint and key
+
+## Enable the OneAgent GenAI features
+
+In Dynatrace, go to **Settings** > **OneAgent features** and turn on both:
+
+- The Python OpenAI GenAI feature (captures the chat completion spans)
+- **Experimental Python GenAI LangGraph [Opt-In]** (requires OneAgent version 1.341 or later)
+
+Restart the Python process after you change these settings; OneAgent reads them at process start.
+
+With the LangGraph feature on, each `graph.invoke(...)` call produces a workflow span that wraps the LLM calls. It carries:
+
+| Attribute | Value |
+|-----------|-------|
+| `gen_ai.operation.kind` | `workflow` |
+| `gen_ai.agent.name` | The compiled graph's `name` |
+
+Without it, you only see the OpenAI chat spans with no parent workflow span.
 
 ## Environment
 

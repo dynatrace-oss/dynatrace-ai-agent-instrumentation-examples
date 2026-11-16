@@ -180,7 +180,7 @@ Independently of `getSessionId()`, Dynatrace always propagates `dt.rum.session.i
 | End-to-end trace link | W3C traceparent (RUM → backend) | shared `traceId` |
 | Session grouping | `conversation_id` in request body | `gen_ai.conversation.id` |
 | LLM provider + model | pydantic-ai span attributes | `gen_ai.provider.name`, `gen_ai.request.model` |
-| Token usage | pydantic-ai + backend span | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
+| Token usage | pydantic-ai chat spans | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
 | User feedback | `/api/feedback` OTel span | `feedback.rating`, `feedback.question` |
 
 ### GenAI metrics

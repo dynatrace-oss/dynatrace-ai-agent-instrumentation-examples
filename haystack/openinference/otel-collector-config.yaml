@@ -5,11 +5,22 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
-  # Runs before gen_ai_normalizer drops the raw OpenInference attributes. The
-  # Haystack instrumentor records no llm.invocation_parameters, so request
-  # parameters are read from the generator's run arguments in input.value, and
-  # the leading system message becomes gen_ai.system_instructions.
-  transform/pre_normalize:
+  # OPENINFERENCE_ENABLE_GENAI_SEMCONV=true makes HaystackInstrumentor emit
+  # gen_ai.* alongside llm.*, so the gen_ai_normalizer mapping is not used.
+  # These statements fill attributes the instrumentor and that conversion do
+  # not produce for a chat generator:
+  # - no llm.invocation_parameters, so temperature and max_tokens are read from
+  #   the generator run arguments in input.value
+  # - gen_ai.system_instructions is not part of the conversion; the leading
+  #   system message is copied from llm.input_messages
+  # - llm.provider=azure becomes azure.ai.openai only when the response model
+  #   name looks like an OpenAI model. A deployment name such as genai-demo
+  #   does not, and the conversion would emit azure.ai.inference. This demo
+  #   always calls Azure OpenAI.
+  # - ChatPromptBuilder is also tagged as an LLM span, so the conversion sets
+  #   gen_ai.operation.name=chat on it. It has a prompt template and no model;
+  #   drop that operation name so it is not counted as a chat call.
+  transform/haystack_gaps:
     error_mode: ignore
     trace_statements:
       - context: span
@@ -19,22 +30,12 @@ processors:
           - set(attributes["gen_ai.request.max_tokens"], attributes["temp.input"]["generation_kwargs"]["max_completion_tokens"]) where attributes["temp.input"]["generation_kwargs"]["max_completion_tokens"] != nil
           - delete_key(attributes, "temp.input") where attributes["temp.input"] != nil
           - set(attributes["gen_ai.system_instructions"], attributes["llm.input_messages.0.message.content"]) where attributes["llm.input_messages.0.message.role"] == "system"
+          - set(attributes["gen_ai.provider.name"], "azure.ai.openai") where attributes["llm.provider"] == "azure"
+          - delete_key(attributes, "gen_ai.operation.name") where attributes["llm.prompt_template"] != nil and attributes["gen_ai.request.model"] == nil
 
-  # Normalize OpenInference attributes to the OTel gen_ai.* semantic conventions.
-  # The built-in "openinference" source maps model, provider, token usage, tool,
-  # agent and session attributes, and reconstructs the flattened
-  # llm.input_messages.N.* / llm.output_messages.N.* into gen_ai.input.messages
-  # and gen_ai.output.messages. remove_originals drops the raw llm.* attributes
-  # so the exported spans carry only gen_ai.* fields.
-  gen_ai_normalizer:
-    sources:
-      - name: openinference
-        remove_originals: true
-
-  # gen_ai_normalizer maps llm.model_name -> gen_ai.request.model but does not
-  # emit gen_ai.response.model (OpenInference has no separate response-model
-  # field). The Dynatrace AI Observability app requires gen_ai.response.model,
-  # so mirror the request model when the response has not set one.
+  # The chat response JSON has no top-level "model" key (the model is on the
+  # reply meta, which becomes gen_ai.request.model only). The AI Observability
+  # app requires gen_ai.response.model, so mirror the request model when unset.
   transform/response_model:
     error_mode: ignore
     trace_statements:
@@ -46,11 +47,10 @@ processors:
     send_batch_size: 512
     timeout: 5s
 
-  # Keep only spans that represent an LLM call (gen_ai.request.model is set by the
-  # normalizer on LLM spans). Feeds the metrics connectors so the derived metrics
-  # cover LLM calls only, not the pipeline/prompt-builder chain spans. Used solely
-  # on the metrics branch — the export pipeline is left untouched so all spans
-  # still reach Distributed Tracing.
+  # Keep only spans that represent an LLM call. Feeds the metrics connectors so
+  # the derived metrics cover LLM calls only, not the pipeline or prompt-builder
+  # spans. Used solely on the metrics branch — the export pipeline is left
+  # untouched so all spans still reach Distributed Tracing.
   filter/genai_only:
     error_mode: ignore
     traces:
@@ -76,10 +76,10 @@ connectors:
     metrics_flush_interval: 15s
 
   # Token usage: OpenInference is span-only (no metric instruments). Re-create
-  # gen_ai.client.token.usage from the span token attributes with two sum defs
-  # sharing one metric name; the gen_ai.token.type dimension is synthesized per
-  # direction via default_value. signal_to_metrics emits delta per batch, which
-  # Dynatrace requires.
+  # gen_ai.client.token.usage from the native gen_ai.usage.* span attributes with
+  # two sum defs sharing one metric name; the gen_ai.token.type dimension is
+  # synthesized per direction via default_value. signal_to_metrics emits delta
+  # per batch, which Dynatrace requires.
   signal_to_metrics:
     spans:
       - name: gen_ai.client.token.usage
@@ -125,14 +125,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, batch]
+      processors: [transform/haystack_gaps, transform/response_model, batch]
       exporters: [otlp_http/dynatrace]
-    # Second branch of the same spans: normalize, keep only LLM spans, and feed
-    # the metric connectors. Kept separate from the export pipeline so the filter
-    # here never drops spans from Distributed Tracing.
+    # Second branch of the same spans: fill the Haystack gaps, keep only LLM
+    # spans, and feed the metric connectors. Kept separate from the export
+    # pipeline so the filter here never drops spans from Distributed Tracing.
     traces/genai_metrics:
       receivers: [otlp]
-      processors: [transform/pre_normalize, gen_ai_normalizer, transform/response_model, filter/genai_only, batch]
+      processors: [transform/haystack_gaps, transform/response_model, filter/genai_only, batch]
       exporters: [span_metrics, signal_to_metrics]
     metrics:
       receivers: [otlp, span_metrics, signal_to_metrics]

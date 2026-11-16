@@ -6,7 +6,8 @@ import (
 )
 
 // TestLangGraphOneAgent verifies OneAgent captures the LangGraph demo's
-// LLM calls, including the input messages.
+// LLM calls, including the input messages, and the LangGraph sensor's
+// workflow span for each graph invocation.
 func TestLangGraphOneAgent(t *testing.T) {
 	startApp(t, "langgraph/oneagent")
 
@@ -18,6 +19,15 @@ func TestLangGraphOneAgent(t *testing.T) {
 | filter service.name == "langgraph/oneagent"
 | filter dt.openpipeline.source == "oneagent"
 | filter contains(toString(`+"`gen_ai.input.messages`"+`), "cherry blossoms")
+| sort timestamp desc
+| limit 1`), 5*time.Minute)
+
+	// Needs the "Python GenAI LangGraph" OneAgent feature (OneAgent 1.341+).
+	assertSpanExistsWithin(t, scopedDQL(`fetch spans
+| filter service.name == "langgraph/oneagent"
+| filter dt.openpipeline.source == "oneagent"
+| filter gen_ai.operation.kind == "workflow"
+| filter isNotNull(gen_ai.agent.name)
 | sort timestamp desc
 | limit 1`), 5*time.Minute)
 

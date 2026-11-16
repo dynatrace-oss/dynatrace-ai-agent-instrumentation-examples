@@ -131,6 +131,10 @@ def _bedrock_available() -> bool:
     return all(os.getenv(k) for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"))
 
 
+# OTel GenAI semconv provider names; the display names stay in the API response.
+PROVIDER_SEMCONV = {"Azure OpenAI": "azure.ai.openai", "AWS Bedrock": "aws.bedrock"}
+
+
 def build_azure_model() -> tuple[OpenAIChatModel, str, str]:
     provider = AzureProvider(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
@@ -227,7 +231,7 @@ async def record_feedback(http_request: Request, body: FeedbackRequest):
             span.set_attribute(GEN_AI_CONVERSATION_ID_ATTR, body.conversation_id)
             span.set_attribute("feedback.rating", body.rating)
             span.set_attribute("feedback.question", body.question)
-            span.set_attribute("gen_ai.provider.name", body.provider)
+            span.set_attribute("gen_ai.provider.name", PROVIDER_SEMCONV.get(body.provider, body.provider))
             span.set_attribute("gen_ai.request.model", body.model)
     finally:
         _current_conversation_id.reset(conversation_token)
@@ -259,7 +263,7 @@ async def ask_question(http_request: Request, body: QuestionRequest):
                     # gen_ai.conversation.id ties every exchange in a session together.
                     # Filter in DQL: fetch spans | filter gen_ai.conversation.id == "<id>"
                     span.set_attribute(GEN_AI_CONVERSATION_ID_ATTR, body.conversation_id)
-                    span.set_attribute("gen_ai.provider.name", provider)
+                    span.set_attribute("gen_ai.provider.name", PROVIDER_SEMCONV[provider])
                     span.set_attribute("gen_ai.request.model", model_name)
                     span.set_attribute("music_agent.question", body.question)
 
@@ -269,11 +273,6 @@ async def ask_question(http_request: Request, body: QuestionRequest):
                     )
                     result = await agent.run(body.question)
                     answer = result.output if hasattr(result, "output") else result.data
-
-                    usage = result.usage
-                    if usage:
-                        span.set_attribute("gen_ai.usage.input_tokens", usage.input_tokens or 0)
-                        span.set_attribute("gen_ai.usage.output_tokens", usage.output_tokens or 0)
 
                 return AnswerResponse(
                     answer=str(answer),

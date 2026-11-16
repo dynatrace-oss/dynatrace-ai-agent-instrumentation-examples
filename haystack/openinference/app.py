@@ -21,6 +21,11 @@ from opentelemetry.sdk.resources import (
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.semconv.attributes import service_attributes
 
+# Emit OTel GenAI semantic-convention attributes (gen_ai.*) natively.
+# HaystackInstrumentor builds a TraceConfig inside instrument(), and that config
+# reads this variable, so it has to be set first.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(

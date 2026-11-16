@@ -42,7 +42,9 @@ processors:
   #
   # The instrumentation also emits operation "unknown" for the SDK's task and
   # turn spans, which have no GenAI semconv equivalent. Drop the value rather
-  # than the spans so the trace tree stays intact.
+  # than the spans so the trace tree stays intact. Those spans are also named
+  # "unknown" and carry server.address though they make no network call, so
+  # give them a descriptive name and remove the server attributes.
   #
   # It also stamps a placeholder agent ("OpenAI Agent", id "agent") on every
   # span that is not a real agent span. Remove it so chat, tool and guardrail
@@ -53,6 +55,9 @@ processors:
       - context: span
         statements:
           - set(span.attributes["gen_ai.operation.name"], "invoke_workflow") where span.kind == SPAN_KIND_SERVER and span.attributes["gen_ai.operation.name"] == "invoke_agent"
+          - delete_key(span.attributes, "server.address") where span.attributes["gen_ai.operation.name"] == "unknown"
+          - delete_key(span.attributes, "server.port") where span.attributes["gen_ai.operation.name"] == "unknown"
+          - set(span.name, "agent_run_step") where span.name == "unknown"
           - delete_key(span.attributes, "gen_ai.operation.name") where span.attributes["gen_ai.operation.name"] == "unknown"
           - delete_key(span.attributes, "gen_ai.agent.description") where span.attributes["gen_ai.agent.description"] == "OpenAI Agents instrumentation"
           - delete_key(span.attributes, "gen_ai.agent.name") where span.attributes["gen_ai.agent.name"] == "OpenAI Agent" and span.attributes["gen_ai.agent.id"] == "agent"

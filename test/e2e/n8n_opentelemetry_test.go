@@ -40,10 +40,9 @@ const (
 // its OpenAI credential through the n8n CLI, fires the webhook, and audits the
 // resulting trace.
 //
-// Run isolation is by unique service.name, not scopedDQL: n8n builds its own
-// OTel resource and does not read OTEL_RESOURCE_ATTRIBUTES, so test.run.id is
-// absent, and its spans do not satisfy scopedDQL's timestamp fallback either, so
-// applying it silently discards every span. See n8nServiceName.
+// Run isolation is not scopedDQL: n8n builds its own OTel resource and does not
+// read OTEL_RESOURCE_ATTRIBUTES, so the demo's collector stamps test.run.id from
+// TEST_RUN_ID instead, and the queries filter on it exactly. See n8nServiceName.
 func TestN8NOpenTelemetryOpenAI(t *testing.T) {
 	apiKey := os.Getenv("AZURE_OPENAI_API_KEY")
 	endpoint := os.Getenv("AZURE_OPENAI_ENDPOINT")
@@ -59,17 +58,17 @@ func TestN8NOpenTelemetryOpenAI(t *testing.T) {
 	triggerN8NWebhookPath(t, n8nOpenAIWebhookPath)
 
 	agentTracingDQL := fmt.Sprintf(`fetch spans, from: now()-30m
-| filter service.name == "%s"
+%s
 | filter endsWith(span.name, ".generate") or endsWith(span.name, ".stream") or startsWith(span.name, "execute_tool") or isNotNull(gen_ai.operation.name) or isNotNull(gen_ai.request.model)
 | sort timestamp desc
-| limit 1`, service)
+| limit 1`, n8nRunFilter(service))
 
 	auditN8NSpanMerged(t, "opentelemetry-openai",
 		fmt.Sprintf(`fetch spans, from: now()-30m
-| filter service.name == "%s"
+%s
 | sort timestamp desc
 | filter isNull(span.status_code) or span.status_code != "error"
-| limit 1`, service),
+| limit 1`, n8nRunFilter(service)),
 		[]string{agentTracingDQL}, false,
 		"Native n8n agent (messageAnAgent, inline Azure OpenAI agent).")
 
@@ -78,27 +77,26 @@ func TestN8NOpenTelemetryOpenAI(t *testing.T) {
 	})
 
 	assertSpanExistsWithin(t, fmt.Sprintf(`fetch spans, from: now()-30m
-| filter service.name == "%s"
+%s
 | filter span.name == "workflow.execute/%s"
-| limit 1`, service, n8nOpenAIWorkflowID), 5*time.Minute)
+| limit 1`, n8nRunFilter(service), n8nOpenAIWorkflowID), 5*time.Minute)
 }
 
-// n8nServiceName returns the service.name for this run and exports it as
-// DT_SERVICE_NAME so the Makefile bakes it into .env, where both n8n (which
-// stamps it on its spans) and the collector (which gates every transform/n8n
-// statement on it) pick it up.
-//
-// It is unique per run because that is this suite's only workable isolation
-// mechanism. scopedDQL cannot isolate n8n spans: n8n builds its own OTel
-// resource, so test.run.id is absent, and its spans do not satisfy the
-// timestamp fallback either, which silently filtered out every span. A unique
-// service.name isolates concurrent runs exactly, and lets the queries below run
-// unscoped.
+// n8nServiceName exports the fixed service.name (shared with the matrix) as
+// DT_SERVICE_NAME and the run id as TEST_RUN_ID. The Makefile bakes the name
+// into .env for n8n and the collector; compose passes TEST_RUN_ID to the
+// collector, which sets it as the test.run.id resource attribute.
 func n8nServiceName(t *testing.T) string {
 	t.Helper()
-	name := fmt.Sprintf("n8n-e2e-%s", testRunID)
+	const name = "n8n"
 	t.Setenv("DT_SERVICE_NAME", name)
+	t.Setenv("TEST_RUN_ID", testRunID)
 	return name
+}
+
+// n8nRunFilter is the DQL filter line selecting this run's n8n spans.
+func n8nRunFilter(service string) string {
+	return fmt.Sprintf("| filter service.name == %q and test.run.id == %q", service, testRunID)
 }
 
 // auditN8NSpan is auditSpan without scopedDQL. It reuses the shared report
@@ -285,8 +283,8 @@ func logN8NSpansInTenant(t *testing.T) {
 
 	// First check: does the tenant have ANY span from this service at all?
 	anySpanDQL := fmt.Sprintf(`fetch spans, from: now()-30m
-| filter service.name == "%s"
-| fields timestamp, span.name, service.name, n8n.workflow.id
+| filter service.name == %q
+| fields timestamp, span.name, service.name, test.run.id, n8n.workflow.id
 | sort timestamp desc
 | limit 5`, service)
 
@@ -306,9 +304,9 @@ func logN8NSpansInTenant(t *testing.T) {
 
 	// Spans exist for the service; check which ones carry n8n.workflow.id.
 	workflowDQL := fmt.Sprintf(`fetch spans, from: now()-30m
-| filter service.name == "%s"
+| filter service.name == %q
 | filter isNotNull(n8n.workflow.id)
-| fields timestamp, span.name, service.name, n8n.workflow.id
+| fields timestamp, span.name, service.name, test.run.id, n8n.workflow.id
 | sort timestamp desc
 | limit 5`, service)
 

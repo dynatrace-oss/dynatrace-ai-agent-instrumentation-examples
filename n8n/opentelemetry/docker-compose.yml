@@ -23,7 +23,7 @@ services:
 
   n8n:
     env_file: .env
-    image: docker.n8n.io/n8nio/n8n:2.47.3
+    image: docker.n8n.io/n8nio/n8n:2.48.4
     restart: always
     environment:
       - DB_TYPE=postgresdb
@@ -61,6 +61,8 @@ services:
         condition: service_started
   collector:
     env_file: .env
+    environment:
+      - TEST_RUN_ID
     image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.60.0
     command: ["--config=/etc/otelcol/otel-collector-config.yaml"]
     volumes:

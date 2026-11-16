@@ -29,6 +29,7 @@ func startOpenAICompatibleMock(t *testing.T, apiKeyEnvVar, baseURLEnvVar string)
 			"object":  "chat.completion",
 			"created": 1700000000,
 			"model":   os.Getenv("MODEL"),
+			"service_tier": "on_demand",
 			"choices": []map[string]interface{}{
 				{
 					"index": 0,
@@ -54,6 +55,18 @@ func startOpenAICompatibleMock(t *testing.T, apiKeyEnvVar, baseURLEnvVar string)
 	t.Cleanup(srv.Close)
 	t.Setenv(baseURLEnvVar, srv.URL)
 	t.Setenv(apiKeyEnvVar, "mock-key-for-e2e")
+	tagMockTraffic(t)
+}
+
+// tagMockTraffic marks spans from apps started after this call as mock traffic
+// (deployment.environment.name=ci-mock) so the tenant can filter them out.
+func tagMockTraffic(t *testing.T) {
+	t.Helper()
+	attrs := "deployment.environment.name=ci-mock"
+	if existing := os.Getenv("OTEL_RESOURCE_ATTRIBUTES"); existing != "" {
+		attrs = existing + "," + attrs
+	}
+	t.Setenv("OTEL_RESOURCE_ATTRIBUTES", attrs)
 }
 
 // startCohereCompatibleMock starts a local Cohere v2 API stub and wires it

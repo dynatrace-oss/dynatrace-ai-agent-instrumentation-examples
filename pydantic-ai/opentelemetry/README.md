@@ -72,7 +72,7 @@ Each `agent.run()` automatically produces nested GenAI spans with:
 | `gen_ai.usage.output_tokens` | Completion token count |
 | `gen_ai.prompt` / `gen_ai.completion` | Full prompt and response content |
 
-An outer `music_agent.ask` span (kind `SERVER`) adds API-level context including the selected provider and the user's question.
+An outer `music_agent.ask` span (kind `SERVER`) adds API-level context including the selected provider (`azure.ai.openai` or `aws.bedrock`) and the user's question. Token usage lives on the nested pydantic-ai chat spans only.
 
 ## How to use
 

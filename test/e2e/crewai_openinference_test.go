@@ -21,6 +21,14 @@ func TestCrewAIOpenInference(t *testing.T) {
 | limit 1`),
 		[]string{"gen_ai.provider.name", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.conversation.id"}, nil)
 
+	// The collector names invoke_agent spans from graph.node.id.
+	assertSpanWithAttrs(t, scopedDQL(`fetch spans, from: now()-10m
+| filter service.name == "crewai/openinference"
+| filter gen_ai.operation.name == "invoke_agent"
+| sort timestamp desc
+| limit 1`),
+		[]string{"gen_ai.agent.name"}, nil)
+
 	auditSpanWithMetrics(t, "crewai", "openinference", AzureProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "crewai/openinference"
