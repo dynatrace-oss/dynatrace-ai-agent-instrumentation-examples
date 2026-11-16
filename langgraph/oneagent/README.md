@@ -13,7 +13,7 @@ For a collector-based variant (which exports via OTLP and can redact secrets bef
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (`pip install uv`)
 - Dynatrace OneAgent installed on the host
 - An Azure OpenAI endpoint and key

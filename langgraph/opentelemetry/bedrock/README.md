@@ -18,7 +18,7 @@ Spans nested inside the graph are labelled `execute_task`, a non-spec operation 
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (`pip install uv`)
 - Docker (to run the Dynatrace Collector)
 - A Dynatrace API token with `openTelemetryTrace.ingest` and `metrics.ingest`

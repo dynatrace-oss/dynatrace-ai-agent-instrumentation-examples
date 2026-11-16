@@ -1,10 +1,13 @@
 from dynatrace import init
 init()
 
+import ast
+import operator
 import os
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from opentelemetry import trace
-from strands_tools import calculator, current_time
 
 from boto3 import Session
 from strands import Agent, tool
@@ -45,6 +48,58 @@ def create_appointment(date: str, location: str, title: str) -> str:
             new_title = contents.data.decode('utf-8')
         return f"Appointment {new_title} with at {location} in {date} created"
 
+
+_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+}
+
+
+def _eval_arith(node):
+    if isinstance(node, ast.Expression):
+        return _eval_arith(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        value = _eval_arith(node.operand)
+        return value if isinstance(node.op, ast.UAdd) else -value
+    if isinstance(node, ast.BinOp) and type(node.op) in _BINOPS:
+        return _BINOPS[type(node.op)](_eval_arith(node.left), _eval_arith(node.right))
+    raise ValueError("only basic arithmetic is supported")
+
+
+@tool
+def calculator(expression: str) -> str:
+    """
+    Evaluate a basic arithmetic expression.
+
+    strands-agents-tools removed its calculator in 0.9.0. The replacement it
+    suggests is a shell that runs arbitrary commands, so this demo keeps an
+    allowlisted evaluator for the expressions the agent is asked to compute.
+
+    Args:
+        expression (str): An arithmetic expression such as '2+2'.
+
+    Returns:
+        str: The numeric result.
+    """
+    return str(_eval_arith(ast.parse(expression, mode="eval")))
+
+
+@tool
+def current_time(timezone_name: str = "UTC") -> str:
+    """
+    Get the current date and time in ISO 8601 format.
+
+    Args:
+        timezone_name (str): IANA timezone name such as 'UTC' or 'America/New_York'.
+
+    Returns:
+        str: Current datetime in ISO 8601 format.
+    """
+    return datetime.now(ZoneInfo(timezone_name)).isoformat()
 
 
 TEMPERATURE = 0.7

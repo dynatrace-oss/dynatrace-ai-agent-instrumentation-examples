@@ -30,7 +30,7 @@ Uses [`openinference-instrumentation-langchain`](https://github.com/Arize-ai/ope
 ## Prerequisites
 
 - A Dynatrace tenant — start a free trial at https://dt-url.net/trial
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Docker (to run the Bindplane collector)
 - An Azure OpenAI endpoint and key
