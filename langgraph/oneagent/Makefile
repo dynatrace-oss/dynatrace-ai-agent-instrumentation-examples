@@ -23,17 +23,7 @@ build: ## Build container image  (APP_IMAGE, BUILD_PLATFORM)
 push: ## Build and push container image to registry
 	docker buildx build --no-cache --platform $(BUILD_PLATFORM) -t $(APP_IMAGE) --push .
 
-request: ## POST /haiku with a non-secret topic to localhost:$(PORT)
+request: ## POST /haiku with a sample topic to localhost:$(PORT)
 	curl -s -X POST http://localhost:$(PORT)/haiku \
 	  -H 'Content-Type: application/json' \
 	  -d '{"topic":"cherry blossoms in spring"}' | python3 -m json.tool
-
-request-secret: ## POST /haiku with a secret topic (redacted by OpenPipeline)
-	curl -s -X POST http://localhost:$(PORT)/haiku \
-	  -H 'Content-Type: application/json' \
-	  -d '{"topic":"the secret launch codes"}' | python3 -m json.tool
-
-request-all: ## Exercise both the redacted and non-redacted paths
-	@$(MAKE) request-secret
-	@echo
-	@$(MAKE) request

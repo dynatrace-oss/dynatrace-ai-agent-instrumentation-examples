@@ -1,0 +1,121 @@
+---
+# OpenPipeline Configuration for OpenInference (Arize Phoenix) - Groq
+#
+# OPENINFERENCE_ENABLE_GENAI_SEMCONV=true (set in app.py) makes GroqInstrumentor emit
+# gen_ai.* attributes on the span natively, alongside the existing llm.*/openinference.*
+# ones — so this pipeline no longer needs to map/rename attributes. It's now solely
+# responsible for deriving metrics server-side, since OpenInference emits no metric
+# instruments of its own (span-only by design).
+#
+# Based on:
+# - Official schema: builtin:openpipeline.spans.pipelines
+# - Retrieved via: dtctl get settings-schemas builtin:openpipeline.spans.pipelines
+
+customId: "groq-openinference-ai-spans"
+displayName: "Groq OpenInference (Arize Phoenix) AI Observability - Spans"
+
+processing:
+  processors:
+    # ============================================================================
+    # DURATION IN SECONDS (feeds the operation-duration metric below)
+    # ============================================================================
+    # The span `duration` field is in nanoseconds; gen_ai.client.operation.duration
+    # is in seconds. Materialize a seconds value here for the metric extractor.
+    # ============================================================================
+    - id: "openinference-duration-seconds"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.input_tokens`) OR isNotNull(`gen_ai.usage.output_tokens`)"
+      type: "dql"
+      description: "Compute LLM call duration in seconds (span duration is nanoseconds)"
+      dql:
+        script: |
+          fieldsAdd duration_seconds = toDouble(duration) / 1000000000.0
+
+# ==============================================================================
+# METRIC EXTRACTION
+# ==============================================================================
+# OpenInference is span-only by design (_supports_metrics=False), so neither
+# gen_ai.client.operation.duration nor gen_ai.client.token.usage is emitted
+# natively. Both are re-created here from the gen_ai.* attributes the SDK already
+# sets on the span — the server-side equivalent of the span_metrics /
+# signal_to_metrics connectors in otel-collector-config.yaml.
+# ==============================================================================
+metricExtraction:
+  processors:
+    - id: "openinference-operation-duration-metric"
+      enabled: true
+      matcher: "isNotNull(duration_seconds)"
+      type: "samplingAwareHistogramMetric"
+      description: "Extract gen_ai.client.operation.duration from OpenInference LLM spans"
+      samplingAwareHistogramMetric:
+        metricKey: "gen_ai.client.operation.duration"
+        measurement: "field"
+        field: "duration_seconds"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    # ============================================================================
+    # TOKEN USAGE — two extractors, same metric key, aliased dimension
+    # ============================================================================
+    - id: "openinference-token-usage-input-metric"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.input_tokens`)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (input tokens) from OpenInference spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.input_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "input"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"
+
+    - id: "openinference-token-usage-output-metric"
+      enabled: true
+      matcher: "isNotNull(`gen_ai.usage.output_tokens`)"
+      type: "samplingAwareValueMetric"
+      description: "Extract gen_ai.client.token.usage (output tokens) from OpenInference spans"
+      samplingAwareValueMetric:
+        metricKey: "gen_ai.client.token.usage"
+        measurement: "field"
+        field: "gen_ai.usage.output_tokens"
+        aggregation: "enabled"
+        sampling: "enabled"
+        dimensions:
+          - extractionType: "constant"
+            constantFieldName: "gen_ai.token.type"
+            constantValue: "output"
+          - extractionType: "field"
+            sourceFieldName: "service.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.operation.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.provider.name"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.request.model"
+          - extractionType: "field"
+            sourceFieldName: "gen_ai.response.model"

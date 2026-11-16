@@ -21,7 +21,12 @@ async def haiku() -> str:
     def _call() -> str:
         response = co.chat(
             model=MODEL,
-            messages=[{"role": "user", "content": "Write a haiku."}],
+            messages=[
+                {"role": "system", "content": "You are a haiku poet."},
+                {"role": "user", "content": "Write a haiku."},
+            ],
+            temperature=1.0,
+            max_tokens=2000,
         )
         return response.message.content[0].text
 

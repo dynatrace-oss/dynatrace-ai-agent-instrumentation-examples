@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -45,6 +47,8 @@ type SpanReport struct {
 	Required        []AttributeResult `json:"required"`
 	Optional        []AttributeResult `json:"optional"`
 	Metrics         []MetricResult    `json:"metrics,omitempty"`
+	Untracked       []string          `json:"untracked,omitempty"` // gen_ai.* attributes seen on the trace but not in the baseline
+	TestRunID       string            `json:"test_run_id"`
 	GeneratedAt     string            `json:"generated_at"`
 }
 
@@ -142,6 +146,84 @@ var GuardrailProfile = Profile{
 	},
 }
 
+// ApplyGuardrailProfile checks Bedrock's standalone ApplyGuardrail API
+// (client.apply_guardrail), which openinference-instrumentation-bedrock traces as
+// its own OpenInference "GUARDRAIL"-kind span — structurally distinct from the
+// Converse guardrailConfig path GuardrailProfile checks. It intentionally does NOT
+// check gen_ai.bedrock.guardrail.{content,topics,words,sensitive_info} the way
+// GuardrailProfile does: the ApplyGuardrail wrapper never puts that assessment
+// breakdown into span attributes at all (only action/actionReason/outputs), so
+// there's nothing for a collector transform to reconstruct it from. It also does
+// not check for a gen_ai.bedrock.guardrail.* / gen_ai.guardrail.id projection more
+// generally — genainormalizer's "openinference" source has no such mapping (its
+// LookupTable only renames LLM-kind model/token/tool/agent/session attributes; see
+// genainormalizerprocessor/internal/openinference/mappings.go upstream), and no
+// collector config in this repo adds one for aws-bedrock/openinference either
+// (sdk-comparison-baseline.md documents gen_ai.guardrail.id as "extracted from
+// llm.invocation_parameters by the collector transform/llm-invocation-params
+// processor (OpenInference path)", but no such processor exists anywhere in this
+// repo — that line is aspirational baseline, not shipped normalization). So this
+// profile checks the raw OpenInference span/IO attributes the wrapper actually
+// sets. Note that openinference.span.kind itself does not survive as-is: the
+// generic LookupTable renames it to gen_ai.operation.name (with remove_originals
+// dropping the original), so the DQL anchor query for this profile must filter on
+// gen_ai.operation.name == "GUARDRAIL", not openinference.span.kind.
+var ApplyGuardrailProfile = Profile{
+	Name: "bedrock-apply-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.operation.name"},
+		{Name: "output.value"},
+		{Name: "metadata"},
+	},
+	Optional: []AttributeCheck{
+		{Name: "input.value"},
+	},
+}
+
+var OneAgentGuardrailProfile = Profile{
+	Name: "oneagent-bedrock-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.guardrail.input.sensitive_information.piis", RuleID: "AR-057"},
+		{Name: "gen_ai.guardrail.input.content", RuleID: "AR-058"},
+		{Name: "gen_ai.guardrail.input.topic.names", RuleID: "AR-059"},
+		{Name: "gen_ai.guardrail.id", RuleID: "AR-050"},
+		{Name: "gen_ai.guardrail.version", RuleID: "AR-051"},
+	},
+	Optional: []AttributeCheck{
+		{Name: "gen_ai.guardrail.output.contextual", RuleID: "AR-060"},
+		{Name: "gen_ai.guardrail.input.words.matches", RuleID: "AR-061"},
+	},
+}
+
+// OpenAIOneAgentGuardrailProfile checks the guardrail attributes OneAgent's Python
+// OpenAI sensor derives from Azure OpenAI content-filter payloads when the GenAI
+// captureGuardrails feature is enabled. The sensor writes its own provider-neutral
+// gen_ai.guardrail.* namespace — not the Bedrock-scoped gen_ai.bedrock.guardrail.*
+// attributes (AR-017..AR-019), which this SDK can never emit because it never talks
+// to Bedrock, and not the raw gen_ai.prompt.prompt_filter_results /
+// gen_ai.completion.content_filter_results blobs (AR-015/AR-016) either, which
+// OneAgent-sourced spans never carry.
+//
+// Only the category-filter attribute is required, via an AnyOf over the input and
+// output side: which side fires depends on whether Azure filtered the prompt or the
+// completion, and a single request trips one or the other, never reliably both.
+// Blocklist names need a custom blocklist configured on the deployment, and the PII
+// attribute exists on the output side only — Azure never reports PII on the prompt —
+// so both stay optional.
+var OpenAIOneAgentGuardrailProfile = Profile{
+	Name: "oneagent-openai-guardrail",
+	Required: []AttributeCheck{
+		{Name: "gen_ai.guardrail.input.content", RuleID: "AR-058",
+			AnyOf: []string{"gen_ai.guardrail.input.content", "gen_ai.guardrail.output.content"}},
+	},
+	Optional: []AttributeCheck{
+		{Name: "gen_ai.guardrail.output.content", RuleID: "AR-062"},
+		{Name: "gen_ai.guardrail.input.words.lists", RuleID: "AR-063"},
+		{Name: "gen_ai.guardrail.output.words.lists", RuleID: "AR-064"},
+		{Name: "gen_ai.guardrail.output.sensitive_information.piis", RuleID: "AR-065"},
+	},
+}
+
 // OpenAIProfile extends generic with OpenAI prompt-caching attributes.
 var OpenAIProfile Profile
 
@@ -152,6 +234,23 @@ func init() {
 		Optional: append(append([]AttributeCheck{}, genericOptional...),
 			AttributeCheck{Name: "gen_ai.prompt_caching", RuleID: "AR-022"},
 			AttributeCheck{Name: "gen_ai.cache.type", RuleID: "AR-023"},
+		),
+	}
+}
+
+// AnthropicProfile extends generic with Anthropic (native and Bedrock) prompt-caching
+// attributes. Only one of the two ever populates on a given span — a request either
+// writes the cache or reads from it, never both — so both are optional rather than
+// required.
+var AnthropicProfile Profile
+
+func init() {
+	AnthropicProfile = Profile{
+		Name:     "anthropic",
+		Required: append([]AttributeCheck{}, genericRequired...),
+		Optional: append(append([]AttributeCheck{}, genericOptional...),
+			AttributeCheck{Name: "gen_ai.usage.prompt_caching.read_tokens", RuleID: "AR-052"},
+			AttributeCheck{Name: "gen_ai.usage.prompt_caching.write_tokens", RuleID: "AR-053"},
 		),
 	}
 }
@@ -257,8 +356,98 @@ func buildReport(sdk, instrumentation string, p Profile, span map[string]interfa
 		Verdict:         verdict,
 		Required:        required,
 		Optional:        optional,
+		Untracked:       untrackedAttributes(span, baselineNames()),
 		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
 	}
+}
+
+// indexedLegacyAttr matches legacy indexed message keys such as gen_ai.prompt.0.content.
+var indexedLegacyAttr = regexp.MustCompile(`^gen_ai\.(prompt|completion)\.\d+\.`)
+
+// untrackedAttributes returns the sorted gen_ai.* keys of span that are not in known.
+func untrackedAttributes(span map[string]interface{}, known map[string]bool) []string {
+	var out []string
+	for k, v := range span {
+		if !strings.HasPrefix(k, "gen_ai.") || known[k] || indexedLegacyAttr.MatchString(k) {
+			continue
+		}
+		if v == nil || fmt.Sprint(v) == "" {
+			continue
+		}
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+var (
+	baselineNamesOnce sync.Once
+	baselineNameSet   map[string]bool
+)
+
+// baselineNames returns every attribute and metric name listed in
+// sdk-comparison-baseline.json, including normalization fallbacks.
+func baselineNames() map[string]bool {
+	baselineNamesOnce.Do(func() {
+		baselineNameSet = map[string]bool{}
+		data, err := os.ReadFile(filepath.Join(repoRoot(), "test", "e2e", "sdk-comparison-baseline.json"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: read baseline: %v\n", err)
+			return
+		}
+		names, err := parseBaselineNames(data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: parse baseline: %v\n", err)
+			return
+		}
+		baselineNameSet = names
+	})
+	return baselineNameSet
+}
+
+// parseBaselineNames collects the names from the baseline's attributes,
+// non_sdk_fields, rule-ID map and normalization rules.
+func parseBaselineNames(data []byte) (map[string]bool, error) {
+	var b struct {
+		Attributes []struct {
+			Name string `json:"name"`
+		} `json:"attributes"`
+		NonSDKFields []struct {
+			Name string `json:"name"`
+		} `json:"non_sdk_fields"`
+		Contract struct {
+			RuleIDs       map[string]string `json:"attribute_rule_ids"`
+			Normalization struct {
+				Equivalents     [][]string          `json:"equivalents_any_of"`
+				LegacyFallbacks map[string][]string `json:"legacy_fallbacks"`
+			} `json:"normalization"`
+		} `json:"comparison_contract"`
+	}
+	if err := json.Unmarshal(data, &b); err != nil {
+		return nil, err
+	}
+	names := map[string]bool{}
+	for _, a := range b.Attributes {
+		names[a.Name] = true
+	}
+	for _, f := range b.NonSDKFields {
+		names[f.Name] = true
+	}
+	for n := range b.Contract.RuleIDs {
+		names[n] = true
+	}
+	for _, group := range b.Contract.Normalization.Equivalents {
+		for _, n := range group {
+			names[n] = true
+		}
+	}
+	for k, vs := range b.Contract.Normalization.LegacyFallbacks {
+		names[k] = true
+		for _, n := range vs {
+			names[n] = true
+		}
+	}
+	return names, nil
 }
 
 // writeReport writes both a JSON and a markdown report to test/e2e/reports/.
@@ -270,6 +459,9 @@ func writeReport(t *testing.T, r SpanReport) {
 		return
 	}
 	base := filepath.Join(dir, r.SDK+"-"+r.Instrumentation)
+	if r.TestRunID == "" {
+		r.TestRunID = testRunID
+	}
 
 	jsonData, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
@@ -292,6 +484,10 @@ func buildMarkdown(r SpanReport) string {
 	fmt.Fprintf(&sb, "# %s / %s — Span Audit Report\n\n", r.SDK, r.Instrumentation)
 	fmt.Fprintf(&sb, "**Profile:** %s | **Verdict:** %s %s | **Generated:** %s\n\n",
 		r.Profile, icon, r.Verdict, r.GeneratedAt)
+	if r.TestRunID != "" {
+		fmt.Fprintf(&sb, "**Test run ID:** `%s` (span resource attribute `test.run.id`)\n\n",
+			r.TestRunID)
+	}
 	if r.Note != "" {
 		fmt.Fprintf(&sb, "> **Note:** %s\n\n", r.Note)
 	}
@@ -326,6 +522,14 @@ func buildMarkdown(r SpanReport) string {
 				icon = "✅"
 			}
 			fmt.Fprintf(&sb, "| `%s` | %s %s |\n", m.Metric, icon, m.Status)
+		}
+	}
+
+	if len(r.Untracked) > 0 {
+		sb.WriteString("\n## Untracked GenAI Attributes\n\n")
+		sb.WriteString("Seen on this trace but not in `sdk-comparison-baseline.json`. Informational only; consider adding them to the baseline.\n\n")
+		for _, a := range r.Untracked {
+			fmt.Fprintf(&sb, "- `%s`\n", a)
 		}
 	}
 
@@ -370,19 +574,11 @@ func assertNotErrorSpan(t *testing.T, span map[string]interface{}) {
 //     a resource attribute. DQL matches on the exact value → zero cross-run
 //     interference even when two pipelines run simultaneously.
 //
-//  2. OneAgent apps (anthropic/oneagent, openai/oneagent, aws-bedrock/oneagent)
-//     OneAgent replaces the OTel TracerProvider with its own passive runtime
-//     instrumentation. It does NOT read OTEL_RESOURCE_ATTRIBUTES, so test.run.id
-//     is absent from those spans. The fallback branch (isNull(test.run.id) AND
-//     timestamp >= suiteStartTime) provides time-based isolation instead.
-//
-//     Time-based isolation is sufficient here because the OneAgent DQL queries
-//     already carry two narrow filters — service.name (unique per app) and
-//     dt.openpipeline.source == "oneagent" — making it practically impossible
-//     for a span from a different concurrent run to satisfy all filters within
-//     the same time window. The CI matrix also only triggers OneAgent tests when
-//     the relevant app directory changes, further reducing the chance of two
-//     pipelines running the identical test at the same time.
+//  2. OneAgent apps
+//     OneAgent also propagates OTEL_RESOURCE_ATTRIBUTES onto its spans, so they
+//     carry test.run.id and match the first branch. The fallback branch
+//     (isNull(test.run.id) AND timestamp >= suiteStartTime) is kept as a safety
+//     net for any instrumentation that drops the attribute.
 //
 // The filter is inserted after the first line (the fetch statement) so it
 // evaluates before any sort or limit that the caller may have written.
@@ -410,6 +606,43 @@ func auditSpan(t *testing.T, sdk, instrumentation string, p Profile, dql string,
 	report, spanCount := buildSpanReport(t, sdk, instrumentation, p, dql, note...)
 	writeReport(t, report)
 	logAuditResult(t, report, spanCount)
+}
+
+// auditSpanMerged is like auditSpan but polls for one anchor span per DQL in dqls,
+// independently, then merges every span from every anchor's trace into a single
+// picture before evaluating the profile. Use this when an attribute pair can only
+// ever appear on different anchor spans in the same test run — e.g. a cache WRITE
+// on one call and a cache READ on a later call — so a single-anchor auditSpan would
+// only ever see one of the two, never both. Each dql must independently narrow down
+// to its own anchor (e.g. by filtering on the specific attribute it is meant to
+// surface); running them one at a time avoids PollUntilSpans returning early with
+// fewer results than expected (it returns as soon as it sees any record, not once a
+// target count is reached, so a single query with `limit N` can't reliably wait for
+// N distinct spans).
+func auditSpanMerged(t *testing.T, sdk, instrumentation string, p Profile, dqls []string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	var allSpans []map[string]interface{}
+	for _, dql := range dqls {
+		records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+		if err != nil {
+			t.Fatalf("poll DT spans: %v", err)
+		}
+		if len(records) == 0 {
+			t.Fatalf("no spans returned from DT for query: %s", dql)
+		}
+		assertNotErrorSpan(t, records[0])
+		allSpans = append(allSpans, fetchTraceSpans(t, ctx, records[0])...)
+	}
+
+	report := buildReport(sdk, instrumentation, p, mergeSpans(allSpans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+	logAuditResult(t, report, len(allSpans))
 }
 
 // spanPollTimeout is how long to poll Dynatrace for an anchor span before
@@ -465,6 +698,9 @@ func logAuditResult(t *testing.T, report SpanReport, spanCount int) {
 			t.Logf("metric missing: %s", m.Metric)
 		}
 	}
+	if len(report.Untracked) > 0 {
+		t.Logf("untracked gen_ai attributes (not in baseline): %s", strings.Join(report.Untracked, ", "))
+	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
 		report.Verdict, spanCount, report.SDK, report.Instrumentation)
 }
@@ -497,6 +733,9 @@ func auditSpanOptional(t *testing.T, sdk, instrumentation string, p Profile, dql
 			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
 		}
 	}
+	if len(report.Untracked) > 0 {
+		t.Logf("untracked gen_ai attributes (not in baseline): %s", strings.Join(report.Untracked, ", "))
+	}
 	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
 		report.Verdict, len(spans), sdk, instrumentation)
 }
@@ -513,11 +752,95 @@ func auditGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...
 	auditSpanOptional(t, sdk, instrumentation+"-guardrail", GuardrailProfile, dql, note...)
 }
 
+func auditOneAgentGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	auditSpanOptional(t, sdk, instrumentation+"-guardrail", OneAgentGuardrailProfile, dql, note...)
+}
+
+// auditOpenAIGuardrailSpan audits the Azure OpenAI content-filter activation
+// captured by OneAgent's Python OpenAI sensor against
+// OpenAIOneAgentGuardrailProfile. It cannot reuse auditSpanOptional: when Azure
+// filters the prompt the SDK raises BadRequestError and OneAgent marks the span
+// span.status_code = "error" — the expected outcome here — whereas
+// auditSpanOptional treats an error span as a failure via assertNotErrorSpan.
+// Skips (rather than fails) when no anchor span is found, since the trigger
+// no-ops off Azure and the filter only attaches attributes on a request it
+// actually intervened on. Reports are written under "<instrumentation>-guardrail"
+// so they never collide with the baseline auditSpan report for the same suite.
+func auditOpenAIGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s guardrail spans found — content filter did not intervene this run", sdk, instrumentation)
+		return
+	}
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation+"-guardrail", OpenAIOneAgentGuardrailProfile, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+	logAuditResult(t, report, len(spans))
+}
+
+// auditApplyGuardrailSpan audits the guardrail-triggering call from
+// triggerApplyGuardrail against ApplyGuardrailProfile. It cannot reuse
+// auditSpanOptional/auditGuardrailSpan: _apply_guardrail_wrapper
+// (openinference-instrumentation-bedrock) sets the span's OTel status to ERROR
+// when the guardrail actually blocks content — the expected, asserted-for outcome
+// here — whereas every other audit helper in this file treats
+// span.status_code == "error" as a failure via assertNotErrorSpan. Skips (rather
+// than fails) when no anchor span is found, since triggerApplyGuardrail no-ops
+// when BEDROCK_GUARDRAIL_ID is unset. Reports are written under
+// "<instrumentation>-apply-guardrail" so they never collide with the baseline or
+// GuardrailProfile reports for the same suite.
+func auditApplyGuardrailSpan(t *testing.T, sdk, instrumentation, dql string, note ...string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), spanPollTimeout())
+	defer cancel()
+
+	records, err := dtClient.PollUntilSpans(ctx, scopedDQL(dql), 15*time.Second)
+	if err != nil || len(records) == 0 {
+		t.Skipf("no %s/%s apply_guardrail spans found — guardrail likely not configured this run", sdk, instrumentation)
+		return
+	}
+	if v, ok := records[0]["span.status_code"]; !ok || fmt.Sprint(v) != "error" {
+		t.Fatalf("expected the guardrail-triggering apply_guardrail span to have span.status_code=error (guardrail should have blocked the request): %v", records[0])
+	}
+
+	spans := fetchTraceSpans(t, ctx, records[0])
+	report := buildReport(sdk, instrumentation+"-apply-guardrail", ApplyGuardrailProfile, mergeSpans(spans))
+	if len(note) > 0 {
+		report.Note = note[0]
+	}
+	writeReport(t, report)
+
+	for _, r := range report.Required {
+		if r.Status == "fail" {
+			t.Logf("required attribute missing [%s] %s", r.RuleID, r.Attribute)
+		}
+	}
+	if len(report.Untracked) > 0 {
+		t.Logf("untracked gen_ai attributes (not in baseline): %s", strings.Join(report.Untracked, ", "))
+	}
+	t.Logf("audit verdict: %s (%d spans in trace) — report written to reports/%s-%s.{json,md}",
+		report.Verdict, len(spans), sdk, instrumentation+"-apply-guardrail")
+}
+
 // fetchTraceSpans fetches all spans belonging to the same trace as anchor,
 // scoped to the same service.name. Polls until the span count stabilizes
-// (two consecutive equal non-zero counts) so spans that arrive in Dynatrace
-// at different times are not missed. Uses a fresh 2-minute budget independent
+// (traceStablePolls consecutive equal non-zero counts) so spans that arrive in
+// Dynatrace at different times are not missed. Uses a fresh 2-minute budget independent
 // of the anchor-poll context.
+// traceStablePolls is how many consecutive polls (15s apart) must return the
+// same span count before a trace counts as complete. Ingestion can pause for a
+// full poll interval while later spans are still in flight.
+const traceStablePolls = 3
+
 func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interface{}) []map[string]interface{} {
 	t.Helper()
 
@@ -535,12 +858,12 @@ func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interfac
 		svcName, traceIDStr,
 	)
 
-	// Poll until the span count stabilizes (two consecutive equal non-zero counts).
 	// Fresh 2-minute budget so anchor-poll time does not reduce this window.
 	stableCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	lastCount := -1
+	stablePolls := 0
 	var lastSpans []map[string]interface{}
 
 	for {
@@ -551,6 +874,11 @@ func fetchTraceSpans(t *testing.T, _ context.Context, anchor map[string]interfac
 		}
 
 		if len(spans) > 0 && len(spans) == lastCount {
+			stablePolls++
+		} else {
+			stablePolls = 1
+		}
+		if len(spans) > 0 && stablePolls >= traceStablePolls {
 			t.Logf("trace spans stabilized at %d", len(spans))
 			return spans
 		}

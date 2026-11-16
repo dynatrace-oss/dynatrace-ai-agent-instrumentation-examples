@@ -1,6 +1,10 @@
 import os
+import uuid
 
 import boto3
+from openinference.instrumentation import using_attributes
+
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
 
 
 def _guardrail_config():
@@ -68,13 +72,34 @@ def write_haiku(topic: str) -> str:
         "modelId": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
         "system": [{"text": _SYSTEM_PROMPT}],
         "messages": [{"role": "user", "content": [{"text": f"Topic: {topic}"}]}],
+        "inferenceConfig": {"temperature": 1.0, "maxTokens": 2000},
     }
     gc = _guardrail_config()
     if gc:
         kwargs["guardrailConfig"] = gc
-    response = _get_client().converse(**kwargs)
+    with using_attributes(session_id=str(uuid.uuid4())):
+        response = _get_client().converse(**kwargs)
     content = response["output"]["message"]["content"]
     return content[0]["text"] if content else "(blocked by guardrail)"
+
+
+def apply_guardrail(text: str) -> str:
+    """Calls Bedrock's standalone ApplyGuardrail API directly, rather than as part
+    of a Converse call. BedrockInstrumentor traces this as its own span with
+    openinference.span.kind = GUARDRAIL, distinct from the LLM-kind spans write_haiku
+    produces. Returns the guardrail action ("NONE" or "GUARDRAIL_INTERVENED"), or
+    "SKIPPED" when no guardrail is configured.
+    """
+    guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID")
+    if not guardrail_id:
+        return "SKIPPED"
+    response = _get_client().apply_guardrail(
+        guardrailIdentifier=guardrail_id,
+        guardrailVersion=os.environ.get("BEDROCK_GUARDRAIL_VERSION", "DRAFT"),
+        source="INPUT",
+        content=[{"text": {"text": text}}],
+    )
+    return response.get("action", "NONE")
 
 
 def main():

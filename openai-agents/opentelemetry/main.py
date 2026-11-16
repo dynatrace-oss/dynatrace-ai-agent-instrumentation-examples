@@ -19,19 +19,20 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 import os
 
 from openai import AsyncAzureOpenAI
-from agents import set_default_openai_client, OpenAIChatCompletionsModel
+from agents import set_default_openai_client, OpenAIResponsesModel
+# The Responses API needs a newer api-version than chat completions, and takes
+# the deployment from `model` rather than from the request URL.
 openai_client = AsyncAzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+    api_version=os.getenv("AZURE_OPENAI_RESPONSES_API_VERSION", "2025-04-01-preview"),
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT")
 )
 
 # Set the default OpenAI client for the Agents SDK
 set_default_openai_client(openai_client)
 
-__model = OpenAIChatCompletionsModel(
-    model='genai-demo',
+__model = OpenAIResponsesModel(
+    model=os.getenv("AZURE_OPENAI_DEPLOYMENT", "genai-demo"),
     openai_client=openai_client,
 )
 

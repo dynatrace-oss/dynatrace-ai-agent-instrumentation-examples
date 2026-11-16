@@ -6,8 +6,7 @@ turns that tool call into a real downstream span, so the trace spans two
 services instead of failing with connection-refused.
 
 Traces are exported to the same OTLP endpoint as the agent (the local OTel
-Collector by default, or Dynatrace directly when run via run-openpipeline),
-so the server span joins the agent's distributed trace via context
+Collector by default), so the server span joins the agent's distributed trace via context
 propagation from the incoming request headers.
 """
 import os

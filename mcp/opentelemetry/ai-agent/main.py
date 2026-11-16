@@ -1,19 +1,26 @@
 import os
 import random
+import uuid
 
 from dynatrace import setup_tracing
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from pydantic import BaseModel
 from langchain.chat_models import init_chat_model
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
+
+
+# Keeps each conversation's message history, keyed by thread_id.
+checkpointer = InMemorySaver()
 
 
 def setup_instrumentation():
     setup_tracing("mcp-agent-demo")
 
 
-async def run_agent(message: str) -> str:
+async def run_agent(message: str, conversation_id: str | None = None) -> tuple[str, str]:
+    conversation_id = conversation_id or str(uuid.uuid4())
     mcp_client = MultiServerMCPClient(
         {
             "weather": {
@@ -50,18 +57,21 @@ async def run_agent(message: str) -> str:
         model=model,
         tools=tools,
         response_format=WeatherResponse,
+        checkpointer=checkpointer,
         prompt="You are a helpful assistant that provides weather information for the retrieved city.",
     )
 
+    # The LangChain instrumentation reports thread_id as gen_ai.conversation.id.
     response = await agent.ainvoke(
-        {"messages": [{"role": "user", "content": message}]}
+        {"messages": [{"role": "user", "content": message}]},
+        config={"configurable": {"thread_id": conversation_id}},
     )
 
-    return response["structured_response"].response
+    return response["structured_response"].response, conversation_id
 
 
 if __name__ == "__main__":
     import asyncio
     setup_instrumentation()
-    result = asyncio.run(run_agent("what is the weather?"))
-    print(result)
+    result, conversation_id = asyncio.run(run_agent("what is the weather?"))
+    print(f"[{conversation_id}] {result}")

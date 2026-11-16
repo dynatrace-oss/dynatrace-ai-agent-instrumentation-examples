@@ -1,0 +1,677 @@
+{
+  "version": 21,
+  "variables": [],
+  "tiles": {
+    "h": {
+      "type": "markdown",
+      "content": "## CURSOR ENTERPRISE OTEL \u2014 LOG & METRIC ANALYTICS\nCursor exports OTLP/HTTP protobuf **logs and delta metrics, not traces**. This dashboard extracts model, token, latency, conversation, user, tool, skill, hook, and optional message-content insights."
+    },
+    "r": {
+      "title": "API requests",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.api.request\" or content == \"api_request\")\n| summarize Requests = count()",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Requests",
+          "recordField": "Requests",
+          "trend": {
+            "isVisible": false
+          },
+          "sparklineSettings": {
+            "isVisible": false
+          }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "e": {
+      "title": "API errors",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.api.error\" or content == \"api_error\")\n| summarize Errors = count()",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Errors",
+          "recordField": "Errors",
+          "trend": {
+            "isVisible": false
+          },
+          "sparklineSettings": {
+            "isVisible": false
+          }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "c": {
+      "title": "Conversations",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\" and isNotNull(cursor.conversation.id)\n| summarize Conversations = countDistinct(cursor.conversation.id)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Conversations",
+          "recordField": "Conversations",
+          "trend": {
+            "isVisible": false
+          },
+          "sparklineSettings": {
+            "isVisible": false
+          }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "u": {
+      "title": "Users",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\" and isNotNull(cursor.user.id)\n| summarize Users = countDistinct(cursor.user.id)",
+      "visualization": "singleValue",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "singleValue": {
+          "label": "Users",
+          "recordField": "Users",
+          "trend": {
+            "isVisible": false
+          },
+          "sparklineSettings": {
+            "isVisible": false
+          }
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "tok": {
+      "title": "Token usage",
+      "type": "data",
+      "query": "timeseries Tokens = sum(`cursor.token.usage`), by: {cursor.token.type}",
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "cost": {
+      "title": "Estimated cost",
+      "type": "data",
+      "query": "timeseries EstimatedCost = sum(`cursor.cost.usage`)",
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "model": {
+      "title": "Requests by model",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.api.request\" or content == \"api_request\")\n| summarize Requests = count(), by: {cursor.model.name}\n| sort Requests desc",
+      "visualization": "categoricalBarChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "table": {
+      "title": "Request tokens by model",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.api.request\" or content == \"api_request\")\n| fieldsAdd Input = toLong(cursor.api.request.input_tokens), Output = toLong(cursor.api.request.output_tokens), CacheRead = toLong(cursor.api.request.cache_read_tokens), CacheCreation = toLong(cursor.api.request.cache_creation_tokens)\n| summarize InputTokens = sum(Input), OutputTokens = sum(Output), CacheReadTokens = sum(CacheRead), CacheCreationTokens = sum(CacheCreation), by: {cursor.model.name}\n| sort InputTokens desc",
+      "visualization": "table",
+      "visualizationSettings": {
+        "autoSelectVisualization": false
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "lat": {
+      "title": "Average request latency",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.api.request\" or content == \"api_request\")\n| makeTimeseries AvgDurationMs = avg(toLong(cursor.api.request.duration_ms))",
+      "visualization": "lineChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "surf": {
+      "title": "Activity by surface",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| summarize Events = count(), by: {cursor.surface}\n| sort Events desc",
+      "visualization": "pieChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "events": {
+      "title": "Event volume",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| makeTimeseries Events = count(), by: {`event.name`}",
+      "visualization": "areaChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "skills": {
+      "title": "Activated skills",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.skill.activated\" or content == \"skill_activated\")\n| summarize Activations = count(), by: {cursor.skill.name}\n| sort Activations desc",
+      "visualization": "categoricalBarChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "hooks": {
+      "title": "Hook outcomes",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.hook.execution_complete\" or content == \"hook_execution_complete\")\n| summarize Executions = count(), AvgDurationMs = avg(toLong(cursor.hook.duration_ms)), by: {cursor.hook.name, cursor.hook.outcome}\n| sort Executions desc",
+      "visualization": "table",
+      "visualizationSettings": {
+        "autoSelectVisualization": false
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "tools": {
+      "title": "Tool calls",
+      "type": "data",
+      "query": "timeseries Calls = sum(`cursor.tool.calls`), by: {cursor.tool.kind}",
+      "visualization": "categoricalBarChart",
+      "visualizationSettings": {
+        "autoSelectVisualization": false,
+        "chartSettings": {
+          "legend": {
+            "position": "bottom"
+          }
+        },
+        "coloring": {
+          "colorRules": [
+            {
+              "field": "DT.name",
+              "type": "string",
+              "comparator": "= *value*",
+              "value": "",
+              "colorMode": "color-palette",
+              "colorPalette": "purple-rain"
+            }
+          ]
+        }
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "busy": {
+      "title": "Busiest conversations by tokens",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter (`event.name` == \"cursor.api.request\" or content == \"api_request\")\n| fieldsAdd Conversation = cursor.conversation.id, InputTokens = coalesce(toLong(cursor.api.request.input_tokens), 0), OutputTokens = coalesce(toLong(cursor.api.request.output_tokens), 0)\n| summarize Requests = count(), InputTokens = sum(InputTokens), OutputTokens = sum(OutputTokens), by: {Conversation}\n| fieldsAdd TotalTokens = InputTokens + OutputTokens\n| sort TotalTokens desc\n| limit 50",
+      "visualization": "table",
+      "visualizationSettings": {
+        "autoSelectVisualization": false
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "msg": {
+      "title": "Conversation messages (opt-in)",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| filter `event.name` == \"cursor.conversation.user_message\" or `event.name` == \"cursor.conversation.assistant_message\" or `event.name` == \"cursor.conversation.tool_io\"\n| fields timestamp, `event.name`, cursor.conversation.id, cursor.conversation.turn.id, cursor.conversation.content_truncated, content\n| sort timestamp desc\n| limit 100",
+      "visualization": "table",
+      "visualizationSettings": {
+        "autoSelectVisualization": false
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    },
+    "stream": {
+      "title": "Recent Cursor events",
+      "type": "data",
+      "query": "fetch logs\n| filter `service.name` == \"cursor\"\n| fields timestamp, `event.name`, cursor.user.id, cursor.surface, cursor.conversation.id, cursor.request.id, cursor.model.name, content\n| sort timestamp desc\n| limit 100",
+      "visualization": "table",
+      "visualizationSettings": {
+        "autoSelectVisualization": false
+      },
+      "querySettings": {
+        "maxResultRecords": 1000,
+        "defaultScanLimitGbytes": 500,
+        "maxResultMegaBytes": 100,
+        "defaultSamplingRatio": 10,
+        "enableSampling": false
+      },
+      "davis": {
+        "enabled": false,
+        "davisVisualization": {
+          "isAvailable": true
+        }
+      }
+    }
+  },
+  "layouts": {
+    "h": {
+      "x": 0,
+      "y": 0,
+      "w": 24,
+      "h": 4
+    },
+    "r": {
+      "x": 0,
+      "y": 4,
+      "w": 6,
+      "h": 4
+    },
+    "e": {
+      "x": 6,
+      "y": 4,
+      "w": 6,
+      "h": 4
+    },
+    "c": {
+      "x": 12,
+      "y": 4,
+      "w": 6,
+      "h": 4
+    },
+    "u": {
+      "x": 18,
+      "y": 4,
+      "w": 6,
+      "h": 4
+    },
+    "tok": {
+      "x": 0,
+      "y": 8,
+      "w": 12,
+      "h": 6
+    },
+    "cost": {
+      "x": 12,
+      "y": 8,
+      "w": 12,
+      "h": 6
+    },
+    "model": {
+      "x": 0,
+      "y": 14,
+      "w": 8,
+      "h": 6
+    },
+    "table": {
+      "x": 8,
+      "y": 14,
+      "w": 10,
+      "h": 6
+    },
+    "lat": {
+      "x": 18,
+      "y": 14,
+      "w": 6,
+      "h": 6
+    },
+    "surf": {
+      "x": 0,
+      "y": 20,
+      "w": 8,
+      "h": 6
+    },
+    "events": {
+      "x": 8,
+      "y": 20,
+      "w": 16,
+      "h": 6
+    },
+    "skills": {
+      "x": 0,
+      "y": 26,
+      "w": 8,
+      "h": 6
+    },
+    "hooks": {
+      "x": 8,
+      "y": 26,
+      "w": 10,
+      "h": 6
+    },
+    "tools": {
+      "x": 18,
+      "y": 26,
+      "w": 6,
+      "h": 6
+    },
+    "busy": {
+      "x": 0,
+      "y": 32,
+      "w": 24,
+      "h": 7
+    },
+    "msg": {
+      "x": 0,
+      "y": 39,
+      "w": 24,
+      "h": 7
+    },
+    "stream": {
+      "x": 0,
+      "y": 46,
+      "w": 24,
+      "h": 7
+    }
+  },
+  "importedWithCode": false,
+  "settings": {
+    "gridLayout": {
+      "mode": "responsive"
+    }
+  },
+  "annotations": []
+}

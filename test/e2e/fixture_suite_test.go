@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,16 +14,13 @@ var dtClient *dynatrace.Client
 
 // testRunID is a nanosecond-precision identifier generated once per test suite
 // run. It is propagated to every app process via OTEL_RESOURCE_ATTRIBUTES so
-// that OTel SDK apps (Python Resource.create(), Node.js NodeSDK auto-detection)
-// include it as a span resource attribute. scopedDQL in audit_test.go then
-// filters DQL queries to only spans carrying this ID, giving exact per-run
+// that OTel SDK and OneAgent apps include it as a span resource attribute.
+// scopedDQL in fixture_audit_test.go then filters DQL queries to only spans carrying this ID, giving exact per-run
 // isolation even when two pipelines execute simultaneously.
-//
-// OneAgent apps are excluded from this mechanism — see scopedDQL for details.
 var testRunID string
 
 // suiteStartTime is recorded at suite startup and used by scopedDQL as a
-// timestamp lower-bound for OneAgent spans, which do not carry test.run.id.
+// timestamp lower-bound for spans that do not carry test.run.id.
 var suiteStartTime time.Time
 
 func TestMain(m *testing.M) {
@@ -41,6 +39,14 @@ func TestMain(m *testing.M) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", runAttr)
 
 	dtClient = dynatrace.New(mustEnv("DT_APPS_ENDPOINT"), mustEnv("DT_API_TOKEN"))
+
+	// Pre-create the reports directory so the upload-artifact step always finds
+	// it, even when a test fails before auditSpan has a chance to write a report.
+	reportsDir := filepath.Join(repoRoot(), "test", "e2e", "reports")
+	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not create reports dir: %v\n", err)
+	}
+
 	os.Exit(m.Run())
 }
 

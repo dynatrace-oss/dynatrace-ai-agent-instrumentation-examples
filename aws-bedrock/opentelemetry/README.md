@@ -27,15 +27,24 @@ Python app → OTel Collector (localhost:4318) → Dynatrace OTLP endpoint
 
 All spans are grouped into logical `@workflow` / `@task` / `@agent` spans via Traceloop decorators.
 
+### Derived agent metrics
+
+The Traceloop decorators tag their spans with `traceloop.span.kind` but never set `gen_ai.operation.name`, so the GenAI agent metrics have nothing to key on out of the box. The collector config closes that gap without touching application code:
+
+1. `transform/traceloop_operation_name` maps `traceloop.span.kind` onto the spec enum --- `agent` to `invoke_agent`, `workflow` to `invoke_workflow` --- and only where the enum is absent, so the `chat` value that `BedrockInstrumentor` sets on the LLM spans is never overwritten. `task` is left unmapped; it is an arbitrary function boundary, not a spec operation.
+2. Two `span_metrics` connectors then derive `gen_ai.invoke_agent.duration` and `gen_ai.invoke_workflow.duration` (Histogram, seconds) from those spans.
+
+`gen_ai.execute_tool.duration` is not derived here: the demo uses no `@tool` decorator, so there is no tool span to measure.
+
 > [!IMPORTANT]
 > Dynatrace OTLP metric ingest accepts **delta** temporality only and rejects cumulative metrics with HTTP 400. The app sets `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` before initializing Traceloop so the GenAI client metrics are accepted.
 
 ## Guardrails
 
-`run_converse_guardrail_trigger()` sends a prompt that violates a configured [Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) (a denied-topics policy) so you can see a blocked request in Dynatrace. When `BEDROCK_GUARDRAIL_ID` is set, every Converse call attaches the guardrail with `trace: enabled`, and the instrumentation (`opentelemetry.instrumentation.bedrock`) maps the assessment onto the span:
+`run_converse_guardrail_trigger()` sends prompts that violate a configured [Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) so you can see blocked requests in Dynatrace. When `BEDROCK_GUARDRAIL_ID` is set, every Converse call attaches the guardrail with `trace: enabled`, and the instrumentation (`opentelemetry.instrumentation.bedrock`) maps the assessment onto the span:
 
 - `gen_ai.response.finish_reasons = ["content_filter"]` and an `Input blocked` output message
-- `gen_ai.bedrock.guardrail.activation`, `.input_filter`, `.topics`
+- `gen_ai.bedrock.guardrail.activation`, `.input_filter`, `.topics`, `.content`, `.sensitive_info`
 - `gen_ai.guardrail.id` / `.version`
 
 Set `BEDROCK_GUARDRAIL_ID` (and optionally `BEDROCK_GUARDRAIL_VERSION`, default `DRAFT`) to enable it; without it the guardrail story is skipped.
@@ -53,7 +62,7 @@ Agents that fan a single user turn out into several Bedrock calls (a router, one
 |---|---|---|
 | **Turn-level correlation** | `_stamp_turn_io()` | Records the whole turn on the **agent span** (`@agent`) so one clean `input -> output` record exists, using the message form (`gen_ai.input.messages` / `gen_ai.output.messages`) from the Dynatrace semantic dictionary. The span is typed as an agent (`gen_ai.operation.kind=agent`, `gen_ai.agent.name`) rather than a model call. Only the message form is set: the Prompts renderer appends both the flat form (`gen_ai.prompt.N` / `gen_ai.completion.0`) and the message form, so setting both would render the same turn twice. `gen_ai.provider.name=aws.bedrock` is set because the agent is Bedrock-backed; it is also what makes the app treat the span as a GenAI span (its filter is `isNotNull(gen_ai.system) or isNotNull(gen_ai.provider.name)`), so the turn shows in the Prompts view. |
 
-The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` model-call spans, so the Prompts view shows them as separate rows alongside the turn: the turn appears as an **Agent** row (it carries `gen_ai.agent.name`) and the internal steps as **LLM** rows. This is expected — the fix is that a correct turn-level `input -> output` record now exists, not that the steps disappear. If you want a conversation view with only turns, suppress the internal rows at the pipeline layer (for example an OpenPipeline DQL processor or OTel Collector `transform` that drops the internal spans, or removes their `gen_ai.*` attributes so they fall out of the app's GenAI filter, matched by `traceloop.entity.name` / `span.name`).
+The router (`route_intent`) and specialist (`answer_agent`) calls still emit their own `gen_ai` model-call spans, so the Prompts view shows them as separate rows alongside the turn: the turn appears as an **Agent** row (it carries `gen_ai.agent.name`) and the internal steps as **LLM** rows. This is expected; the fix is that a correct turn-level `input -> output` record now exists, not that the steps disappear. If you want a conversation view with only turns, suppress the internal rows in the OTel Collector (for example a `transform` or `filter` processor that drops the internal spans, or removes their `gen_ai.*` attributes so they fall out of the app's GenAI filter, matched by `traceloop.entity.name` / `span.name`).
 
 > [!NOTE]
 > This is a demonstration, so the multi-agent turn is simplified from a real deployment: the fan-out is sequential rather than parallel with a synthesis step.

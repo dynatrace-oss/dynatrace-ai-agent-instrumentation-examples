@@ -6,6 +6,7 @@ from openai.types.chat import ChatCompletionChunk
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from openinference.instrumentation import using_attributes
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry import trace
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.sdk.resources import Resource, OTELResourceDetector, ProcessResourceDetector, OsResourceDetector, \
@@ -14,10 +15,11 @@ from opentelemetry.semconv.attributes import service_attributes
 
 MODEL: str = os.environ.get("MODEL", "gpt-4o")
 
+# Emit OTel GenAI semantic-convention attributes (gen_ai.*) natively from
+# OpenInference instrumentors.
+os.environ.setdefault("OPENINFERENCE_ENABLE_GENAI_SEMCONV", "true")
+
 # OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT (defaults to http://localhost:4318).
-# For collector mode:     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# For OpenPipeline mode:  OTEL_EXPORTER_OTLP_ENDPOINT=https://<tenant>/api/v2/otlp
-#                         OTEL_EXPORTER_OTLP_HEADERS=Authorization=Api-Token <token>
 detectors = [OTELResourceDetector(), ProcessResourceDetector(), OsResourceDetector()]
 resource = get_aggregated_resources(detectors=detectors, initial_resource=Resource.create(
     {service_attributes.SERVICE_NAME: "openinference"}))
@@ -25,6 +27,7 @@ resource = get_aggregated_resources(detectors=detectors, initial_resource=Resour
 tracer_provider = trace_sdk.TracerProvider(resource=resource)
 tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
 tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(tracer_provider)
 
 OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 

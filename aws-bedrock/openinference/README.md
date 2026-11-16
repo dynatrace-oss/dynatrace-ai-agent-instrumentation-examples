@@ -1,21 +1,21 @@
 # AWS Bedrock + OpenInference Demo
 
-Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with Dynatrace via OpenInference instrumentation (`BedrockInstrumentor`). The app exports spans over OTLP to a local Bindplane collector, which normalizes them and forwards them to Dynatrace.
+Demonstrates tracing AWS Bedrock API calls (via the boto3 `converse` API) with Dynatrace via OpenInference instrumentation (`BedrockInstrumentor`). The app emits native OpenTelemetry GenAI semantic-convention attributes and exports spans over OTLP to a local Bindplane collector, which forwards them to Dynatrace.
 
 ## How it works
 
-OpenInference uses its own semantic conventions (`llm.model_name`, `llm.token_count.*`, etc.) that the Dynatrace AI Observability app does not natively understand. This example normalizes them to the Dynatrace `gen_ai.*` format in the collector, so no Dynatrace-side configuration is needed:
+The app enables OpenInference's native OTel GenAI semantic conventions, so spans include `gen_ai.*` attributes alongside OpenInference attributes (`llm.model_name`, `llm.token_count.*`, etc.). The collector does not need to normalize or rebuild those attributes; it only fills `gen_ai.response.model` from the request model when Bedrock's Converse response does not provide it:
 
 ```
-App  ->  Bindplane collector (genainormalizer + transform)  ->  Dynatrace Grail
+App  ->  Bindplane collector (response-model fallback)  ->  Dynatrace Grail
 ```
 
-The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`) and forwards spans. The pipeline runs two processors (see [`otelcol-config.yaml`](otelcol-config.yaml)):
+The app knows only about `http://localhost:4318`; the collector is the component that authenticates with Dynatrace (`DT_ENDPOINT`, `DT_API_TOKEN`) and forwards spans. The collector runs a small response-model fallback and derives metrics from the native span attributes (see [`otelcol-config.yaml`](otelcol-config.yaml)):
 
-1. **`gen_ai_normalizer`** (source `openinference`, `remove_originals: true`) maps OpenInference attributes to `gen_ai.*` and reconstructs the flattened `llm.input_messages.N.*` / `llm.output_messages.N.*` attributes into `gen_ai.input.messages` and `gen_ai.output.messages` JSON. `remove_originals` drops the raw `llm.*` attributes so exported spans carry only `gen_ai.*` fields.
-2. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model`, which the AI Observability app requires and OpenInference has no separate field for.
+1. **`transform/response_model`** mirrors `gen_ai.request.model` to `gen_ai.response.model` when the Bedrock response does not include a separate model value.
+2. **Metrics connectors** derive `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` from the native `gen_ai.*` span attributes.
 
-The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane Distro for OpenTelemetry), which tracks OTel Collector contrib v0.156.0 and bundles the `genainormalizer` processor. The pin means a future version bump surfaces normalization changes in the e2e test.
+The collector is pinned to the Bindplane Distro for OpenTelemetry image in the Makefile. It derives metrics from the GenAI span attributes but does not rewrite the native attributes.
 
 ## Prerequisites
 
@@ -27,6 +27,7 @@ The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane
 ## Quick Start
 
 1. Copy `.env.sample` to `.env` and fill in your credentials
+   - To use a different model, select it with `BEDROCK_MODEL_ID`, for example `BEDROCK_MODEL_ID=us.deepseek.r1-v1:0` for DeepSeek-R1
 2. `make install` — install dependencies
 3. `make run` — start the app on port 8000
 4. `make request` — send a test haiku request (in a second terminal)
@@ -40,7 +41,7 @@ The collector is pinned to `ghcr.io/observiq/bindplane-agent:1.104.0` (Bindplane
 | `AWS_ACCESS_KEY_ID` | Yes | — | AWS access key ID |
 | `AWS_SECRET_ACCESS_KEY` | Yes | — | AWS secret access key |
 | `AWS_DEFAULT_REGION` | No | `us-east-1` | AWS region |
-| `BEDROCK_MODEL_ID` | No | `anthropic.claude-3-5-sonnet-20241022-v2:0` | Bedrock model ID |
+| `BEDROCK_MODEL_ID` | No | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model ID |
 | `OTEL_SERVICE_NAME` | No | `haiku-writer` | Service name reported in traces |
 
 ## Makefile Targets

@@ -9,10 +9,10 @@ PORT             ?= 8000
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
-# Bindplane Distro for OpenTelemetry (BDOT) collector. v1.105.0 tracks OTel
-# contrib v0.157.0 and bundles genainormalizerprocessor + signal_to_metrics
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). v1.1.2 tracks OTel
+# contrib v0.162.0 and bundles genainormalizerprocessor + signal_to_metrics
 # connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
-override COLLECTOR_IMAGE     := ghcr.io/observiq/bindplane-agent:1.105.1
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: install run build push request stop logs help
@@ -54,9 +54,10 @@ _collector:
 	  -v $$(pwd)/$(CONFIG):/etc/otelcol/otel-collector-config.yaml:ro \
 	  -e DT_ENDPOINT=$(DT_ENDPOINT) \
 	  -e DT_API_TOKEN=$(DT_API_TOKEN) \
-	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml && \
-	docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 & \
-	echo "Collector logs -> collector.log" && \
+	  $(COLLECTOR_IMAGE) --config=/etc/otelcol/otel-collector-config.yaml || \
+	  { echo "ERROR: docker run failed"; exit 1; }; \
+	(docker logs -f $(COLLECTOR_CONTAINER) > collector.log 2>&1 &); \
+	echo "Collector logs -> collector.log"; \
 	for i in $$(seq 1 15); do \
 	  if docker ps --filter name=$(COLLECTOR_CONTAINER) --filter status=running -q | grep -q .; then \
 	    echo "Collector is up"; exit 0; \

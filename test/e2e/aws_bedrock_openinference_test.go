@@ -8,6 +8,7 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 	startApp(t, "aws-bedrock/openinference")
 	triggerHaiku(t, true)
 	triggerHaikuGuardrail(t)
+	triggerApplyGuardrail(t)
 
 	// triggerHaiku and triggerHaikuGuardrail each produce their own trace.
 	// sort + limit pins the baseline audit to the earlier (non-guardrail)
@@ -34,4 +35,14 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 | sort start_time desc
 | limit 1`,
 		"aws-bedrock/openinference", genAIClientMetrics)
+
+	// triggerApplyGuardrail's two calls (safe, then trigger) each produce their
+	// own GUARDRAIL-kind span; sort + limit pins this audit to the later
+	// (triggering) one deterministically.
+	auditApplyGuardrailSpan(t, "aws-bedrock", "openinference",
+		`fetch spans, from: now()-10m
+| filter service.name == "aws-bedrock/openinference"
+| filter gen_ai.operation.name == "GUARDRAIL"
+| sort start_time desc
+| limit 1`)
 }
