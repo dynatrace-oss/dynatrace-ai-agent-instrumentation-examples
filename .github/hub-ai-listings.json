@@ -1,0 +1,574 @@
+[
+  {
+    "id": "amazon-bedrock",
+    "name": "Amazon Bedrock",
+    "description": "Observe end-to-end generative AI models provided by Amazon Bedrock.",
+    "keywords": [
+      "ai",
+      "AI Observability",
+      "amazon",
+      "artificial-intelligence",
+      "aws",
+      "generative AI"
+    ]
+  },
+  {
+    "id": "amazon-bedrock-agentcore-observability",
+    "name": "Amazon Bedrock AgentCore",
+    "description": "Monitor and trace your Amazon Bedrock AgentCore Agents.",
+    "keywords": [
+      "Agent",
+      "AgentCore Agents",
+      "AI",
+      "Amazon",
+      "AWS",
+      "LLM",
+      "Nova"
+    ]
+  },
+  {
+    "id": "amazon-bedrock-nova-observability",
+    "name": "Amazon Nova",
+    "description": "Monitor and trace Amazon Nova models running on Amazon Bedrock.",
+    "keywords": [
+      "AI",
+      "Amazon Bedrock",
+      "Amazon Bedrock AgentCore",
+      "AWS",
+      "Foundational models",
+      "LLM",
+      "Nova"
+    ]
+  },
+  {
+    "id": "amazon-sagemaker",
+    "name": "Amazon SageMaker",
+    "description": "Build, train, and deploy machine learning (ML) models quickly.",
+    "keywords": []
+  },
+  {
+    "id": "amazon-textract",
+    "name": "Amazon Textract",
+    "description": "Makes it easy to add document text detection and analysis to your applications.",
+    "keywords": [
+      "cloud"
+    ]
+  },
+  {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "description": "Monitor end-to-end your Anthropic services such as Haiku, Sonnet, and Opus.",
+    "keywords": [
+      "Claude"
+    ]
+  },
+  {
+    "id": "arize-ax-ai-observability",
+    "name": "Arize AX",
+    "description": "Analyze traces, latency, and evals of LLM apps through Arize OpenInference data.",
+    "keywords": [
+      "AI",
+      "AI Observability",
+      "Arize",
+      "Arize AX",
+      "evals",
+      "evaluations",
+      "Langchain",
+      "OpenAI",
+      "Phoenix"
+    ]
+  },
+  {
+    "id": "azure-ai-foundry",
+    "name": "Azure AI Foundry",
+    "description": "End-to-end observability for GenAI & LLM applications build with Azure.",
+    "keywords": [
+      "azure",
+      "Azure AI Foundry",
+      "Azure OpenAI",
+      "genai",
+      "Large Language Model (LLM)",
+      "OpenAI"
+    ]
+  },
+  {
+    "id": "chroma",
+    "name": "Chroma",
+    "description": "Gain insights into the health of your vector and embedding databases from Chroma.",
+    "keywords": []
+  },
+  {
+    "id": "claude-code-agent-monitoring",
+    "name": "Claude Code Agent monitoring",
+    "description": "Monitor your Claude Code coding agents with OTel.",
+    "keywords": [
+      "agent monitoring",
+      "ai monitoring",
+      "anthropic",
+      "claude",
+      "claudecode",
+      "code agent monitoring",
+      "open telemetry",
+      "otel"
+    ]
+  },
+  {
+    "id": "cohere",
+    "name": "Cohere",
+    "description": "Observe end-to-end generative and retrieval models provided by Cohere.",
+    "keywords": []
+  },
+  {
+    "id": "com.dynatrace.extension.elasticsearch",
+    "name": null,
+    "description": null,
+    "keywords": []
+  },
+  {
+    "id": "com.dynatrace.nvidia.gpu",
+    "name": null,
+    "description": null,
+    "keywords": []
+  },
+  {
+    "id": "crewai-observability",
+    "name": "CrewAI",
+    "description": "Monitor CrewAI workloads and AI Agents.",
+    "keywords": [
+      "AI",
+      "AI Agent",
+      "Anthropic",
+      "AWS",
+      "Azure",
+      "Bedrock",
+      "CrewAI",
+      "GCP",
+      "LLM",
+      "Meta",
+      "OpenAI"
+    ]
+  },
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "description": "End-to-end observability for DeepSeek models on Amazon Bedrock like R1, V3.",
+    "keywords": [
+      "AI Observability",
+      "Deepseek",
+      "genai"
+    ]
+  },
+  {
+    "id": "dynatrace.genai.observability",
+    "name": null,
+    "description": null,
+    "keywords": []
+  },
+  {
+    "id": "f5-big-ip-log-streaming",
+    "name": "F5 BIG-IP Log Streaming",
+    "description": "Stream F5 BIG-IP logs to Dynatrace for unified observability.",
+    "keywords": [
+      "big ip",
+      "Big-IP",
+      "F5",
+      "log management",
+      "logs",
+      "log streaming",
+      "networking"
+    ]
+  },
+  {
+    "id": "gemini",
+    "name": "Gemini",
+    "description": "Observe end-to-end multimodal AI models provided by Google Gemini.",
+    "keywords": []
+  },
+  {
+    "id": "gemini-cli-monitoring",
+    "name": "Antigravity CLI",
+    "description": "End‑to‑end visibility into Antigravity SDK usage, tokens, and performance.",
+    "keywords": [
+      "AI observability",
+      "Antigravity",
+      "Antigravity SDK",
+      "Google Antigravity",
+      "LLM Monitoring",
+      "OpenTelemetry",
+      "Otel"
+    ]
+  },
+  {
+    "id": "github-copilot-sdk-monitoring",
+    "name": "GitHub Copilot Monitoring",
+    "description": "End-to-end insight into Copilot model calls, tools, latency, and tokens.",
+    "keywords": [
+      "ai observability",
+      "coding agent monitoring",
+      "copilot sdk",
+      "github copilot",
+      "github copilot sdk",
+      "opentelemetry",
+      "otlp export",
+      "vs code copilot chat"
+    ]
+  },
+  {
+    "id": "google-adk-observability",
+    "name": "Google ADK",
+    "description": "Monitor your Google Agent Development Kit.",
+    "keywords": [
+      "Agent",
+      "Agentic AI",
+      "AI",
+      "Google ADK",
+      "LLM",
+      "MCP"
+    ]
+  },
+  {
+    "id": "google-cloud-tensor-processing-unit-tpu",
+    "name": "Google Cloud Tensor Processing Units",
+    "description": "Observe and monitor your machine learning models built on top of Tensor Units.",
+    "keywords": []
+  },
+  {
+    "id": "groq",
+    "name": "Groq",
+    "description": "Monitor your services built with Groq AI inference models.",
+    "keywords": []
+  },
+  {
+    "id": "haystack",
+    "name": "Haystack",
+    "description": "Observe your LLM applications at scale, with RAG pipeline models by Haystack.",
+    "keywords": []
+  },
+  {
+    "id": "hugging-face",
+    "name": "Hugging Face",
+    "description": "Observe and monitor AI models, datasets, and apps built with Hugging Face.",
+    "keywords": []
+  },
+  {
+    "id": "ibm-watsonx-ai",
+    "name": "IBM watsonx AI",
+    "description": "End-to-end monitoring for applications built with the IBM watsonx AI platform.",
+    "keywords": []
+  },
+  {
+    "id": "kong-ai",
+    "name": "Kong AI",
+    "description": "Automatic, intelligent observability for Kong AI and LLM API traffic.",
+    "keywords": [
+      "AI Observability",
+      "api"
+    ]
+  },
+  {
+    "id": "lancedb",
+    "name": "LanceDB",
+    "description": "Monitor the performance of your multimodal AI database powered by LanceDB.",
+    "keywords": []
+  },
+  {
+    "id": "langchain",
+    "name": "LangChain",
+    "description": "Monitor your generative AI LLM applications built by LangChain framework.",
+    "keywords": [
+      "ai",
+      "AI Observability",
+      "generative AI",
+      "langchain",
+      "Large Language Model (LLM)"
+    ]
+  },
+  {
+    "id": "langchain-agent-observability",
+    "name": "LangGraph",
+    "description": "Monitor and trace your LangChain Agents.",
+    "keywords": [
+      "Agents",
+      "AI",
+      "AI Agents",
+      "Anthropic",
+      "Bedrock",
+      "Claude",
+      "Gemini",
+      "LangChain",
+      "LangGraph",
+      "LLM",
+      "OpenAI"
+    ]
+  },
+  {
+    "id": "litellm",
+    "name": "LiteLLM",
+    "description": "Automatic, intelligent observability for your LLM Gateway traffic.",
+    "keywords": []
+  },
+  {
+    "id": "llamaindex",
+    "name": "LlamaIndex",
+    "description": "Monitor your LLM-powered agents and workflows built with LlamaIndex framework.",
+    "keywords": []
+  },
+  {
+    "id": "marqo",
+    "name": "Marqo",
+    "description": "Gain insights into your embedding models built with Marqo.",
+    "keywords": []
+  },
+  {
+    "id": "mcp-observability",
+    "name": "MCP AI Agent monitoring",
+    "description": "Monitoring and tracing of agents communicating via MCP.",
+    "keywords": [
+      "Agentic AI",
+      "AI",
+      "Anthropic",
+      "LLM",
+      "MCP",
+      "Model Context Protocol"
+    ]
+  },
+  {
+    "id": "microsoft-agentframework-agent-observability",
+    "name": "Microsoft Agent Framework",
+    "description": "Observe your Microsoft Agent Framework AI agents with built-in OpenTelemetry.",
+    "keywords": [
+      "agent framework",
+      "agentic ai",
+      "ai foundry",
+      "ai observability",
+      "azure",
+      "genai",
+      "llm",
+      "microsoft ai foundry"
+    ]
+  },
+  {
+    "id": "milvus",
+    "name": "Milvus",
+    "description": "Gain insights about vector database resource utilization and cache behavior.",
+    "keywords": []
+  },
+  {
+    "id": "mistral-ai",
+    "name": "Mistral AI",
+    "description": "Monitor your applications built with Mistral AI's frontier models.",
+    "keywords": []
+  },
+  {
+    "id": "nvidia-nim",
+    "name": "NVIDIA NIM",
+    "description": "Monitor accelerated inference microservices to run AI models on NVIDIA GPU.",
+    "keywords": [
+      "AI",
+      "AI Factory",
+      "NVIDIA",
+      "NVIDIA NIM"
+    ]
+  },
+  {
+    "id": "ollama",
+    "name": "Ollama",
+    "description": "Monitor Ollama AI models end-to-end, including Llama, Mistral, Orca, and more.",
+    "keywords": []
+  },
+  {
+    "id": "oneagent-ai-ingest-method",
+    "name": "OneAgent for GenAI",
+    "description": "Monitor and trace your AI workloads and apps automatically with OneAgent.",
+    "keywords": [
+      "agent",
+      "agentic ai",
+      "ai agents",
+      "ai observability",
+      "ai workload",
+      "amazon bedrock",
+      "aws bedrock",
+      "crewai",
+      "genai",
+      "gen_ai",
+      "generative ai",
+      "google genai",
+      "langchain",
+      "llm",
+      "mistral",
+      "oneagent",
+      "openai"
+    ]
+  },
+  {
+    "id": "openai-agent-observability",
+    "name": "OpenAI Agents",
+    "description": "Monitor and trace your OpenAI Agents.",
+    "keywords": [
+      "Agent",
+      "Agentic AI",
+      "Azure OpenAI",
+      "MCP",
+      "OpenAI"
+    ]
+  },
+  {
+    "id": "openai-codex",
+    "name": "OpenAI Codex Monitoring",
+    "description": "Visibility into OpenAI Codex CLI usage, tokens, and performance in Dynatrace.",
+    "keywords": [
+      "ai observability",
+      "codex cli",
+      "coding agent monitoring",
+      "openai",
+      "opentelemetry",
+      "otel",
+      "otlp export"
+    ]
+  },
+  {
+    "id": "openai-observability",
+    "name": "OpenAI",
+    "description": "Monitoring your OpenAI & Azure OpenAI services such as GPT, o1, DALL-E, ChatGPT.",
+    "keywords": [
+      "AI Observability",
+      "Azure OpenAI",
+      "GPT",
+      "Large Language Model (LLM)",
+      "Microsoft Azure",
+      "OpenAI"
+    ]
+  },
+  {
+    "id": "openclaw-monitoring",
+    "name": "OpenClaw Monitoring",
+    "description": "Monitor OpenClaw agent activity with AI observability in Dynatrace.",
+    "keywords": []
+  },
+  {
+    "id": "openinference-ingest-method",
+    "name": "OpenInference",
+    "description": "Instrument your AI agents, services and apps with OpenInference.",
+    "keywords": [
+      "agentic ai",
+      "ai observability",
+      "ai workload",
+      "genai",
+      "gen_ai",
+      "generative ai",
+      "instrumentation",
+      "llm",
+      "llm observability",
+      "openinference",
+      "opentelemetry",
+      "otel"
+    ]
+  },
+  {
+    "id": "opentelemetry-ingest-method",
+    "name": "OpenTelemetry for GenAI",
+    "description": "Ingest and analyze OTel GenAI traces & metrics for your AI workloads.",
+    "keywords": [
+      "agent",
+      "agentic ai",
+      "ai agents",
+      "ai observability",
+      "ai workload",
+      "bedrock",
+      "crewai",
+      "genai",
+      "gen_ai",
+      "generative ai",
+      "google gemini",
+      "langchain",
+      "langgraph",
+      "llm",
+      "openai",
+      "opentelemetry",
+      "otel",
+      "vertex"
+    ]
+  },
+  {
+    "id": "pinecone",
+    "name": "Pinecone",
+    "description": "Gain insight into your Pinecone vector databases to build knowledgeable AI.",
+    "keywords": []
+  },
+  {
+    "id": "pydantic-ai-observability",
+    "name": "Pydantic AI",
+    "description": "Monitor and trace your Pydantic AI agents.",
+    "keywords": [
+      "Agentic AI",
+      "Agents",
+      "AI Observability",
+      "Azure",
+      "LLM",
+      "OpenAI",
+      "otel",
+      "Pydantic"
+    ]
+  },
+  {
+    "id": "qdrant",
+    "name": "Qdrant",
+    "description": "Gain insights about your Qdrant semantic vector collections.",
+    "keywords": []
+  },
+  {
+    "id": "red-hat-openshift-ai",
+    "name": "Red Hat OpenShift AI",
+    "description": "Monitor and optimize AI models and costs on Red Hat OpenShift AI.",
+    "keywords": [
+      "AI observability",
+      "cost optimization",
+      "OpenLLMetry",
+      "OpenShift AI",
+      "OpenTelemetry",
+      "Red Hat",
+      "token usage"
+    ]
+  },
+  {
+    "id": "replicate",
+    "name": "Replicate",
+    "description": "Monitor and measure the API performance of your apps built with Replicate.",
+    "keywords": []
+  },
+  {
+    "id": "tensorflow-keras",
+    "name": "TensorFlow Keras",
+    "description": "Observe the training progress of TensorFlow Keras AI models.",
+    "keywords": [
+      "ai",
+      "AI Observability",
+      "Maschine Learning",
+      "TensorBoard"
+    ]
+  },
+  {
+    "id": "together-ai",
+    "name": "Together AI",
+    "description": "End-to-end observability of your GenAI stack built with Together AI.",
+    "keywords": []
+  },
+  {
+    "id": "vertex-ai",
+    "name": "Vertex AI Studio",
+    "description": "Monitor your generative AI applications built with Google Vertex AI Studio.",
+    "keywords": []
+  },
+  {
+    "id": "vllm",
+    "name": "vLLM",
+    "description": "Monitor your services built with vLLM's inference and LLM serving solution.",
+    "keywords": []
+  },
+  {
+    "id": "weaviate",
+    "name": "Weaviate",
+    "description": "Observe your semantic cache efficiency to reduce cost and latency for LLM apps.",
+    "keywords": []
+  }
+]
