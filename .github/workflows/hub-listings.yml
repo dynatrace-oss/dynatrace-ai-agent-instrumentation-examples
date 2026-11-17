@@ -30,7 +30,7 @@ jobs:
           dtctl config set-credentials hub --token '${DT_HUB_TOKEN}'
 
       # Reads the tenant's Hub catalog and keeps the "AI and LLM Observability" listings.
-      # The snapshot is a curated list; new listings are added only if they carry the "genai" keyword.
+      # The snapshot is a curated list; new listings are added only if a keyword is genai, gen_ai, generative ai or llm.
       - name: Update snapshot
         id: snapshot
         env:
@@ -49,7 +49,7 @@ jobs:
             "$RUNNER_TEMP/categories.json" > "$RUNNER_TEMP/hub.json"
           jq --slurpfile old "$out" '
             ($old[0] | map(.id)) as $known
-            | $old[0] + map(select((.id as $i | $known | index($i) | not) and (.keywords | map(ascii_downcase) | index("genai"))))
+            | $old[0] + map(select((.id as $i | $known | index($i) | not) and (.keywords | map(ascii_downcase) | any(IN("genai", "gen_ai", "generative ai", "llm")))))
             | sort_by(.id)' "$RUNNER_TEMP/hub.json" > "$RUNNER_TEMP/merged.json"
           new=$(jq -r --slurpfile old "$out" '[.[].id] - [$old[0][].id] | join(", ")' "$RUNNER_TEMP/merged.json")
           if [ -n "$new" ]; then mv "$RUNNER_TEMP/merged.json" "$out"; fi
