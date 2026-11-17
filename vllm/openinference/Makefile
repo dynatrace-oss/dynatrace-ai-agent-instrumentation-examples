@@ -7,6 +7,10 @@ SINK_PORT        ?= 14318
 MODEL            ?= Qwen/Qwen2.5-0.5B-Instruct
 VLLM_IMAGE       ?= vllm/vllm-openai-cpu:v0.33.0
 VLLM_CONTAINER   ?= vllm-otel
+# Collector that derives gen_ai.client.* metrics from the client spans (OpenInference is span-only)
+COLLECTOR_IMAGE     ?= ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
+COLLECTOR_CONTAINER ?= vllm-otel-collector
+COLLECTOR_PORT      ?= 4318
 # off | traced | detailed | dt (export vLLM spans to Dynatrace)
 MODE             ?= traced
 SAMPLE_RATIO     ?= 1.0
@@ -25,7 +29,7 @@ TRACE_ARGS_traced   := --otlp-traces-endpoint http://host.docker.internal:$(SINK
 TRACE_ARGS_detailed := $(TRACE_ARGS_traced) --collect-detailed-traces all
 TRACE_ARGS_dt       := --otlp-traces-endpoint $(DT_ENDPOINT)/api/v2/otlp/v1/traces
 
-.PHONY: install run sink stop request bench compare e2e help
+.PHONY: install run sink stop collector stop-collector request bench compare e2e help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -52,6 +56,19 @@ sink: ## Run the OTLP span-counting sink on port $(SINK_PORT)
 stop: ## Stop and remove the vLLM container
 	-@docker rm -f $(VLLM_CONTAINER) >/dev/null 2>&1
 
+collector: stop-collector ## Start the metrics collector on port $(COLLECTOR_PORT), exporting to Dynatrace (needs DT_ENDPOINT, DT_API_TOKEN)
+	docker run -d --name $(COLLECTOR_CONTAINER) -p $(COLLECTOR_PORT):4318 \
+	  -v $$(pwd)/otel-collector-config.yaml:/etc/otel/config.yaml:ro \
+	  -e DT_ENDPOINT -e DT_API_TOKEN -e DT_AUTH_SCHEME \
+	  $(COLLECTOR_IMAGE) >/dev/null
+	@for i in $$(seq 30); do \
+	  curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:$(COLLECTOR_PORT)/v1/traces && { echo "collector ready"; exit 0; }; \
+	  [ "$$(docker inspect -f {{.State.Running}} $(COLLECTOR_CONTAINER))" = true ] || break; \
+	  sleep 1; done; docker logs $(COLLECTOR_CONTAINER); exit 1
+
+stop-collector: ## Stop and remove the metrics collector
+	-@docker rm -f $(COLLECTOR_CONTAINER) >/dev/null 2>&1
+
 request: ## POST one completion to localhost:$(PORT)
 	curl -s http://localhost:$(PORT)/v1/completions \
 	  -H 'Content-Type: application/json' \
@@ -73,7 +90,8 @@ E2E_SAMPLE_RATIO ?= 0.25
 
 e2e: ## Run vLLM sampled at E2E_SAMPLE_RATIO exporting to Dynatrace, then E2E_RUNS client calls (needs DT_ENDPOINT, DT_API_TOKEN)
 	@$(MAKE) -s run MODE=dt VLLM_SAMPLE_RATIO=$(E2E_SAMPLE_RATIO)
-	@MAX_RUNS=$(E2E_RUNS) uv run python client.py || { \
+	@$(MAKE) -s collector
+	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:$(COLLECTOR_PORT) MAX_RUNS=$(E2E_RUNS) uv run python client.py || { \
 	  docker ps -a --filter name=$(VLLM_CONTAINER); \
 	  sudo -n dmesg 2>/dev/null | grep -iE 'oom|killed process|segfault|traps:' | tail -5; \
 	  lscpu | grep -E 'Model name|^Flags' | grep -oE 'Model name.*|avx512[a-z_]*|amx[a-z_]*|avx2' | sort -u | tr '\n' ' '; echo; \
