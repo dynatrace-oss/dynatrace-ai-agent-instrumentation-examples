@@ -52,6 +52,12 @@ jobs:
             | $old[0] + map(select((.id as $i | $known | index($i) | not) and (.keywords | map(ascii_downcase) | any(IN("genai", "gen_ai", "generative ai", "llm")))))
             | sort_by(.id)' "$RUNNER_TEMP/hub.json" > "$RUNNER_TEMP/merged.json"
           new=$(jq -r --slurpfile old "$out" '[.[].id] - [$old[0][].id] | join(", ")' "$RUNNER_TEMP/merged.json")
+          # New entries get the listing's detail sections (overview, use cases, get started) as markdown.
+          for id in $(jq -r '.[] | select(.details == null) | .id' "$RUNNER_TEMP/merged.json"); do
+            details=$(hub "technologies/$id" | jq '[.detailSections[]?.markdown | select(. != null) | "## \(.title)\n\n\(.markdown)"] | join("\n\n")')
+            jq --arg id "$id" --argjson d "$details" 'map(if .id == $id then .details = $d else . end)' "$RUNNER_TEMP/merged.json" > "$RUNNER_TEMP/tmp.json"
+            mv "$RUNNER_TEMP/tmp.json" "$RUNNER_TEMP/merged.json"
+          done
           if [ -n "$new" ]; then mv "$RUNNER_TEMP/merged.json" "$out"; fi
           echo "new=$new" >> "$GITHUB_OUTPUT"
 
