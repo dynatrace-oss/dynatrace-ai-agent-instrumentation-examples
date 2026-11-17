@@ -21,6 +21,7 @@ jobs:
 
       - name: Install dtctl
         env:
+          # renovate: datasource=github-releases depName=Dynatrace/dtctl extractVersion=^v(?<version>.*)$
           DTCTL_VERSION: 0.45.0
         run: |
           curl -fsSL "https://github.com/Dynatrace/dtctl/releases/download/v${DTCTL_VERSION}/dtctl_${DTCTL_VERSION}_linux_amd64.tar.gz" | tar -xz -C "$RUNNER_TEMP" dtctl

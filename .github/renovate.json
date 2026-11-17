@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "monorepo:opentelemetry-js"],
+  "extends": ["config:recommended", "monorepo:opentelemetry-js", "customManagers:githubActionsVersions"],
   "timezone": "UTC",
   "ignorePaths": ["**/.venv/**"],
   "customManagers": [
