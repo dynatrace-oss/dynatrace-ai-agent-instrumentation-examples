@@ -19,22 +19,34 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Reads the Hub's public catalog and keeps the "AI and LLM Observability" listings.
+      - name: Install dtctl
+        env:
+          DTCTL_VERSION: 0.45.0
+        run: |
+          curl -fsSL "https://github.com/Dynatrace/dtctl/releases/download/v${DTCTL_VERSION}/dtctl_${DTCTL_VERSION}_linux_amd64.tar.gz" | tar -xz -C "$RUNNER_TEMP" dtctl
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          dtctl config set-context hub --environment "${{ secrets.DT_HUB_ENVIRONMENT_URL }}" --token-ref hub --safety-level readonly
+          dtctl config set-credentials hub --token '${DT_HUB_TOKEN}'
+
+      # Reads the tenant's Hub catalog and keeps the "AI and LLM Observability" listings.
       # The snapshot is rewritten only when a listing appears that it doesn't have yet.
       - name: Update snapshot
         id: snapshot
+        env:
+          DT_HUB_TOKEN: ${{ secrets.DT_HUB_TOKEN }} # platform token with hub:catalog:read
         run: |
           set -euo pipefail
           out=.github/hub-ai-listings.json
-          data=$(curl -fsSL https://www.dynatrace.com/hub/ | grep -oE '/hub/public/preloaded-data/[^"]+\.js' | head -1)
-          curl -fsSL "https://www.dynatrace.com$data" | sed '1s/^[^=]*= *//; $s/; *$//' | jq '
-            (first(.categories | .. | objects | select(.id? == "ai-ml-observability"))) as $c
-            | ([$c.page.content[] | .title as $s | (.technologies // [])[] | {key: ., value: ($s | gsub("^\\s+|\\s+$"; ""))}] | reverse | from_entries) as $sec
-            | (.technologies | map({key: .slug, value: .}) | from_entries) as $t
-            | ([$c.technologies[]?, ($sec | keys[])] | unique)
+          hub() { dtctl exec api "/platform/hub/v1/catalog/$1" -o json --plain | jq '.result // .'; }
+          hub categories > "$RUNNER_TEMP/categories.json"
+          hub technologies > "$RUNNER_TEMP/technologies.json"
+          jq --slurpfile t "$RUNNER_TEMP/technologies.json" '
+            ($t[0].items | map({key: .id, value: .}) | from_entries) as $tech
+            | [.categories[] | select(.id == "ai-llm-observability") | .itemIds[]] | unique
             | if length == 0 then error("no listings found") else . end
-            | map({slug: ., title: $t[.].title, section: ($sec[.] // ""), url: "https://www.dynatrace.com/hub/detail/\(.)/", description: $t[.].description, tags: ($t[.].tags // [])})' > "$RUNNER_TEMP/hub.json"
-          new=$(jq -r --slurpfile old <(cat "$out" 2>/dev/null || echo '[]') '[.[].slug] - [$old[0][].slug] | join(", ")' "$RUNNER_TEMP/hub.json")
+            | map({id: ., name: $tech[.].name, description: $tech[.].description, keywords: ($tech[.].keywords // [])})' \
+            "$RUNNER_TEMP/categories.json" > "$RUNNER_TEMP/hub.json"
+          new=$(jq -r --slurpfile old <(cat "$out" 2>/dev/null || echo '[]') '[.[].id] - [$old[0][].id] | join(", ")' "$RUNNER_TEMP/hub.json")
           if [ -n "$new" ]; then mv "$RUNNER_TEMP/hub.json" "$out"; fi
           echo "new=$new" >> "$GITHUB_OUTPUT"
 
