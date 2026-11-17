@@ -30,7 +30,7 @@ jobs:
           dtctl config set-credentials hub --token '${DT_HUB_TOKEN}'
 
       # Reads the tenant's Hub catalog and keeps the "AI and LLM Observability" listings.
-      # The snapshot is rewritten only when a listing appears that it doesn't have yet.
+      # The snapshot is a curated list; new listings are added only if they carry the "genai" keyword.
       - name: Update snapshot
         id: snapshot
         env:
@@ -47,8 +47,12 @@ jobs:
             | if length == 0 then error("no listings found") else . end
             | map({id: ., name: $tech[.].name, description: $tech[.].description, keywords: ($tech[.].keywords // [])})' \
             "$RUNNER_TEMP/categories.json" > "$RUNNER_TEMP/hub.json"
-          new=$(jq -r --slurpfile old <(cat "$out" 2>/dev/null || echo '[]') '[.[].id] - [$old[0][].id] | join(", ")' "$RUNNER_TEMP/hub.json")
-          if [ -n "$new" ]; then mv "$RUNNER_TEMP/hub.json" "$out"; fi
+          jq --slurpfile old "$out" '
+            ($old[0] | map(.id)) as $known
+            | $old[0] + map(select((.id as $i | $known | index($i) | not) and (.keywords | map(ascii_downcase) | index("genai"))))
+            | sort_by(.id)' "$RUNNER_TEMP/hub.json" > "$RUNNER_TEMP/merged.json"
+          new=$(jq -r --slurpfile old "$out" '[.[].id] - [$old[0][].id] | join(", ")' "$RUNNER_TEMP/merged.json")
+          if [ -n "$new" ]; then mv "$RUNNER_TEMP/merged.json" "$out"; fi
           echo "new=$new" >> "$GITHUB_OUTPUT"
 
       - name: Open PR for new listings

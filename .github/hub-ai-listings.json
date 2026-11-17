@@ -41,20 +41,6 @@
     ]
   },
   {
-    "id": "amazon-sagemaker",
-    "name": "Amazon SageMaker",
-    "description": "Build, train, and deploy machine learning (ML) models quickly.",
-    "keywords": []
-  },
-  {
-    "id": "amazon-textract",
-    "name": "Amazon Textract",
-    "description": "Makes it easy to add document text detection and analysis to your applications.",
-    "keywords": [
-      "cloud"
-    ]
-  },
-  {
     "id": "anthropic",
     "name": "Anthropic",
     "description": "Monitor end-to-end your Anthropic services such as Haiku, Sonnet, and Opus.",
@@ -92,12 +78,6 @@
     ]
   },
   {
-    "id": "chroma",
-    "name": "Chroma",
-    "description": "Gain insights into the health of your vector and embedding databases from Chroma.",
-    "keywords": []
-  },
-  {
     "id": "claude-code-agent-monitoring",
     "name": "Claude Code Agent monitoring",
     "description": "Monitor your Claude Code coding agents with OTel.",
@@ -116,18 +96,6 @@
     "id": "cohere",
     "name": "Cohere",
     "description": "Observe end-to-end generative and retrieval models provided by Cohere.",
-    "keywords": []
-  },
-  {
-    "id": "com.dynatrace.extension.elasticsearch",
-    "name": null,
-    "description": null,
-    "keywords": []
-  },
-  {
-    "id": "com.dynatrace.nvidia.gpu",
-    "name": null,
-    "description": null,
     "keywords": []
   },
   {
@@ -156,26 +124,6 @@
       "AI Observability",
       "Deepseek",
       "genai"
-    ]
-  },
-  {
-    "id": "dynatrace.genai.observability",
-    "name": null,
-    "description": null,
-    "keywords": []
-  },
-  {
-    "id": "f5-big-ip-log-streaming",
-    "name": "F5 BIG-IP Log Streaming",
-    "description": "Stream F5 BIG-IP logs to Dynatrace for unified observability.",
-    "keywords": [
-      "big ip",
-      "Big-IP",
-      "F5",
-      "log management",
-      "logs",
-      "log streaming",
-      "networking"
     ]
   },
   {
@@ -227,12 +175,6 @@
     ]
   },
   {
-    "id": "google-cloud-tensor-processing-unit-tpu",
-    "name": "Google Cloud Tensor Processing Units",
-    "description": "Observe and monitor your machine learning models built on top of Tensor Units.",
-    "keywords": []
-  },
-  {
     "id": "groq",
     "name": "Groq",
     "description": "Monitor your services built with Groq AI inference models.",
@@ -264,12 +206,6 @@
       "AI Observability",
       "api"
     ]
-  },
-  {
-    "id": "lancedb",
-    "name": "LanceDB",
-    "description": "Monitor the performance of your multimodal AI database powered by LanceDB.",
-    "keywords": []
   },
   {
     "id": "langchain",
@@ -314,12 +250,6 @@
     "keywords": []
   },
   {
-    "id": "marqo",
-    "name": "Marqo",
-    "description": "Gain insights into your embedding models built with Marqo.",
-    "keywords": []
-  },
-  {
     "id": "mcp-observability",
     "name": "MCP AI Agent monitoring",
     "description": "Monitoring and tracing of agents communicating via MCP.",
@@ -346,12 +276,6 @@
       "llm",
       "microsoft ai foundry"
     ]
-  },
-  {
-    "id": "milvus",
-    "name": "Milvus",
-    "description": "Gain insights about vector database resource utilization and cache behavior.",
-    "keywords": []
   },
   {
     "id": "mistral-ai",
@@ -490,12 +414,6 @@
     ]
   },
   {
-    "id": "pinecone",
-    "name": "Pinecone",
-    "description": "Gain insight into your Pinecone vector databases to build knowledgeable AI.",
-    "keywords": []
-  },
-  {
     "id": "pydantic-ai-observability",
     "name": "Pydantic AI",
     "description": "Monitor and trace your Pydantic AI agents.",
@@ -509,12 +427,6 @@
       "otel",
       "Pydantic"
     ]
-  },
-  {
-    "id": "qdrant",
-    "name": "Qdrant",
-    "description": "Gain insights about your Qdrant semantic vector collections.",
-    "keywords": []
   },
   {
     "id": "red-hat-openshift-ai",
@@ -537,17 +449,6 @@
     "keywords": []
   },
   {
-    "id": "tensorflow-keras",
-    "name": "TensorFlow Keras",
-    "description": "Observe the training progress of TensorFlow Keras AI models.",
-    "keywords": [
-      "ai",
-      "AI Observability",
-      "Maschine Learning",
-      "TensorBoard"
-    ]
-  },
-  {
     "id": "together-ai",
     "name": "Together AI",
     "description": "End-to-end observability of your GenAI stack built with Together AI.",
@@ -563,12 +464,6 @@
     "id": "vllm",
     "name": "vLLM",
     "description": "Monitor your services built with vLLM's inference and LLM serving solution.",
-    "keywords": []
-  },
-  {
-    "id": "weaviate",
-    "name": "Weaviate",
-    "description": "Observe your semantic cache efficiency to reduce cost and latency for LLM apps.",
     "keywords": []
   }
 ]
