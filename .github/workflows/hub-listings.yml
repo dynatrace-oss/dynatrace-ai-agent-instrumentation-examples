@@ -33,7 +33,7 @@ jobs:
       - name: Update snapshot
         id: snapshot
         env:
-          DT_HUB_TOKEN: ${{ secrets.DT_HUB_TOKEN }} # platform token with hub:catalog:read
+          DT_HUB_TOKEN: ${{ secrets.DT_HUB_READ }} # platform token with hub:catalog:read
         run: |
           set -euo pipefail
           out=.github/hub-ai-listings.json
