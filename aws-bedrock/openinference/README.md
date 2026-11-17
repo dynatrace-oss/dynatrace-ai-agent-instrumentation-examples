@@ -20,6 +20,7 @@ The collector is pinned to the Bindplane Distro for OpenTelemetry image in the M
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`)
 - Bedrock model access enabled in your AWS account
 - Dynatrace tenant with an API token scoped to `openTelemetryTrace.ingest`

@@ -15,7 +15,7 @@ References: [Dynatrace OpenInference guidance](https://docs.dynatrace.com/docs/o
 
 ## Prerequisites
 
-- Python 3.10-3.14 and `uv`
+- Python 3.10-3.14 and [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Docker and Ollama, with `llama3.2` and `all-minilm` pulled
 - Optional Anthropic API key
 - Dynatrace OTLP trace ingest

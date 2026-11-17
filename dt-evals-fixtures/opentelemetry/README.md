@@ -16,6 +16,10 @@ LangChain app uses, they carry exactly the `gen_ai.*` attribute shape dt-evals
 sees in production — no hand-built spans, no LLM provider, no collector, no API
 key.
 
+## Prerequisites
+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) and `make`
+
 ## Run
 
 ```bash

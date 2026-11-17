@@ -5,6 +5,7 @@ Demonstrates tracing a [Claude Agent SDK](https://pypi.org/project/claude-agent-
 ## Prerequisites
 
 - Python 3.13+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`)
 - Anthropic model access enabled in your AWS account (Bedrock)
 - Dynatrace OneAgent 1.349 or later installed on the host

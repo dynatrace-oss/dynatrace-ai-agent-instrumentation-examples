@@ -137,6 +137,8 @@ deliberately uses the officially documented mechanism instead.
 
 ## Running this demo
 
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) and `make` on the machine running the demo.
+
 Requires OneAgent installed on the host with the `OpenTelemetry (Python) [Opt-In]` feature
 enabled (see [Dynatrace prerequisites](#dynatrace-prerequisites) above) for the span — without
 it, no span data at all, regardless of mock vs. real mode below. The metrics need

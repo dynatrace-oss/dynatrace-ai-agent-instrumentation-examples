@@ -5,6 +5,7 @@ Demonstrates tracing Anthropic Bedrock SDK API calls with Dynatrace via OneAgent
 ## Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`)
 - Anthropic model access enabled in your AWS account
 - Dynatrace OneAgent installed on the host

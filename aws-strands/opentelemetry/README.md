@@ -44,6 +44,7 @@ With the opt-in configured in [`dynatrace.py`](./dynatrace.py) (see the note bel
 - A Dynatrace tenant; start a free trial at https://dt-url.net/trial
 - Docker installed and running
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials with Amazon Bedrock access (model `us.anthropic.claude-haiku-4-5-20251001-v1:0`)
 
 ---
