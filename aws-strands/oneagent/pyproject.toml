@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "strands-agents==1.65.0",
-    "boto3==1.44.4",
+    "boto3==1.44.5",
     "fastapi",
     "uvicorn[standard]",
 ]
