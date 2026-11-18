@@ -142,3 +142,6 @@ next-env.d.ts
 test/e2e/reports/*.json
 test/e2e/reports/*.md
 test/e2e/report-gen
+
+# Openspec
+openspec/
