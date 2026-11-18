@@ -75,5 +75,5 @@ Non-native CrewAI models (and `is_litellm=True`) route through LiteLLM instead a
 
 ## Limits
 
-- `gen_ai.conversation.id` is not set by OneAgent sensors, so it is not expected on this example's spans; the demo is single-turn.
+- The chat span carries a `gen_ai.conversation.id` that the sensor generates per call (a different UUID for each request). It is not tied to any id the app supplies, so don't use it to group multi-turn conversations. The demo is single-turn.
 - The CrewAI sensor is experimental and its schema may change.

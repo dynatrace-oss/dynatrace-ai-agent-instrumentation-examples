@@ -48,9 +48,10 @@ func TestCrewAIOneAgent(t *testing.T) {
 | limit 1`), 5*time.Minute)
 
 	// Earliest non-error chat span, so the guardrail trace never becomes the anchor.
-	// AzureProfile is a starting guess; switch to GenericProfile if CI reports a
-	// non-Azure gen_ai.provider.name (plain openai.OpenAI client on the v1 endpoint).
-	auditSpan(t, "crewai", "oneagent", AzureProfile,
+	// GenericProfile, not AzureProfile: OneAgent never emits the OTel-path
+	// gen_ai.prompt.prompt_filter_results / completion.content_filter_results
+	// that AzureProfile requires (guardrails are audited separately below).
+	auditSpan(t, "crewai", "oneagent", GenericProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "crewai/oneagent"
 | filter dt.openpipeline.source == "oneagent"
