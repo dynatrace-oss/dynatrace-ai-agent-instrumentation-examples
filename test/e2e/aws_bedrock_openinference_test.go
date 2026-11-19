@@ -25,13 +25,13 @@ func TestAWSBedrockOpenInference(t *testing.T) {
 | limit 1`,
 		"aws-bedrock/openinference", genAIClientMetrics)
 
-	// The guardrail-triggering request is always sent last, so the latest
-	// matching span is the one that actually tripped the guardrail. Metrics are
-	// service-scoped and include data from the non-guardrail request above.
+	// The guardrail assessment lives on the span write_haiku opens around the
+	// Converse call (gen_ai.guardrail.id), not on the instrumentor's model span.
+	// The instrumentor ends that span before the response is available.
 	auditSpanWithMetrics(t, "aws-bedrock", "openinference-guardrail", GuardrailProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "aws-bedrock/openinference"
-| filter isNotNull(gen_ai.request.model)
+| filter isNotNull(gen_ai.guardrail.id)
 | sort start_time desc
 | limit 1`,
 		"aws-bedrock/openinference", genAIClientMetrics)

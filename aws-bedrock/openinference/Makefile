@@ -9,9 +9,10 @@ PORT             ?= 8000
 DT_ENDPOINT      ?= https://your-tenant.live.dynatrace.com
 DT_API_TOKEN     ?= dt0c01.*****
 
-# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT). v1.1.2 tracks OTel
-# contrib v0.162.0 and bundles genainormalizerprocessor + signal_to_metrics
-# connector. Pinned so a version bump surfaces normalization regressions in the e2e test.
+# Dynatrace Bindplane Distribution of OpenTelemetry Collector (DBDOT).
+# Bundles the transform processor and the span_metrics / signal_to_metrics
+# connectors this demo uses. Pinned so a version bump surfaces regressions
+# in the e2e test.
 override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
@@ -23,7 +24,7 @@ help: ## Show available targets
 install: ## Install Python dependencies
 	uv sync
 
-run: ## Start collector + app locally on port $(PORT)
+run: ## Start collector (metrics derivation) + app locally on port $(PORT)
 	@$(MAKE) _collector CONFIG=otelcol-config.yaml
 	@OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 	  uv run python3 -m uvicorn server:app --host 0.0.0.0 --port $(PORT)
