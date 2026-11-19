@@ -1,11 +1,11 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten'",
-    "(python_full_version < '3.14' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')",
+    "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
+    "python_full_version < '3.12' or (python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten')",
 ]
 
 [[package]]
@@ -433,8 +433,8 @@ name = "httpcore2"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "python_full_version < '3.12' or sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz", hash = "sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643", size = 69886, upload-time = "2026-10-21T07:09:45.31Z" }
 wheels = [
@@ -672,9 +672,10 @@ wheels = [
 
 [[package]]
 name = "openai-agents"
-version = "0.24.0"
+version = "0.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "certifi" },
     { name = "griffelib" },
     { name = "httpx2" },
     { name = "mcp" },
@@ -688,9 +689,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/36/537006bc2a22f3aa232ce0907f52a333f831a6a2f525894ff43747a7abee/openai_agents-0.24.0.tar.gz", hash = "sha256:4b4b285f4fed81fdf1b4ac426a9101658d9cd29b4fb1aaeee18f639b77e704e3", size = 7026950, upload-time = "2026-10-15T02:38:21.466Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/b9/54f5b995f6f2250aede84020d64c17f6628455ff8773f3bf7c33e357b424/openai_agents-0.25.0.tar.gz", hash = "sha256:15c303e6afee6046f10230c4b4bc3fa5d37444ec0372149116e19f408da9b221", size = 7076973, upload-time = "2026-11-18T00:39:21.319Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/93/01efc034d7011b89381f96a9fb8957c09a16e3c190f3a5de128e1d0a42e9/openai_agents-0.24.0-py3-none-any.whl", hash = "sha256:18d4ac34e84ed937333ec8ce46395ed3521ffcbb0a521780a4c2eaa451467f49", size = 1242571, upload-time = "2026-10-15T02:38:18.835Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/e6/336033d51a98b213fa7e38b3133a6e882d3173d1de5c82aae07ac6ec38e6/openai_agents-0.25.0-py3-none-any.whl", hash = "sha256:09a02b815842b498647749a8d9e4c101b0bd69d2a81a8f91e8ec3ac0f2c54150", size = 1234447, upload-time = "2026-11-18T00:39:18.805Z" },
 ]
 
 [[package]]
@@ -710,7 +711,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = "==0.163.1" },
-    { name = "openai-agents", specifier = "==0.24.0" },
+    { name = "openai-agents", specifier = "==0.25.0" },
     { name = "openinference-instrumentation", specifier = "==0.1.77" },
     { name = "openinference-instrumentation-openai-agents", specifier = "==2.8.3" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.45.2" },
