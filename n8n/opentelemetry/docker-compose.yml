@@ -63,7 +63,7 @@ services:
     env_file: .env
     environment:
       - TEST_RUN_ID
-    image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.60.0
+    image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:0.61.0
     command: ["--config=/etc/otelcol/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/otel-collector-config.yaml
