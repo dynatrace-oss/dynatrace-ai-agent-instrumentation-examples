@@ -35,5 +35,5 @@ request-chat: ## POST two /chat turns on one session to localhost:$(PORT)
 	@echo
 	curl -s -X POST http://localhost:$(PORT)/chat \
 	  -H 'Content-Type: application/json' \
-	  -d '{"session_id":"e2e-session","message":"Now one about autumn leaves."}'
+	  -d '{"session_id":"e2e-session","message":"Now write another one about the opposite season."}'
 	@echo

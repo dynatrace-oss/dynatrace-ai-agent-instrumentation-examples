@@ -5,8 +5,8 @@ This sample traces a [CrewAI](https://docs.crewai.com/) crew with Dynatrace usin
 ## What this sample does
 
 - Runs a FastAPI server with `POST /haiku` (accepts a `{"topic": "..."}` body), which kicks off a one-agent crew against Azure OpenAI
-- Exposes `POST /chat` (`{"message": "...", "session_id": "..."}`), one turn of a conversational CrewAI Flow, so turns with the same `session_id` share a conversation
-- Relies on the OneAgent CrewAI sensor for the `workflow`, `task` and `agent` spans
+- Exposes `POST /chat` (`{"message": "...", "session_id": "..."}`), one turn of a conversational CrewAI Flow; turns with the same `session_id` share the conversation history
+- Relies on the OneAgent CrewAI sensor for the `workflow`, `task` and `agent` spans (one workflow span per chat turn)
 
 ## Prerequisites
 
@@ -17,7 +17,9 @@ This sample traces a [CrewAI](https://docs.crewai.com/) crew with Dynatrace usin
 
 In Dynatrace, go to **Settings** > **OneAgent features** and turn on **Experimental Python GenAI CrewAI [Opt-In]**, then restart the Python process.
 
-Prompt and guardrail capture need the Python OpenAI sensor features instead; see [`openai/oneagent`](../../openai/oneagent/).
+**Optional: capture prompts.** The app calls the model through CrewAI's native OpenAI provider (`custom_openai=True`), so enabling **Python GenAI OpenAI** and **Python GenAI OpenAI prompt capture** adds `openai.chat` spans with the prompts under the agent span. The CrewAI sensor does not need them and the e2e does not assert them. For guardrails see [`openai/oneagent`](../../openai/oneagent/).
+
+The CrewAI sensor sets no `gen_ai.conversation.id`, so chat turns are separate traces and are not grouped by an attribute.
 
 ## Environment
 
@@ -41,7 +43,7 @@ Then in a second terminal:
 
 ```bash
 make request        # single crew run
-make request-chat   # two chat turns on one session
+make request-chat   # two chat turns on one session, the second builds on the first
 ```
 
 ## Makefile targets

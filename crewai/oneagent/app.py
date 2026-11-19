@@ -22,10 +22,10 @@ class ChatRequest(BaseModel):
 
 
 def _llm() -> LLM:
-    # custom_openai=True forces CrewAI's native OpenAI provider (openai.OpenAI),
-    # which the OneAgent OpenAI sensor instruments. Azure's /openai/v1/ endpoint
-    # accepts the plain OpenAI client. Streaming stays off because the sensor does
-    # not reassemble streamed chunks.
+    # custom_openai=True forces CrewAI's native OpenAI provider (openai.OpenAI).
+    # Without it, a deployment name CrewAI does not know falls back to LiteLLM.
+    # Azure's /openai/v1/ endpoint accepts the plain OpenAI client. Streaming is
+    # off because OneAgent's OpenAI sensor does not reassemble streamed chunks.
     endpoint = (os.getenv("AZURE_OPENAI_ENDPOINT") or "").rstrip("/")
     return LLM(
         model=DEPLOYMENT,
@@ -63,7 +63,7 @@ async def haiku(req: HaikuRequest | None = None) -> str:
 
 
 # One conversational Flow per session, kept in memory so later turns see the
-# history of earlier ones. CrewAI uses the session id as gen_ai.conversation.id.
+# history of earlier ones.
 _flows: dict[str, Flow] = {}
 
 
@@ -71,7 +71,6 @@ def _chat_flow() -> Flow:
     @ConversationConfig(
         llm=_llm(),
         system_prompt="You are a skilled poet. Answer in haiku (3 lines, 5-7-5).",
-        trace_scope="turn",
     )
     class ChatFlow(Flow):
         pass
