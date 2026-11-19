@@ -30,6 +30,7 @@ Conversation content is off by default. Enable it only after explicit privacy an
 
 ## Prerequisites
 
+- (For the local Python emitter and tests) [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - A Cursor account with a user API key stored as `CURSOR_API_KEY`
 - Cursor Enterprise and team telemetry administration permission for native OTel export
 - (For Kubernetes flow) a working Kubernetes context and `kubectl`

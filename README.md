@@ -127,6 +127,17 @@ Observe AI coding agents with zero code changes using built-in OpenTelemetry sig
 
 ## Getting Started
 
+### Prerequisites
+
+- `make`
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — the Python demos use it to install dependencies (`make install`) and run the app (`make run`); it can also fetch the required Python version
+- Docker — for demos that run a local OpenTelemetry collector or build container images
+- A Dynatrace tenant — start a free trial at https://dt-url.net/trial
+
+A few demos (`n8n`, `ai-coding-agents/claude-code`, `ai-coding-agents/github-copilot-sdk`, `ai-coding-agents/antigravity`) use npm, Docker, or pip instead of `uv`. Each demo's README lists its exact prerequisites.
+
+### Run a demo
+
 Each demo follows the same interface:
 
 ```bash

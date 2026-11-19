@@ -52,6 +52,7 @@ The collector renames the agent's `service.name` to `mcp-agent-demo-collector` s
 ### Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Node.js 22+
 - Azure OpenAI resource with a deployed model
 - A Dynatrace environment with an API token scoped to `openTelemetryTrace.ingest` and `metrics.ingest`
