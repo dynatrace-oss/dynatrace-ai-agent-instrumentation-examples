@@ -6,7 +6,7 @@ APP_IMAGE        ?=
 BUILD_PLATFORM   ?= linux/amd64
 PORT             ?= 8000
 
-.PHONY: install run build push request request-guardrail help
+.PHONY: install run build push request request-chat help
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -28,5 +28,12 @@ request: ## POST /haiku (topic) to localhost:$(PORT)
 	  -H 'Content-Type: application/json' \
 	  -d '{"topic":"cherry blossoms in spring"}'
 
-request-guardrail: ## POST /haiku-guardrail to localhost:$(PORT)
-	curl -s -X POST http://localhost:$(PORT)/haiku-guardrail
+request-chat: ## POST two /chat turns on one session to localhost:$(PORT)
+	curl -s -X POST http://localhost:$(PORT)/chat \
+	  -H 'Content-Type: application/json' \
+	  -d '{"session_id":"e2e-session","message":"Write a haiku about cherry blossoms in spring."}'
+	@echo
+	curl -s -X POST http://localhost:$(PORT)/chat \
+	  -H 'Content-Type: application/json' \
+	  -d '{"session_id":"e2e-session","message":"Now one about autumn leaves."}'
+	@echo
