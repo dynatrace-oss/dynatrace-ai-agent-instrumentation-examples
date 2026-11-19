@@ -1,0 +1,76 @@
+name: 'Hub Listings Snapshot'
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Run at 05:00 UTC on Mondays.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    permissions:
+      contents: write # push the update branch
+      pull-requests: write # open the update PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install dtctl
+        env:
+          # renovate: datasource=github-releases depName=Dynatrace/dtctl extractVersion=^v(?<version>.*)$
+          DTCTL_VERSION: 0.45.0
+        run: |
+          curl -fsSL "https://github.com/Dynatrace/dtctl/releases/download/v${DTCTL_VERSION}/dtctl_${DTCTL_VERSION}_linux_amd64.tar.gz" | tar -xz -C "$RUNNER_TEMP" dtctl
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          dtctl config set-context hub --environment "${{ secrets.DT_HUB_ENVIRONMENT_URL }}" --token-ref hub --safety-level readonly
+          dtctl config set-credentials hub --token '${DT_HUB_TOKEN}'
+
+      # Reads the tenant's Hub catalog and keeps the "AI and LLM Observability" listings.
+      # The snapshot is a curated list; new listings are added only if a keyword is genai, gen_ai, generative ai or llm.
+      - name: Update snapshot
+        id: snapshot
+        env:
+          DT_HUB_TOKEN: ${{ secrets.DT_HUB_READ }} # platform token with hub:catalog:read
+        run: |
+          set -euo pipefail
+          out=.github/hub-ai-listings.json
+          hub() { dtctl exec api "/platform/hub/v1/catalog/$1" -o json --plain | jq '.result // .'; }
+          hub categories > "$RUNNER_TEMP/categories.json"
+          hub technologies > "$RUNNER_TEMP/technologies.json"
+          jq --slurpfile t "$RUNNER_TEMP/technologies.json" '
+            ($t[0].items | map({key: .id, value: .}) | from_entries) as $tech
+            | [.categories[] | select(.id == "ai-llm-observability") | .itemIds[]] | unique
+            | if length == 0 then error("no listings found") else . end
+            | map({id: ., name: $tech[.].name, description: $tech[.].description, keywords: ($tech[.].keywords // [])})' \
+            "$RUNNER_TEMP/categories.json" > "$RUNNER_TEMP/hub.json"
+          jq --slurpfile old "$out" '
+            ($old[0] | map(.id)) as $known
+            | $old[0] + map(select((.id as $i | $known | index($i) | not) and (.keywords | map(ascii_downcase) | any(IN("genai", "gen_ai", "generative ai", "llm")))))
+            | sort_by(.id)' "$RUNNER_TEMP/hub.json" > "$RUNNER_TEMP/merged.json"
+          new=$(jq -r --slurpfile old "$out" '[.[].id] - [$old[0][].id] | join(", ")' "$RUNNER_TEMP/merged.json")
+          # New entries get the listing's detail sections (overview, use cases, get started) as markdown.
+          for id in $(jq -r '.[] | select(.details == null) | .id' "$RUNNER_TEMP/merged.json"); do
+            details=$(hub "technologies/$id" | jq '[.detailSections[]?.markdown | select(. != null) | "## \(.title)\n\n\(.markdown)"] | join("\n\n")')
+            jq --arg id "$id" --argjson d "$details" 'map(if .id == $id then .details = $d else . end)' "$RUNNER_TEMP/merged.json" > "$RUNNER_TEMP/tmp.json"
+            mv "$RUNNER_TEMP/tmp.json" "$RUNNER_TEMP/merged.json"
+          done
+          if [ -n "$new" ]; then mv "$RUNNER_TEMP/merged.json" "$out"; fi
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR for new listings
+        if: steps.snapshot.outputs.new != ''
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          branch: automation/hub-listings-snapshot
+          delete-branch: true
+          commit-message: "update hub ai listings snapshot"
+          title: "Hub AI listings: new listings added"
+          body: |
+            New listings in the Dynatrace Hub "AI and LLM Observability" category: ${{ steps.snapshot.outputs.new }}
+
+            Check whether each one needs an example in this repo.
+          add-paths: .github/hub-ai-listings.json
