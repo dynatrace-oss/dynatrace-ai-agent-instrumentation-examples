@@ -14,14 +14,11 @@ func TestMicrosoftAgentFrameworkOpenTelemetryCollector(t *testing.T) {
 	// be satisfied by the other run.
 	startCLIAppWithTarget(t, "microsoft-agent-framework/opentelemetry", "run-collector")
 
-	// Both the natively emitted gen_ai.client.* metrics and the three derived
-	// duration metrics must be present on this path.
-	//
-	// gen_ai.invoke_workflow.duration is appended here rather than living in
-	// genAIAgentDurationMetrics: Microsoft Agent Framework is the only demo with a
-	// real workflow span, and demos without one must not be asserted against a
-	// metric they cannot honestly emit.
-	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentDurationMetrics...)
+	// This path carries the natively emitted gen_ai.client.* metrics, the
+	// in-process call counts, and the collector-derived durations. The workflow
+	// duration is appended on its own: Microsoft Agent Framework is the only
+	// demo with a real workflow span, so it is not part of the shared list.
+	metrics := append(append([]string{}, genAIClientMetrics...), genAIAgentMetrics...)
 	metrics = append(metrics, genAIInvokeWorkflowDurationMetric)
 
 	auditSpanWithMetrics(t, "microsoft-agent-framework", "opentelemetry-collector", GenericProfile,
