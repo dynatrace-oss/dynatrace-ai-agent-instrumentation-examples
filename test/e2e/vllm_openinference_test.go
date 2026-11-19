@@ -11,13 +11,15 @@ func TestVLLMOpenInference(t *testing.T) {
 	// its own spans to Dynatrace, then makes 20 OpenInference-traced client calls.
 	runCLIAppWithTarget(t, "vllm/openinference", "e2e")
 
-	auditSpan(t, "vllm", "openinference", GenericProfile,
+	// Client spans go through the collector, which derives the gen_ai.client.* metrics.
+	auditSpanWithMetrics(t, "vllm", "openinference", GenericProfile,
 		scopedDQL(`fetch spans, from: now()-15m
 | filter service.name == "vllm/openinference"
 | filter isNotNull(gen_ai.request.model)
 | filter isNull(span.status_code) or span.status_code != "error"
 | sort timestamp desc
-| limit 1`))
+| limit 1`),
+		"vllm/openinference", genAIClientMetrics)
 
 	// Client gen_ai spans are not sampled: all 20 must arrive.
 	assertSpanExists(t, scopedDQL(`fetch spans, from: now()-15m

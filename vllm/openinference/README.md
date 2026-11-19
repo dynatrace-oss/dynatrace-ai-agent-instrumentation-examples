@@ -43,6 +43,8 @@ make bench MODE=detailed
 
 `make e2e` starts vLLM with `OTEL_TRACES_SAMPLER=traceidratio` at 0.25, exporting its own spans to Dynatrace, then runs `client.py` 20 times. The client is an OpenAI SDK app instrumented with OpenInference that calls vLLM. Its `gen_ai.*` chat spans are not sampled, so all 20 appear in AI Observability. vLLM keeps about a quarter of its `llm_request` spans, and each one joins the client's trace through the `traceparent` header. Tune with `E2E_RUNS` and `E2E_SAMPLE_RATIO`.
 
+The client sends its spans through a local collector (`make collector`, config in `otel-collector-config.yaml`) on port 4318, or `COLLECTOR_PORT`. OpenInference emits spans only, so the collector derives the `gen_ai.client.token.usage` and `gen_ai.client.operation.duration` metrics that the app's token and latency views use, then forwards spans and metrics to Dynatrace. The collector keeps running after `make e2e` so it can flush the last metrics; stop it with `make stop-collector`.
+
 ```bash
 DT_ENDPOINT=https://<env-id>.live.dynatrace.com DT_API_TOKEN=<token> make e2e
 ```
