@@ -5,8 +5,8 @@ This sample traces a [CrewAI](https://docs.crewai.com/) crew with Dynatrace usin
 ## What this sample does
 
 - Runs a FastAPI server with `POST /haiku` (accepts a `{"topic": "..."}` body), which kicks off a one-agent crew against Azure OpenAI
-- Exposes `POST /chat` (`{"message": "...", "session_id": "..."}`), one turn of a conversational CrewAI Flow; turns with the same `session_id` share the conversation history
-- Relies on the OneAgent CrewAI sensor for the `workflow`, `task` and `agent` spans (one workflow span per chat turn)
+- Exposes `POST /chat` (`{"message": "...", "session_id": "..."}`), one turn of a chat: the app keeps the history per `session_id` and runs the crew again with it, so a turn can build on the earlier ones
+- Relies on the OneAgent CrewAI sensor for the `workflow`, `task` and `agent` spans (each request and each chat turn is one crew run)
 
 ## Prerequisites
 

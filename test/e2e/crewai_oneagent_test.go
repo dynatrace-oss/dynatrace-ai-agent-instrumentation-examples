@@ -6,8 +6,8 @@ import (
 )
 
 // TestCrewAIOneAgent verifies OneAgent alone captures the CrewAI demo through
-// the CrewAI sensor: the workflow, task and agent spans of a crew run, and one
-// workflow span per turn of a conversational Flow.
+// the CrewAI sensor: the workflow, task and agent spans of a crew run, for a
+// single request and for each turn of a two-turn chat.
 //
 // Needs the "Experimental Python GenAI CrewAI [Opt-In]" OneAgent feature
 // (OneAgent 1.339+). The OpenAI sensor features are not relied on, so no chat
@@ -41,11 +41,12 @@ func TestCrewAIOneAgent(t *testing.T) {
 | sort timestamp desc
 | limit 1`), 5*time.Minute)
 
-	// 4. each of the two /chat turns produces a workflow span for the Flow, in
-	// its own trace. The sensor sets no conversation id, so turns are linked
-	// only by the app's session_id, not by a span attribute.
+	// 4. the single request and both chat turns each ran the crew, so there are
+	// at least three traces with a workflow span. The sensor sets no conversation
+	// id, so chat turns are linked only by the app's session_id, not by a span
+	// attribute.
 	assertSpanExistsWithin(t, scopedDQL(base+`| filter gen_ai.operation.kind == "workflow"
-| filter gen_ai.agent.name == "ChatFlow"
+| filter isNotNull(gen_ai.usage.input_tokens)
 | summarize traces = countDistinct(trace.id)
-| filter traces >= 2`), 5*time.Minute)
+| filter traces >= 3`), 5*time.Minute)
 }

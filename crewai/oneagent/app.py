@@ -2,7 +2,6 @@ import asyncio
 import os
 
 from crewai import LLM, Agent, Crew, Task
-from crewai.flow import ConversationConfig, Flow
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
@@ -62,27 +61,20 @@ async def haiku(req: HaikuRequest | None = None) -> str:
     return await asyncio.to_thread(_run_crew, f"Write a haiku about {topic}.")
 
 
-# One conversational Flow per session, kept in memory so later turns see the
-# history of earlier ones.
-_flows: dict[str, Flow] = {}
-
-
-def _chat_flow() -> Flow:
-    @ConversationConfig(
-        llm=_llm(),
-        system_prompt="You are a skilled poet. Answer in haiku (3 lines, 5-7-5).",
-    )
-    class ChatFlow(Flow):
-        pass
-
-    return ChatFlow()
+# Chat history per session, kept in memory. Each turn runs the crew again with the
+# earlier turns in the task text, so every turn is a normal crew run.
+_history: dict[str, list[tuple[str, str]]] = {}
 
 
 def _chat_turn(message: str, session_id: str) -> str:
-    flow = _flows.get(session_id)
-    if flow is None:
-        flow = _flows[session_id] = _chat_flow()
-    return str(flow.handle_turn(message, session_id=session_id))
+    turns = _history.setdefault(session_id, [])
+    earlier = "".join(f"User: {user}\nPoet: {reply}\n" for user, reply in turns)
+    description = (f"Conversation so far:\n{earlier}\n" if earlier else "") + (
+        f"Reply to the user's latest message: {message}"
+    )
+    reply = _run_crew(description)
+    turns.append((message, reply))
+    return reply
 
 
 @app.post("/chat", response_class=PlainTextResponse)
