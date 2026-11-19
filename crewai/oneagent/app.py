@@ -1,7 +1,8 @@
 import asyncio
 import os
 
-from crewai import LLM, Agent, ConversationConfig, Crew, Flow, Task
+from crewai import LLM, Agent, Crew, Task
+from crewai.flow import ConversationConfig, Flow
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
