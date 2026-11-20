@@ -9,4 +9,5 @@ dependencies = [
     "oneagent-sdk",
     "fastapi==0.163.1",
     "uvicorn[standard]==0.54.0",
+    "numpy==2.4.6",
 ]

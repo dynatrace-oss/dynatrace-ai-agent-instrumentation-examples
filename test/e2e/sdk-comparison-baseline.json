@@ -1,10 +1,11 @@
 {
-  "version": "1.8.3",
+  "version": "1.8.4",
   "scope": "current-state",
-  "date": "2026-11-11",
+  "date": "2026-11-20",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.8.4 (2026-11-20): The OneAgent Python LangChain sensor (opt-in, OneAgent 1.333) emits gen_ai.operation.kind (AR-066) values \"workflow\" (root chain), \"task\" (nested chain), \"agent\" (chat model call), \"tool\" and \"retrieval\"; the Google GenAI sensor emits the \"embeddings\" operation for the retriever's query embedding. The langchain/oneagent e2e test asserts them on real Gemini traffic and audits the workflow trace with the new oneagent-langchain profile (standalone, no dashboard), mirrored by LangChainOneAgentProfile in the Go audit code. Add optional gen_ai.tool.name (AR-089), gen_ai.tool.description (AR-090) and gen_ai.embeddings.dimension.count (AR-091), seen on that trace and listed only in that profile.",
     "1.8.3 (2026-11-11): Note on gen_ai.input.messages (AR-011) and gen_ai.output.messages (AR-012) that the OneAgent Cohere, Groq, MistralAI and Ollama sensors emit them with the opt-in prompt capture feature; the matching oneagent e2e tests now assert both.",
     "1.8.2 (2026-11-11): Add the litellm/oneagent demo. The OneAgent LiteLLM sensor (OneAgent 1.351, opt-in) always reports gen_ai.provider.name \"litellm\" rather than the upstream provider. No new attributes.",
     "1.8.1 (2026-11-11): gen_ai.operation.kind (AR-066) is now emitted by the OneAgent Python LangGraph sensor (value \"workflow\" on the Pregel graph span, alongside gen_ai.agent.name from the graph name). The langgraph/oneagent e2e test asserts it.",
@@ -83,6 +84,19 @@
           "additional_required_attributes": [],
           "additional_optional_attributes": [],
           "provider_metrics": ["KO-001", "KO-002", "KO-003", "KO-004"]
+        },
+        "oneagent-langchain": {
+          "dashboard": null,
+          "description": "OneAgent Python LangChain sensor coverage profile. Standalone (does not extend generic): it checks only what the LangChain sensor itself emits, merged over one workflow run's trace. Model, tokens, provider and messages belong to the provider sensor's chat span and are left out. No dashboard consumes it; it exists so the e2e audit and this baseline agree. Go-only counterpart: LangChainOneAgentProfile.",
+          "required_attributes": [
+            "AR-003",
+            "AR-066"
+          ],
+          "optional_attributes": [
+            "AR-089",
+            "AR-090",
+            "AR-091"
+          ]
         }
       },
       "scenario_overrides": {
@@ -263,7 +277,10 @@
       "gen_ai.client.inference.usage.cache_write.input_tokens": "AR-085",
       "gen_ai.client.inference.usage.reasoning.output_tokens": "AR-086",
       "gen_ai.bedrock.guardrail.coverage": "AR-087",
-      "gen_ai.bedrock.guardrail.latency": "AR-088"
+      "gen_ai.bedrock.guardrail.latency": "AR-088",
+      "gen_ai.tool.name": "AR-089",
+      "gen_ai.tool.description": "AR-090",
+      "gen_ai.embeddings.dimension.count": "AR-091"
     },
     "non_sdk_rule_ids": {
       "dt.smartscape.service": "NS-001",
@@ -1294,7 +1311,7 @@
       "providers": ["generic"],
       "owned_by": "framework_instrumentation",
       "used_by": ["guardrail_coverage"],
-      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider). OneAgent's Python LangGraph sensor sets \"workflow\" on the graph invocation span."
+      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider). OneAgent's Python LangGraph sensor sets \"workflow\" on the graph invocation span. OneAgent's Python LangChain sensor sets \"workflow\", \"task\", \"agent\", \"tool\" and \"retrieval\"."
     },
     {
       "name": "gen_ai.usage.cache_read.input_tokens",
@@ -1537,6 +1554,39 @@
       "owned_by": "framework_instrumentation",
       "used_by": [],
       "note": "Bedrock guardrail latency metric. Coverage tracking only; must not gate a profile."
+    },
+    {
+      "name": "gen_ai.tool.name",
+      "rule_id": "AR-089",
+      "required_level": "optional",
+      "group": "operations-agents",
+      "type": "span_attribute",
+      "providers": ["generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": [],
+      "note": "Name of the tool a tool span ran. OneAgent's Python LangChain sensor sets it on the tool span (search_haiku_guide in langchain/oneagent). Audited only by the oneagent-langchain profile, as optional."
+    },
+    {
+      "name": "gen_ai.tool.description",
+      "rule_id": "AR-090",
+      "required_level": "optional",
+      "group": "operations-agents",
+      "type": "span_attribute",
+      "providers": ["generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": [],
+      "note": "Description of the tool a tool span ran, from the tool definition. Set by OneAgent's Python LangChain sensor. Audited only by the oneagent-langchain profile, as optional."
+    },
+    {
+      "name": "gen_ai.embeddings.dimension.count",
+      "rule_id": "AR-091",
+      "required_level": "optional",
+      "group": "operations-embeddings",
+      "type": "span_attribute",
+      "providers": ["generic"],
+      "owned_by": "framework_instrumentation",
+      "used_by": [],
+      "note": "Vector size of an embeddings span. Set by OneAgent's Python Google GenAI sensor on Models.embed_content. Audited only by the oneagent-langchain profile, as optional."
     }
   ],
   "non_sdk_fields": [
