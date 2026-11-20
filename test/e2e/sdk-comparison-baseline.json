@@ -1,10 +1,11 @@
 {
-  "version": "1.8.3",
+  "version": "1.8.4",
   "scope": "current-state",
-  "date": "2026-11-11",
+  "date": "2026-11-20",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
+    "1.8.4 (2026-11-20): The OneAgent Python LangChain sensor (opt-in, OneAgent 1.333) emits gen_ai.operation.kind (AR-066) values \"workflow\" (root chain), \"task\" (nested chain), \"agent\" (chat model call), \"tool\" and \"retrieval\"; the Google GenAI sensor emits the \"embeddings\" operation for the retriever's query embedding. The langchain/oneagent e2e test asserts them on real Gemini traffic and audits the workflow trace with the new oneagent-langchain profile (standalone, no dashboard), mirrored by LangChainOneAgentProfile in the Go audit code.",
     "1.8.3 (2026-11-11): Note on gen_ai.input.messages (AR-011) and gen_ai.output.messages (AR-012) that the OneAgent Cohere, Groq, MistralAI and Ollama sensors emit them with the opt-in prompt capture feature; the matching oneagent e2e tests now assert both.",
     "1.8.2 (2026-11-11): Add the litellm/oneagent demo. The OneAgent LiteLLM sensor (OneAgent 1.351, opt-in) always reports gen_ai.provider.name \"litellm\" rather than the upstream provider. No new attributes.",
     "1.8.1 (2026-11-11): gen_ai.operation.kind (AR-066) is now emitted by the OneAgent Python LangGraph sensor (value \"workflow\" on the Pregel graph span, alongside gen_ai.agent.name from the graph name). The langgraph/oneagent e2e test asserts it.",
@@ -83,6 +84,15 @@
           "additional_required_attributes": [],
           "additional_optional_attributes": [],
           "provider_metrics": ["KO-001", "KO-002", "KO-003", "KO-004"]
+        },
+        "oneagent-langchain": {
+          "dashboard": null,
+          "description": "OneAgent Python LangChain sensor coverage profile. Standalone (does not extend generic): it checks only what the LangChain sensor itself emits, merged over one workflow run's trace. Model, tokens, provider and messages belong to the provider sensor's chat span and are left out. No dashboard consumes it; it exists so the e2e audit and this baseline agree. Go-only counterpart: LangChainOneAgentProfile.",
+          "required_attributes": [
+            "AR-003",
+            "AR-066"
+          ],
+          "optional_attributes": []
         }
       },
       "scenario_overrides": {
@@ -1294,7 +1304,7 @@
       "providers": ["generic"],
       "owned_by": "framework_instrumentation",
       "used_by": ["guardrail_coverage"],
-      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider). OneAgent's Python LangGraph sensor sets \"workflow\" on the graph invocation span."
+      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider). OneAgent's Python LangGraph sensor sets \"workflow\" on the graph invocation span. OneAgent's Python LangChain sensor sets \"workflow\", \"task\", \"agent\", \"tool\" and \"retrieval\"."
     },
     {
       "name": "gen_ai.usage.cache_read.input_tokens",
