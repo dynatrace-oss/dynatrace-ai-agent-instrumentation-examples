@@ -16,7 +16,9 @@ import (
 // The kinds are asserted, plus that one trace holds all of them. Parent span
 // ids are not asserted: how OneAgent parents provider spans under framework
 // spans is not documented. The chat span is audited against GenericProfile and
-// the workflow trace against LangChainOneAgentProfile.
+// the workflow trace against LangChainOneAgentProfile. The second audit
+// has its own suite name (langchain/oneagent-workflow), since reports are
+// written per suite and would overwrite the first.
 //
 // Needs the OneAgent Python LangChain sensor (opt-in, OneAgent 1.333+) and the
 // experimental, opt-in Google GenAI sensor. The Claude path of the example is not asserted, since
@@ -88,7 +90,7 @@ func TestLangChainOneAgent(t *testing.T) {
 	// 8. Audit the LangChain sensor's own attributes on the earliest workflow,
 	// merged over its trace. LangChainOneAgentProfile leaves out the model and
 	// token attributes, which belong to the provider sensor's chat span.
-	auditSpan(t, "langchain", "oneagent", LangChainOneAgentProfile,
+	auditSpan(t, "langchain", "oneagent-workflow", LangChainOneAgentProfile,
 		`fetch spans, from: now()-10m
 | filter service.name == "langchain/oneagent"
 | filter dt.openpipeline.source == "oneagent"
