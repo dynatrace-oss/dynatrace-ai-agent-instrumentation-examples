@@ -76,3 +76,13 @@ make request
 ## Dynatrace views
 
 Open the **AI Observability** app and filter by `service.name = langchain/oneagent` to see the workflow trace with its tool and retrieval steps, and the model, token usage, and latency for each call.
+
+## Screenshots
+
+The service in the AI Observability Explorer, with both Gemini models (chat and embeddings):
+
+![Explorer view for langchain/oneagent](assets/langchain-oneagent-explorer.png)
+
+The trace of a haiku request: the LangChain sensor's workflow, task, agent, tool and retrieval spans, with the Gemini chat and embeddings calls under them:
+
+![Agentic trace for langchain/oneagent](assets/langchain-oneagent-traces.png)
