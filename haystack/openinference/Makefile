@@ -17,7 +17,7 @@ BUILD_PLATFORM      ?= linux/amd64
 # span_metrics derives gen_ai.client.operation.duration; signal_to_metrics derives
 # gen_ai.client.token.usage. The app emits gen_ai.* natively; the collector only
 # fills the Haystack gaps (request params, system instructions, provider, response model).
-override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.3.1
+override COLLECTOR_IMAGE     := ghcr.io/dynatrace/dynatrace-bindplane-otel-collector:1.4.1
 override COLLECTOR_CONTAINER := bindplane-otel-collector
 
 .PHONY: run build push request stop logs install help
