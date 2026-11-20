@@ -59,3 +59,13 @@ make request-chat   # two chat turns on one session, the second builds on the fi
 ## Dynatrace views
 
 Open the **AI Observability** app and filter by `service.name = crewai/oneagent` to explore the workflow, task and agent spans.
+
+## Screenshots
+
+The service in the AI Observability Explorer (the prompts need the optional OpenAI sensor features):
+
+![Explorer view for crewai/oneagent](assets/crewai-oneagent-explorer.png)
+
+The trace of a chat turn: the CrewAI sensor's crew, task and agent spans, with the `openai.chat` call under them. The prompt includes the first turn:
+
+![Agentic trace for crewai/oneagent](assets/crewai-oneagent-trace.png)
