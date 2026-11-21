@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "openai-agents==0.24.0",
     "pydantic",
-    "fastapi==0.163.1",
+    "fastapi==0.165.0",
     "uvicorn==0.54.0",
     "opentelemetry-instrumentation-openai-agents-v2==0.1.0",
     "opentelemetry-sdk",

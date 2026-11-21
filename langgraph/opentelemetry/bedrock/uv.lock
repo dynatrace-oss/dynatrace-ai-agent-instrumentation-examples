@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -433,10 +433,13 @@ wheels = [
 ]
 
 [[package]]
-name = "cuid"
-version = "0.4"
+name = "cuid2"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/55/ca/d323556e2bf9bfb63219fbb849ce61bb830cc42d1b25b91cde3815451b91/cuid-0.4.tar.gz", hash = "sha256:74eaba154916a2240405c3631acee708c263ef8fa05a86820b87d0f59f84e978", size = 4986, upload-time = "2023-03-06T00:41:12.708Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/e2/2d53c604e296ac60d68ea6b3a8eafc744cfecf0731d23a63246f035e08c4/cuid2-2.3.0.tar.gz", hash = "sha256:7409caadbd83682f94eb2a2a7421b29bc72ff3d7535ce914cd134d9703828c2c", size = 18696, upload-time = "2026-11-07T16:43:06.623Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/84/bd5e8d7c4de1c1c702da66e971e4f8b0523abb2f752ccccaf82cf3d595c5/cuid2-2.3.0-py3-none-any.whl", hash = "sha256:e9c1bf8a4259e4e76186ee90a8bf785bbf0b6f5b82e1d8516e9da3ae88996820", size = 19577, upload-time = "2026-11-07T16:43:05.204Z" },
+]
 
 [[package]]
 name = "deprecated"
@@ -461,7 +464,7 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.163.1"
+version = "0.165.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -472,9 +475,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/62/19000d0f3699cacaeffe8a3c4cc7046d87aac3291163ffeb2ef08b82d859/fastapi-0.163.1.tar.gz", hash = "sha256:3d364b02a68b67292e833ff2dfed3b8dc3aeadf73e271c15316c6c166668792f", size = 544796, upload-time = "2026-11-15T09:51:31.271Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/f9/e7820ef181026fea100bde02d811445bf8e883362d7092b6928767147056/fastapi-0.165.0.tar.gz", hash = "sha256:dd94d4128319c1e1d50535ab023ab698f850a4d2822f0e181747b46f4ff3c0ab", size = 557984, upload-time = "2026-11-18T19:15:37.076Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/b6/2424da1e40825d3fc54539621811f34e21472499677c9490e4967270e38e/fastapi-0.163.1-py3-none-any.whl", hash = "sha256:68f2d8050f5c3583121c0d203046cc7def5c16a7d6c43a0e7707a8ea610fe2d3", size = 154541, upload-time = "2026-11-15T09:51:29.726Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/c1/3b74c030262a1b38b1fee180f80b4007bbc11c9ac12028cb18c7bcecaec9/fastapi-0.165.0-py3-none-any.whl", hash = "sha256:896f48462042bb4f162147eb8fac7e858753dc1f486765709baf105d70e4fc5b", size = 159475, upload-time = "2026-11-18T19:15:35.345Z" },
 ]
 
 [[package]]
@@ -793,7 +796,7 @@ wheels = [
 
 [[package]]
 name = "langchain-aws"
-version = "1.9.3"
+version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -802,9 +805,9 @@ dependencies = [
     { name = "numpy", version = "2.5.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/74/90/3507de57f89975a97427c5a1497314dc557b1e47c4dc579c13443c904c3e/langchain_aws-1.9.3.tar.gz", hash = "sha256:d37b442a16ffdc52ead72a92b8225bf8c66eb76ee91368e5ffe65eabca3dd8c1", size = 874750, upload-time = "2026-11-10T23:08:21.243Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/6d/5945ab08acaef6ccda258dafe441be77c507792d5c734472c3d0abf4648f/langchain_aws-1.10.0.tar.gz", hash = "sha256:6923b5f513d6c18bee23fe96064583ba4bc2d3556844c603b9daf2fb1967ccc4", size = 774020, upload-time = "2026-11-20T02:24:54.352Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/de/28aa7147c9cc141f9cf417372ddce263f9cb0a2f4f632dee773eb5de6452/langchain_aws-1.9.3-py3-none-any.whl", hash = "sha256:7b23c0dff0190c94094a7aa285118d219eeb9ed4f2d005caf554a5800a10e915", size = 253819, upload-time = "2026-11-10T23:08:19.692Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/25/84cf0046d1b11ce1610cc9c36724bec8d0be48e798aed0e4519b1f9f0c05/langchain_aws-1.10.0-py3-none-any.whl", hash = "sha256:13eb4e82c7121d333bba36b26a027cdf4f1a3ebf8205ee5ac9be80ed7d29fd1e", size = 255245, upload-time = "2026-11-20T02:24:52.966Z" },
 ]
 
 [[package]]
@@ -872,10 +875,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = "==0.163.1" },
-    { name = "langchain-aws", specifier = "==1.9.3" },
+    { name = "fastapi", specifier = "==0.165.0" },
+    { name = "langchain-aws", specifier = "==1.10.0" },
     { name = "langgraph", specifier = "==1.2.22" },
-    { name = "traceloop-sdk", specifier = "==0.63.0" },
+    { name = "traceloop-sdk", specifier = "==0.63.1" },
     { name = "uvicorn", specifier = "==0.54.0" },
 ]
 
@@ -2696,12 +2699,12 @@ wheels = [
 
 [[package]]
 name = "traceloop-sdk"
-version = "0.63.0"
+version = "0.63.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "colorama" },
-    { name = "cuid" },
+    { name = "cuid2" },
     { name = "deprecated" },
     { name = "httpx" },
     { name = "jinja2" },
@@ -2752,9 +2755,9 @@ dependencies = [
     { name = "requests" },
     { name = "tenacity" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/d7/38dd4791453ee55f2aed2afd22191b59cd8f7cb852de60889979815fe995/traceloop_sdk-0.63.0.tar.gz", hash = "sha256:3b25c62f130543a3a8c1535a85bd423b9bdd98a87028b71eef05c8cb4fc66889", size = 352429, upload-time = "2026-11-05T10:12:04.681Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/ea/30df5a8fdd747f05beb898aa81f47f50d484a19487de37375fa3f9bbdf00/traceloop_sdk-0.63.1.tar.gz", hash = "sha256:775504eaad85372c8bcbda730f6982917c3541dbd1a0fbe4a05e04fce54d9393", size = 353173, upload-time = "2026-11-16T19:13:33.825Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/b6/7ed1015b59e186c2ef94cd9d4dcd9f62f594a657188f8841ad0b8462c6f2/traceloop_sdk-0.63.0-py3-none-any.whl", hash = "sha256:c4351fb54f175d00a1e8476145e11f27adfb6590ae3dbed02e8003c6dc3d73da", size = 92727, upload-time = "2026-11-05T10:12:03.165Z" },
+    { url = "https://files.pythonhosted.org/packages/93/1f/31f8c8e8e8485488db5a89662a648d05ca42d7150e1e74bf25b94229104d/traceloop_sdk-0.63.1-py3-none-any.whl", hash = "sha256:d7eee0522fdcb6c724abd2a47c30eb47a325551d8f4b490ab817bc83e10560fd", size = 92853, upload-time = "2026-11-16T19:13:32.077Z" },
 ]
 
 [[package]]
