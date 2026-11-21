@@ -7,6 +7,11 @@ receivers:
 processors:
   # Extract Azure OpenAI content-filter results embedded in output.value so they
   # are queryable in DQL without reparsing the full output payload.
+  #
+  # output.value carries prompt_filter_results (per-prompt verdicts) and
+  # choices[0].content_filter_results (per-completion verdicts). Both are copied
+  # onto gen_ai.prompt.prompt_filter_results and
+  # gen_ai.completion.content_filter_results.
   transform/output_prompt_results:
     error_mode: ignore
     trace_statements:
@@ -14,6 +19,7 @@ processors:
         statements:
           - set(attributes["temp.output_value"], ParseJSON(attributes["output.value"])) where attributes["output.value"] != nil
           - set(attributes["gen_ai.prompt.prompt_filter_results"], String(attributes["temp.output_value"]["prompt_filter_results"])) where attributes["temp.output_value"]["prompt_filter_results"] != nil
+          - set(attributes["gen_ai.completion.content_filter_results"], String(attributes["temp.output_value"]["choices"][0]["content_filter_results"])) where attributes["temp.output_value"]["choices"] != nil
           - delete_key(attributes, "temp.output_value")
 
   # Keep only spans that represent model calls for the metrics branch. With
