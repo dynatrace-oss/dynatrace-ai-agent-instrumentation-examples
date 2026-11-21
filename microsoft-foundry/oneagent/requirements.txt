@@ -2,5 +2,5 @@ azure-ai-projects==2.11.0
 azure-identity==1.27.0
 openai==3.37.0
 httpx==0.28.1
-fastapi==0.163.1
+fastapi==0.165.0
 uvicorn==0.54.0
