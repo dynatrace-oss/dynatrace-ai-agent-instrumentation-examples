@@ -34,6 +34,7 @@ OA_ALL='[
   {"name":"mistral-oneagent","app_dir":"mistral/oneagent","test_file":"test/e2e/mistral_test.go","test_run":"TestMistralOneAgent","otel_service_name":"mistral/oneagent","model":"mistral-small-latest"},
   {"name":"google-adk-oneagent","app_dir":"google-adk/oneagent","test_file":"test/e2e/google_adk_oneagent_test.go","test_run":"TestGoogleADKOneAgent","otel_service_name":"google-adk/oneagent","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"langgraph-oneagent","app_dir":"langgraph/oneagent","test_file":"test/e2e/langgraph_oneagent_test.go","test_run":"TestLangGraphOneAgent","otel_service_name":"langgraph/oneagent"},
+  {"name":"crewai-oneagent","app_dir":"crewai/oneagent","test_file":"test/e2e/crewai_oneagent_test.go","test_run":"TestCrewAIOneAgent","otel_service_name":"crewai/oneagent"},
   {"name":"langchain-oneagent","app_dir":"langchain/oneagent","test_file":"test/e2e/langchain_oneagent_test.go","test_run":"TestLangChainOneAgent","otel_service_name":"langchain/oneagent","model":"gemini-3.1-flash-lite","needs_google":true},
   {"name":"aws-bedrock-agentcore-oneagent-opentelemetry","app_dir":"aws-bedrock-agentcore/oneagent-opentelemetry","test_file":"test/e2e/aws_bedrock_agentcore_oneagent_opentelemetry_test.go","test_run":"TestAWSBedrockAgentCoreOneAgentOpenTelemetry","otel_service_name":"aws-bedrock-agentcore/oneagent-opentelemetry","needs_mock_agentcore":true,"oneagent_warmup_seconds":"60"}
 ]'
