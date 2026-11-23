@@ -107,7 +107,7 @@ Monitor AI agent frameworks with Dynatrace.
 | [Pydantic AI](./pydantic-ai/opentelemetry/) | `pydantic-ai` 2.69.0 <!-- renovate: datasource=pypi depName=pydantic-ai --> | — | — | [✓](./pydantic-ai/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 | [Real User Monitoring](./rum/opentelemetry/) | — | — | — | [✓](./rum/opentelemetry/) <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> |
 
-\* The LangChain sensor is not experimental, but the Google GenAI and Anthropic sensors underneath it are — prompt input and output capture not yet supported.
+\* Experimental sensor — prompt input and output capture not yet supported. For LangChain, the LangChain sensor itself is not experimental, but the Google GenAI and Anthropic sensors underneath it are.
 
 <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" width="16"> Includes an [OTel Collector](https://opentelemetry.io/docs/collector/) configuration — compatible with the [Dynatrace Distribution of the OpenTelemetry Collector](https://docs.dynatrace.com/docs/extend-dynatrace/opentelemetry/collector) and [Dynatrace Bindplane Distribution of OpenTelemetry Collector](https://github.com/Dynatrace/dynatrace-bindplane-otel-collector).
 
