@@ -216,6 +216,26 @@ var LangChainOneAgentProfile = Profile{
 	},
 }
 
+// CrewAIOneAgentProfile checks what OneAgent's Python CrewAI sensor itself emits,
+// merged over one crew run's trace: the workflow span's token usage and kind, and
+// the agent name and model the task and agent spans carry (see the OAAD CrewAI
+// sensor page). It deliberately leaves out the provider, response model, operation
+// name and messages: those belong to the LLM-call span of the provider sensor
+// (OpenAI), which needs its own OneAgent features, so a bare CrewAI setup must
+// still pass. It mirrors the standalone "oneagent-crewai" profile in
+// sdk-comparison-baseline.json, which has no dashboard.
+var CrewAIOneAgentProfile = Profile{
+	Name: "oneagent-crewai",
+	Required: []AttributeCheck{
+		{Name: "service.name", RuleID: "AR-003"},
+		{Name: "gen_ai.request.model", RuleID: "AR-004"},
+		{Name: "gen_ai.usage.input_tokens", RuleID: "AR-006"},
+		{Name: "gen_ai.usage.output_tokens", RuleID: "AR-007"},
+		{Name: "gen_ai.agent.name", RuleID: "AR-010"},
+		{Name: "gen_ai.operation.kind", RuleID: "AR-066"},
+	},
+}
+
 // OpenAIOneAgentGuardrailProfile checks the guardrail attributes OneAgent's Python
 // OpenAI sensor derives from Azure OpenAI content-filter payloads when the GenAI
 // captureGuardrails feature is enabled. The sensor writes its own provider-neutral

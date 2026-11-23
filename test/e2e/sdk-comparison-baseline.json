@@ -1,11 +1,12 @@
 {
-  "version": "1.8.4",
+  "version": "1.8.5",
   "scope": "current-state",
-  "date": "2026-11-20",
+  "date": "2026-11-23",
   "source_app": "Dynatrace AI Observability",
   "purpose": "Single source of truth for comparing SDK/framework telemetry coverage",
   "changelog": [
-    "1.8.4 (2026-11-20): The OneAgent Python LangChain sensor (opt-in, OneAgent 1.333) emits gen_ai.operation.kind (AR-066) values \"workflow\" (root chain), \"task\" (nested chain), \"agent\" (chat model call), \"tool\" and \"retrieval\"; the Google GenAI sensor emits the \"embeddings\" operation for the retriever's query embedding. The langchain/oneagent e2e test asserts them on real Gemini traffic and audits the workflow trace with the new oneagent-langchain profile (standalone, no dashboard), mirrored by LangChainOneAgentProfile in the Go audit code. Add optional gen_ai.tool.name (AR-089), gen_ai.tool.description (AR-090) and gen_ai.embeddings.dimension.count (AR-091), seen on that trace and listed only in that profile.",
+    "1.8.5 (2026-11-23): The OneAgent Python LangChain sensor (opt-in, OneAgent 1.333) emits gen_ai.operation.kind (AR-066) values \"workflow\" (root chain), \"task\" (nested chain), \"agent\" (chat model call), \"tool\" and \"retrieval\"; the Google GenAI sensor emits the \"embeddings\" operation for the retriever's query embedding. The langchain/oneagent e2e test asserts them on real Gemini traffic and audits the workflow trace with the new oneagent-langchain profile (standalone, no dashboard), mirrored by LangChainOneAgentProfile in the Go audit code. Add optional gen_ai.tool.name (AR-089), gen_ai.tool.description (AR-090) and gen_ai.embeddings.dimension.count (AR-091), seen on that trace and listed only in that profile.",
+    "1.8.4 (2026-11-19): gen_ai.operation.kind (AR-066) and gen_ai.agent.name (AR-010) are now emitted by the OneAgent Python CrewAI sensor (experimental, OneAgent 1.339): kind \"workflow\" on Crew.kickoff, \"task\" on Task.execute_sync and \"agent\" on Agent.execute_task, with the agent role (\"crew\" name on the workflow span) as the agent name and the agent model as gen_ai.request.model. The crewai/oneagent e2e test asserts them and audits them with the new oneagent-crewai profile (standalone, no dashboard), mirrored by CrewAIOneAgentProfile in the Go audit code.",
     "1.8.3 (2026-11-11): Note on gen_ai.input.messages (AR-011) and gen_ai.output.messages (AR-012) that the OneAgent Cohere, Groq, MistralAI and Ollama sensors emit them with the opt-in prompt capture feature; the matching oneagent e2e tests now assert both.",
     "1.8.2 (2026-11-11): Add the litellm/oneagent demo. The OneAgent LiteLLM sensor (OneAgent 1.351, opt-in) always reports gen_ai.provider.name \"litellm\" rather than the upstream provider. No new attributes.",
     "1.8.1 (2026-11-11): gen_ai.operation.kind (AR-066) is now emitted by the OneAgent Python LangGraph sensor (value \"workflow\" on the Pregel graph span, alongside gen_ai.agent.name from the graph name). The langgraph/oneagent e2e test asserts it.",
@@ -97,6 +98,19 @@
             "AR-090",
             "AR-091"
           ]
+        },
+        "oneagent-crewai": {
+          "dashboard": null,
+          "description": "OneAgent Python CrewAI sensor coverage profile. Standalone (does not extend generic): it checks only what the CrewAI sensor itself emits, merged over one crew run's trace. Provider, response model, operation name and messages belong to the provider sensor's chat span and are left out. No dashboard consumes it; it exists so the e2e audit and this baseline agree. Go-only counterpart: CrewAIOneAgentProfile.",
+          "required_attributes": [
+            "AR-003",
+            "AR-004",
+            "AR-006",
+            "AR-007",
+            "AR-010",
+            "AR-066"
+          ],
+          "optional_attributes": []
         }
       },
       "scenario_overrides": {
@@ -1311,7 +1325,7 @@
       "providers": ["generic"],
       "owned_by": "framework_instrumentation",
       "used_by": ["guardrail_coverage"],
-      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider). OneAgent's Python LangGraph sensor sets \"workflow\" on the graph invocation span. OneAgent's Python LangChain sensor sets \"workflow\", \"task\", \"agent\", \"tool\" and \"retrieval\"."
+      "note": "Value \"guardrail\" marks a span as a custom guardrail check in the AI guardrail coverage dashboard (aiguardrailcoverage.dashboard.json, Custom / Other provider). OneAgent's Python LangGraph sensor sets \"workflow\" on the graph invocation span. OneAgent's Python LangChain sensor sets \"workflow\", \"task\", \"agent\", \"tool\" and \"retrieval\", and its Python CrewAI sensor sets \"workflow\", \"task\" and \"agent\" on the crew, task and agent spans."
     },
     {
       "name": "gen_ai.usage.cache_read.input_tokens",
