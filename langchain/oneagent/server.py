@@ -1,13 +1,22 @@
 import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from main import setup_instrumentation, write_haiku
+from main import build_index, setup_instrumentation, write_haiku
 
 setup_instrumentation()
 
-app = FastAPI(title="langchain-oneagent")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Index the haiku guide once, outside any request.
+    await asyncio.to_thread(build_index)
+    yield
+
+
+app = FastAPI(title="langchain-oneagent", lifespan=lifespan)
 
 
 class HaikuRequest(BaseModel):

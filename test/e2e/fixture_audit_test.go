@@ -195,6 +195,27 @@ var OneAgentGuardrailProfile = Profile{
 	},
 }
 
+// LangChainOneAgentProfile checks what OneAgent's Python LangChain sensor itself
+// emits, merged over one workflow run's trace: the service name and the operation
+// kind (workflow, task, agent, tool, retrieval), plus the optional tool name and
+// description and the embeddings dimension count. It deliberately leaves out model,
+// token, provider and message attributes: those belong to the chat span of the
+// provider sensor (Google GenAI), and the framework spans never carry them. It
+// mirrors the standalone "oneagent-langchain" profile in
+// sdk-comparison-baseline.json, which has no dashboard.
+var LangChainOneAgentProfile = Profile{
+	Name: "oneagent-langchain",
+	Required: []AttributeCheck{
+		{Name: "service.name", RuleID: "AR-003"},
+		{Name: "gen_ai.operation.kind", RuleID: "AR-066"},
+	},
+	Optional: []AttributeCheck{
+		{Name: "gen_ai.tool.name", RuleID: "AR-089"},
+		{Name: "gen_ai.tool.description", RuleID: "AR-090"},
+		{Name: "gen_ai.embeddings.dimension.count", RuleID: "AR-091"},
+	},
+}
+
 // CrewAIOneAgentProfile checks what OneAgent's Python CrewAI sensor itself emits,
 // merged over one crew run's trace: the workflow span's token usage and kind, and
 // the agent name and model the task and agent spans carry (see the OAAD CrewAI
