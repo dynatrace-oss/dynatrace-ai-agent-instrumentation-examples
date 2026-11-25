@@ -24,7 +24,7 @@ run:
 		OTEL_EXPORTER_OTLP_ENDPOINT="$(DT_ENDPOINT)/api/v2/otlp" \
 		OTEL_EXPORTER_OTLP_HEADERS="Authorization=Api-Token $(DT_API_TOKEN)"
 
-run-collector: ## Start collector enrichment and run one headless Claude turn
+run-collector: ## Start collector enrichment and run one headless Claude session
 	@$(MAKE) _collector
 	@$(MAKE) _run OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318" OTEL_EXPORTER_OTLP_HEADERS=""
 
@@ -45,7 +45,7 @@ _run:
 	 OTEL_LOG_USER_PROMPTS=1 \
 	 OTEL_LOG_ASSISTANT_RESPONSES=1 \
 	 OTEL_LOG_TOOL_DETAILS=1 \
-	 claude -p --max-turns 3 --allowedTools Read --disallowedTools Bash --output-format text "Reply with exactly: claude-code-e2e-ok"
+	 claude -p --max-turns 3 --allowedTools Read --disallowedTools "Bash(echo:*)" --output-format text "Reply with exactly: claude-code-e2e-ok"
 
 _collector:
 	@test -n "$(DT_ENDPOINT)" || { echo "ERROR: set DT_ENDPOINT" >&2; exit 1; }

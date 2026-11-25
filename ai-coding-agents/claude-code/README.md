@@ -200,7 +200,7 @@ make run-collector
 
 The Collector applies the GenAI semantic-convention mappings before forwarding telemetry to Dynatrace.
 
-The run is a tool round trip: it allows up to three turns (`--max-turns 3`), allows the `Read` tool (`--allowedTools Read`) and denies `Bash` (`--disallowedTools Bash`). When the model requests both tools, `Read` is accepted and executed and `Bash` is rejected, which produces one `accept` and one `reject` permission decision. The Makefile also sets `OTEL_LOG_TOOL_DETAILS=1`, which adds `tool_parameters` to the tool events.
+The run is a tool round trip: it allows up to three turns (`--max-turns 3`), allows the `Read` tool (`--allowedTools Read`) and denies `Bash` `echo` commands (`--disallowedTools "Bash(echo:*)"`). When the model requests both tools, `Read` is accepted and executed and `Bash` is rejected, which produces one `accept` and one `reject` permission decision. The Makefile also sets `OTEL_LOG_TOOL_DETAILS=1`, which adds `tool_parameters` to the tool events.
 
 Inspect Collector logs:
 

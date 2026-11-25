@@ -154,7 +154,7 @@ func startMistralCompatibleMock(t *testing.T) {
 // credential is present, so nightly/manual runs can still validate Anthropic.
 //
 // The stub decides by request content, not by call count:
-//   - the last message is a user message holding a tool_result block: text reply
+//   - any message holds a tool_result block (the follow-up): text reply
 //   - the request declares a Read tool and has no tool_result yet: a tool turn
 //     with two tool_use blocks (Read on the example README, and Bash echo), so a
 //     run exercises one allowed and one denied permission check
@@ -211,18 +211,25 @@ func startAnthropicCompatibleMock(t *testing.T) {
 			request.Model = "claude-sonnet-4-5-20250929"
 		}
 
+		// Claude Code may end the request with a user message that is not the
+		// tool_result itself, so any tool_result in the history marks a follow-up.
 		followUp := false
-		if n := len(request.Messages); n > 0 && request.Messages[n-1].Role == "user" {
+		var shape []string
+		for _, m := range request.Messages {
 			var blocks []struct {
 				Type string `json:"type"`
 			}
-			if json.Unmarshal(request.Messages[n-1].Content, &blocks) == nil {
+			kinds := "text"
+			if json.Unmarshal(m.Content, &blocks) == nil {
+				kinds = ""
 				for _, b := range blocks {
+					kinds += b.Type + ","
 					if b.Type == "tool_result" {
 						followUp = true
 					}
 				}
 			}
+			shape = append(shape, m.Role+"["+kinds+"]")
 		}
 		hasRead := false
 		for _, tool := range request.Tools {
@@ -231,6 +238,7 @@ func startAnthropicCompatibleMock(t *testing.T) {
 			}
 		}
 		isToolTurn := !followUp && hasRead
+		t.Logf("anthropic mock: messages=%v read_declared=%t tool_turn=%t", shape, hasRead, isToolTurn)
 
 		if !request.Stream {
 			w.Header().Set("Content-Type", "application/json")
