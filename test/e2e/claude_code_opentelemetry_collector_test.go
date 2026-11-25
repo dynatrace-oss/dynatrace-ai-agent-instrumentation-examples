@@ -1,13 +1,25 @@
 package e2e
 
-import "testing"
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
+	"time"
+)
 
 func TestClaudeCodeOpenTelemetryCollector(t *testing.T) {
 	startAnthropicCompatibleMock(t)
 
 	// The target starts the repository's collector enrichment example, executes
-	// one headless Claude Code turn, flushes native telemetry, and exits. The local
+	// one headless Claude Code run, flushes native telemetry, and exits. The local
 	// Anthropic-compatible mock is used when no real CI credential is configured.
+	// The mock requests two tools in one turn: Read, which the Makefile allows
+	// (--allowedTools), and Bash, which it denies (--disallowedTools). The run then
+	// ends with a text answer, so the test also asserts the tool_decision and
+	// tool_result logs, the execute_tool span and its duration metric.
+	// With real credentials the mock is off and the tool calls depend on the model,
+	// so the tool assertions below are only guaranteed against the mock.
 	startCLIAppWithTarget(t, "ai-coding-agents/claude-code", "run-collector")
 
 	anchor := `fetch spans, from: now()-10m
@@ -66,4 +78,81 @@ func TestClaudeCodeOpenTelemetryCollector(t *testing.T) {
 		"gen_ai.response.model",
 		"gen_ai.output.messages",
 	}, nil)
+
+	// Permission decisions: Read is allowed and Bash denied by the Makefile flags.
+	assertSpanWithAttrs(t, scopedDQL(`fetch logs, from: now()-10m
+| filter service.name == "claude-code"
+| filter event.name == "tool_decision"
+| filter tool_name == "Read" and decision == "accept"
+| sort timestamp desc
+| limit 1`), []string{"tool_use_id"}, nil)
+	assertSpanWithAttrs(t, scopedDQL(`fetch logs, from: now()-10m
+| filter service.name == "claude-code"
+| filter event.name == "tool_decision"
+| filter tool_name == "Bash" and decision == "reject"
+| sort timestamp desc
+| limit 1`), []string{"tool_use_id"}, nil)
+
+	// Successful execution of the allowed tool.
+	assertSpanWithAttrs(t, scopedDQL(`fetch logs, from: now()-10m
+| filter service.name == "claude-code"
+| filter event.name == "tool_result"
+| filter tool_name == "Read" and success == "true"
+| sort timestamp desc
+| limit 1`), []string{"duration_ms"}, nil)
+
+	// The collector maps claude_code.tool to an execute_tool span.
+	assertSpanWithAttrs(t, scopedDQL(`fetch spans, from: now()-10m
+| filter service.name == "claude-code"
+| filter span.name == "claude_code.tool"
+| filter gen_ai.operation.name == "execute_tool"
+| filter gen_ai.tool.name == "Read"
+| sort timestamp desc
+| limit 1`), []string{
+		"gen_ai.provider.name",
+		"gen_ai.conversation.id",
+	}, nil)
+
+	// The duration metric derived from claude_code.tool.execution. pollMetricExists
+	// does not filter by dimension, so query the execute_tool operation directly.
+	assertExecuteToolDurationMetric(t, "claude-code")
+
+	// Mock traffic carries the ci-mock tag. Skipped when real credentials turn the
+	// mock off.
+	t.Run("mock traffic is tagged", func(t *testing.T) {
+		if os.Getenv("ANTHROPIC_API_KEY") != "mock-key-for-e2e" {
+			t.Skip("real Anthropic credentials set: the mock is off")
+		}
+		assertSpanExistsWithin(t, scopedDQL(`fetch spans, from: now()-10m
+| filter service.name == "claude-code"
+| filter span.name == "claude_code.llm_request"
+| filter deployment.environment.name == "ci-mock"
+| limit 1`), 3*time.Minute)
+	})
+}
+
+// assertExecuteToolDurationMetric polls until gen_ai.client.operation.duration has
+// a non-zero data point for the service with gen_ai.operation.name == execute_tool.
+func assertExecuteToolDurationMetric(t *testing.T, service string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	dql := fmt.Sprintf("timeseries val = sum(gen_ai.client.operation.duration), by: {service.name, gen_ai.operation.name}, from: %q\n"+
+		"| filter service.name == %q and gen_ai.operation.name == \"execute_tool\"\n"+
+		"| filter arraySum(val) > 0",
+		suiteStartTime.UTC().Format(time.RFC3339), service)
+
+	for {
+		records, err := dtClient.Execute(ctx, dql)
+		if err == nil && len(records) > 0 {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Errorf("gen_ai.client.operation.duration for execute_tool not found for service %q within timeout", service)
+			return
+		case <-time.After(15 * time.Second):
+		}
+	}
 }

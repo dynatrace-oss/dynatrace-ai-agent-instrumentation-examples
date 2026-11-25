@@ -44,7 +44,8 @@ _run:
 	 OTEL_LOGS_EXPORT_INTERVAL=1000 \
 	 OTEL_LOG_USER_PROMPTS=1 \
 	 OTEL_LOG_ASSISTANT_RESPONSES=1 \
-	 claude -p --max-turns 1 --output-format text "Reply with exactly: claude-code-e2e-ok"
+	 OTEL_LOG_TOOL_DETAILS=1 \
+	 claude -p --max-turns 3 --allowedTools Read --disallowedTools Bash --output-format text "Reply with exactly: claude-code-e2e-ok"
 
 _collector:
 	@test -n "$(DT_ENDPOINT)" || { echo "ERROR: set DT_ENDPOINT" >&2; exit 1; }

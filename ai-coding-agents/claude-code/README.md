@@ -200,6 +200,8 @@ make run-collector
 
 The Collector applies the GenAI semantic-convention mappings before forwarding telemetry to Dynatrace.
 
+The run is a tool round trip: it allows up to three turns (`--max-turns 3`), allows the `Read` tool (`--allowedTools Read`) and denies `Bash` (`--disallowedTools Bash`). When the model requests both tools, `Read` is accepted and executed and `Bash` is rejected, which produces one `accept` and one `reject` permission decision. The Makefile also sets `OTEL_LOG_TOOL_DETAILS=1`, which adds `tool_parameters` to the tool events.
+
 Inspect Collector logs:
 
 ```bash
@@ -255,6 +257,23 @@ A healthy model request has:
 | `claude_code.tool_decision` | Tool accept or reject decision |
 
 The assistant-response event is a log record, not a span attribute. The Collector mappings add `gen_ai.output.messages` and `gen_ai.response.id` to this log event, which makes the response queryable and joinable to its `claude_code.llm_request` span. They cannot move it onto the span.
+
+The tool round trip above exports this tool telemetry:
+
+```text
+logs
+├── tool_decision  tool_name=Read  decision=accept  (tool_use_id, tool_parameters)
+├── tool_decision  tool_name=Bash  decision=reject  (tool_use_id, tool_parameters)
+└── tool_result    tool_name=Read  success="true"   (duration_ms)
+
+spans
+└── claude_code.tool  Read  → gen_ai.operation.name=execute_tool, gen_ai.tool.name=Read
+
+metrics
+└── gen_ai.client.operation.duration  (gen_ai.operation.name=execute_tool)
+```
+
+`tool_decision` carries `decision` (`accept` or `reject`). The dashboard's "Tool Permission Decisions" tile groups by that attribute.
 
 ## Dynatrace AI Observability enrichment
 
@@ -374,7 +393,7 @@ claude-code-e2e-ok
 | `OTEL_LOGS_EXPORT_INTERVAL` | `5000` | Log export interval in milliseconds. E2E uses `1000`. |
 | `OTEL_LOG_USER_PROMPTS` | `1` | Includes user prompt text. Sensitive-content capture; disabled by default. |
 | `OTEL_LOG_ASSISTANT_RESPONSES` | `1` | Includes assistant response text in log events. Sensitive-content capture; disabled by default. |
-| `OTEL_LOG_TOOL_DETAILS` | `1` | Includes tool and MCP server names. Disabled by default. |
+| `OTEL_LOG_TOOL_DETAILS` | `1` | Includes tool and MCP server names and `tool_parameters`. Disabled by default; set by the Makefile run targets. |
 | `OTEL_LOG_TOOL_CONTENT` | `1` | Includes tool input/output content. Sensitive-content capture; disabled by default. |
 | `OTEL_RESOURCE_ATTRIBUTES` | `team.id=platform` | Adds custom resource attributes. |
 | `OTEL_METRICS_INCLUDE_SESSION_ID` | `true` | Includes `session.id` in metrics and affects cardinality. |
