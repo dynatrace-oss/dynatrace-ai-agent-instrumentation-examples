@@ -2,8 +2,9 @@
 
 Emits the gen_ai.* chat span that the AI Observability app shows. An httpx
 hook injects the W3C traceparent of that span into each request, so vLLM's
-own llm_request span joins the same trace. Exports to Dynatrace when
-DT_ENDPOINT is set, otherwise to the local span sink.
+own llm_request span joins the same trace. Exports to the collector at
+OTEL_EXPORTER_OTLP_ENDPOINT when set (it derives the gen_ai.client.* metrics),
+else to Dynatrace when DT_ENDPOINT is set, otherwise to the local span sink.
 """
 
 import os
@@ -21,8 +22,12 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
+_collector = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").rstrip("/")
 _dt_base = os.environ.get("DT_ENDPOINT", "").rstrip("/")
-if _dt_base:
+if _collector:
+    endpoint = f"{_collector}/v1/traces"
+    headers = {}
+elif _dt_base:
     endpoint = f"{_dt_base}/api/v2/otlp/v1/traces"
     scheme = os.environ.get("DT_AUTH_SCHEME", "Api-Token")
     headers = {"Authorization": f"{scheme} {os.environ.get('DT_API_TOKEN', '')}"}
