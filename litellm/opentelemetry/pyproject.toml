@@ -7,11 +7,11 @@ dependencies = [
     # litellm.proxy imports fastapi.dependencies.utils.get_flat_dependant, which
     # FastAPI removed in 0.140.7 — cap below it until litellm drops that import.
     "fastapi==0.140.6",
-    "uvicorn==0.54.0",
-    "openinference-instrumentation-litellm==0.1.58",
+    "uvicorn==0.55.0",
+    "openinference-instrumentation-litellm==0.1.61",
     "opentelemetry-sdk==1.45.2",
     "opentelemetry-exporter-otlp-proto-grpc==1.45.2",
     "opentelemetry-instrumentation-fastapi==0.66b2",
     "opentelemetry-instrumentation-httpx==0.66b2",
-    "pydantic==2.14.3",
+    "pydantic==2.14.4",
 ]

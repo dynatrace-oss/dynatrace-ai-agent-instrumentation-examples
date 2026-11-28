@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph==1.2.22",
-    "langchain-aws==1.9.3",
-    "traceloop-sdk==0.63.0",
-    "fastapi==0.163.1",
-    "uvicorn==0.54.0",
+    "langchain-aws==1.10.0",
+    "traceloop-sdk==0.63.1",
+    "fastapi==0.165.0",
+    "uvicorn==0.55.0",
 ]
