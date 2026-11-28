@@ -3,11 +3,11 @@ name = "langchain-oneagent-demo"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "langchain-core==1.8.1",
-    "langchain-google-genai==4.5.0",
-    "langchain-anthropic==1.7.10",
+    "langchain-core==1.8.5",
+    "langchain-google-genai==4.5.3",
+    "langchain-anthropic==1.7.13",
     "oneagent-sdk",
-    "fastapi==0.163.1",
-    "uvicorn[standard]==0.54.0",
-    "numpy==2.4.6",
+    "fastapi==0.165.0",
+    "uvicorn[standard]==0.55.0",
+    "numpy==2.5.5",
 ]

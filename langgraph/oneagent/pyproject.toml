@@ -4,9 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph==1.2.22",
-    "langchain-openai==1.8.0",
+    "langchain-openai==1.8.5",
     "openai==3.37.0",
     "oneagent-sdk",
-    "fastapi==0.163.1",
-    "uvicorn[standard]==0.54.0",
+    "fastapi==0.165.0",
+    "uvicorn[standard]==0.55.0",
 ]

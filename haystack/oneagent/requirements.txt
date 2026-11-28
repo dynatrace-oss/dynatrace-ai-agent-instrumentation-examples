@@ -1,4 +1,4 @@
 haystack-ai==3.5.0
 openai==3.37.0
-fastapi==0.163.1
-uvicorn==0.54.0
+fastapi==0.165.0
+uvicorn==0.55.0

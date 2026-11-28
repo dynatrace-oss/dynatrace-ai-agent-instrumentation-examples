@@ -6,5 +6,5 @@ dependencies = [
     "google-adk==2.14.1",
     "oneagent-sdk",
     "fastapi==0.162.0",
-    "uvicorn[standard]==0.54.0",
+    "uvicorn[standard]==0.55.0",
 ]
